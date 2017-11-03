@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "go_default_test",
+    srcs = ["internal_test.go"],
+    data = glob(["testdata/**"]),
+    importpath = "example.com/repo/tests_with_testdata",
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["external_test.go"],
+    data = glob(["testdata/**"]),
+    importpath = "example.com/repo/tests_with_testdata_test",
+)
