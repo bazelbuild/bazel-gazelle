@@ -1,5 +1,5 @@
 diff --git a/README.rst b/README.rst
-index 0ed5ec8..f301c84 100644
+index 0ed5ec8..085a632 100644
 --- a/README.rst
 +++ b/README.rst
 @@ -2,7 +2,7 @@ Gazelle build file generator
@@ -11,6 +11,15 @@ index 0ed5ec8..f301c84 100644
  
  .. role:: flag(code)
  .. role:: cmd(code)
+@@ -16,7 +16,7 @@ be invoked directly in a project workspace, or it can be run on an external
+ repository during the build as part of the go_repository_ rule.
+ 
+ *Gazelle is under active development. Its interface and the rules it generates
+-may change.*
++may change. Gazelle is not an official Google product.*
+ 
+ .. contents:: **Contents** 
+   :depth: 2
 diff --git a/resolve/BUILD.bazel b/resolve/BUILD.bazel
 index d23c6ee..d619a52 100644
 --- a/resolve/BUILD.bazel

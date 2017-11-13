@@ -16,7 +16,7 @@ be invoked directly in a project workspace, or it can be run on an external
 repository during the build as part of the go_repository_ rule.
 
 *Gazelle is under active development. Its interface and the rules it generates
-may change.*
+may change. Gazelle is not an official Google product.*
 
 .. contents:: **Contents** 
   :depth: 2
