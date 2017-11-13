@@ -36,8 +36,7 @@ find . -name '*.go' \
 
 # Fix build files.
 gazelle -go_prefix github.com/bazelbuild/bazel-gazelle
-patch -Nsp1 -i fix-resolve-genrule.patch
-patch -Nsp1 -i fix-testdata.patch
+patch -Nsp1 -i import-fixes.patch
 
 # Run tests
 go test github.com/bazelbuild/bazel-gazelle/...

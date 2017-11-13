@@ -1,3 +1,16 @@
+diff --git a/README.rst b/README.rst
+index 0ed5ec8..f301c84 100644
+--- a/README.rst
++++ b/README.rst
+@@ -2,7 +2,7 @@ Gazelle build file generator
+ ============================
+ 
+ .. All external links are here
+-.. _go_repository: go/workspace.rst#go_repository
++.. _go_repository: https://github.com/bazelbuild/rules_go/blob/master/go/workspace.rst#go-repository
+ 
+ .. role:: flag(code)
+ .. role:: cmd(code)
 diff --git a/resolve/BUILD.bazel b/resolve/BUILD.bazel
 index d23c6ee..d619a52 100644
 --- a/resolve/BUILD.bazel
@@ -24,3 +37,16 @@ index d96795e..aa39b03 100644
  )
  
  go_library(
+diff --git a/rules/BUILD.bazel b/rules/BUILD.bazel
+index 7cc150e..861e240 100644
+--- a/rules/BUILD.bazel
++++ b/rules/BUILD.bazel
+@@ -23,7 +23,7 @@ go_test(
+     name = "go_default_xtest",
+     size = "small",
+     srcs = ["generator_test.go"],
+-    data = ["//go/tools/gazelle:testdata"],
++    data = ["//:testdata"],
+     importpath = "github.com/bazelbuild/bazel-gazelle/rules_test",
+     deps = [
+         ":go_default_library",

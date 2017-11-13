@@ -2,7 +2,7 @@ Gazelle build file generator
 ============================
 
 .. All external links are here
-.. _go_repository: go/workspace.rst#go_repository
+.. _go_repository: https://github.com/bazelbuild/rules_go/blob/master/go/workspace.rst#go-repository
 
 .. role:: flag(code)
 .. role:: cmd(code)
