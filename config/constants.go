@@ -44,4 +44,31 @@ const (
 	// WellKnownTypesGoPrefix is the import path for the Go repository containing
 	// pre-generated code for the Well Known Types.
 	WellKnownTypesGoPrefix = "github.com/golang/protobuf"
+
+	// GazelleImportsKey is an internal attribute that lists imported packages
+	// on generated rules. It is replaced with "deps" during import resolution.
+	GazelleImportsKey = "_gazelle_imports"
 )
+
+// Language is the name of a programming langauge that Gazelle knows about.
+// This is used to specify import paths.
+type Language int
+
+const (
+	// GoLang marks Go targets.
+	GoLang Language = iota
+
+	// ProtoLang marks protocol buffer targets.
+	ProtoLang
+)
+
+func (l Language) String() string {
+	switch l {
+	case GoLang:
+		return "go"
+	case ProtoLang:
+		return "proto"
+	default:
+		return "unknown"
+	}
+}

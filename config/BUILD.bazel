@@ -20,7 +20,7 @@ go_test(
         "config_test.go",
         "directives_test.go",
     ],
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-gazelle/config",
-    library = ":go_default_library",
     deps = ["@com_github_bazelbuild_buildtools//build:go_default_library"],
 )

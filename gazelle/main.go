@@ -58,158 +58,139 @@ var commandFromName = map[string]command{
 	"fix":    fixCmd,
 }
 
+// visitRecord stores information about about a directory visited with
+// packages.Walk.
+type visitRecord struct {
+	// pkgRel is the slash-separated path to the visited directory, relative to
+	// the repository root. "" for the repository root itself.
+	pkgRel string
+
+	// buildRel is the slash-separated path to the directory containing the
+	// relevant build file for the directory being visited, relative to the
+	// repository root. "" for the repository root itself. This may differ
+	// from pkgRel in flat mode.
+	buildRel string
+
+	// rules is a list of generated Go rules.
+	rules []bf.Expr
+
+	// empty is a list of empty Go rules that may be deleted.
+	empty []bf.Expr
+
+	// oldFile is an existing build file in the directory. May be nil.
+	oldFile *bf.File
+}
+
+type byPkgRel []visitRecord
+
+func (vs byPkgRel) Len() int           { return len(vs) }
+func (vs byPkgRel) Less(i, j int) bool { return vs[i].pkgRel < vs[j].pkgRel }
+func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
+
 func run(c *config.Config, cmd command, emit emitFunc) {
-	v := newVisitor(c, cmd, emit)
-	for _, dir := range c.Dirs {
-		packages.Walk(c, dir, v.visit)
-	}
-	v.finish()
-}
-
-type visitor interface {
-	// visit is called once for each directory with buildable Go code that
-	// Gazelle processes. "pkg" describes the buildable Go code. It will not
-	// be nil. "oldFile" is the existing build file in the visited directory.
-	// It may be nil if no file is present.
-	visit(c *config.Config, pkg *packages.Package, oldFile *bf.File)
-
-	// finish is called once after all directories have been visited.
-	finish()
-}
-
-type visitorBase struct {
-	c    *config.Config
-	r    *resolve.Resolver
-	l    resolve.Labeler
-	emit emitFunc
-}
-
-func newVisitor(c *config.Config, cmd command, emit emitFunc) visitor {
+	shouldFix := c.ShouldFix
 	l := resolve.NewLabeler(c)
-	r := resolve.NewResolver(c, l)
-	base := visitorBase{
-		c:    c,
-		r:    r,
-		l:    l,
-		emit: emit,
-	}
-	if c.StructureMode == config.HierarchicalMode {
-		v := &hierarchicalVisitor{visitorBase: base}
-		for _, dir := range c.Dirs {
-			if c.RepoRoot == dir {
-				v.shouldProcessRoot = true
-				break
+
+	var visits []visitRecord
+
+	// Visit directories to modify.
+	// TODO: visit all directories in the repository in order to index rules.
+	for _, dir := range c.Dirs {
+		packages.Walk(c, dir, func(rel string, c *config.Config, pkg *packages.Package, oldFile *bf.File, isUpdateDir bool) {
+			// Fix existing files.
+			if oldFile != nil {
+				if shouldFix {
+					oldFile = merger.FixFile(c, oldFile)
+				} else {
+					fixedFile := merger.FixFile(c, oldFile)
+					if fixedFile != oldFile {
+						log.Printf("%s: warning: file contains rules whose structure is out of date. Consider running 'gazelle fix'.", oldFile.Path)
+					}
+				}
+			}
+
+			// TODO: Index rules in existing files.
+			// TODO: delete rules in directories where pkg == nil (no buildable
+			// Go code).
+
+			// Generate rules.
+			if pkg != nil {
+				var buildRel string
+				if c.StructureMode == config.FlatMode {
+					buildRel = ""
+				} else {
+					buildRel = rel
+				}
+				g := rules.NewGenerator(c, l, buildRel, oldFile)
+				rules, empty := g.GenerateRules(pkg)
+				visits = append(visits, visitRecord{
+					pkgRel:   rel,
+					buildRel: buildRel,
+					rules:    rules,
+					empty:    empty,
+					oldFile:  oldFile,
+				})
+			}
+		})
+
+		// TODO: resolve dependencies using the index.
+		resolver := resolve.NewResolver(c, l)
+		for _, v := range visits {
+			for _, r := range v.rules {
+				resolver.ResolveRule(r, v.pkgRel, v.buildRel)
 			}
 		}
-		return v
-	}
 
-	return &flatVisitor{
-		visitorBase: base,
-		rules:       make(map[string][]bf.Expr),
-	}
-}
+		// Merge old files and generated files. Emit merged files.
+		switch c.StructureMode {
+		case config.HierarchicalMode:
+			for _, v := range visits {
+				genFile := &bf.File{
+					Path: filepath.Join(c.RepoRoot, filepath.FromSlash(v.pkgRel), c.DefaultBuildFileName()),
+					Stmt: v.rules,
+				}
+				mergeAndEmit(c, genFile, v.oldFile, v.empty, emit)
+			}
 
-// hierarchicalVisitor generates and updates one build file per directory.
-type hierarchicalVisitor struct {
-	visitorBase
-	shouldProcessRoot, didProcessRoot bool
-}
+		case config.FlatMode:
+			sort.Stable(byPkgRel(visits))
+			var oldFile *bf.File
+			if len(visits) > 0 && visits[0].pkgRel == "" {
+				oldFile = visits[0].oldFile
+			}
 
-func (v *hierarchicalVisitor) visit(c *config.Config, pkg *packages.Package, oldFile *bf.File) {
-	g := rules.NewGenerator(c, v.r, v.l, pkg.Rel, oldFile)
-	rules, empty := g.GenerateRules(pkg)
-	genFile := &bf.File{
-		Path: filepath.Join(pkg.Dir, c.DefaultBuildFileName()),
-		Stmt: rules,
-	}
-	v.mergeAndEmit(c, genFile, oldFile, empty)
-}
+			genFile := &bf.File{Path: filepath.Join(c.RepoRoot, c.DefaultBuildFileName())}
+			var empty []bf.Expr
+			for _, v := range visits {
+				genFile.Stmt = append(genFile.Stmt, v.rules...)
+				empty = append(empty, v.empty...)
+			}
+			mergeAndEmit(c, genFile, oldFile, empty, emit)
 
-func (v *hierarchicalVisitor) finish() {
-	if !v.shouldProcessRoot || v.didProcessRoot {
-		return
-	}
-
-	// We did not process a package at the repository root. We need to create
-	// a build file if none exists.
-	for _, base := range v.c.ValidBuildFileNames {
-		p := filepath.Join(v.c.RepoRoot, base)
-		if _, err := os.Stat(p); err == nil || !os.IsNotExist(err) {
-			return
+		default:
+			log.Panicf("unsupported structure mode: %v", c.StructureMode)
 		}
 	}
-	p := filepath.Join(v.c.RepoRoot, v.c.DefaultBuildFileName())
-	if f, err := os.Create(p); err != nil {
-		log.Print(err)
-	} else {
-		f.Close()
-	}
-}
-
-// flatVisitor generates and updates a single build file that contains rules
-// for everything in the repository.
-type flatVisitor struct {
-	visitorBase
-	rules       map[string][]bf.Expr
-	empty       []bf.Expr
-	oldRootFile *bf.File
-}
-
-func (v *flatVisitor) visit(c *config.Config, pkg *packages.Package, oldFile *bf.File) {
-	if pkg.Rel == "" {
-		v.oldRootFile = oldFile
-	}
-	g := rules.NewGenerator(c, v.r, v.l, "", oldFile)
-	rules, empty := g.GenerateRules(pkg)
-	v.rules[pkg.Rel] = rules
-	v.empty = append(v.empty, empty...)
-}
-
-func (v *flatVisitor) finish() {
-	if v.oldRootFile == nil {
-		var err error
-		v.oldRootFile, err = loadBuildFile(v.c, v.c.RepoRoot)
-		if err != nil && !os.IsNotExist(err) {
-			log.Print(err)
-		}
-	}
-
-	genFile := &bf.File{
-		Path: filepath.Join(v.c.RepoRoot, v.c.DefaultBuildFileName()),
-	}
-
-	packageNames := make([]string, 0, len(v.rules))
-	for name, _ := range v.rules {
-		packageNames = append(packageNames, name)
-	}
-	sort.Strings(packageNames)
-
-	for _, name := range packageNames {
-		rs := v.rules[name]
-		genFile.Stmt = append(genFile.Stmt, rs...)
-	}
-
-	v.mergeAndEmit(v.c, genFile, v.oldRootFile, v.empty)
 }
 
 // mergeAndEmit merges "genFile" with "oldFile". "oldFile" may be nil if
 // no file exists. If v.c.ShouldFix is true, deprecated usage of old rules in
 // "oldFile" will be fixed. The resulting merged file will be emitted using
 // the "v.emit" function.
-func (v *visitorBase) mergeAndEmit(c *config.Config, genFile, oldFile *bf.File, empty []bf.Expr) {
+func mergeAndEmit(c *config.Config, genFile, oldFile *bf.File, empty []bf.Expr, emit emitFunc) {
 	if oldFile == nil {
 		// No existing file, so no merge required.
 		rules.SortLabels(genFile)
 		genFile = merger.FixLoads(genFile)
 		bf.Rewrite(genFile, nil) // have buildifier 'format' our rules.
-		if err := v.emit(v.c, genFile); err != nil {
+		if err := emit(c, genFile); err != nil {
 			log.Print(err)
 		}
 		return
 	}
 
 	// Existing file. Fix it or see if it needs fixing before merging.
+	oldFile = merger.FixFileMinor(c, oldFile)
 	if c.ShouldFix {
 		oldFile = merger.FixFile(c, oldFile)
 	} else {
@@ -229,7 +210,7 @@ func (v *visitorBase) mergeAndEmit(c *config.Config, genFile, oldFile *bf.File, 
 	rules.SortLabels(mergedFile)
 	mergedFile = merger.FixLoads(mergedFile)
 	bf.Rewrite(mergedFile, nil) // have buildifier 'format' our rules.
-	if err := v.emit(v.c, mergedFile); err != nil {
+	if err := emit(c, mergedFile); err != nil {
 		log.Print(err)
 		return
 	}
@@ -310,7 +291,6 @@ func newConfiguration(args []string) (*config.Config, command, emitFunc, error) 
 	mode := fs.String("mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
 	flat := fs.Bool("experimental_flat", false, "whether gazelle should generate a single, combined BUILD file.\nThis mode is experimental and may not work yet.")
 	proto := fs.String("proto", "default", "default: generates new proto rules\n\tdisable: does not touch proto rules\n\tlegacy (deprecated): generates old proto rules")
-	experimentalPlatforms := fs.Bool("experimental_platforms", false, "generates separate select expressions for OS and arch-specific srcs and deps (won't work until Bazel 0.8)")
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
 			usage(fs)
@@ -403,8 +383,6 @@ func newConfiguration(args []string) (*config.Config, command, emitFunc, error) 
 	}
 
 	c.KnownImports = append(c.KnownImports, knownImports...)
-
-	c.ExperimentalPlatforms = *experimentalPlatforms
 
 	return &c, cmd, emit, err
 }

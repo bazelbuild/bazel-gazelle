@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/wspace"
 )
 
 type fileSpec struct {
@@ -58,6 +59,16 @@ func createFiles(files []fileSpec) (string, error) {
 		}
 	}
 	return dir, nil
+}
+
+// skipIfWorkspaceVisible skips the test if the WORKSPACE file for the
+// repository is visible. This happens in newer Bazel versions when tests
+// are run without sandboxing, since temp directories may be inside the
+// exec root.
+func skipIfWorkspaceVisible(t *testing.T, dir string) {
+	if parent, err := wspace.Find(dir); err == nil {
+		t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, dir)
+	}
 }
 
 func checkFiles(t *testing.T, dir string, files []fileSpec) {
@@ -112,6 +123,8 @@ func TestNoRepoRootOrWorkspace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.RemoveAll(dir)
+	skipIfWorkspaceVisible(t, dir)
 	want := "-repo_root not specified"
 	if err := runGazelle(dir, nil); err == nil {
 		t.Fatalf("got success; want %q", want)
@@ -216,7 +229,7 @@ go_library(
 		t.Fatal(err)
 	}
 
-	if err := runGazelle(dir, []string{"-go_prefix", "example.com/foo", "-experimental_platforms"}); err != nil {
+	if err := runGazelle(dir, []string{"-go_prefix", "example.com/foo"}); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := ioutil.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
@@ -417,6 +430,7 @@ func TestErrorOutsideWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
+	skipIfWorkspaceVisible(t, dir)
 
 	cases := []struct {
 		name, dir, want string
@@ -618,8 +632,8 @@ go_test(
     name = "b_test",
     srcs = ["b/b_test.go"],
     data = glob(["b/testdata/**"]),
+    embed = [":b"],
     importpath = "example.com/foo/b",
-    library = ":b",
     rundir = "b",
 )
 
@@ -654,8 +668,8 @@ go_library(
 
 go_binary(
     name = "c_cmd",
+    embed = [":c"],
     importpath = "example.com/foo/c",
-    library = ":c",
     visibility = ["//visibility:public"],
 )
 `,
@@ -830,8 +844,8 @@ go_proto_library(
 
 go_library(
     name = "go_default_library",
+    embed = [":repo_go_proto"],
     importpath = "example.com/repo",
-    library = ":repo_go_proto",
     visibility = ["//visibility:public"],
 )
 `,
@@ -887,8 +901,8 @@ go_proto_library(
 go_library(
     name = "go_default_library",
     srcs = ["extra.go"],
+    embed = [":repo_go_proto"],
     importpath = "example.com/repo",
-    library = ":repo_go_proto",
     visibility = ["//visibility:public"],
 )
 `,
@@ -947,8 +961,8 @@ go_proto_library(
 
 go_library(
     name = "go_default_library",
+    embed = [":repo_go_proto"],
     importpath = "example.com/repo",
-    library = ":repo_go_proto",
     visibility = ["//visibility:public"],
 )
 `,
@@ -988,8 +1002,8 @@ proto_library(
 
 go_library(
     name = "go_default_library",
+    embed = [":repo_go_proto"],
     importpath = "example.com/repo",
-    library = ":repo_go_proto",
     visibility = ["//visibility:public"],
 )
 

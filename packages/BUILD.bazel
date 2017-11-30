@@ -27,8 +27,8 @@ go_test(
         "fileinfo_test.go",
         "package_test.go",
     ],
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-gazelle/packages",
-    library = ":go_default_library",
     deps = ["//config:go_default_library"],
 )
 

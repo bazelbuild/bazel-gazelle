@@ -31,11 +31,11 @@ import (
 
 func testConfig(repoRoot, goPrefix string) *config.Config {
 	c := &config.Config{
-		RepoRoot:              repoRoot,
-		GoPrefix:              goPrefix,
-		GenericTags:           config.BuildTags{},
-		ValidBuildFileNames:   []string{"BUILD.old"},
-		ExperimentalPlatforms: true,
+		RepoRoot:            repoRoot,
+		Dirs:                []string{repoRoot},
+		GoPrefix:            goPrefix,
+		GenericTags:         config.BuildTags{},
+		ValidBuildFileNames: []string{"BUILD.old"},
 	}
 	c.PreprocessTags()
 	return c
@@ -44,8 +44,8 @@ func testConfig(repoRoot, goPrefix string) *config.Config {
 func packageFromDir(c *config.Config, dir string) (*packages.Package, *bf.File) {
 	var pkg *packages.Package
 	var oldFile *bf.File
-	packages.Walk(c, dir, func(_ *config.Config, p *packages.Package, f *bf.File) {
-		if p.Dir == dir {
+	packages.Walk(c, dir, func(rel string, _ *config.Config, p *packages.Package, f *bf.File, _ bool) {
+		if p != nil && p.Dir == dir {
 			pkg = p
 			oldFile = f
 		}
@@ -58,7 +58,6 @@ func TestGenerator(t *testing.T) {
 	goPrefix := "example.com/repo"
 	c := testConfig(repoRoot, goPrefix)
 	l := resolve.NewLabeler(c)
-	r := resolve.NewResolver(c, l)
 
 	var dirs []string
 	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, err error) error {
@@ -81,7 +80,7 @@ func TestGenerator(t *testing.T) {
 		}
 
 		pkg, oldFile := packageFromDir(c, dir)
-		g := rules.NewGenerator(c, r, l, rel, oldFile)
+		g := rules.NewGenerator(c, l, rel, oldFile)
 		rs, _ := g.GenerateRules(pkg)
 		f := &bf.File{Stmt: rs}
 		rules.SortLabels(f)
@@ -105,8 +104,7 @@ func TestGenerator(t *testing.T) {
 func TestGeneratorEmpty(t *testing.T) {
 	c := testConfig("", "example.com/repo")
 	l := resolve.NewLabeler(c)
-	r := resolve.NewResolver(c, l)
-	g := rules.NewGenerator(c, r, l, "", nil)
+	g := rules.NewGenerator(c, l, "", nil)
 
 	pkg := packages.Package{Name: "foo"}
 	want := `filegroup(name = "go_default_library_protos")
@@ -140,8 +138,7 @@ func TestGeneratorEmptyLegacyProto(t *testing.T) {
 	c := testConfig("", "example.com/repo")
 	c.ProtoMode = config.LegacyProtoMode
 	l := resolve.NewLabeler(c)
-	r := resolve.NewResolver(c, l)
-	g := rules.NewGenerator(c, r, l, "", nil)
+	g := rules.NewGenerator(c, l, "", nil)
 
 	pkg := packages.Package{Name: "foo"}
 	_, empty := g.GenerateRules(&pkg)

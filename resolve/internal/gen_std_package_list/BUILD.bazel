@@ -2,8 +2,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_binary(
     name = "gen_std_package_list",
+    embed = [":go_default_library"],
     importpath = "github.com/bazelbuild/bazel-gazelle/resolve/internal/gen_std_package_list",
-    library = ":go_default_library",
     visibility = ["//resolve:__subpackages__"],
 )
 

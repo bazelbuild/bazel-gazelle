@@ -22,42 +22,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 )
 
-func TestLabelString(t *testing.T) {
-	for _, spec := range []struct {
-		l    Label
-		want string
-	}{
-		{
-			l:    Label{Name: "foo"},
-			want: "//:foo",
-		},
-		{
-			l:    Label{Pkg: "foo/bar", Name: "baz"},
-			want: "//foo/bar:baz",
-		},
-		{
-			l:    Label{Pkg: "foo/bar", Name: "bar"},
-			want: "//foo/bar",
-		},
-		{
-			l:    Label{Repo: "com_example_repo", Pkg: "foo/bar", Name: "baz"},
-			want: "@com_example_repo//foo/bar:baz",
-		},
-		{
-			l:    Label{Repo: "com_example_repo", Pkg: "foo/bar", Name: "bar"},
-			want: "@com_example_repo//foo/bar",
-		},
-		{
-			l:    Label{Relative: true, Name: "foo"},
-			want: ":foo",
-		},
-	} {
-		if got, want := spec.l.String(), spec.want; got != want {
-			t.Errorf("%#v.String() = %q; want %q", spec.l, got, want)
-		}
-	}
-}
-
 func TestResolveGoLocal(t *testing.T) {
 	for _, spec := range []struct {
 		mode       config.StructureMode
@@ -92,13 +56,13 @@ func TestResolveGoLocal(t *testing.T) {
 		c := &config.Config{GoPrefix: "example.com/repo", StructureMode: spec.mode}
 		l := NewLabeler(c)
 		r := NewResolver(c, l)
-		label, err := r.ResolveGo(spec.importpath, spec.pkgRel)
+		label, err := r.resolveGo(spec.importpath, spec.pkgRel)
 		if err != nil {
-			t.Errorf("r.ResolveGo(%q) failed with %v; want success", spec.importpath, err)
+			t.Errorf("r.resolveGo(%q) failed with %v; want success", spec.importpath, err)
 			continue
 		}
 		if got, want := label, spec.want; !reflect.DeepEqual(got, want) {
-			t.Errorf("r.ResolveGo(%q) = %s; want %s", spec.importpath, got, want)
+			t.Errorf("r.resolveGo(%q) = %s; want %s", spec.importpath, got, want)
 		}
 	}
 }
@@ -114,13 +78,13 @@ func TestResolveGoLocalError(t *testing.T) {
 		"example.com/another/sub",
 		"example.com/repo_suffix",
 	} {
-		if l, err := r.ResolveGo(importpath, ""); err == nil {
-			t.Errorf("r.ResolveGo(%q) = %s; want error", importpath, l)
+		if l, err := r.resolveGo(importpath, ""); err == nil {
+			t.Errorf("r.resolveGo(%q) = %s; want error", importpath, l)
 		}
 	}
 
-	if l, err := r.ResolveGo("..", ""); err == nil {
-		t.Errorf("r.ResolveGo(%q) = %s; want error", "..", l)
+	if l, err := r.resolveGo("..", ""); err == nil {
+		t.Errorf("r.resolveGo(%q) = %s; want error", "..", l)
 	}
 }
 
@@ -131,15 +95,15 @@ func TestResolveGoEmptyPrefix(t *testing.T) {
 
 	imp := "foo"
 	want := Label{Pkg: "foo", Name: config.DefaultLibName}
-	if got, err := r.ResolveGo(imp, ""); err != nil {
-		t.Errorf("r.ResolveGo(%q) failed with %v; want success", imp, err)
+	if got, err := r.resolveGo(imp, ""); err != nil {
+		t.Errorf("r.resolveGo(%q) failed with %v; want success", imp, err)
 	} else if !reflect.DeepEqual(got, want) {
-		t.Errorf("r.ResolveGo(%q) = %s; want %s", imp, got, want)
+		t.Errorf("r.resolveGo(%q) = %s; want %s", imp, got, want)
 	}
 
 	imp = "fmt"
-	if _, err := r.ResolveGo(imp, ""); err == nil {
-		t.Errorf("r.ResolveGo(%q) succeeded; want failure")
+	if _, err := r.resolveGo(imp, ""); err == nil {
+		t.Errorf("r.resolveGo(%q) succeeded; want failure")
 	}
 }
 
@@ -221,20 +185,20 @@ func TestResolveProto(t *testing.T) {
 			l := NewLabeler(c)
 			r := NewResolver(c, l)
 
-			got, err := r.ResolveProto(tc.imp, tc.pkgRel)
+			got, err := r.resolveProto(tc.imp, tc.pkgRel)
 			if err != nil {
-				t.Errorf("ResolveProto: got error %v ; want success", err)
+				t.Errorf("resolveProto: got error %v ; want success", err)
 			}
 			if !reflect.DeepEqual(got, tc.wantProto) {
-				t.Errorf("ResolveProto: got %s ; want %s", got, tc.wantProto)
+				t.Errorf("resolveProto: got %s ; want %s", got, tc.wantProto)
 			}
 
-			got, err = r.ResolveGoProto(tc.imp, tc.pkgRel)
+			got, err = r.resolveGoProto(tc.imp, tc.pkgRel)
 			if err != nil {
-				t.Errorf("ResolveGoProto: go error %v ; want success", err)
+				t.Errorf("resolveGoProto: go error %v ; want success", err)
 			}
 			if !reflect.DeepEqual(got, tc.wantGoProto) {
-				t.Errorf("ResolveGoProto: got %s ; want %s", got, tc.wantGoProto)
+				t.Errorf("resolveGoProto: got %s ; want %s", got, tc.wantGoProto)
 			}
 		})
 	}
