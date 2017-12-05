@@ -1,0 +1,9 @@
+# This file contains options passed to Bazel when running tests.
+# They are used by Travis CI and by non-Bazel test scripts.
+
+build:ci --verbose_failures
+build:ci --sandbox_debug
+build:ci --spawn_strategy=standalone
+build:ci --genrule_strategy=standalone
+test:ci --test_strategy=standalone
+test:ci --test_output=errors
