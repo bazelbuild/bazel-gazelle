@@ -3,9 +3,7 @@
 load("//:def.bzl", "gazelle")
 
 gazelle(
-    # TODO(jayconrod): rename to "gazelle" after the //gazelle package is
-    # moved to //cmd/gazelle.
-    name = "gazelle_",
+    name = "gazelle",
     prefix = "github.com/bazelbuild/bazel-gazelle",
 )
 
