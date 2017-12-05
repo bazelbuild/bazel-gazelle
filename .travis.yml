@@ -25,7 +25,7 @@ script:
       --batch \
       --host_jvm_args=-Xmx500m \
       --host_jvm_args=-Xms500m \
-      --bazelrc=.test-bazelrc \
+      --config=ci \
       test \
       --local_resources=400,1,1.0 \
       //...
