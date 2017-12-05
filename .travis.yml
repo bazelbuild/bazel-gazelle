@@ -25,8 +25,8 @@ script:
       --batch \
       --host_jvm_args=-Xmx500m \
       --host_jvm_args=-Xms500m \
-      --config=ci \
       test \
+      --config=ci \
       --local_resources=400,1,1.0 \
       //...
 
