@@ -1,5 +1,14 @@
 # gazelle:exclude testdata
 
+load("//:def.bzl", "gazelle")
+
+gazelle(
+    # TODO(jayconrod): rename to "gazelle" after the //gazelle package is
+    # moved to //cmd/gazelle.
+    name = "gazelle_",
+    prefix = "github.com/bazelbuild/bazel-gazelle",
+)
+
 filegroup(
     name = "testdata",
     srcs = glob(["testdata/**"]),

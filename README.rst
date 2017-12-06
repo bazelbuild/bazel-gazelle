@@ -3,6 +3,7 @@ Gazelle build file generator
 
 .. All external links are here
 .. _go_repository: https://github.com/bazelbuild/rules_go/blob/master/go/workspace.rst#go-repository
+.. _Gazelle in rules_go: https://github.com/bazelbuild/rules_go/tree/master/go/tools/gazelle
 
 .. role:: flag(code)
 .. role:: cmd(code)
@@ -18,6 +19,10 @@ repository during the build as part of the go_repository_ rule.
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
 
+**Note:** We are in the process of moving Gazelle from rules_go into this
+repository. This new repository is not quite ready yet, so for now, please
+continue to use `Gazelle in rules_go`_.
+
 .. contents:: **Contents** 
   :depth: 2
 
@@ -27,22 +32,37 @@ Setup
 Running Gazelle with Bazel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To use Gazelle in a new project, add the following to the BUILD or BUILD.bazel
-file in the root directory of your repository:
+To use Gazelle in a new project, add the code below to the WORKSPACE file in
+the root directory of your repository. This should come *after* 
+``io_bazel_rules_go`` and its dependencies are loaded.
+
+TODO(jayconrod): Tag a version, attach a source archive, and update this
+snippet.
 
 .. code:: bzl
 
-  load("@io_bazel_rules_go//go:def.bzl", "gazelle")
+  http_archive(
+      name = "bazel_gazelle",
+      url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.1.0/bazel-gazelle-0.1.0.tar.gz",
+      sha256 = "TBD",
+  )
+  load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+  gazelle_dependencies()
+      
+Add the code below to the BUILD or BUILD.bazel file in the root directory
+of your repository. Replace the string in ``prefix`` with the portion of
+your import path that corresponds to your repository.
+
+.. code:: bzl
+  
+  load("@bazel_gazelle//:def.bzl", "gazelle")
 
   gazelle(
       name = "gazelle",
       prefix = "github.com/example/project",
   )
 
-Replace the string in ``prefix`` with the portion of your import path that
-corresponds to your repository.
-
-After adding those rules, run the command below:
+After adding this code, you can run Gazelle with Bazel.
 
 .. code::
 
@@ -58,9 +78,11 @@ Running Gazelle separately
 If you have a Go SDK installed, you can install Gazelle in your ``GOPATH`` with
 the command below:
 
+TODO(jayconrod): Move //gazelle to //cmd/gazelle
+
 .. code::
 
-  go get -u github.com/bazelbuild/rules_go/go/tools/gazelle/gazelle
+  go get -u github.com/bazelbuild/bazel-gazelle/cmd/gazelle
 
 Make sure to re-run this command to upgrade Gazelle whenever you upgrade
 rules_go in your repository.
@@ -185,11 +207,11 @@ Bazel rule
 ~~~~~~~~~~
 
 When Gazelle is run by Bazel, most of the flags above can be encoded in the
-``gazelle`` macro. For example:
+``gazelle`` rule. For example:
 
 .. code:: bzl
 
-  load("@io_bazel_rules_go//go:def.bzl", "gazelle")
+  load("@bazel_gazelle//:def.bzl", "gazelle")
 
   gazelle(
       name = "gazelle",
@@ -200,7 +222,7 @@ When Gazelle is run by Bazel, most of the flags above can be encoded in the
           "integration",
           "debug",
       ],
-      args = [
+      extra_args = [
           "-build_file_name",
           "BUILD,BUILD.bazel",
       ],
@@ -213,11 +235,12 @@ Gazelle supports several directives, written as comments in build files.
 
 * ``# gazelle:ignore``: may be written at the top level of any build file.
   Gazelle will not update files with this comment.
-* ``# gazelle:exclude file-or-directory``: may be written at the top level of
-  any build file. Gazelle will ignore the named file in the build file's
-  directory. If it is a source file, Gazelle won't include it in any rules. If
-  it is a directory, Gazelle will not recurse into it. This directive may be
-  repeated to exclude multiple files, one per line.
+* ``# gazelle:exclude path``: may be written at the top level of
+  any build file. If the path refers to a source file, Gazelle won't include
+  it in any rules. If the path refers to a directory, Gazelle won't recurse
+  into it. The path may refer to something in a subdirectory, for example,
+  a testdata directory somewhere in a vendor tree. This directive may be
+  repeated to exclude multiple paths, one per line.
 * ``# gazelle:proto <mode>``: Tells Gazelle how to generate rules for .proto
   files. Applies to the current directory and subdirectories. Valid values for
   ``mode`` are:
