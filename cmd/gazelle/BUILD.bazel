@@ -1,8 +1,46 @@
-# TODO(jayconrod): move //gazelle to //cmd/gazelle after the Gazelle in rules_go
-# is completely turned down. For now, the paths need to match for the import
-# script to work.
-alias(
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_binary", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "diff.go",
+        "fix.go",
+        "flags.go",
+        "main.go",
+        "print.go",
+    ],
+    importpath = "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//config:go_default_library",
+        "//merger:go_default_library",
+        "//packages:go_default_library",
+        "//resolve:go_default_library",
+        "//rules:go_default_library",
+        "//wspace:go_default_library",
+        "@com_github_bazelbuild_buildtools//build:go_default_library",
+    ],
+)
+
+go_binary(
     name = "gazelle",
-    actual = "//gazelle:gazelle",
+    embed = [":go_default_library"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_test",
+    size = "small",
+    srcs = [
+        "fix_test.go",
+        "integration_test.go",
+    ],
+    embed = [":go_default_library"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
+    deps = [
+        "//config:go_default_library",
+        "//wspace:go_default_library",
+        "@com_github_bazelbuild_buildtools//build:go_default_library",
+    ],
 )

@@ -28,12 +28,10 @@ import (
 
 // Resolver resolves import strings in source files (import paths in Go,
 // import statements in protos) into Bazel labels.
-// TODO(#859): imports are currently resolved by guessing a label based
-// on the name. We should be smarter about this and build a table mapping
-// import paths to labels that we can use to cross-reference.
 type Resolver struct {
 	c        *config.Config
-	l        Labeler
+	l        *Labeler
+	ix       *RuleIndex
 	external nonlocalResolver
 }
 
@@ -44,7 +42,7 @@ type nonlocalResolver interface {
 	resolve(imp string) (Label, error)
 }
 
-func NewResolver(c *config.Config, l Labeler) *Resolver {
+func NewResolver(c *config.Config, l *Labeler, ix *RuleIndex) *Resolver {
 	var e nonlocalResolver
 	switch c.DepMode {
 	case config.ExternalMode:
@@ -56,17 +54,20 @@ func NewResolver(c *config.Config, l Labeler) *Resolver {
 	return &Resolver{
 		c:        c,
 		l:        l,
+		ix:       ix,
 		external: e,
 	}
 }
 
-// ResolveRule modifies a generated rule e by replacing the import paths in the
-// "_gazelle_imports" attribute with labels in a "deps" attribute. This may
-// may safely called on expressions that aren't Go rules (nothing will happen).
-func (r *Resolver) ResolveRule(e bf.Expr, pkgRel, buildRel string) {
+// ResolveRule copies and modifies a generated rule e by replacing the import
+// paths in the "_gazelle_imports" attribute with labels in a "deps"
+// attribute. This may be safely called on expressions that aren't Go rules
+// (the original expression will be returned). Any existing "deps" attribute
+// is deleted, so it may be necessary to merge the result.
+func (r *Resolver) ResolveRule(e bf.Expr, pkgRel string) bf.Expr {
 	call, ok := e.(*bf.CallExpr)
 	if !ok {
-		return
+		return e
 	}
 	rule := bf.Rule{Call: call}
 
@@ -79,15 +80,17 @@ func (r *Resolver) ResolveRule(e bf.Expr, pkgRel, buildRel string) {
 	case "go_proto_library", "go_grpc_library":
 		resolve = r.resolveGoProto
 	default:
-		return
+		return e
 	}
 
-	imports := rule.AttrDefn(config.GazelleImportsKey)
-	if imports == nil {
-		return
-	}
+	resolved := *call
+	resolved.List = append([]bf.Expr{}, call.List...)
+	rule.Call = &resolved
 
-	deps := mapExprStrings(imports.Y, func(imp string) string {
+	imports := rule.Attr(config.GazelleImportsKey)
+	rule.DelAttr(config.GazelleImportsKey)
+	rule.DelAttr("deps")
+	deps := mapExprStrings(imports, func(imp string) string {
 		label, err := resolve(imp, pkgRel)
 		if err != nil {
 			if _, ok := err.(standardImportError); !ok {
@@ -95,15 +98,14 @@ func (r *Resolver) ResolveRule(e bf.Expr, pkgRel, buildRel string) {
 			}
 			return ""
 		}
-		label.Relative = label.Repo == "" && label.Pkg == buildRel
+		label.Relative = label.Repo == "" && label.Pkg == pkgRel
 		return label.String()
 	})
-	if deps == nil {
-		rule.DelAttr(config.GazelleImportsKey)
-	} else {
-		imports.X.(*bf.LiteralExpr).Token = "deps"
-		imports.Y = deps
+	if deps != nil {
+		rule.SetAttr("deps", deps)
 	}
+
+	return &resolved
 }
 
 type standardImportError struct {
@@ -118,6 +120,9 @@ func (e standardImportError) Error() string {
 // expression with the results. Scalar strings, lists, dicts, selects, and
 // concatenations are supported.
 func mapExprStrings(e bf.Expr, f func(string) string) bf.Expr {
+	if e == nil {
+		return nil
+	}
 	switch expr := e.(type) {
 	case *bf.StringExpr:
 		s := f(expr.Value)
@@ -210,16 +215,26 @@ func (r *Resolver) resolveGo(imp, pkgRel string) (Label, error) {
 		imp = path.Join(r.c.GoPrefix, cleanRel)
 	}
 
-	switch {
-	case IsStandard(imp):
+	if IsStandard(imp) {
 		return Label{}, standardImportError{imp}
-	case imp == r.c.GoPrefix:
-		return r.l.LibraryLabel(""), nil
-	case r.c.GoPrefix == "" || strings.HasPrefix(imp, r.c.GoPrefix+"/"):
-		return r.l.LibraryLabel(strings.TrimPrefix(imp, r.c.GoPrefix+"/")), nil
-	default:
-		return r.external.resolve(imp)
 	}
+
+	if label, err := r.ix.findLabelByImport(importSpec{config.GoLang, imp}, config.GoLang, pkgRel); err != nil {
+		if _, ok := err.(ruleNotFoundError); !ok {
+			return NoLabel, err
+		}
+	} else {
+		return label, nil
+	}
+
+	if imp == r.c.GoPrefix {
+		return r.l.LibraryLabel(""), nil
+	}
+	if r.c.GoPrefix == "" || strings.HasPrefix(imp, r.c.GoPrefix+"/") {
+		return r.l.LibraryLabel(strings.TrimPrefix(imp, r.c.GoPrefix+"/")), nil
+	}
+
+	return r.external.resolve(imp)
 }
 
 const (
@@ -234,12 +249,17 @@ func (r *Resolver) resolveProto(imp, pkgRel string) (Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
 		return Label{}, fmt.Errorf("can't import non-proto: %q", imp)
 	}
-	imp = imp[:len(imp)-len(".proto")]
-
 	if isWellKnown(imp) {
-		// Well Known Type
-		name := path.Base(imp) + "_proto"
+		name := path.Base(imp[:len(imp)-len(".proto")]) + "_proto"
 		return Label{Repo: config.WellKnownTypesProtoRepo, Name: name}, nil
+	}
+
+	if label, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.ProtoLang, pkgRel); err != nil {
+		if _, ok := err.(ruleNotFoundError); !ok {
+			return NoLabel, err
+		}
+	} else {
+		return label, nil
 	}
 
 	rel := path.Dir(imp)
@@ -256,11 +276,11 @@ func (r *Resolver) resolveGoProto(imp, pkgRel string) (Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
 		return Label{}, fmt.Errorf("can't import non-proto: %q", imp)
 	}
-	imp = imp[:len(imp)-len(".proto")]
+	stem := imp[:len(imp)-len(".proto")]
 
-	if isWellKnown(imp) {
+	if isWellKnown(stem) {
 		// Well Known Type
-		base := path.Base(imp)
+		base := path.Base(stem)
 		if base == "descriptor" {
 			switch r.c.DepMode {
 			case config.ExternalMode:
@@ -294,17 +314,24 @@ func (r *Resolver) resolveGoProto(imp, pkgRel string) (Label, error) {
 		}
 	}
 
-	// Temporary hack: guess the label based on the proto file name. We assume
+	if label, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.GoLang, pkgRel); err != nil {
+		if _, ok := err.(ruleNotFoundError); !ok {
+			return NoLabel, err
+		}
+	} else {
+		return label, err
+	}
+
+	// As a fallback, guess the label based on the proto file name. We assume
 	// all proto files in a directory belong to the same package, and the
 	// package name matches the directory base name. We also assume that protos
 	// in the vendor directory must refer to something else in vendor.
-	// TODO(#859): use dependency table to resolve once it exists.
-	if pkgRel == "vendor" || strings.HasPrefix(pkgRel, "vendor/") {
-		imp = path.Join("vendor", imp)
-	}
 	rel := path.Dir(imp)
 	if rel == "." {
 		rel = ""
+	}
+	if pkgRel == "vendor" || strings.HasPrefix(pkgRel, "vendor/") {
+		rel = path.Join("vendor", rel)
 	}
 	return r.l.LibraryLabel(rel), nil
 }

@@ -1,30 +1,8 @@
-diff --git a/README.rst b/README.rst
-index 0ed5ec8..085a632 100644
---- a/README.rst
-+++ b/README.rst
-@@ -2,7 +2,7 @@ Gazelle build file generator
- ============================
- 
- .. All external links are here
--.. _go_repository: go/workspace.rst#go_repository
-+.. _go_repository: https://github.com/bazelbuild/rules_go/blob/master/go/workspace.rst#go-repository
- 
- .. role:: flag(code)
- .. role:: cmd(code)
-@@ -16,7 +16,7 @@ be invoked directly in a project workspace, or it can be run on an external
- repository during the build as part of the go_repository_ rule.
- 
- *Gazelle is under active development. Its interface and the rules it generates
--may change.*
-+may change. Gazelle is not an official Google product.*
- 
- .. contents:: **Contents** 
-   :depth: 2
 diff --git a/resolve/BUILD.bazel b/resolve/BUILD.bazel
-index d23c6ee..d619a52 100644
+index cff059a..663878d 100644
 --- a/resolve/BUILD.bazel
 +++ b/resolve/BUILD.bazel
-@@ -41,6 +41,6 @@ genrule(
+@@ -45,6 +45,6 @@ genrule(
      name = "std_package_list",
      srcs = ["@go_sdk//:packages.txt"],
      outs = ["std_package_list.go"],
@@ -34,13 +12,13 @@ index d23c6ee..d619a52 100644
 +    tools = ["//resolve/internal/gen_std_package_list"],
  )
 diff --git a/resolve/internal/gen_std_package_list/BUILD.bazel b/resolve/internal/gen_std_package_list/BUILD.bazel
-index d96795e..aa39b03 100644
+index 5f62bd8..e09f7c9 100644
 --- a/resolve/internal/gen_std_package_list/BUILD.bazel
 +++ b/resolve/internal/gen_std_package_list/BUILD.bazel
 @@ -4,7 +4,7 @@ go_binary(
      name = "gen_std_package_list",
+     embed = [":go_default_library"],
      importpath = "github.com/bazelbuild/bazel-gazelle/resolve/internal/gen_std_package_list",
-     library = ":go_default_library",
 -    visibility = ["//go/tools/gazelle/resolve:__subpackages__"],
 +    visibility = ["//resolve:__subpackages__"],
  )

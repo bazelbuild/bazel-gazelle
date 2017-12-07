@@ -32,6 +32,11 @@ find . -name '*.go' \
   -exec sh -c 'sed -e "s!github\.com/bazelbuild/rules_go/go/tools/gazelle!github.com/bazelbuild/bazel-gazelle!g" <{} >{}.tmp ;
       mv "{}.tmp" "{}"' \;
 
+# Move gazelle to cmd/gazelle
+rm -rf cmd/gazelle/
+mkdir -p cmd/
+mv gazelle/ cmd/gazelle/
+
 # Fix build files.
 gazelle -go_prefix github.com/bazelbuild/bazel-gazelle
 patch -Nsp1 -i import-fixes.patch
@@ -41,4 +46,4 @@ go test github.com/bazelbuild/bazel-gazelle/...
 bazel test //...
 
 # Rebuild and reinstall gazelle
-go install github.com/bazelbuild/bazel-gazelle/gazelle
+go install github.com/bazelbuild/bazel-gazelle/cmd/gazelle
