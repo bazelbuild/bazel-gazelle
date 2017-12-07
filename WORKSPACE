@@ -1,3 +1,5 @@
+workspace(name = "bazel_gazelle")
+
 http_archive(
     name = "io_bazel_rules_go",
     url = "https://github.com/bazelbuild/rules_go/releases/download/0.7.1/rules_go-0.7.1.tar.gz",
@@ -6,3 +8,6 @@ http_archive(
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
 go_rules_dependencies()
 go_register_toolchains()
+
+load("//:deps.bzl", "gazelle_dependencies")
+gazelle_dependencies()

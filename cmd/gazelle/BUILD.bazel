@@ -1,0 +1,8 @@
+# TODO(jayconrod): move //gazelle to //cmd/gazelle after the Gazelle in rules_go
+# is completely turned down. For now, the paths need to match for the import
+# script to work.
+alias(
+    name = "gazelle",
+    actual = "//gazelle:gazelle",
+    visibility = ["//visibility:public"],
+)

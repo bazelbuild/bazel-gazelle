@@ -12,8 +12,6 @@ go install github.com/bazelbuild/rules_go/go/tools/gazelle/gazelle
 
 # Remove old files and copy all packages to the new repository.
 files_to_copy=(
-    BUILD.bazel
-    README.rst
     config
     gazelle
     merger
