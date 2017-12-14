@@ -19,10 +19,6 @@ repository during the build as part of the go_repository_ rule.
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
 
-**Note:** We are in the process of moving Gazelle from rules_go into this
-repository. This new repository is not quite ready yet, so for now, please
-continue to use `Gazelle in rules_go`_.
-
 .. contents:: **Contents** 
   :depth: 2
 
@@ -36,15 +32,12 @@ To use Gazelle in a new project, add the code below to the WORKSPACE file in
 the root directory of your repository. This should come *after* 
 ``io_bazel_rules_go`` and its dependencies are loaded.
 
-TODO(jayconrod): Tag a version, attach a source archive, and update this
-snippet.
-
 .. code:: bzl
 
   http_archive(
       name = "bazel_gazelle",
-      url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.1.0/bazel-gazelle-0.1.0.tar.gz",
-      sha256 = "TBD",
+      url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.8/bazel-gazelle-0.8.tar.gz",
+      sha256 = "e3dadf036c769d1f40603b86ae1f0f90d11837116022d9b06e4cd88cae786676",
   )
   load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
   gazelle_dependencies()
