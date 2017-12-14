@@ -308,7 +308,7 @@ func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, from
 
 	if imp.lang == config.ProtoLang && lang == config.GoLang {
 		importpath := bestMatch.rule.AttrString("importpath")
-		if betterMatch, err := ix.findRuleByImport(importSpec{config.GoLang, importpath}, config.GoLang, fromRel); err != nil {
+		if betterMatch, err := ix.findRuleByImport(importSpec{config.GoLang, importpath}, config.GoLang, fromRel); err == nil {
 			return betterMatch, nil
 		}
 	}

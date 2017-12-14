@@ -21,7 +21,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"go/build"
 	"io/ioutil"
 	"log"
 	"os"
@@ -116,8 +115,15 @@ func run(c *config.Config, cmd command, emit emitFunc) {
 		// Generate rules.
 		if pkg != nil {
 			g := rules.NewGenerator(c, l, file)
-			rules, empty := g.GenerateRules(pkg)
+			rules, empty, err := g.GenerateRules(pkg)
+			if err != nil {
+				log.Print(err)
+				return
+			}
 			file, rules = merger.MergeFile(rules, empty, file, merger.MergeableGeneratedAttrs)
+			if file == nil {
+				return
+			}
 			if file.Path == "" {
 				file.Path = filepath.Join(c.RepoRoot, filepath.FromSlash(rel), c.DefaultBuildFileName())
 			}
@@ -125,6 +131,7 @@ func run(c *config.Config, cmd command, emit emitFunc) {
 			visits = append(visits, visitRecord{
 				pkgRel: rel,
 				rules:  rules,
+				empty:  empty,
 				file:   file,
 			})
 		}
@@ -139,7 +146,7 @@ func run(c *config.Config, cmd command, emit emitFunc) {
 		for j := range visits[i].rules {
 			visits[i].rules[j] = resolver.ResolveRule(visits[i].rules[j], visits[i].pkgRel)
 		}
-		visits[i].file, _ = merger.MergeFile(visits[i].rules, nil, visits[i].file, merger.MergeableResolvedAttrs)
+		visits[i].file, _ = merger.MergeFile(visits[i].rules, visits[i].empty, visits[i].file, merger.MergeableResolvedAttrs)
 	}
 
 	// Emit merged files.
@@ -287,12 +294,11 @@ func newConfiguration(args []string) (*config.Config, command, emitFunc, error) 
 	} else {
 		c.GoPrefix, err = loadGoPrefix(&c)
 		if err != nil {
-			return nil, cmd, nil, fmt.Errorf("-go_prefix not set")
+			return nil, cmd, nil, err
 		}
-		// TODO(jayconrod): read prefix directives when they are supported.
 	}
-	if strings.HasPrefix(c.GoPrefix, "/") || build.IsLocalImport(c.GoPrefix) {
-		return nil, cmd, nil, fmt.Errorf("invalid go_prefix: %q", c.GoPrefix)
+	if err := config.CheckPrefix(c.GoPrefix); err != nil {
+		return nil, cmd, nil, err
 	}
 
 	c.ShouldFix = cmd == fixCmd
@@ -365,7 +371,12 @@ func loadBuildFile(c *config.Config, dir string) (*bf.File, error) {
 func loadGoPrefix(c *config.Config) (string, error) {
 	f, err := loadBuildFile(c, c.RepoRoot)
 	if err != nil {
-		return "", err
+		return "", errors.New("-go_prefix not set")
+	}
+	for _, d := range config.ParseDirectives(f) {
+		if d.Key == "prefix" {
+			return d.Value, nil
+		}
 	}
 	for _, s := range f.Stmt {
 		c, ok := s.(*bf.CallExpr)
@@ -380,15 +391,15 @@ func loadGoPrefix(c *config.Config) (string, error) {
 			continue
 		}
 		if len(c.List) != 1 {
-			return "", fmt.Errorf("found go_prefix(%v) with too many args", c.List)
+			return "", fmt.Errorf("-go_prefix not set, and %s has go_prefix(%v) with too many args", f.Path, c.List)
 		}
 		v, ok := c.List[0].(*bf.StringExpr)
 		if !ok {
-			return "", fmt.Errorf("found go_prefix(%v) which is not a string", c.List)
+			return "", fmt.Errorf("-go_prefix not set, and %s has go_prefix(%v) which is not a string", f.Path, bf.FormatString(c.List[0]))
 		}
 		return v.Value, nil
 	}
-	return "", errors.New("-go_prefix not set, and no go_prefix in root BUILD file")
+	return "", fmt.Errorf("-go_prefix not set, and no # gazelle:prefix directive found in %s", f.Path)
 }
 
 func isDescendingDir(dir, root string) bool {

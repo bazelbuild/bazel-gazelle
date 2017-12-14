@@ -40,6 +40,7 @@ var knownTopLevelDirectives = map[string]bool{
 	"build_file_name": true,
 	"build_tags":      true,
 	"exclude":         true,
+	"prefix":          true,
 	"ignore":          true,
 	"proto":           true,
 }
@@ -52,7 +53,6 @@ var knownTopLevelDirectives = map[string]bool{
 // out of place (after the first statement).
 func ParseDirectives(f *bf.File) []Directive {
 	var directives []Directive
-	beforeStmt := true
 	parseComment := func(com bf.Comment) {
 		match := directiveRe.FindStringSubmatch(com.Token)
 		if match == nil {
@@ -63,21 +63,12 @@ func ParseDirectives(f *bf.File) []Directive {
 			log.Printf("%s:%d: unknown directive: %s", f.Path, com.Start.Line, com.Token)
 			return
 		}
-		if !beforeStmt {
-			log.Printf("%s:%d: top-level directive may not appear after the first statement", f.Path, com.Start.Line)
-			return
-		}
 		directives = append(directives, Directive{key, value})
 	}
 
 	for _, s := range f.Stmt {
 		coms := s.Comment()
 		for _, com := range coms.Before {
-			parseComment(com)
-		}
-		_, isComment := s.(*bf.CommentBlock)
-		beforeStmt = beforeStmt && isComment
-		for _, com := range coms.Suffix {
 			parseComment(com)
 		}
 		for _, com := range coms.After {
@@ -89,10 +80,10 @@ func ParseDirectives(f *bf.File) []Directive {
 
 var directiveRe = regexp.MustCompile(`^#\s*gazelle:(\w+)\s*(.*?)\s*$`)
 
-// ApplyDirectives applies directives that modify the configuration to a
-// copy of c, which is returned. If there are no configuration directives,
-// c is returned unmodified.
-func ApplyDirectives(c *Config, directives []Directive) *Config {
+// ApplyDirectives applies directives that modify the configuration to a copy of
+// c, which is returned. If there are no configuration directives, c is returned
+// unmodified.
+func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
 	modified := *c
 	didModify := false
 	for _, d := range directives {
@@ -107,6 +98,14 @@ func ApplyDirectives(c *Config, directives []Directive) *Config {
 			}
 		case "build_file_name":
 			modified.ValidBuildFileNames = strings.Split(d.Value, ",")
+			didModify = true
+		case "prefix":
+			if err := CheckPrefix(d.Value); err != nil {
+				log.Print(err)
+				continue
+			}
+			modified.GoPrefix = d.Value
+			modified.GoPrefixRel = rel
 			didModify = true
 		case "proto":
 			protoMode, err := ProtoModeFromString(d.Value)
