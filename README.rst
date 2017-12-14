@@ -78,8 +78,6 @@ Running Gazelle separately
 If you have a Go SDK installed, you can install Gazelle in your ``GOPATH`` with
 the command below:
 
-TODO(jayconrod): Move //gazelle to //cmd/gazelle
-
 .. code::
 
   go get -u github.com/bazelbuild/bazel-gazelle/cmd/gazelle

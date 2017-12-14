@@ -18,6 +18,7 @@ package packages_test
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -289,6 +290,40 @@ func TestRootWithoutPrefix(t *testing.T) {
 	}
 }
 
+func TestVendorResetsPrefix(t *testing.T) {
+	files := []fileSpec{
+		{path: "vendor/"},
+		{path: "sub/vendor/"},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	basePrefix := "example.com/repo"
+	c := &config.Config{
+		RepoRoot:            dir,
+		Dirs:                []string{dir},
+		ValidBuildFileNames: config.DefaultValidBuildFileNames,
+		GoPrefix:            basePrefix,
+	}
+	packages.Walk(c, c.RepoRoot, func(rel string, c *config.Config, _ *packages.Package, _ *bf.File, _ bool) {
+		if path.Base(rel) != "vendor" {
+			return
+		}
+		if c.GoPrefix != "" {
+			t.Errorf("in %q, GoPrefix not reset", rel)
+		}
+		if c.GoPrefixRel != rel {
+			t.Errorf("in %q, GoPrefixRel not set", rel)
+		}
+	})
+	if c.GoPrefix != basePrefix {
+		t.Errorf("prefix in base configuration was modified: %q", c.GoPrefix)
+	}
+}
+
 func TestTestdata(t *testing.T) {
 	files := []fileSpec{
 		{path: "raw/testdata/"},
@@ -454,11 +489,13 @@ import "github.com/jr_hacker/stuff"
 func TestExcluded(t *testing.T) {
 	files := []fileSpec{
 		{
+			path:    "BUILD",
+			content: "# gazelle:exclude exclude/do.go",
+		}, {
 			path: "exclude/BUILD",
 			content: `
-# gazelle:exclude do.go
-
 # gazelle:exclude not.go
+
 # gazelle:exclude build.go
 
 genrule(

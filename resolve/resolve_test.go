@@ -246,7 +246,7 @@ go_library(
 		t.Errorf("resolveProto: got %s ; want %s", got, wantProto)
 	}
 
-	wantGoProto := Label{Pkg: "sub", Name: "foo_go_proto"}
+	wantGoProto := Label{Pkg: "sub", Name: "embed"}
 	if got, err := r.resolveGoProto("sub/bar.proto", "baz"); err != nil {
 		t.Error(err)
 	} else if !reflect.DeepEqual(got, wantGoProto) {
