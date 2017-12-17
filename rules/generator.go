@@ -21,10 +21,10 @@ import (
 	"path"
 	"strings"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/packages"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 // NewGenerator returns a new instance of Generator.
@@ -116,7 +116,6 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 		protoAttrs = append(protoAttrs, keyvalue{"visibility", visibility})
 	}
 	imports := pkg.Proto.Imports
-	imports.Clean()
 	if !imports.IsEmpty() {
 		protoAttrs = append(protoAttrs, keyvalue{config.GazelleImportsKey, imports})
 	}
@@ -261,7 +260,6 @@ func (g *Generator) commonAttrs(pkgRel, name, visibility string, target packages
 		attrs = append(attrs, keyvalue{"visibility", []string{visibility}})
 	}
 	imports := target.Imports
-	imports.Clean()
 	if !imports.IsEmpty() {
 		attrs = append(attrs, keyvalue{config.GazelleImportsKey, imports})
 	}
@@ -290,42 +288,59 @@ func (g *Generator) options(opts packages.PlatformStrings, pkgRel string) packag
 		return path.Clean(path.Join(pkgRel, opt))
 	}
 
-	fixOpts := func(opts []string) ([]string, error) {
-		fixedOpts := make([]string, len(opts))
-		isPath := false
-		for i, opt := range opts {
-			if isPath {
-				opt = fixPath(opt)
-				isPath = false
-				goto next
-			}
-
-			for _, short := range shortOptPrefixes {
-				if strings.HasPrefix(opt, short) && len(opt) > len(short) {
-					opt = short + fixPath(opt[len(short):])
+	fixGroups := func(groups []string) ([]string, error) {
+		fixedGroups := make([]string, len(groups))
+		for i, group := range groups {
+			opts := strings.Split(group, packages.OptSeparator)
+			fixedOpts := make([]string, len(opts))
+			isPath := false
+			for j, opt := range opts {
+				if isPath {
+					opt = fixPath(opt)
+					isPath = false
 					goto next
 				}
-			}
 
-			for _, long := range longOptPrefixes {
-				if opt == long {
-					isPath = true
-					goto next
+				for _, short := range shortOptPrefixes {
+					if strings.HasPrefix(opt, short) && len(opt) > len(short) {
+						opt = short + fixPath(opt[len(short):])
+						goto next
+					}
 				}
-			}
 
-		next:
-			fixedOpts[i] = opt
+				for _, long := range longOptPrefixes {
+					if opt == long {
+						isPath = true
+						goto next
+					}
+				}
+
+			next:
+				fixedOpts[j] = escapeOption(opt)
+			}
+			fixedGroups[i] = strings.Join(fixedOpts, " ")
 		}
 
-		return packages.JoinOptions(fixedOpts), nil
+		return fixedGroups, nil
 	}
 
-	opts, errs := opts.MapSlice(fixOpts)
+	opts, errs := opts.MapSlice(fixGroups)
 	if errs != nil {
 		log.Panicf("unexpected error when transforming options with pkg %q: %v", pkgRel, errs)
 	}
 	return opts
+}
+
+func escapeOption(opt string) string {
+	return strings.NewReplacer(
+		`\`, `\\`,
+		`'`, `\'`,
+		`"`, `\"`,
+		` `, `\ `,
+		"\t", "\\\t",
+		"\n", "\\\n",
+		"\r", "\\\r",
+	).Replace(opt)
 }
 
 func isEmpty(r bf.Expr) bool {

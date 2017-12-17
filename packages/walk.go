@@ -24,8 +24,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 // A WalkFunc is a callback called by Walk in each visited directory.
@@ -215,7 +215,7 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 // returned.
 func buildPackage(c *config.Config, dir, rel string, pkgFiles, otherFiles, genFiles []string, hasTestdata bool) *Package {
 	// Process .go and .proto files first, since these determine the package name.
-	packageMap := make(map[string]*Package)
+	packageMap := make(map[string]*packageBuilder)
 	cgo := false
 	var pkgFilesWithUnknownPackage []fileInfo
 	for _, f := range pkgFiles {
@@ -240,11 +240,11 @@ func buildPackage(c *config.Config, dir, rel string, pkgFiles, otherFiles, genFi
 		cgo = cgo || info.isCgo
 
 		if _, ok := packageMap[info.packageName]; !ok {
-			packageMap[info.packageName] = &Package{
-				Name:        info.packageName,
-				Dir:         dir,
-				Rel:         rel,
-				HasTestdata: hasTestdata,
+			packageMap[info.packageName] = &packageBuilder{
+				name:        info.packageName,
+				dir:         dir,
+				rel:         rel,
+				hasTestdata: hasTestdata,
 			}
 		}
 		if err := packageMap[info.packageName].addFile(c, info, false); err != nil {
@@ -298,11 +298,11 @@ func buildPackage(c *config.Config, dir, rel string, pkgFiles, otherFiles, genFi
 		}
 	}
 
-	return pkg
+	return pkg.build()
 }
 
-func selectPackage(c *config.Config, dir string, packageMap map[string]*Package) (*Package, error) {
-	buildablePackages := make(map[string]*Package)
+func selectPackage(c *config.Config, dir string, packageMap map[string]*packageBuilder) (*packageBuilder, error) {
+	buildablePackages := make(map[string]*packageBuilder)
 	for name, pkg := range packageMap {
 		if pkg.isBuildable(c) {
 			buildablePackages[name] = pkg

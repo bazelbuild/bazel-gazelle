@@ -96,14 +96,24 @@ var (
 
 	// KnownArchSet is the set of architectures that Go supports.
 	KnownArchSet map[string]bool
+
+	// KnownOSArchs is a map from OS to the archictures they run on.
+	KnownOSArchs map[string][]string
+
+	// KnownArchOSs is a map from architectures to that OSs that run on them.
+	KnownArchOSs map[string][]string
 )
 
 func init() {
 	KnownOSSet = make(map[string]bool)
 	KnownArchSet = make(map[string]bool)
+	KnownOSArchs = make(map[string][]string)
+	KnownArchOSs = make(map[string][]string)
 	for _, p := range KnownPlatforms {
 		KnownOSSet[p.OS] = true
 		KnownArchSet[p.Arch] = true
+		KnownOSArchs[p.OS] = append(KnownOSArchs[p.OS], p.Arch)
+		KnownArchOSs[p.Arch] = append(KnownArchOSs[p.Arch], p.OS)
 	}
 	KnownOSs = make([]string, 0, len(KnownOSSet))
 	KnownArchs = make([]string, 0, len(KnownArchSet))

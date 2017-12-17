@@ -280,30 +280,6 @@ func TestFileNameInfo(t *testing.T) {
 	}
 }
 
-func TestJoinOptions(t *testing.T) {
-	for _, tc := range []struct {
-		opts, want []string
-	}{
-		{
-			opts: nil,
-			want: nil,
-		}, {
-			opts: []string{"a", "b", optSeparator},
-			want: []string{"a b"},
-		}, {
-			opts: []string{`a\`, `b'`, `c"`, `d `, optSeparator},
-			want: []string{`a\\ b\' c\" d\ `},
-		}, {
-			opts: []string{"a", "b", optSeparator, "c", optSeparator},
-			want: []string{"a b", "c"},
-		},
-	} {
-		if got := JoinOptions(tc.opts); !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("JoinOptions(%#v): got %#v ; want %#v", tc.opts, got, tc.want)
-		}
-	}
-}
-
 func TestReadTags(t *testing.T) {
 	for _, tc := range []struct {
 		desc, source string

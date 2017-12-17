@@ -143,13 +143,14 @@ func saveCgo(info *fileInfo, cg *ast.CommentGroup) error {
 			}
 			opts[i] = opt
 		}
+		joinedStr := strings.Join(opts, OptSeparator)
 
 		// Add tags to appropriate list.
 		switch verb {
 		case "CFLAGS", "CPPFLAGS", "CXXFLAGS":
-			info.copts = append(info.copts, taggedOpts{tags, opts})
+			info.copts = append(info.copts, taggedOpts{tags, joinedStr})
 		case "LDFLAGS":
-			info.clinkopts = append(info.clinkopts, taggedOpts{tags, opts})
+			info.clinkopts = append(info.clinkopts, taggedOpts{tags, joinedStr})
 		case "pkg-config":
 			return fmt.Errorf("%s: pkg-config not supported: %s", info.path, orig)
 		default:

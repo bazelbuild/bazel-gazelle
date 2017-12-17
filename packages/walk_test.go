@@ -24,9 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/packages"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func tempDir() (string, error) {
@@ -431,7 +431,7 @@ import "github.com/jr_hacker/stuff"
 			Rel:  "gen",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
-					Generic: []string{"foo.go", "bar.go", "y.s", "baz.go"},
+					Generic: []string{"bar.go", "baz.go", "foo.go", "y.s"},
 				},
 				Imports: packages.PlatformStrings{
 					Generic: []string{"github.com/jr_hacker/stuff"},
@@ -474,7 +474,7 @@ import "github.com/jr_hacker/stuff"
 			Rel:  "gen",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
-					Generic: []string{"foo.go", "bar.go", "x.c", "y.s", "z.S", "baz.go"},
+					Generic: []string{"bar.go", "baz.go", "foo.go", "x.c", "y.s", "z.S"},
 				},
 				Imports: packages.PlatformStrings{
 					Generic: []string{"github.com/jr_hacker/stuff"},
@@ -671,7 +671,7 @@ func TestMalformedGoFile(t *testing.T) {
 			Name: "foo",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
-					Generic: []string{"b.go", "a.go"},
+					Generic: []string{"a.go", "b.go"},
 				},
 			},
 		},

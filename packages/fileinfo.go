@@ -141,15 +141,22 @@ func (g tagGroup) check(c *config.Config, os, arch string) bool {
 
 // taggedOpts a list of compile or link options which should only be applied
 // if the given set of build tags are satisfied. These options have already
-// been tokenized using the same algorithm that "go build" uses.
+// been tokenized using the same algorithm that "go build" uses, then joined
+// with OptSeparator.
 type taggedOpts struct {
 	tags tagLine
-	opts []string
+	opts string
 }
 
-// optSeparator is a special option string that is inserted after each group
-// of options that appeared in the same #cgo directive.
-const optSeparator = "\x1D"
+// OptSeparator is a special character inserted between options that appeared
+// together in a #cgo directive. This allows options to be split, modified,
+// and escaped by other packages.
+//
+// It's important to keep options grouped together in the same string. For
+// example, if we have "-framework IOKit" together in a #cgo directive,
+// "-framework" shouldn't be treated as a separate string for the purposes of
+// sorting and de-duplicating.
+const OptSeparator = "\x1D"
 
 // extCategory indicates how a file should be treated, based on extension.
 type extCategory int
@@ -238,44 +245,6 @@ func fileNameInfo(dir, rel, name string) fileInfo {
 		goos:     goos,
 		goarch:   goarch,
 	}
-}
-
-// JoinOptions combines shell options grouped by a special separator token
-// and returns a string for each group. The group strings will be escaped
-// such that the original options can be recovered after Bourne shell
-// tokenization.
-func JoinOptions(opts []string) []string {
-	var groups []string
-	begin := 0
-	for i := 0; i < len(opts); i++ {
-		if opts[i] == optSeparator {
-			groups = append(groups, joinOptionGroup(opts[begin:i]))
-			begin = i + 1
-		}
-	}
-	if begin != len(opts) {
-		log.Panicf("JoinOptions: opts were not properly grouped: %#v", opts)
-	}
-	return groups
-}
-
-func joinOptionGroup(opts []string) string {
-	for i, opt := range opts {
-		opts[i] = escapeOption(opt)
-	}
-	return strings.Join(opts, " ")
-}
-
-func escapeOption(opt string) string {
-	return strings.NewReplacer(
-		`\`, `\\`,
-		`'`, `\'`,
-		`"`, `\"`,
-		` `, `\ `,
-		"\t", "\\\t",
-		"\n", "\\\n",
-		"\r", "\\\r",
-	).Replace(opt)
 }
 
 // otherFileInfo returns information about a non-.go file. It will parse

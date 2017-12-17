@@ -16,8 +16,8 @@ limitations under the License.
 package packages
 
 import (
-	"errors"
 	"fmt"
+	"log"
 	"path"
 	"sort"
 	"strings"
@@ -67,6 +67,13 @@ type ProtoTarget struct {
 // PlatformStrings contains a set of strings associated with a buildable
 // Go target in a package. This is used to store source file names,
 // import paths, and flags.
+//
+// Strings are stored in four sets: generic strings, OS-specific strings,
+// arch-specific strings, and OS-and-arch-specific strings. A string may not
+// be duplicated within a list or across sets; however, a string may appear
+// in more than one list within a set (e.g., in "linux" and "windows" within
+// the OS set). Strings within each list should be sorted, though this may
+// not be relied upon.
 type PlatformStrings struct {
 	// Generic is a list of strings not specific to any platform.
 	Generic []string
@@ -88,14 +95,6 @@ func (p *Package) IsCommand() bool {
 	return p.Name == "main"
 }
 
-// isBuildable returns true if anything in the package is buildable.
-// This is true if the package has Go code that satisfies build constraints
-// on any platform or has proto files not in legacy mode.
-func (p *Package) isBuildable(c *config.Config) bool {
-	return p.Library.HasGo() || p.Binary.HasGo() || p.Test.HasGo() || p.XTest.HasGo() ||
-		p.Proto.HasProto() && c.ProtoMode == config.DefaultProtoMode
-}
-
 // ImportPath returns the inferred Go import path for this package.
 // TODO(jayconrod): extract canonical import paths from comments on
 // package statements.
@@ -108,27 +107,8 @@ func (p *Package) ImportPath(c *config.Config) string {
 	}
 }
 
-// firstGoFile returns the name of a .go file if the package contains at least
-// one .go file, or "" otherwise. Used by HasGo and for error reporting.
-func (p *Package) firstGoFile() string {
-	if f := p.Library.firstGoFile(); f != "" {
-		return f
-	}
-	if f := p.Binary.firstGoFile(); f != "" {
-		return f
-	}
-	if f := p.Test.firstGoFile(); f != "" {
-		return f
-	}
-	return p.XTest.firstGoFile()
-}
-
 func (t *GoTarget) HasGo() bool {
 	return t.Sources.HasGo()
-}
-
-func (t *GoTarget) firstGoFile() string {
-	return t.Sources.firstGoFile()
 }
 
 func (t *ProtoTarget) HasProto() bool {
@@ -173,16 +153,53 @@ func (ps *PlatformStrings) firstGoFile() string {
 	return ""
 }
 
+type packageBuilder struct {
+	name, dir, rel               string
+	library, binary, test, xtest goTargetBuilder
+	proto                        protoTargetBuilder
+	hasTestdata                  bool
+}
+
+type goTargetBuilder struct {
+	sources, imports, copts, clinkopts platformStringsBuilder
+	cgo                                bool
+}
+
+type protoTargetBuilder struct {
+	sources, imports     platformStringsBuilder
+	hasServices, hasPbGo bool
+}
+
+type platformStringsBuilder struct {
+	strs map[string]platformStringInfo
+}
+
+type platformStringInfo struct {
+	set       platformStringSet
+	oss       map[string]bool
+	archs     map[string]bool
+	platforms map[config.Platform]bool
+}
+
+type platformStringSet int
+
+const (
+	genericSet platformStringSet = iota
+	osSet
+	archSet
+	platformSet
+)
+
 // addFile adds the file described by "info" to a target in the package "p" if
 // the file is buildable.
 //
-// "cgo" tells whether a ".go" file in the package contains cgo code. This
+// "cgo" tells whether any ".go" file in the package contains cgo code. This
 // affects whether C files are added to targets.
 //
 // An error is returned if a file is buildable but invalid (for example, a
 // test .go file containing cgo code). Files that are not buildable will not
 // be added to any target (for example, .txt files).
-func (p *Package) addFile(c *config.Config, info fileInfo, cgo bool) error {
+func (pb *packageBuilder) addFile(c *config.Config, info fileInfo, cgo bool) error {
 	switch {
 	case info.category == ignoredExt || info.category == unsupportedExt ||
 		!cgo && (info.category == cExt || info.category == csExt) ||
@@ -192,72 +209,127 @@ func (p *Package) addFile(c *config.Config, info fileInfo, cgo bool) error {
 		if info.isCgo {
 			return fmt.Errorf("%s: use of cgo in test not supported", info.path)
 		}
-		p.XTest.addFile(c, info)
+		pb.xtest.addFile(c, info)
 	case info.isTest:
 		if info.isCgo {
 			return fmt.Errorf("%s: use of cgo in test not supported", info.path)
 		}
-		p.Test.addFile(c, info)
+		pb.test.addFile(c, info)
 	case info.category == protoExt:
-		p.Proto.addFile(c, info)
+		pb.proto.addFile(c, info)
 	default:
-		p.Library.addFile(c, info)
+		pb.library.addFile(c, info)
 	}
 	if strings.HasSuffix(info.name, ".pb.go") {
-		p.Proto.HasPbGo = true
+		pb.proto.hasPbGo = true
 	}
 
 	return nil
 }
 
-func (t *GoTarget) addFile(c *config.Config, info fileInfo) {
-	if info.isCgo {
-		t.Cgo = true
+// isBuildable returns true if anything in the package is buildable.
+// This is true if the package has Go code that satisfies build constraints
+// on any platform or has proto files not in legacy mode.
+func (pb *packageBuilder) isBuildable(c *config.Config) bool {
+	return pb.firstGoFile() != "" ||
+		len(pb.proto.sources.strs) > 0 && c.ProtoMode == config.DefaultProtoMode
+}
+
+// firstGoFile returns the name of a .go file if the package contains at least
+// one .go file, or "" otherwise.
+func (pb *packageBuilder) firstGoFile() string {
+	goSrcs := []platformStringsBuilder{
+		pb.library.sources,
+		pb.binary.sources,
+		pb.test.sources,
+		pb.xtest.sources,
 	}
+	for _, sb := range goSrcs {
+		if sb.strs != nil {
+			for s, _ := range sb.strs {
+				if strings.HasSuffix(s, ".go") {
+					return s
+				}
+			}
+		}
+	}
+	return ""
+}
+
+func (pb *packageBuilder) build() *Package {
+	return &Package{
+		Name:        pb.name,
+		Dir:         pb.dir,
+		Rel:         pb.rel,
+		Library:     pb.library.build(),
+		Binary:      pb.binary.build(),
+		Test:        pb.test.build(),
+		XTest:       pb.xtest.build(),
+		Proto:       pb.proto.build(),
+		HasTestdata: pb.hasTestdata,
+	}
+}
+
+func (tb *goTargetBuilder) addFile(c *config.Config, info fileInfo) {
+	tb.cgo = tb.cgo || info.isCgo
 	add := getPlatformStringsAddFunction(c, info, nil)
-	add(&t.Sources, info.name)
-	add(&t.Imports, info.imports...)
+	add(&tb.sources, info.name)
+	add(&tb.imports, info.imports...)
 	for _, copts := range info.copts {
 		optAdd := add
 		if len(copts.tags) > 0 {
 			optAdd = getPlatformStringsAddFunction(c, info, copts.tags)
 		}
-		optAdd(&t.COpts, copts.opts...)
-		optAdd(&t.COpts, optSeparator)
+		optAdd(&tb.copts, copts.opts)
 	}
 	for _, clinkopts := range info.clinkopts {
 		optAdd := add
 		if len(clinkopts.tags) > 0 {
 			optAdd = getPlatformStringsAddFunction(c, info, clinkopts.tags)
 		}
-		optAdd(&t.CLinkOpts, clinkopts.opts...)
-		optAdd(&t.CLinkOpts, optSeparator)
+		optAdd(&tb.clinkopts, clinkopts.opts)
 	}
 }
 
-func (t *ProtoTarget) addFile(c *config.Config, info fileInfo) {
-	add := getPlatformStringsAddFunction(c, info, nil)
-	add(&t.Sources, info.name)
-	add(&t.Imports, info.imports...)
-	t.HasServices = t.HasServices || info.hasServices
+func (tb *goTargetBuilder) build() GoTarget {
+	return GoTarget{
+		Sources:   tb.sources.build(),
+		Imports:   tb.imports.build(),
+		COpts:     tb.copts.build(),
+		CLinkOpts: tb.clinkopts.build(),
+		Cgo:       tb.cgo,
+	}
 }
 
-func (ps *PlatformStrings) addStrings(c *config.Config, info fileInfo, cgoTags tagLine, ss ...string) {
-	add := getPlatformStringsAddFunction(c, info, cgoTags)
-	add(ps, ss...)
+func (tb *protoTargetBuilder) addFile(c *config.Config, info fileInfo) {
+	add := getPlatformStringsAddFunction(c, info, nil)
+	add(&tb.sources, info.name)
+	add(&tb.imports, info.imports...)
+	tb.hasServices = tb.hasServices || info.hasServices
+}
+
+func (tb *protoTargetBuilder) build() ProtoTarget {
+	return ProtoTarget{
+		Sources:     tb.sources.build(),
+		Imports:     tb.imports.build(),
+		HasServices: tb.hasServices,
+		HasPbGo:     tb.hasPbGo,
+	}
 }
 
 // getPlatformStringsAddFunction returns a function used to add strings to
-// a PlatformStrings object under the same set of constraints. This is a
+// a *platformStringsBuilder under the same set of constraints. This is a
 // performance optimization to avoid evaluating constraints repeatedly.
-func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags tagLine) func(ps *PlatformStrings, ss ...string) {
+func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags tagLine) func(sb *platformStringsBuilder, ss ...string) {
 	isOSSpecific, isArchSpecific := isOSArchSpecific(info, cgoTags)
 
 	switch {
 	case !isOSSpecific && !isArchSpecific:
 		if checkConstraints(c, "", "", info.goos, info.goarch, info.tags, cgoTags) {
-			return func(ps *PlatformStrings, ss ...string) {
-				ps.Generic = append(ps.Generic, ss...)
+			return func(sb *platformStringsBuilder, ss ...string) {
+				for _, s := range ss {
+					sb.addGenericString(s)
+				}
 			}
 		}
 
@@ -269,12 +341,9 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags tagL
 			}
 		}
 		if len(osMatch) > 0 {
-			return func(ps *PlatformStrings, ss ...string) {
-				if ps.OS == nil {
-					ps.OS = make(map[string][]string)
-				}
-				for _, os := range osMatch {
-					ps.OS[os] = append(ps.OS[os], ss...)
+			return func(sb *platformStringsBuilder, ss ...string) {
+				for _, s := range ss {
+					sb.addOSString(s, osMatch)
 				}
 			}
 		}
@@ -287,12 +356,9 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags tagL
 			}
 		}
 		if len(archMatch) > 0 {
-			return func(ps *PlatformStrings, ss ...string) {
-				if ps.Arch == nil {
-					ps.Arch = make(map[string][]string)
-				}
-				for _, arch := range archMatch {
-					ps.Arch[arch] = append(ps.Arch[arch], ss...)
+			return func(sb *platformStringsBuilder, ss ...string) {
+				for _, s := range ss {
+					sb.addArchString(s, archMatch)
 				}
 			}
 		}
@@ -305,185 +371,172 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags tagL
 			}
 		}
 		if len(platformMatch) > 0 {
-			return func(ps *PlatformStrings, ss ...string) {
-				if ps.Platform == nil {
-					ps.Platform = make(map[config.Platform][]string)
-				}
-				for _, platform := range platformMatch {
-					ps.Platform[platform] = append(ps.Platform[platform], ss...)
+			return func(sb *platformStringsBuilder, ss ...string) {
+				for _, s := range ss {
+					sb.addPlatformString(s, platformMatch)
 				}
 			}
 		}
 	}
 
-	return func(_ *PlatformStrings, _ ...string) {}
+	return func(_ *platformStringsBuilder, _ ...string) {}
 }
 
-// Clean sorts and de-duplicates PlatformStrings. It also removes any
-// strings from platform-specific lists that also appear in the generic list.
-// This is useful for imports.
-func (ps *PlatformStrings) Clean() {
-	genSet := make(map[string]bool)
-	osArchSet := make(map[string]map[string]bool)
+func (sb *platformStringsBuilder) addGenericString(s string) {
+	if sb.strs == nil {
+		sb.strs = make(map[string]platformStringInfo)
+	}
+	sb.strs[s] = platformStringInfo{set: genericSet}
+}
 
+func (sb *platformStringsBuilder) addOSString(s string, oss []string) {
+	if sb.strs == nil {
+		sb.strs = make(map[string]platformStringInfo)
+	}
+	si, ok := sb.strs[s]
+	if !ok {
+		si.set = osSet
+		si.oss = make(map[string]bool)
+	}
+	switch si.set {
+	case genericSet:
+		return
+	case osSet:
+		for _, os := range oss {
+			si.oss[os] = true
+		}
+	default:
+		si.convertToPlatforms()
+		for _, os := range oss {
+			for _, arch := range config.KnownOSArchs[os] {
+				si.platforms[config.Platform{OS: os, Arch: arch}] = true
+			}
+		}
+	}
+	sb.strs[s] = si
+}
+
+func (sb *platformStringsBuilder) addArchString(s string, archs []string) {
+	if sb.strs == nil {
+		sb.strs = make(map[string]platformStringInfo)
+	}
+	si, ok := sb.strs[s]
+	if !ok {
+		si.set = archSet
+		si.archs = make(map[string]bool)
+	}
+	switch si.set {
+	case genericSet:
+		return
+	case archSet:
+		for _, arch := range archs {
+			si.archs[arch] = true
+		}
+	default:
+		si.convertToPlatforms()
+		for _, arch := range archs {
+			for _, os := range config.KnownArchOSs[arch] {
+				si.platforms[config.Platform{OS: os, Arch: arch}] = true
+			}
+		}
+	}
+	sb.strs[s] = si
+}
+
+func (sb *platformStringsBuilder) addPlatformString(s string, platforms []config.Platform) {
+	if sb.strs == nil {
+		sb.strs = make(map[string]platformStringInfo)
+	}
+	si, ok := sb.strs[s]
+	if !ok {
+		si.set = platformSet
+		si.platforms = make(map[config.Platform]bool)
+	}
+	switch si.set {
+	case genericSet:
+		return
+	default:
+		si.convertToPlatforms()
+		for _, p := range platforms {
+			si.platforms[p] = true
+		}
+	}
+	sb.strs[s] = si
+}
+
+func (sb *platformStringsBuilder) build() PlatformStrings {
+	var ps PlatformStrings
+	for s, si := range sb.strs {
+		switch si.set {
+		case genericSet:
+			ps.Generic = append(ps.Generic, s)
+		case osSet:
+			if ps.OS == nil {
+				ps.OS = make(map[string][]string)
+			}
+			for os, _ := range si.oss {
+				ps.OS[os] = append(ps.OS[os], s)
+			}
+		case archSet:
+			if ps.Arch == nil {
+				ps.Arch = make(map[string][]string)
+			}
+			for arch, _ := range si.archs {
+				ps.Arch[arch] = append(ps.Arch[arch], s)
+			}
+		case platformSet:
+			if ps.Platform == nil {
+				ps.Platform = make(map[config.Platform][]string)
+			}
+			for p, _ := range si.platforms {
+				ps.Platform[p] = append(ps.Platform[p], s)
+			}
+		}
+	}
 	sort.Strings(ps.Generic)
-	ps.Generic = uniq(ps.Generic)
-	for _, s := range ps.Generic {
-		genSet[s] = true
-	}
-
 	if ps.OS != nil {
-		for os, ss := range ps.OS {
-			ss = remove(ss, genSet)
-			if len(ss) == 0 {
-				delete(ps.OS, os)
-				continue
-			}
+		for _, ss := range ps.OS {
 			sort.Strings(ss)
-			ss = uniq(ss)
-			ps.OS[os] = ss
-			osArchSet[os] = make(map[string]bool)
-			for _, s := range ss {
-				osArchSet[os][s] = true
-			}
-		}
-		if len(ps.OS) == 0 {
-			ps.OS = nil
 		}
 	}
-
 	if ps.Arch != nil {
-		for arch, ss := range ps.Arch {
-			ss = remove(ss, genSet)
-			if len(ss) == 0 {
-				delete(ps.Arch, arch)
-				continue
-			}
+		for _, ss := range ps.Arch {
 			sort.Strings(ss)
-			ss = uniq(ss)
-			ps.Arch[arch] = ss
-			osArchSet[arch] = make(map[string]bool)
-			for _, s := range ss {
-				osArchSet[arch][s] = true
-			}
-		}
-		if len(ps.Arch) == 0 {
-			ps.Arch = nil
 		}
 	}
-
 	if ps.Platform != nil {
-		for platform, ss := range ps.Platform {
-			ss = remove(ss, genSet)
-			if osSet, ok := osArchSet[platform.OS]; ok {
-				ss = remove(ss, osSet)
-			}
-			if archSet, ok := osArchSet[platform.Arch]; ok {
-				ss = remove(ss, archSet)
-			}
-			if len(ss) == 0 {
-				delete(ps.Platform, platform)
-				continue
-			}
+		for _, ss := range ps.Platform {
 			sort.Strings(ss)
-			ss = uniq(ss)
-			ps.Platform[platform] = ss
-		}
-		if len(ps.Platform) == 0 {
-			ps.Platform = nil
 		}
 	}
+	return ps
 }
 
-func remove(ss []string, removeSet map[string]bool) []string {
-	var r, w int
-	for r, w = 0, 0; r < len(ss); r++ {
-		if !removeSet[ss[r]] {
-			ss[w] = ss[r]
-			w++
-		}
-	}
-	return ss[:w]
-}
-
-func uniq(ss []string) []string {
-	if len(ss) <= 1 {
-		return ss
-	}
-	result := ss[:1]
-	prev := ss[0]
-	for _, s := range ss[1:] {
-		if s != prev {
-			result = append(result, s)
-			prev = s
-		}
-	}
-	return result
-}
-
-var Skip = errors.New("Skip")
-
-// Map applies a function f to the individual strings in ps. Map returns a
-// new PlatformStrings with the results and a slice of errors that f returned.
-// When f returns the error Skip, neither the result nor the error are recorded.
-func (ps *PlatformStrings) Map(f func(string) (string, error)) (PlatformStrings, []error) {
-	var errors []error
-
-	mapSlice := func(ss []string) []string {
-		rs := make([]string, 0, len(ss))
-		for _, s := range ss {
-			if r, err := f(s); err != nil {
-				if err != Skip {
-					errors = append(errors, err)
-				}
-			} else {
-				rs = append(rs, r)
+func (si *platformStringInfo) convertToPlatforms() {
+	switch si.set {
+	case genericSet:
+		log.Panic("cannot convert generic string to platforms")
+	case platformSet:
+		return
+	case osSet:
+		si.set = platformSet
+		si.platforms = make(map[config.Platform]bool)
+		for os, _ := range si.oss {
+			for _, arch := range config.KnownOSArchs[os] {
+				si.platforms[config.Platform{OS: os, Arch: arch}] = true
 			}
 		}
-		return rs
-	}
-
-	mapStringMap := func(m map[string][]string) map[string][]string {
-		if m == nil {
-			return nil
-		}
-		rm := make(map[string][]string)
-		for k, ss := range m {
-			ss = mapSlice(ss)
-			if len(ss) > 0 {
-				rm[k] = ss
+		si.oss = nil
+	case archSet:
+		si.set = platformSet
+		si.platforms = make(map[config.Platform]bool)
+		for arch, _ := range si.archs {
+			for _, os := range config.KnownArchOSs[arch] {
+				si.platforms[config.Platform{OS: os, Arch: arch}] = true
 			}
 		}
-		if len(rm) == 0 {
-			return nil
-		}
-		return rm
+		si.archs = nil
 	}
-
-	mapPlatformMap := func(m map[config.Platform][]string) map[config.Platform][]string {
-		if m == nil {
-			return nil
-		}
-		rm := make(map[config.Platform][]string)
-		for k, ss := range m {
-			ss = mapSlice(ss)
-			if len(ss) > 0 {
-				rm[k] = ss
-			}
-		}
-		if len(rm) == 0 {
-			return nil
-		}
-		return rm
-	}
-
-	result := PlatformStrings{
-		Generic:  mapSlice(ps.Generic),
-		OS:       mapStringMap(ps.OS),
-		Arch:     mapStringMap(ps.Arch),
-		Platform: mapPlatformMap(ps.Platform),
-	}
-	return result, errors
 }
 
 // MapSlice applies a function that processes slices of strings to the strings
