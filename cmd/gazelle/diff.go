@@ -16,28 +16,33 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"os/exec"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func diffFile(c *config.Config, file *bf.File) error {
+	oldContents, err := ioutil.ReadFile(file.Path)
+	if err != nil {
+		oldContents = nil
+	}
+	newContents := bf.Format(file)
+	if bytes.Equal(oldContents, newContents) {
+		return nil
+	}
 	f, err := ioutil.TempFile("", c.DefaultBuildFileName())
 	if err != nil {
 		return err
 	}
+	f.Close()
 	defer os.Remove(f.Name())
-	defer f.Close()
-	if _, err := f.Write(bf.Format(file)); err != nil {
+	if err := ioutil.WriteFile(f.Name(), newContents, 0666); err != nil {
 		return err
 	}
-	if err := f.Sync(); err != nil {
-		return err
-	}
-
 	cmd := exec.Command("diff", "-u", "--new-file", file.Path, f.Name())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
