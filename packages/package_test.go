@@ -16,9 +16,7 @@ limitations under the License.
 package packages
 
 import (
-	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -71,8 +69,10 @@ func TestAddPlatformStrings(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			fi := fileNameInfo("", "", tc.filename)
 			fi.tags = tc.tags
-			var got PlatformStrings
-			got.addStrings(c, fi, nil, tc.filename)
+			var sb platformStringsBuilder
+			add := getPlatformStringsAddFunction(c, fi, nil)
+			add(&sb, tc.filename)
+			got := sb.build()
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %#v ; want %#v", got, tc.want)
 			}
@@ -80,101 +80,63 @@ func TestAddPlatformStrings(t *testing.T) {
 	}
 }
 
-func TestCleanPlatformStrings(t *testing.T) {
+func TestDuplicatePlatformStrings(t *testing.T) {
 	for _, tc := range []struct {
-		desc     string
-		ps, want PlatformStrings
+		desc string
+		add  func(sb *platformStringsBuilder)
+		want PlatformStrings
 	}{
 		{
-			desc: "empty",
-		}, {
-			desc: "sort and uniq",
-			ps: PlatformStrings{
-				Generic: []string{"b", "a", "b"},
-				OS: map[string][]string{
-					"linux": []string{"d", "c", "d"},
-				},
-			},
-			want: PlatformStrings{
-				Generic: []string{"a", "b"},
-				OS: map[string][]string{
-					"linux": []string{"c", "d"},
-				},
-			},
-		}, {
-			desc: "remove generic string from os",
-			ps: PlatformStrings{
-				Generic: []string{"a"},
-				OS: map[string][]string{
-					"linux": []string{"a"},
-				},
+			desc: "both generic",
+			add: func(sb *platformStringsBuilder) {
+				sb.addGenericString("a")
+				sb.addGenericString("a")
 			},
 			want: PlatformStrings{
 				Generic: []string{"a"},
 			},
 		}, {
-			desc: "remove generic os and awrch strings from platform",
-			ps: PlatformStrings{
+			desc: "os generic",
+			add: func(sb *platformStringsBuilder) {
+				sb.addOSString("a", []string{"linux"})
+				sb.addGenericString("a")
+			},
+			want: PlatformStrings{
 				Generic: []string{"a"},
-				OS:      map[string][]string{"linux": []string{"b"}},
-				Arch:    map[string][]string{"amd64": []string{"c"}},
+			},
+		}, {
+			desc: "os arch",
+			add: func(sb *platformStringsBuilder) {
+				sb.addOSString("a", []string{"solaris"})
+				sb.addArchString("a", []string{"mips"})
+			},
+			want: PlatformStrings{
 				Platform: map[config.Platform][]string{
-					config.Platform{OS: "linux", Arch: "arm"}:    []string{"a", "b", "c", "d"},
-					config.Platform{OS: "darwin", Arch: "amd64"}: []string{"a", "b", "c", "d"},
+					config.Platform{OS: "solaris", Arch: "amd64"}: {"a"},
+					config.Platform{OS: "linux", Arch: "mips"}:    {"a"},
 				},
 			},
+		}, {
+			desc: "platform os",
+			add: func(sb *platformStringsBuilder) {
+				sb.addPlatformString("a", []config.Platform{{OS: "linux", Arch: "mips"}})
+				sb.addOSString("a", []string{"solaris"})
+			},
 			want: PlatformStrings{
-				Generic: []string{"a"},
-				OS:      map[string][]string{"linux": []string{"b"}},
-				Arch:    map[string][]string{"amd64": []string{"c"}},
 				Platform: map[config.Platform][]string{
-					config.Platform{OS: "linux", Arch: "arm"}:    []string{"c", "d"},
-					config.Platform{OS: "darwin", Arch: "amd64"}: []string{"b", "d"},
+					config.Platform{OS: "solaris", Arch: "amd64"}: {"a"},
+					config.Platform{OS: "linux", Arch: "mips"}:    {"a"},
 				},
 			},
 		},
 	} {
-		tc.ps.Clean()
-		if !reflect.DeepEqual(tc.ps, tc.want) {
-			t.Errorf("%s: got %#v; want %#v", tc.desc, tc.ps, tc.want)
-		}
-	}
-}
-
-func TestMapPlatformStrings(t *testing.T) {
-	f := func(s string) (string, error) {
-		switch {
-		case strings.HasPrefix(s, "e"):
-			return "", fmt.Errorf("invalid string: %s", s)
-		case strings.HasPrefix(s, "s"):
-			return "", Skip
-		default:
-			return s + "x", nil
-		}
-	}
-	ps := PlatformStrings{
-		Generic: []string{"a", "e1", "s1"},
-		OS: map[string][]string{
-			"linux": []string{"b", "e2", "s2"},
-		},
-	}
-	got, gotErrors := ps.Map(f)
-
-	want := PlatformStrings{
-		Generic: []string{"ax"},
-		OS: map[string][]string{
-			"linux": []string{"bx"},
-		},
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %#v; want %#v", got, want)
-	}
-
-	wantErrors := []error{
-		fmt.Errorf("invalid string: e1"),
-		fmt.Errorf("invalid string: e2"),
-	}
-	if !reflect.DeepEqual(gotErrors, wantErrors) {
-		t.Errorf("got errors %#v; want errors %#v", gotErrors, wantErrors)
+		t.Run(tc.desc, func(t *testing.T) {
+			var sb platformStringsBuilder
+			tc.add(&sb)
+			got := sb.build()
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("got %#v ; want %#v", got, tc.want)
+			}
+		})
 	}
 }

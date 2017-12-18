@@ -20,6 +20,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -225,12 +226,12 @@ import "C"
 			fileInfo{
 				isCgo: true,
 				copts: []taggedOpts{
-					{opts: []string{"-O0"}},
-					{opts: []string{"-O1"}},
-					{opts: []string{"-O2"}},
+					{opts: "-O0"},
+					{opts: "-O1"},
+					{opts: "-O2"},
 				},
 				clinkopts: []taggedOpts{
-					{opts: []string{"-O3", "-O4"}},
+					{opts: strings.Join([]string{"-O3", "-O4"}, OptSeparator)},
 				},
 			},
 		},
@@ -248,7 +249,7 @@ import "C"
 				copts: []taggedOpts{
 					{
 						tags: tagLine{{"foo"}, {"bar", "!baz"}},
-						opts: []string{"-O0"},
+						opts: "-O0",
 					},
 				},
 			},
@@ -264,8 +265,8 @@ import "C"
 			fileInfo{
 				isCgo: true,
 				copts: []taggedOpts{
-					{opts: []string{"-O0"}},
-					{opts: []string{"-O1"}},
+					{opts: "-O0"},
+					{opts: "-O1"},
 				},
 			},
 		},
@@ -281,7 +282,7 @@ import ("C")
 			fileInfo{
 				isCgo: true,
 				copts: []taggedOpts{
-					{opts: []string{"-O0"}},
+					{opts: "-O0"},
 				},
 			},
 		},
@@ -367,7 +368,7 @@ import "C"
 				Generic: []string{"sub.go"},
 			},
 			COpts: PlatformStrings{
-				Generic: []string{"-Isub/..", optSeparator},
+				Generic: []string{"-Isub/.."},
 			},
 			Cgo: true,
 		},
