@@ -116,7 +116,7 @@ is specified, ``update`` is assumed.
 |                 | consolidated with ``go_library``. This may delete rules,   |
 |                 | so it's not turned on by default. See                      |
 |                 | `Fix command transformations`_ for details.                |
-+=================+============================================================+
++-----------------+------------------------------------------------------------+
 
 Gazelle accepts a list Go of package directories to process. If no directories
 are given, it defaults to the current directory when run on the command line or
