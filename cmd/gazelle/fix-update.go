@@ -1,4 +1,4 @@
-/* Copyright 2016 The Bazel Authors. All rights reserved.
+/* Copyright 2017 The Bazel Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Command gazelle is a BUILD file generator for Go projects.
-// See "gazelle --help" for more details.
 package main
 
 import (
@@ -27,13 +25,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/packages"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rules"
 	"github.com/bazelbuild/bazel-gazelle/wspace"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 type emitFunc func(*config.Config, *bf.File) error
@@ -42,18 +40,6 @@ var modeFromName = map[string]emitFunc{
 	"print": printFile,
 	"fix":   fixFile,
 	"diff":  diffFile,
-}
-
-type command int
-
-const (
-	updateCmd command = iota
-	fixCmd
-)
-
-var commandFromName = map[string]command{
-	"update": updateCmd,
-	"fix":    fixCmd,
 }
 
 // visitRecord stores information about about a directory visited with
@@ -79,8 +65,13 @@ func (vs byPkgRel) Len() int           { return len(vs) }
 func (vs byPkgRel) Less(i, j int) bool { return vs[i].pkgRel < vs[j].pkgRel }
 func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
 
-func run(c *config.Config, cmd command, emit emitFunc) {
-	shouldFix := c.ShouldFix
+func runFixUpdate(cmd command, args []string) error {
+	c, emit, err := newFixUpdateConfiguration(args)
+	if err != nil {
+		return err
+	}
+	c.ShouldFix = cmd == fixCmd
+
 	l := resolve.NewLabeler(c)
 	ruleIndex := resolve.NewRuleIndex()
 
@@ -92,7 +83,7 @@ func run(c *config.Config, cmd command, emit emitFunc) {
 			// Fix files in update directories.
 			if isUpdateDir {
 				file = merger.FixFileMinor(c, file)
-				if shouldFix {
+				if cmd == fixCmd {
 					file = merger.FixFile(c, file)
 				} else {
 					fixedFile := merger.FixFile(c, file)
@@ -158,67 +149,10 @@ func run(c *config.Config, cmd command, emit emitFunc) {
 			log.Print(err)
 		}
 	}
+	return nil
 }
 
-func usage(fs *flag.FlagSet) {
-	fmt.Fprintln(os.Stderr, `usage: gazelle <command> [flags...] [package-dirs...]
-
-Gazelle is a BUILD file generator for Go projects. It can create new BUILD files
-for a project that follows "go build" conventions, and it can update BUILD files
-if they already exist. It can be invoked directly in a project workspace, or
-it can be run on an external dependency during the build as part of the
-go_repository rule.
-
-Gazelle may be run with one of the commands below. If no command is given,
-Gazelle defaults to "update".
-
-  update - Gazelle will create new BUILD files or update existing BUILD files
-      if needed.
-	fix - in addition to the changes made in update, Gazelle will make potentially
-	    breaking changes. For example, it may delete obsolete rules or rename
-      existing rules.
-
-Gazelle has several output modes which can be selected with the -mode flag. The
-output mode determines what Gazelle does with updated BUILD files.
-
-  fix (default) - write updated BUILD files back to disk.
-  print - print updated BUILD files to stdout.
-  diff - diff updated BUILD files against existing files in unified format.
-
-Gazelle accepts a list of paths to Go package directories to process (defaults
-to . if none given). It recursively traverses subdirectories. All directories
-must be under the directory specified by -repo_root; if -repo_root is not given,
-this is the directory containing the WORKSPACE file.
-
-Gazelle is under active delevopment, and its interface may change
-without notice.
-
-FLAGS:
-`)
-	fs.PrintDefaults()
-}
-
-func main() {
-	log.SetPrefix("gazelle: ")
-	log.SetFlags(0) // don't print timestamps
-
-	c, cmd, emit, err := newConfiguration(os.Args[1:])
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	run(c, cmd, emit)
-}
-
-func newConfiguration(args []string) (*config.Config, command, emitFunc, error) {
-	cmd := updateCmd
-	if len(args) > 0 {
-		if c, ok := commandFromName[args[0]]; ok {
-			cmd = c
-			args = args[1:]
-		}
-	}
-
+func newFixUpdateConfiguration(args []string) (*config.Config, emitFunc, error) {
 	fs := flag.NewFlagSet("gazelle", flag.ContinueOnError)
 	// Flag will call this on any parse error. Don't print usage unless
 	// -h or -help were passed explicitly.
@@ -253,7 +187,7 @@ func newConfiguration(args []string) (*config.Config, command, emitFunc, error) 
 	for i := range c.Dirs {
 		c.Dirs[i], err = filepath.Abs(c.Dirs[i])
 		if err != nil {
-			return nil, cmd, nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -262,28 +196,28 @@ func newConfiguration(args []string) (*config.Config, command, emitFunc, error) 
 	} else if len(c.Dirs) == 1 {
 		c.RepoRoot, err = wspace.Find(c.Dirs[0])
 		if err != nil {
-			return nil, cmd, nil, fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
+			return nil, nil, fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
 		}
 	} else {
 		cwd, err := filepath.Abs(".")
 		if err != nil {
-			return nil, cmd, nil, err
+			return nil, nil, err
 		}
 		c.RepoRoot, err = wspace.Find(cwd)
 		if err != nil {
-			return nil, cmd, nil, fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
+			return nil, nil, fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
 		}
 	}
 
 	for _, dir := range c.Dirs {
 		if !isDescendingDir(dir, c.RepoRoot) {
-			return nil, cmd, nil, fmt.Errorf("dir %q is not a subdirectory of repo root %q", dir, c.RepoRoot)
+			return nil, nil, fmt.Errorf("dir %q is not a subdirectory of repo root %q", dir, c.RepoRoot)
 		}
 	}
 
 	c.ValidBuildFileNames = strings.Split(*buildFileName, ",")
 	if len(c.ValidBuildFileNames) == 0 {
-		return nil, cmd, nil, fmt.Errorf("no valid build file names specified")
+		return nil, nil, fmt.Errorf("no valid build file names specified")
 	}
 
 	c.SetBuildTags(*buildTags)
@@ -294,51 +228,31 @@ func newConfiguration(args []string) (*config.Config, command, emitFunc, error) 
 	} else {
 		c.GoPrefix, err = loadGoPrefix(&c)
 		if err != nil {
-			return nil, cmd, nil, err
+			return nil, nil, err
 		}
 	}
 	if err := config.CheckPrefix(c.GoPrefix); err != nil {
-		return nil, cmd, nil, err
+		return nil, nil, err
 	}
-
-	c.ShouldFix = cmd == fixCmd
 
 	c.DepMode, err = config.DependencyModeFromString(*external)
 	if err != nil {
-		return nil, cmd, nil, err
+		return nil, nil, err
 	}
 
 	c.ProtoMode, err = config.ProtoModeFromString(*proto)
 	if err != nil {
-		return nil, cmd, nil, err
+		return nil, nil, err
 	}
 
 	emit, ok := modeFromName[*mode]
 	if !ok {
-		return nil, cmd, nil, fmt.Errorf("unrecognized emit mode: %q", *mode)
+		return nil, nil, fmt.Errorf("unrecognized emit mode: %q", *mode)
 	}
 
 	c.KnownImports = append(c.KnownImports, knownImports...)
 
-	return &c, cmd, emit, err
-}
-
-type explicitFlag struct {
-	set   bool
-	value string
-}
-
-func (f *explicitFlag) Set(value string) error {
-	f.set = true
-	f.value = value
-	return nil
-}
-
-func (f *explicitFlag) String() string {
-	if f == nil {
-		return ""
-	}
-	return f.value
+	return &c, emit, err
 }
 
 func loadBuildFile(c *config.Config, dir string) (*bf.File, error) {

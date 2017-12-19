@@ -5,8 +5,9 @@ go_library(
     srcs = [
         "diff.go",
         "fix.go",
+        "fix-update.go",
         "flags.go",
-        "main.go",
+        "gazelle.go",
         "print.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",

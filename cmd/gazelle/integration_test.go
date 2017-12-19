@@ -109,13 +109,7 @@ func runGazelle(wd string, args []string) error {
 	}
 	defer os.Chdir(oldWd)
 
-	c, cmd, emit, err := newConfiguration(args)
-	if err != nil {
-		return err
-	}
-
-	run(c, cmd, emit)
-	return nil
+	return run(args)
 }
 
 func TestNoRepoRootOrWorkspace(t *testing.T) {
