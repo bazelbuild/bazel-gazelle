@@ -43,6 +43,10 @@ var (
 	// PostResolveAttrs is the set of attributes that should be merged after
 	// dependency resolution, i.e., deps.
 	PostResolveAttrs MergeableAttrs
+
+	// RepoAttrs is the set of attributes that should be merged in repository
+	// rules in WORKSPACE.
+	RepoAttrs MergeableAttrs
 )
 
 func init() {
@@ -99,6 +103,26 @@ func init() {
 			PostResolveAttrs[kind][attr] = true
 		}
 	}
+
+	repoKinds := []string{"go_repository"}
+	repoCommonAttrs := []string{
+		"commit",
+		"importpath",
+		"remote",
+		"sha256",
+		"strip_prefix",
+		"tag",
+		"type",
+		"urls",
+		"vcs",
+	}
+	RepoAttrs = make(MergeableAttrs)
+	for _, kind := range repoKinds {
+		RepoAttrs[kind] = make(map[string]bool)
+		for _, attr := range repoCommonAttrs {
+			RepoAttrs[kind][attr] = true
+		}
+	}
 }
 
 // MergeFile merges the rules in genRules with matching rules in oldFile and
@@ -137,14 +161,15 @@ func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs Merg
 			log.Panicf("got %v expected only CallExpr in genRules", s)
 		}
 		i, oldRule := match(mergedFile.Stmt[:oldStmtCount], genRule)
-		if oldRule == nil {
+		if i < 0 {
 			mergedFile.Stmt = append(mergedFile.Stmt, genRule)
 			mergedRules = append(mergedRules, genRule)
 			continue
+		} else if oldRule != nil {
+			merged := mergeRule(genRule, oldRule, attrs)
+			mergedFile.Stmt[i] = merged
+			mergedRules = append(mergedRules, mergedFile.Stmt[i])
 		}
-		merged := mergeRule(genRule, oldRule, attrs)
-		mergedFile.Stmt[i] = merged
-		mergedRules = append(mergedRules, mergedFile.Stmt[i])
 	}
 
 	return mergedFile, mergedRules
@@ -484,50 +509,32 @@ func shouldKeep(e bf.Expr) bool {
 	return false
 }
 
-// match looks for the matching CallExpr in stmts using X and name
-// i.e. two 'go_library(name = "foo", ...)' are considered matches
-// despite the values of the other attributes.
-// exception: if c is a 'load' statement, the match is done on the first value.
-func match(stmts []bf.Expr, c *bf.CallExpr) (int, *bf.CallExpr) {
-	var m matcher
-	if kind := kind(c); kind == "load" {
-		if len(c.List) == 0 {
-			return -1, nil
-		}
-		m = &loadMatcher{stringValue(c.List[0])}
-	} else {
-		m = &nameMatcher{kind, name(c)}
-	}
+// match looks for the matching CallExpr in stmts. If a rule with a matching
+// "name" attribute is found, and the kind matches, the rule and its index
+// are returned. If a rule with a matching name is found but the kind does not
+// match, the index of the rule and nil are returned. If no match is found,
+// -1 and nil are returned.
+func match(stmts []bf.Expr, x *bf.CallExpr) (int, *bf.CallExpr) {
+	xr := bf.Rule{x}
+	xname := xr.Name()
+	xkind := xr.Kind()
 	for i, s := range stmts {
-		other, ok := s.(*bf.CallExpr)
+		y, ok := s.(*bf.CallExpr)
 		if !ok {
 			continue
 		}
-		if m.match(other) {
-			return i, other
+		yr := bf.Rule{Call: y}
+		yname := yr.Name()
+		if xname != yname {
+			continue
 		}
+		ykind := yr.Kind()
+		if xkind != ykind {
+			return i, nil
+		}
+		return i, y
 	}
 	return -1, nil
-}
-
-type matcher interface {
-	match(c *bf.CallExpr) bool
-}
-
-type nameMatcher struct {
-	kind, name string
-}
-
-func (m *nameMatcher) match(c *bf.CallExpr) bool {
-	return m.kind == kind(c) && m.name == name(c)
-}
-
-type loadMatcher struct {
-	load string
-}
-
-func (m *loadMatcher) match(c *bf.CallExpr) bool {
-	return kind(c) == "load" && len(c.List) > 0 && m.load == stringValue(c.List[0])
 }
 
 func kind(c *bf.CallExpr) string {

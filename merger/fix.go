@@ -19,8 +19,8 @@ import (
 	"log"
 	"sort"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 // Much of this file could be simplified by using
@@ -503,6 +503,7 @@ var knownLoads = []struct {
 			"go_binary",
 			"go_library",
 			"go_prefix",
+			"go_repository",
 			"go_test",
 		},
 	}, {

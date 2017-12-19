@@ -102,28 +102,34 @@ Command line
 The first argument to Gazelle may be one of the commands below. If no command
 is specified, ``update`` is assumed.
 
-+-----------------+------------------------------------------------------------+
-| **Commands**                                                                 |
-+=================+============================================================+
-| :cmd:`update`   | Gazelle will create new build files and update existing    |
-|                 | build files. New rules may be created. Files,              | 
-|                 | dependencies, and other options may be added or removed    |
-|                 | from existing rules.                                       |
-+-----------------+------------------------------------------------------------+
-| :cmd:`fix`      | In addition to the changes made in ``update``, Gazelle     |
-|                 | will remove deprecated usage of the Go rules, analogous    |
-|                 | to ``go fix``. For example, ``cgo_library`` will be        |
-|                 | consolidated with ``go_library``. This may delete rules,   |
-|                 | so it's not turned on by default. See                      |
-|                 | `Fix command transformations`_ for details.                |
-+-----------------+------------------------------------------------------------+
+`update <#fix_and_update>`_
+  Scans sources files, then generates and updates build files.
 
-Gazelle accepts a list Go of package directories to process. If no directories
-are given, it defaults to the current directory when run on the command line or
-the repository root when run with Bazel. It recursively traverses
-subdirectories.
+`fix <#fix_and_update>`_
+  Same as the ``update`` command, but it also fixes deprecated usage of rules.
 
-Gazelle accepts the following flags:
+`update-repos <#update_repos>`_
+  Updates repository rules in the WORKSPACE file.
+  
+
+``fix`` and ``update``
+~~~~~~~~~~~~~~~~~~~~~~
+
+The ``update`` command is the most common way of running Gazelle. Gazelle will
+scan sources in directories throughout the repository, then create and update
+build files.
+
+The ``fix`` command does everything ``update`` does, but it also fixes
+deprecated usage of rules, analogous to ``go fix``. For example, ``cgo_library``
+will be consolidated with ``go_library``. This command may delete or rename
+rules, so it's not on by default. See `Fix command transformations`_
+for details.
+
+Both commands accept a list of directories to process as positional arguments.
+If no directories are specified, Gazelle will process the current directory.
+Subdirectories will be processed recursively.
+
+The following flags are accepted:
 
 +------------------------------------------+-----------------------------------+
 | **Name**                                 | **Default value**                 |
@@ -193,6 +199,35 @@ Gazelle accepts the following flags:
 |                                                                              |
 | Gazelle will not process packages outside this directory.                    |
 +------------------------------------------+-----------------------------------+
+
+``update-repos``
+~~~~~~~~~~~~~~~~
+
+The ``update-repos`` command updates repository rules in the WORKSPACE file.
+Currently, this can only be used to import repositories from a vendoring tool's
+lock file. More functionality will be added in the future.
+
+The following flags are accepted:
+
++------------------------------+-----------------------------------------------+
+| **Name**                     | **Default value**                             |
++==============================+===============================================+
+| :flag:`-from_file lock-file` |                                               |
++------------------------------+-----------------------------------------------+
+| Import repositories from a vendoring tool's lock file as `go_repository`_    |
+| rules. These rules will be added to the bottom of WORKSPACE or merged with   |
+| existing rules.                                                              |
+|                                                                              |
+| The lock file format is inferred from the file's base name. Currently, only  |
+| Gopkg.lock is supported.                                                     |
++------------------------------+-----------------------------------------------+
+| :flag:`-repo_root dir`       |                                               |
++------------------------------+-----------------------------------------------+
+| The root directory of the repository. Gazelle normally infers this to be the |
+| directory containing the WORKSPACE file.                                     |
+|                                                                              |
+| Gazelle will not process packages outside this directory.                    |
++------------------------------+-----------------------------------------------+
 
 Bazel rule
 ~~~~~~~~~~
