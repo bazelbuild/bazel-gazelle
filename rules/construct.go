@@ -21,34 +21,39 @@ import (
 	"reflect"
 	"sort"
 
-	bf "github.com/bazelbuild/buildtools/build"
-	bt "github.com/bazelbuild/buildtools/tables"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/packages"
+	bf "github.com/bazelbuild/buildtools/build"
+	bt "github.com/bazelbuild/buildtools/tables"
 )
 
-type keyvalue struct {
-	key   string
-	value interface{}
+// KeyValue represents a key-value pair. This gets converted into a
+// rule attribute, i.e., a Skylark keyword argument.
+type KeyValue struct {
+	Key   string
+	Value interface{}
 }
 
-type globvalue struct {
-	patterns []string
-	excludes []string
+// GlobValue represents a Bazel glob expression.
+type GlobValue struct {
+	Patterns []string
+	Excludes []string
 }
 
-func emptyRule(kind, name string) *bf.CallExpr {
-	return newRule(kind, []keyvalue{{"name", name}})
+// EmptyRule generates an empty rule with the given kind and name.
+func EmptyRule(kind, name string) *bf.CallExpr {
+	return NewRule(kind, []KeyValue{{"name", name}})
 }
 
-func newRule(kind string, kwargs []keyvalue) *bf.CallExpr {
+// NewRule generates a rule of the given kind with the given attributes.
+func NewRule(kind string, kwargs []KeyValue) *bf.CallExpr {
 	sort.Sort(byAttrName(kwargs))
 
 	var list []bf.Expr
 	for _, arg := range kwargs {
-		expr := newValue(arg.value)
+		expr := newValue(arg.Value)
 		list = append(list, &bf.BinaryExpr{
-			X:  &bf.LiteralExpr{Token: arg.key},
+			X:  &bf.LiteralExpr{Token: arg.Key},
 			Op: "=",
 			Y:  expr,
 		})
@@ -114,11 +119,11 @@ func newValue(val interface{}) bf.Expr {
 
 	case reflect.Struct:
 		switch val := val.(type) {
-		case globvalue:
-			patternsValue := newValue(val.patterns)
+		case GlobValue:
+			patternsValue := newValue(val.Patterns)
 			globArgs := []bf.Expr{patternsValue}
-			if len(val.excludes) > 0 {
-				excludesValue := newValue(val.excludes)
+			if len(val.Excludes) > 0 {
+				excludesValue := newValue(val.Excludes)
 				globArgs = append(globArgs, &bf.KeyValueExpr{
 					Key:   &bf.StringExpr{Value: "excludes"},
 					Value: excludesValue,
@@ -176,7 +181,7 @@ func mapKeyString(k reflect.Value) string {
 	}
 }
 
-type byAttrName []keyvalue
+type byAttrName []KeyValue
 
 var _ sort.Interface = byAttrName{}
 
@@ -185,10 +190,10 @@ func (s byAttrName) Len() int {
 }
 
 func (s byAttrName) Less(i, j int) bool {
-	if cmp := bt.NamePriority[s[i].key] - bt.NamePriority[s[j].key]; cmp != 0 {
+	if cmp := bt.NamePriority[s[i].Key] - bt.NamePriority[s[j].Key]; cmp != 0 {
 		return cmp < 0
 	}
-	return s[i].key < s[j].key
+	return s[i].Key < s[j].Key
 }
 
 func (s byAttrName) Swap(i, j int) {
