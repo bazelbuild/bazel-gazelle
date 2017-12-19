@@ -473,9 +473,9 @@ go_library(
 	}, {
 		desc: "merge copts and clinkopts",
 		previous: `
-load("@io_bazel_rules_go//go:def.bzl", "cgo_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-cgo_library(
+go_library(
     name = "cgo_default_library",
     copts = [
         "-O0",
@@ -487,10 +487,11 @@ cgo_library(
 )
 `,
 		current: `
-load("@io_bazel_rules_go//go:def.bzl", "cgo_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-cgo_library(
+go_library(
     name = "cgo_default_library",
+    cgo = True,
     copts = [
         "-O2",
     ],
@@ -500,9 +501,9 @@ cgo_library(
 )
 `,
 		expected: `
-load("@io_bazel_rules_go//go:def.bzl", "cgo_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-cgo_library(
+go_library(
     name = "cgo_default_library",
     copts = [
         "-g",  # keep
@@ -511,6 +512,7 @@ cgo_library(
     clinkopts = [
         "-lpng",
     ],
+    cgo = True,
 )
 `,
 	}, {
@@ -762,7 +764,7 @@ func TestMergeFile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			mergedFile, _ := MergeFile(genFile.Stmt, emptyFile.Stmt, oldFile, MergeableGeneratedAttrs)
+			mergedFile, _ := MergeFile(genFile.Stmt, emptyFile.Stmt, oldFile, PreResolveAttrs)
 			if mergedFile == nil {
 				if !tc.ignore {
 					t.Errorf("%s: got nil; want file", tc.desc)

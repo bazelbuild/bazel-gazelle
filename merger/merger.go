@@ -22,39 +22,91 @@ import (
 	"sort"
 	"strings"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 const keep = "keep" // marker in srcs or deps to tell gazelle to preserve.
 
+// MergableAttrs is the set of attribute names for each kind of rule that
+// may be merged. When an attribute is mergeable, a generated value may
+// replace or augment an existing value. If an attribute is not mergeable,
+// existing values are preserved. Generated non-mergeable attributes may
+// still be added to a rule if there is no corresponding existing attribute.
+type MergeableAttrs map[string]map[string]bool
+
 var (
-	// MergeableGeneratedAttrs is the set of attributes that should be merged
-	// before dependencies are resolved.
-	MergeableGeneratedAttrs = map[string]bool{
-		"cgo":        true,
-		"clinkopts":  true,
-		"copts":      true,
-		"embed":      true,
-		"importpath": true,
-		"proto":      true,
-		"srcs":       true,
+	// PreResolveAttrs is the set of attributes that should be merged before
+	// dependency resolution, i.e., everything except deps.
+	PreResolveAttrs MergeableAttrs
+
+	// PostResolveAttrs is the set of attributes that should be merged after
+	// dependency resolution, i.e., deps.
+	PostResolveAttrs MergeableAttrs
+)
+
+func init() {
+	goKinds := []string{
+		"go_library",
+		"go_binary",
+		"go_test",
+		"go_proto_library",
+		"go_grpc_library",
+	}
+	goProtoKinds := []string{
+		"go_proto_library",
+		"go_grpc_library",
+	}
+	allKinds := append(append(goKinds, goProtoKinds...), "proto_library")
+
+	preResolveCommonAttrs := []string{"srcs"}
+	preResolveGoAttrs := []string{
+		"cgo",
+		"clinkopts",
+		"copts",
+		"embed",
+		"importpath",
+	}
+	preResolveGoProtoAttrs := []string{"proto"}
+
+	PreResolveAttrs = make(MergeableAttrs)
+	for _, kind := range allKinds {
+		PreResolveAttrs[kind] = make(map[string]bool)
+		for _, attr := range preResolveCommonAttrs {
+			PreResolveAttrs[kind][attr] = true
+		}
+	}
+	for _, kind := range goKinds {
+		for _, attr := range preResolveGoAttrs {
+			PreResolveAttrs[kind][attr] = true
+		}
+	}
+	for _, kind := range goProtoKinds {
+		for _, attr := range preResolveGoProtoAttrs {
+			PreResolveAttrs[kind][attr] = true
+		}
 	}
 
-	// MergeableResolvedAttrs is the set of attributes that should be merged
-	// after dependencies are resolved.
-	MergeableResolvedAttrs = map[string]bool{
-		"deps": true,
-		config.GazelleImportsKey: true,
+	postResolveCommonAttrs := []string{
+		"deps",
+		config.GazelleImportsKey,
 	}
-)
+
+	PostResolveAttrs = make(MergeableAttrs)
+	for _, kind := range allKinds {
+		PostResolveAttrs[kind] = make(map[string]bool)
+		for _, attr := range postResolveCommonAttrs {
+			PostResolveAttrs[kind][attr] = true
+		}
+	}
+}
 
 // MergeFile merges the rules in genRules with matching rules in oldFile and
 // adds unmatched rules to the end of the merged file. MergeFile also merges
 // rules in empty with matching rules in oldFile and deletes rules that
 // are empty after merging. attrs is the set of attributes to merge. Attributes
 // not in this set will be left alone if they already exist.
-func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs map[string]bool) (mergedFile *bf.File, mergedRules []bf.Expr) {
+func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs MergeableAttrs) (mergedFile *bf.File, mergedRules []bf.Expr) {
 	if oldFile == nil {
 		return &bf.File{Stmt: genRules}, genRules
 	}
@@ -102,7 +154,7 @@ func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs map[
 // Both rules must be non-nil and must have the same kind and same name.
 // attrs is the set of attributes which may be merged.
 // If nil is returned, the rule should be deleted.
-func mergeRule(gen, old *bf.CallExpr, attrs map[string]bool) bf.Expr {
+func mergeRule(gen, old *bf.CallExpr, attrs MergeableAttrs) bf.Expr {
 	if old != nil && shouldKeep(old) {
 		return old
 	}
@@ -126,9 +178,10 @@ func mergeRule(gen, old *bf.CallExpr, attrs map[string]bool) bf.Expr {
 
 	// Merge attributes from the old rule. Preserve comments on old attributes.
 	// Assume generated attributes have no comments.
+	kind := oldRule.Kind()
 	for _, k := range oldRule.AttrKeys() {
 		oldAttr := oldRule.AttrDefn(k)
-		if !attrs[k] || shouldKeep(oldAttr) {
+		if !attrs[kind][k] || shouldKeep(oldAttr) {
 			merged.List = append(merged.List, oldAttr)
 			continue
 		}
