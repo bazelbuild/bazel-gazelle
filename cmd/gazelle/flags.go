@@ -30,3 +30,22 @@ func (m *multiFlag) Set(v string) error {
 	(*m) = append(*m, v)
 	return nil
 }
+
+// explicitFlag is a string flag that tracks whether it was set.
+type explicitFlag struct {
+	set   bool
+	value string
+}
+
+func (f *explicitFlag) Set(value string) error {
+	f.set = true
+	f.value = value
+	return nil
+}
+
+func (f *explicitFlag) String() string {
+	if f == nil {
+		return ""
+	}
+	return f.value
+}
