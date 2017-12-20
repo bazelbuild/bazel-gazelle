@@ -50,8 +50,8 @@ Gazelle defaults to "update".
 
   update - Gazelle will create new BUILD files or update existing BUILD files
       if needed.
-	fix - in addition to the changes made in update, Gazelle will make potentially
-	    breaking changes. For example, it may delete obsolete rules or rename
+  fix - in addition to the changes made in update, Gazelle will make potentially
+      breaking changes. For example, it may delete obsolete rules or rename
       existing rules.
 
 Gazelle has several output modes which can be selected with the -mode flag. The
