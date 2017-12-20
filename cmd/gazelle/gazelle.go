@@ -18,7 +18,6 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -29,15 +28,48 @@ type command int
 const (
 	updateCmd command = iota
 	fixCmd
+
+	helpCmd
 )
 
 var commandFromName = map[string]command{
-	"update": updateCmd,
 	"fix":    fixCmd,
+	"help":   helpCmd,
+	"update": updateCmd,
 }
 
-func usage(fs *flag.FlagSet) {
-	fmt.Fprintln(os.Stderr, `usage: gazelle <command> [flags...] [package-dirs...]
+func main() {
+	log.SetPrefix("gazelle: ")
+	log.SetFlags(0) // don't print timestamps
+
+	run(os.Args[1:])
+}
+
+func run(args []string) error {
+	cmd := updateCmd
+	if len(args) == 1 && (args[0] == "-h" || args[0] == "-help" || args[0] == "--help") {
+		cmd = helpCmd
+	} else if len(args) > 0 {
+		c, ok := commandFromName[args[0]]
+		if ok {
+			cmd = c
+			args = args[1:]
+		}
+	}
+
+	switch cmd {
+	case fixCmd, updateCmd:
+		return runFixUpdate(cmd, args)
+	case helpCmd:
+		help()
+	default:
+		log.Panicf("unknown command: %v", cmd)
+	}
+	return nil
+}
+
+func help() {
+	fmt.Fprint(os.Stderr, `usage: gazelle <command> [args...]
 
 Gazelle is a BUILD file generator for Go projects. It can create new BUILD files
 for a project that follows "go build" conventions, and it can update BUILD files
@@ -53,49 +85,15 @@ Gazelle defaults to "update".
   fix - in addition to the changes made in update, Gazelle will make potentially
       breaking changes. For example, it may delete obsolete rules or rename
       existing rules.
+  help - show this message.
 
-Gazelle has several output modes which can be selected with the -mode flag. The
-output mode determines what Gazelle does with updated BUILD files.
+For usage information for a specific command, run the command with the -h flag.
+For example:
 
-  fix (default) - write updated BUILD files back to disk.
-  print - print updated BUILD files to stdout.
-  diff - diff updated BUILD files against existing files in unified format.
-
-Gazelle accepts a list of paths to Go package directories to process (defaults
-to . if none given). It recursively traverses subdirectories. All directories
-must be under the directory specified by -repo_root; if -repo_root is not given,
-this is the directory containing the WORKSPACE file.
+  gazelle update -h
 
 Gazelle is under active delevopment, and its interface may change
 without notice.
 
-FLAGS:
 `)
-	fs.PrintDefaults()
-}
-
-func main() {
-	log.SetPrefix("gazelle: ")
-	log.SetFlags(0) // don't print timestamps
-
-	run(os.Args[1:])
-}
-
-func run(args []string) error {
-	cmd := updateCmd
-	if len(args) > 0 {
-		c, ok := commandFromName[args[0]]
-		if ok {
-			cmd = c
-			args = args[1:]
-		}
-	}
-
-	switch cmd {
-	case fixCmd, updateCmd:
-		return runFixUpdate(cmd, args)
-	default:
-		log.Panicf("unknown command: %v", cmd)
-	}
-	return nil
 }

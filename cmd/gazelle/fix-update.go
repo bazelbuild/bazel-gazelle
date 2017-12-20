@@ -170,7 +170,7 @@ func newFixUpdateConfiguration(args []string) (*config.Config, emitFunc, error) 
 	proto := fs.String("proto", "default", "default: generates new proto rules\n\tdisable: does not touch proto rules\n\tlegacy (deprecated): generates old proto rules")
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
-			usage(fs)
+			fixUpdateUsage(fs)
 			os.Exit(0)
 		}
 		// flag already prints the error; don't print it again.
@@ -253,6 +253,34 @@ func newFixUpdateConfiguration(args []string) (*config.Config, emitFunc, error) 
 	c.KnownImports = append(c.KnownImports, knownImports...)
 
 	return &c, emit, err
+}
+
+func fixUpdateUsage(fs *flag.FlagSet) {
+	fmt.Fprintln(os.Stderr, `usage: gazelle [fix|update] [flags...] [package-dirs...]
+
+The update command creates new build files and update existing BUILD files
+when needed.
+
+The fix command also creates and updates build files, and in addition, it may
+make potentially breaking updates to usage of rules. For example, it may
+delete obsolete rules or rename existing rules.
+
+There are several output modes which can be selected with the -mode flag. The
+output mode determines what Gazelle does with updated BUILD files.
+
+  fix (default) - write updated BUILD files back to disk.
+  print - print updated BUILD files to stdout.
+  diff - diff updated BUILD files against existing files in unified format.
+
+Gazelle accepts a list of paths to Go package directories to process (defaults
+to the working directory if none are given). It recursively traverses
+subdirectories. All directories must be under the directory specified by
+-repo_root; if -repo_root is not given, this is the directory containing the
+WORKSPACE file.
+
+FLAGS:
+`)
+	fs.PrintDefaults()
 }
 
 func loadBuildFile(c *config.Config, dir string) (*bf.File, error) {
