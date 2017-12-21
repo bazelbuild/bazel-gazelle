@@ -12,11 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@io_bazel_rules_go//go:def.bzl", "go_repository")
+
 def gazelle_dependencies():
   _maybe(native.git_repository,
       name = "bazel_skylib",
       remote = "https://github.com/bazelbuild/bazel-skylib",
       commit = "f3dd8fd95a7d078cb10fd7fb475b22c3cdbcb307", # 0.2.0 as of 2017-12-04
+  )
+
+  _maybe(go_repository,
+      name = "com_github_pelletier_go_toml",
+      importpath = "github.com/pelletier/go-toml",
+      commit = "16398bac157da96aa88f98a2df640c7f32af1da2", # v1.0.1 as of 2017-12-19
   )
 
 def _maybe(repo_rule, name, **kwargs):

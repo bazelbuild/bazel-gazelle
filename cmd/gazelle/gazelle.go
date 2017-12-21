@@ -28,21 +28,24 @@ type command int
 const (
 	updateCmd command = iota
 	fixCmd
-
+	updateReposCmd
 	helpCmd
 )
 
 var commandFromName = map[string]command{
-	"fix":    fixCmd,
-	"help":   helpCmd,
-	"update": updateCmd,
+	"fix":          fixCmd,
+	"help":         helpCmd,
+	"update":       updateCmd,
+	"update-repos": updateReposCmd,
 }
 
 func main() {
 	log.SetPrefix("gazelle: ")
 	log.SetFlags(0) // don't print timestamps
 
-	run(os.Args[1:])
+	if err := run(os.Args[1:]); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func run(args []string) error {
@@ -62,6 +65,8 @@ func run(args []string) error {
 		return runFixUpdate(cmd, args)
 	case helpCmd:
 		help()
+	case updateReposCmd:
+		return updateRepos(args)
 	default:
 		log.Panicf("unknown command: %v", cmd)
 	}
@@ -85,6 +90,8 @@ Gazelle defaults to "update".
   fix - in addition to the changes made in update, Gazelle will make potentially
       breaking changes. For example, it may delete obsolete rules or rename
       existing rules.
+  update-repos - updates repository rules in the WORKSPACE file. Run with
+      -h for details.
   help - show this message.
 
 For usage information for a specific command, run the command with the -h flag.

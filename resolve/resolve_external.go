@@ -139,6 +139,7 @@ func (r *externalResolver) lookupPrefix(importpath string) (string, error) {
 // ImportPathToBazelRepoName converts a Go import path into a bazel repo name
 // following the guidelines in http://bazel.io/docs/be/functions.html#workspace
 func ImportPathToBazelRepoName(importpath string) string {
+	importpath = strings.ToLower(importpath)
 	components := strings.Split(importpath, "/")
 	labels := strings.Split(components[0], ".")
 	var reversed []string
