@@ -4,6 +4,8 @@ Gazelle build file generator
 .. All external links are here
 .. _go_repository: https://github.com/bazelbuild/rules_go/blob/master/go/workspace.rst#go-repository
 .. _Gazelle in rules_go: https://github.com/bazelbuild/rules_go/tree/master/go/tools/gazelle
+.. _fix: #fix-and-update
+.. _update: #fix-and-update
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -106,13 +108,13 @@ The first argument to Gazelle may be one of the commands below. If no command
 is specified, ``update`` is assumed. The remaining arguments are specific
 to each command and are documented below.
 
-`update <#fix_and_update>`_
+update_
   Scans sources files, then generates and updates build files.
 
-`fix <#fix_and_update>`_
+fix_
   Same as the ``update`` command, but it also fixes deprecated usage of rules.
 
-`update-repos <#update_repos>`_
+update-repos_
   Updates repository rules in the WORKSPACE file.
 
 Bazel rule
