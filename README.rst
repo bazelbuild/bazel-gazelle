@@ -5,8 +5,10 @@ Gazelle build file generator
 .. _go_repository: https://github.com/bazelbuild/rules_go/blob/master/go/workspace.rst#go-repository
 .. _Gazelle in rules_go: https://github.com/bazelbuild/rules_go/tree/master/go/tools/gazelle
 
-.. role:: flag(code)
 .. role:: cmd(code)
+.. role:: flag(code)
+.. role:: param(kbd)
+.. role:: typew(emphasis)
 .. role:: value(code)
 .. End of directives
 
@@ -65,8 +67,8 @@ This will generate new BUILD.bazel files for your project. You can run the same
 command in the future to update existing BUILD.bazel files to include new source
 files or options.
 
-Running Gazelle separately
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Running Gazelle with Go
+~~~~~~~~~~~~~~~~~~~~~~~
 
 If you have a Go SDK installed, you can install Gazelle in your ``GOPATH`` with
 the command below:
@@ -100,7 +102,8 @@ Command line
   gazelle <command> [flags...] [package-dirs...]
 
 The first argument to Gazelle may be one of the commands below. If no command
-is specified, ``update`` is assumed.
+is specified, ``update`` is assumed. The remaining arguments are specific
+to each command and are documented below.
 
 `update <#fix_and_update>`_
   Scans sources files, then generates and updates build files.
@@ -110,7 +113,49 @@ is specified, ``update`` is assumed.
 
 `update-repos <#update_repos>`_
   Updates repository rules in the WORKSPACE file.
-  
+
+Bazel rule
+~~~~~~~~~~
+
+Gazelle may be run via a rule. See `Running Gazelle with Bazel`_ for setup
+instructions. This rule builds Gazelle and generates a wrapper script that
+executes Gazelle with baked-in set of arguments. You can run this script
+with ``bazel run``, or you can copy it into your workspace and run it directly.
+
+The following attributes are available on the ``gazelle`` rule.
+
++----------------------+---------------------+--------------------------------------+
+| **Name**             | **Type**            | **Default value**                    |
++======================+=====================+======================================+
+| :param:`gazelle`     | :type:`label`       | :value:`@bazel_gazelle//cmd/gazelle` |
++----------------------+---------------------+--------------------------------------+
+| The ``go_binary`` rule that builds Gazelle. You can substitute a modified         |
+| version of Gazelle with this.                                                     |
++----------------------+---------------------+--------------------------------------+
+| :param:`external`    | :type:`string`      | :value:`external`                    |
++----------------------+---------------------+--------------------------------------+
+| The method for resolving unknown imports to Bazel dependencies. May be            |
+| :value:`external` or :value:`vendored`.                                           |
++----------------------+---------------------+--------------------------------------+
+| :param:`build_tags`  | :type:`string_list` | :value:`[]`                          |
++----------------------+---------------------+--------------------------------------+
+| The last of Go build tags that Gazelle should consider to always be true.         |
++----------------------+---------------------+--------------------------------------+
+| :param:`prefix`      | :type:`string`      | |mandatory|                          |
++----------------------+---------------------+--------------------------------------+
+| The import path that corresponds to the repository root directory.                |
+| TODO(#26): this should be optional.                                               |
++----------------------+---------------------+--------------------------------------+
+| :param:`extra_args`  | :type:`string_list` | :value:`[]`                          |
++----------------------+---------------------+--------------------------------------+
+| A list of extra command line arguments passed to Gazelle.                         |
++----------------------+---------------------+--------------------------------------+
+| :param:`command`     | :type:`string`      | :value:`update`                      |
++----------------------+---------------------+--------------------------------------+
+| The Gazelle command to use. May be :value:`fix` or :value:`update`. To run        |
+| a different command, e.g., :value:`update-repos`, you'll need to copy the         |
+| invoke the generated wrapper script directly with explicit arguments.             |
++----------------------+---------------------+--------------------------------------+
 
 ``fix`` and ``update``
 ~~~~~~~~~~~~~~~~~~~~~~
