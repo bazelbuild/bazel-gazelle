@@ -8,8 +8,9 @@ Gazelle build file generator
 .. role:: cmd(code)
 .. role:: flag(code)
 .. role:: param(kbd)
-.. role:: typew(emphasis)
+.. role:: type(emphasis)
 .. role:: value(code)
+.. |mandatory| replace:: **mandatory value**
 .. End of directives
 
 Gazelle is a build file generator for Go projects. It can create new
