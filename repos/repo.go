@@ -37,8 +37,15 @@ func (s byName) Len() int           { return len(s) }
 func (s byName) Less(i, j int) bool { return s[i].name < s[j].name }
 func (s byName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
-var lockFileParsers = map[string]func(string) ([]repo, error){
-	"Gopkg.lock": importRepoRulesDep,
+type lockFileFormat int
+
+const (
+	unknownFormat lockFileFormat = iota
+	depFormat
+)
+
+var lockFileParsers = map[lockFileFormat]func(string) ([]repo, error){
+	depFormat: importRepoRulesDep,
 }
 
 // ImportRepoRules reads the lock file of a vendoring tool and returns
@@ -46,11 +53,12 @@ var lockFileParsers = map[string]func(string) ([]repo, error){
 // file. The format of the file is inferred from its basename. Currently,
 // only Gopkg.lock is supported.
 func ImportRepoRules(filename string) ([]bf.Expr, error) {
-	f, ok := lockFileParsers[filepath.Base(filename)]
-	if !ok {
-		return nil, fmt.Errorf(`%s: unrecognized filename. Expected "Gopkg.lock"`, filename)
+	format := getLockFileFormat(filename)
+	if format == unknownFormat {
+		return nil, fmt.Errorf(`%s: unrecognized lock file format. Expected "Gopkg.lock"`, filename)
 	}
-	repos, err := f(filename)
+	parser := lockFileParsers[format]
+	repos, err := parser(filename)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing %q: %v", filename, err)
 	}
@@ -61,6 +69,15 @@ func ImportRepoRules(filename string) ([]bf.Expr, error) {
 		rules = append(rules, generateRepoRule(repo))
 	}
 	return rules, nil
+}
+
+func getLockFileFormat(filename string) lockFileFormat {
+	switch filepath.Base(filename) {
+	case "Gopkg.lock":
+		return depFormat
+	default:
+		return unknownFormat
+	}
 }
 
 func generateRepoRule(repo repo) bf.Expr {

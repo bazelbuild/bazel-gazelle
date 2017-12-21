@@ -143,7 +143,7 @@ func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs Merg
 	mergedFile.Stmt = make([]bf.Expr, 0, len(oldFile.Stmt))
 	for _, s := range oldFile.Stmt {
 		if oldRule, ok := s.(*bf.CallExpr); ok {
-			if _, genRule := match(empty, oldRule); genRule != nil {
+			if genRule, _, ok := match(empty, oldRule); ok && genRule != nil {
 				s = mergeRule(genRule, oldRule, attrs)
 				if s == nil {
 					// Deleted empty rule
@@ -160,12 +160,12 @@ func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs Merg
 		if !ok {
 			log.Panicf("got %v expected only CallExpr in genRules", s)
 		}
-		i, oldRule := match(mergedFile.Stmt[:oldStmtCount], genRule)
-		if i < 0 {
+		oldRule, i, ok := match(mergedFile.Stmt[:oldStmtCount], genRule)
+		if oldRule == nil {
 			mergedFile.Stmt = append(mergedFile.Stmt, genRule)
 			mergedRules = append(mergedRules, genRule)
 			continue
-		} else if oldRule != nil {
+		} else if ok {
 			merged := mergeRule(genRule, oldRule, attrs)
 			mergedFile.Stmt[i] = merged
 			mergedRules = append(mergedRules, mergedFile.Stmt[i])
@@ -509,12 +509,14 @@ func shouldKeep(e bf.Expr) bool {
 	return false
 }
 
-// match looks for the matching CallExpr in stmts. If a rule with a matching
-// "name" attribute is found, and the kind matches, the rule and its index
-// are returned. If a rule with a matching name is found but the kind does not
-// match, the index of the rule and nil are returned. If no match is found,
-// -1 and nil are returned.
-func match(stmts []bf.Expr, x *bf.CallExpr) (int, *bf.CallExpr) {
+// match looks for the matching CallExpr in stmts. It returns a matching rule
+// (or nil), the index of the rule, and whether the match was complete.
+//
+// match scans CallExprs in stmts based on the "name" attribute and the kind.
+// If "name" and kind both match, the rule, its index, and true are returned.
+// If "name" matches but "kind" does not, the rule, its index, and false are
+// returned. If no rule matches "name", nil, -1, and false are returned.
+func match(stmts []bf.Expr, x *bf.CallExpr) (*bf.CallExpr, int, bool) {
 	xr := bf.Rule{x}
 	xname := xr.Name()
 	xkind := xr.Kind()
@@ -529,12 +531,9 @@ func match(stmts []bf.Expr, x *bf.CallExpr) (int, *bf.CallExpr) {
 			continue
 		}
 		ykind := yr.Kind()
-		if xkind != ykind {
-			return i, nil
-		}
-		return i, y
+		return y, i, xkind == ykind
 	}
-	return -1, nil
+	return nil, -1, false
 }
 
 func kind(c *bf.CallExpr) string {
