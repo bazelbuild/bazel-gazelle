@@ -19,8 +19,9 @@ def _gazelle_runner_impl(ctx):
       ctx.attr.command,
       "-mode", ctx.attr.mode,
       "-external", ctx.attr.external,
-      "-go_prefix", ctx.attr.prefix,
   ]
+  if ctx.attr.prefix:
+    args.extend(["-go_prefix", ctx.attr.prefix])
   if ctx.attr.build_tags:
     args.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
   args.extend(ctx.attr.args)
@@ -71,7 +72,7 @@ _gazelle_runner = rule(
             default="external",
         ),
         "build_tags": attr.string_list(),
-        "prefix": attr.string(mandatory = True),
+        "prefix": attr.string(),
         "extra_args": attr.string_list(),
         "workspace": attr.label(
             mandatory = True,
