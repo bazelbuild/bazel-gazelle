@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 // RuleIndex is a table of rules in a workspace, indexed by label and by
