@@ -22,8 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func TestResolveGoIndex(t *testing.T) {

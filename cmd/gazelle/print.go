@@ -18,8 +18,8 @@ package main
 import (
 	"os"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func printFile(c *config.Config, f *bf.File) error {

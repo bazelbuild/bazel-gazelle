@@ -18,8 +18,8 @@ package main
 import (
 	"io/ioutil"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func fixFile(c *config.Config, file *bf.File) error {

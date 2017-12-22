@@ -21,12 +21,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/packages"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rules"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func testConfig(repoRoot, goPrefix string) *config.Config {
