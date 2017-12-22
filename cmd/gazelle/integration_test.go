@@ -788,7 +788,7 @@ service {}
 		path: config.DefaultValidBuildFileNames[0],
 		content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
-load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 proto_library(
     name = "repo_proto",
@@ -796,17 +796,18 @@ proto_library(
     visibility = ["//visibility:public"],
 )
 
+go_proto_library(
+    name = "repo_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "example.com/repo",
+    proto = ":repo_proto",
+    visibility = ["//visibility:public"],
+)
+
 go_library(
     name = "go_default_library",
     embed = [":repo_go_proto"],
     importpath = "example.com/repo",
-    visibility = ["//visibility:public"],
-)
-
-go_grpc_library(
-    name = "repo_go_proto",
-    importpath = "example.com/repo",
-    proto = ":repo_proto",
     visibility = ["//visibility:public"],
 )
 `,

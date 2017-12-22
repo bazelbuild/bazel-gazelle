@@ -18,8 +18,8 @@ package merger
 import (
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 type fixTestCase struct {
@@ -246,6 +246,41 @@ go_test(
     name = "go_default_test",
     srcs = ["foo_test.go"],
     embed = [":go_default_library"],
+)
+`,
+		},
+		// migrateGrpcCompilers tests
+		{
+			desc: "go_grpc_library migrated to compilers",
+			old: `load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_grpc_library(
+    name = "foo_go_proto",
+    importpath = "example.com/repo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+)
+`,
+			want: `load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "foo_go_proto",
+    importpath = "example.com/repo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
 )
 `,
 		},

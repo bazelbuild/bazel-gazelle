@@ -325,7 +325,8 @@ func removeLegacyProto(c *config.Config, oldFile *bf.File) *bf.File {
 // FixLoads should be called after this, since it will fix load
 // statements that may be broken by transformations applied by this function.
 func FixFileMinor(c *config.Config, oldFile *bf.File) *bf.File {
-	return migrateLibraryEmbed(c, oldFile)
+	fixedFile := migrateLibraryEmbed(c, oldFile)
+	return migrateGrpcCompilers(c, fixedFile)
 }
 
 // migrateLibraryEmbed converts "library" attributes to "embed" attributes,
@@ -352,6 +353,38 @@ func migrateLibraryEmbed(c *config.Config, oldFile *bf.File) *bf.File {
 		rule.Call = &fixedCall
 		rule.DelAttr("library")
 		rule.SetAttr("embed", &bf.ListExpr{List: []bf.Expr{libExpr}})
+		fixedFile.Stmt[i] = &fixedCall
+		fixed = true
+	}
+	if !fixed {
+		return oldFile
+	}
+	return &fixedFile
+}
+
+// migrateGrpcCompilers converts "go_grpc_library" rules into "go_proto_library"
+// rules with a "compilers" attribute.
+func migrateGrpcCompilers(c *config.Config, oldFile *bf.File) *bf.File {
+	fixed := false
+	fixedFile := *oldFile
+	for i, stmt := range fixedFile.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		rule := bf.Rule{Call: call}
+		if rule.Kind() != "go_grpc_library" || shouldKeep(stmt) || rule.Attr("compilers") != nil {
+			continue
+		}
+
+		fixedCall := *call
+		fixedCall.List = make([]bf.Expr, len(call.List))
+		copy(fixedCall.List, call.List)
+		rule.Call = &fixedCall
+		rule.SetKind("go_proto_library")
+		rule.SetAttr("compilers", &bf.ListExpr{
+			List: []bf.Expr{&bf.StringExpr{Value: config.GrpcCompilerLabel}},
+		})
 		fixedFile.Stmt[i] = &fixedCall
 		fixed = true
 	}
