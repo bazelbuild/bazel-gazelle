@@ -55,13 +55,8 @@ func init() {
 		"go_binary",
 		"go_test",
 		"go_proto_library",
-		"go_grpc_library",
 	}
-	goProtoKinds := []string{
-		"go_proto_library",
-		"go_grpc_library",
-	}
-	allKinds := append(append(goKinds, goProtoKinds...), "proto_library")
+	allKinds := append(goKinds, "proto_library")
 
 	preResolveCommonAttrs := []string{"srcs"}
 	preResolveGoAttrs := []string{
@@ -71,7 +66,10 @@ func init() {
 		"embed",
 		"importpath",
 	}
-	preResolveGoProtoAttrs := []string{"proto"}
+	preResolveGoProtoAttrs := []string{
+		"compilers",
+		"proto",
+	}
 
 	PreResolveAttrs = make(MergeableAttrs)
 	for _, kind := range allKinds {
@@ -85,10 +83,8 @@ func init() {
 			PreResolveAttrs[kind][attr] = true
 		}
 	}
-	for _, kind := range goProtoKinds {
-		for _, attr := range preResolveGoProtoAttrs {
-			PreResolveAttrs[kind][attr] = true
-		}
+	for _, attr := range preResolveGoProtoAttrs {
+		PreResolveAttrs["go_proto_library"][attr] = true
 	}
 
 	postResolveCommonAttrs := []string{

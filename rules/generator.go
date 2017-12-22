@@ -102,7 +102,6 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 			EmptyRule("filegroup", filegroupName),
 			EmptyRule("proto_library", protoName),
 			EmptyRule("go_proto_library", goProtoName),
-			EmptyRule("go_grpc_library", goProtoName),
 		}
 	}
 
@@ -126,26 +125,16 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 		{"proto", ":" + protoName},
 		{"importpath", pkg.ImportPath(g.c)},
 	}
+	if pkg.Proto.HasServices {
+		goProtoAttrs = append(goProtoAttrs, KeyValue{"compilers", []string{"@io_bazel_rules_go//proto:go_grpc"}})
+	}
 	if g.shouldSetVisibility {
 		goProtoAttrs = append(goProtoAttrs, KeyValue{"visibility", visibility})
 	}
 	if !imports.IsEmpty() {
 		goProtoAttrs = append(goProtoAttrs, KeyValue{config.GazelleImportsKey, imports})
 	}
-
-	// If a developer adds or removes services from existing protos, this
-	// will create a new rule and delete the old one, along with any custom
-	// attributes (assuming no keep comments). We can't currently merge
-	// rules unless both kind and name match.
-	if pkg.Proto.HasServices {
-		rules = append(rules,
-			NewRule("go_grpc_library", goProtoAttrs),
-			EmptyRule("go_proto_library", goProtoName))
-	} else {
-		rules = append(rules,
-			NewRule("go_proto_library", goProtoAttrs),
-			EmptyRule("go_grpc_library", goProtoName))
-	}
+	rules = append(rules, NewRule("go_proto_library", goProtoAttrs))
 
 	return goProtoName, rules
 }

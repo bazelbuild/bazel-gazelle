@@ -21,12 +21,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/packages"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rules"
+	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func testConfig(repoRoot, goPrefix string) *config.Config {
@@ -115,8 +115,6 @@ func TestGeneratorEmpty(t *testing.T) {
 proto_library(name = "foo_proto")
 
 go_proto_library(name = "foo_go_proto")
-
-go_grpc_library(name = "foo_go_proto")
 
 go_library(name = "go_default_library")
 

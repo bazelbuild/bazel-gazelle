@@ -35,6 +35,10 @@ const (
 	// DefaultCgoLibName is the name of the default cgo_library rule in a Go package directory.
 	DefaultCgoLibName = "cgo_default_library"
 
+	// GrpcCompilerLabel is the label for the gRPC compiler plugin, used in the
+	// "compilers" attribute of go_proto_library rules.
+	GrpcCompilerLabel = "@io_bazel_rules_go//proto:go_grpc"
+
 	// WellKnownTypesProtoRepo is the repository containing proto_library rules
 	// for the Well Known Types.
 	WellKnownTypesProtoRepo = "com_google_protobuf"
