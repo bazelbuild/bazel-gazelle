@@ -37,11 +37,12 @@ func TestResolveGoIndex(t *testing.T) {
 		rel, content string
 	}
 	type testCase struct {
-		desc         string
-		buildFiles   []fileSpec
-		imp, fromRel string
-		wantErr      string
-		want         Label
+		desc       string
+		buildFiles []fileSpec
+		imp        string
+		from       Label
+		wantErr    string
+		want       Label
 	}
 	for _, tc := range []testCase{
 		{
@@ -119,9 +120,9 @@ go_library(
 `,
 				},
 			},
-			imp:     "example.com/foo",
-			fromRel: "b",
-			want:    Label{Name: "root"},
+			imp:  "example.com/foo",
+			from: Label{Pkg: "b", Name: "b"},
+			want: Label{Name: "root"},
 		}, {
 			desc: "vendor_supercedes_nonvendor",
 			buildFiles: []fileSpec{
@@ -166,9 +167,9 @@ go_library(
 `,
 				},
 			},
-			imp:     "example.com/foo",
-			fromRel: "shallow/deep",
-			want:    Label{Pkg: "shallow/deep/vendor", Name: "deep"},
+			imp:  "example.com/foo",
+			from: Label{Pkg: "shallow/deep", Name: "deep"},
+			want: Label{Pkg: "shallow/deep/vendor", Name: "deep"},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -184,7 +185,7 @@ go_library(
 			ix.Finish()
 
 			r := NewResolver(c, l, ix)
-			got, err := r.resolveGo(tc.imp, tc.fromRel)
+			got, err := r.resolveGo(tc.imp, tc.from)
 			if err != nil {
 				if tc.wantErr == "" {
 					t.Fatal(err)
@@ -240,17 +241,25 @@ go_library(
 	r := NewResolver(c, l, ix)
 
 	wantProto := Label{Pkg: "sub", Name: "foo_proto"}
-	if got, err := r.resolveProto("sub/bar.proto", "baz"); err != nil {
+	if got, err := r.resolveProto("sub/bar.proto", Label{Pkg: "baz", Name: "baz"}); err != nil {
 		t.Error(err)
 	} else if !reflect.DeepEqual(got, wantProto) {
 		t.Errorf("resolveProto: got %s ; want %s", got, wantProto)
 	}
+	_, err = r.resolveProto("sub/bar.proto", Label{Pkg: "sub", Name: "foo_proto"})
+	if _, ok := err.(selfImportError); !ok {
+		t.Errorf("resolveProto: got %v ; want selfImportError", err)
+	}
 
 	wantGoProto := Label{Pkg: "sub", Name: "embed"}
-	if got, err := r.resolveGoProto("sub/bar.proto", "baz"); err != nil {
+	if got, err := r.resolveGoProto("sub/bar.proto", Label{Pkg: "baz", Name: "baz"}); err != nil {
 		t.Error(err)
 	} else if !reflect.DeepEqual(got, wantGoProto) {
 		t.Errorf("resolveGoProto: got %s ; want %s", got, wantGoProto)
+	}
+	_, err = r.resolveGoProto("sub/bar.proto", Label{Pkg: "sub", Name: "foo_go_proto"})
+	if _, ok := err.(selfImportError); !ok {
+		t.Errorf("resolveGoProto: got %v ; want selfImportError", err)
 	}
 }
 
@@ -287,12 +296,12 @@ go_library(
 
 	ix.Finish()
 
-	got, err := ix.findLabelByImport(importSpec{config.GoLang, "example.com/old"}, config.GoLang, "")
+	got, err := ix.findLabelByImport(importSpec{config.GoLang, "example.com/old"}, config.GoLang, NoLabel)
 	if err == nil {
 		t.Errorf("when importing example.com/old, got %s ; want error", got)
 	}
 
-	got, err = ix.findLabelByImport(importSpec{config.GoLang, "example.com/new"}, config.GoLang, "")
+	got, err = ix.findLabelByImport(importSpec{config.GoLang, "example.com/new"}, config.GoLang, NoLabel)
 	want := Label{Name: "go_default_library"}
 	if err != nil {
 		t.Errorf("when importing example.com/new, got error %v ; want %s", err, want)
@@ -304,8 +313,7 @@ go_library(
 func TestResolveGoLocal(t *testing.T) {
 	for _, spec := range []struct {
 		importpath string
-		pkgRel     string
-		want       Label
+		from, want Label
 	}{
 		{
 			importpath: "example.com/repo",
@@ -327,7 +335,7 @@ func TestResolveGoLocal(t *testing.T) {
 			want:       Label{Pkg: "another", Name: config.DefaultLibName},
 		}, {
 			importpath: "../y",
-			pkgRel:     "x",
+			from:       Label{Pkg: "x", Name: "x"},
 			want:       Label{Pkg: "y", Name: config.DefaultLibName},
 		},
 	} {
@@ -335,7 +343,7 @@ func TestResolveGoLocal(t *testing.T) {
 		l := NewLabeler(c)
 		ix := NewRuleIndex()
 		r := NewResolver(c, l, ix)
-		label, err := r.resolveGo(spec.importpath, spec.pkgRel)
+		label, err := r.resolveGo(spec.importpath, spec.from)
 		if err != nil {
 			t.Errorf("r.resolveGo(%q) failed with %v; want success", spec.importpath, err)
 			continue
@@ -358,12 +366,12 @@ func TestResolveGoLocalError(t *testing.T) {
 		"example.com/another/sub",
 		"example.com/repo_suffix",
 	} {
-		if l, err := r.resolveGo(importpath, ""); err == nil {
+		if l, err := r.resolveGo(importpath, NoLabel); err == nil {
 			t.Errorf("r.resolveGo(%q) = %s; want error", importpath, l)
 		}
 	}
 
-	if l, err := r.resolveGo("..", ""); err == nil {
+	if l, err := r.resolveGo("..", NoLabel); err == nil {
 		t.Errorf("r.resolveGo(%q) = %s; want error", "..", l)
 	}
 }
@@ -376,14 +384,14 @@ func TestResolveGoEmptyPrefix(t *testing.T) {
 
 	imp := "foo"
 	want := Label{Pkg: "foo", Name: config.DefaultLibName}
-	if got, err := r.resolveGo(imp, ""); err != nil {
+	if got, err := r.resolveGo(imp, NoLabel); err != nil {
 		t.Errorf("r.resolveGo(%q) failed with %v; want success", imp, err)
 	} else if !reflect.DeepEqual(got, want) {
 		t.Errorf("r.resolveGo(%q) = %s; want %s", imp, got, want)
 	}
 
 	imp = "fmt"
-	if _, err := r.resolveGo(imp, ""); err == nil {
+	if _, err := r.resolveGo(imp, NoLabel); err == nil {
 		t.Errorf("r.resolveGo(%q) succeeded; want failure")
 	}
 }
@@ -391,7 +399,8 @@ func TestResolveGoEmptyPrefix(t *testing.T) {
 func TestResolveProto(t *testing.T) {
 	prefix := "example.com/repo"
 	for _, tc := range []struct {
-		desc, imp, pkgRel      string
+		desc, imp              string
+		from                   Label
 		depMode                config.DependencyMode
 		wantProto, wantGoProto Label
 	}{
@@ -409,7 +418,7 @@ func TestResolveProto(t *testing.T) {
 			desc:        "vendor",
 			depMode:     config.VendorMode,
 			imp:         "foo/bar/bar.proto",
-			pkgRel:      "vendor",
+			from:        Label{Pkg: "vendor"},
 			wantProto:   Label{Pkg: "foo/bar", Name: "bar_proto"},
 			wantGoProto: Label{Pkg: "vendor/foo/bar", Name: config.DefaultLibName},
 		}, {
@@ -445,7 +454,7 @@ func TestResolveProto(t *testing.T) {
 			ix := NewRuleIndex()
 			r := NewResolver(c, l, ix)
 
-			got, err := r.resolveProto(tc.imp, tc.pkgRel)
+			got, err := r.resolveProto(tc.imp, tc.from)
 			if err != nil {
 				t.Errorf("resolveProto: got error %v ; want success", err)
 			}
@@ -453,7 +462,7 @@ func TestResolveProto(t *testing.T) {
 				t.Errorf("resolveProto: got %s ; want %s", got, tc.wantProto)
 			}
 
-			got, err = r.resolveGoProto(tc.imp, tc.pkgRel)
+			got, err = r.resolveGoProto(tc.imp, tc.from)
 			if err != nil {
 				t.Errorf("resolveGoProto: go error %v ; want success", err)
 			}

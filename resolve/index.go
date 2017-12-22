@@ -190,7 +190,7 @@ func (ix *RuleIndex) skipGoEmbds() {
 		}
 
 		for _, l := range embedLabels {
-			embed, ok := ix.findRuleByLabel(l, r.label.Pkg)
+			embed, ok := ix.findRuleByLabel(l, r.label)
 			if !ok {
 				continue
 			}
@@ -220,16 +220,25 @@ func (ix *RuleIndex) buildImportIndex() {
 }
 
 type ruleNotFoundError struct {
-	imp     string
-	fromRel string
+	from Label
+	imp  string
 }
 
 func (e ruleNotFoundError) Error() string {
-	return fmt.Sprintf("no rule found for import %q, needed in package %q", e.imp, e.fromRel)
+	return fmt.Sprintf("no rule found for import %q, needed in %s", e.imp, e.from)
 }
 
-func (ix *RuleIndex) findRuleByLabel(label Label, fromRel string) (*ruleRecord, bool) {
-	label = label.Abs("", fromRel)
+type selfImportError struct {
+	from Label
+	imp  string
+}
+
+func (e selfImportError) Error() string {
+	return fmt.Sprintf("rule %s imports itself with path %q", e.from, e.imp)
+}
+
+func (ix *RuleIndex) findRuleByLabel(label Label, from Label) (*ruleRecord, bool) {
+	label = label.Abs(from.Repo, from.Pkg)
 	r, ok := ix.labelMap[label]
 	return r, ok
 }
@@ -238,14 +247,15 @@ func (ix *RuleIndex) findRuleByLabel(label Label, fromRel string) (*ruleRecord, 
 // imp is the import to resolve (which includes the target language). lang is
 // the language of the rule with the dependency (for example, in
 // go_proto_library, imp will have ProtoLang and lang will be GoLang).
-// fromRel is the slash-separated path to the directory containing the import,
-// relative to the repository root.
+// from is the rule which is doing the dependency. This is used to check
+// vendoring visibility and to check for self-imports.
 //
-// Any number of rules may provide the same import. If no rules provide
-// the import, ruleNotFoundError is returned. If multiple rules provide the
-// import, this function will attempt to choose one based on Go vendoring logic.
-// In ambiguous cases, an error is returned.
-func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, fromRel string) (*ruleRecord, error) {
+// Any number of rules may provide the same import. If no rules provide the
+// import, ruleNotFoundError is returned. If a rule imports itself,
+// selfImportError is returned. If multiple rules provide the import, this
+// function will attempt to choose one based on Go vendoring logic.  In
+// ambiguous cases, an error is returned.
+func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, from Label) (*ruleRecord, error) {
 	matches := ix.importMap[imp]
 	var bestMatch *ruleRecord
 	var bestMatchIsVendored bool
@@ -260,21 +270,19 @@ func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, from
 		case config.GoLang:
 			// Apply vendoring logic for Go libraries. A library in a vendor directory
 			// is only visible in the parent tree. Vendored libraries supercede
-			// non-vendored libraries, and libraries closer to fromRel supercede
+			// non-vendored libraries, and libraries closer to from.Pkg supercede
 			// those further up the tree.
 			isVendored := false
 			vendorRoot := ""
-			if m.label.Repo == "" {
-				parts := strings.Split(m.label.Pkg, "/")
-				for i, part := range parts {
-					if part == "vendor" {
-						isVendored = true
-						vendorRoot = strings.Join(parts[:i], "/")
-						break
-					}
+			parts := strings.Split(m.label.Pkg, "/")
+			for i, part := range parts {
+				if part == "vendor" {
+					isVendored = true
+					vendorRoot = strings.Join(parts[:i], "/")
+					break
 				}
 			}
-			if isVendored && fromRel != vendorRoot && !strings.HasPrefix(fromRel, vendorRoot+"/") {
+			if isVendored && !packageContains(m.label.Repo, vendorRoot, from) {
 				// vendor directory not visible
 				continue
 			}
@@ -303,12 +311,15 @@ func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, from
 		return nil, matchError
 	}
 	if bestMatch == nil {
-		return nil, ruleNotFoundError{imp.imp, fromRel}
+		return nil, ruleNotFoundError{from, imp.imp}
+	}
+	if bestMatch.label.Equal(from) {
+		return nil, selfImportError{from, imp.imp}
 	}
 
 	if imp.lang == config.ProtoLang && lang == config.GoLang {
 		importpath := bestMatch.rule.AttrString("importpath")
-		if betterMatch, err := ix.findRuleByImport(importSpec{config.GoLang, importpath}, config.GoLang, fromRel); err == nil {
+		if betterMatch, err := ix.findRuleByImport(importSpec{config.GoLang, importpath}, config.GoLang, from); err == nil {
 			return betterMatch, nil
 		}
 	}
@@ -316,8 +327,8 @@ func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, from
 	return bestMatch, nil
 }
 
-func (ix *RuleIndex) findLabelByImport(imp importSpec, lang config.Language, fromRel string) (Label, error) {
-	r, err := ix.findRuleByImport(imp, lang, fromRel)
+func (ix *RuleIndex) findLabelByImport(imp importSpec, lang config.Language, from Label) (Label, error) {
+	r, err := ix.findRuleByImport(imp, lang, from)
 	if err != nil {
 		return NoLabel, err
 	}
@@ -329,7 +340,7 @@ func findGoProtoSources(ix *RuleIndex, r *ruleRecord) []importSpec {
 	if err != nil {
 		return nil
 	}
-	proto, ok := ix.findRuleByLabel(protoLabel, r.label.Pkg)
+	proto, ok := ix.findRuleByLabel(protoLabel, r.label)
 	if !ok {
 		return nil
 	}

@@ -70,8 +70,9 @@ func (r *Resolver) ResolveRule(e bf.Expr, pkgRel string) bf.Expr {
 		return e
 	}
 	rule := bf.Rule{Call: call}
+	from := Label{Pkg: pkgRel, Name: rule.Name()}
 
-	var resolve func(imp, pkgRel string) (Label, error)
+	var resolve func(imp string, from Label) (Label, error)
 	switch rule.Kind() {
 	case "go_library", "go_binary", "go_test":
 		resolve = r.resolveGo
@@ -91,12 +92,15 @@ func (r *Resolver) ResolveRule(e bf.Expr, pkgRel string) bf.Expr {
 	rule.DelAttr(config.GazelleImportsKey)
 	rule.DelAttr("deps")
 	deps := mapExprStrings(imports, func(imp string) string {
-		label, err := resolve(imp, pkgRel)
+		label, err := resolve(imp, from)
 		if err != nil {
-			if _, ok := err.(standardImportError); !ok {
+			switch err.(type) {
+			case standardImportError, selfImportError:
+				return ""
+			default:
 				log.Print(err)
+				return ""
 			}
-			return ""
 		}
 		label.Relative = label.Repo == "" && label.Pkg == pkgRel
 		return label.String()
@@ -206,11 +210,11 @@ func mapExprStrings(e bf.Expr, f func(string) string) bf.Expr {
 // resolveGo resolves an import path from a Go source file to a label.
 // pkgRel is the path to the Go package relative to the repository root; it
 // is used to resolve relative imports.
-func (r *Resolver) resolveGo(imp, pkgRel string) (Label, error) {
+func (r *Resolver) resolveGo(imp string, from Label) (Label, error) {
 	if build.IsLocalImport(imp) {
-		cleanRel := path.Clean(path.Join(pkgRel, imp))
+		cleanRel := path.Clean(path.Join(from.Pkg, imp))
 		if build.IsLocalImport(cleanRel) {
-			return Label{}, fmt.Errorf("relative import path %q from %q points outside of repository", imp, pkgRel)
+			return Label{}, fmt.Errorf("relative import path %q from %q points outside of repository", imp, from.Pkg)
 		}
 		imp = path.Join(r.c.GoPrefix, cleanRel)
 	}
@@ -219,7 +223,7 @@ func (r *Resolver) resolveGo(imp, pkgRel string) (Label, error) {
 		return Label{}, standardImportError{imp}
 	}
 
-	if label, err := r.ix.findLabelByImport(importSpec{config.GoLang, imp}, config.GoLang, pkgRel); err != nil {
+	if label, err := r.ix.findLabelByImport(importSpec{config.GoLang, imp}, config.GoLang, from); err != nil {
 		if _, ok := err.(ruleNotFoundError); !ok {
 			return NoLabel, err
 		}
@@ -245,7 +249,7 @@ const (
 
 // resolveProto resolves an import statement in a .proto file to a label
 // for a proto_library rule.
-func (r *Resolver) resolveProto(imp, pkgRel string) (Label, error) {
+func (r *Resolver) resolveProto(imp string, from Label) (Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
 		return Label{}, fmt.Errorf("can't import non-proto: %q", imp)
 	}
@@ -254,7 +258,7 @@ func (r *Resolver) resolveProto(imp, pkgRel string) (Label, error) {
 		return Label{Repo: config.WellKnownTypesProtoRepo, Name: name}, nil
 	}
 
-	if label, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.ProtoLang, pkgRel); err != nil {
+	if label, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.ProtoLang, from); err != nil {
 		if _, ok := err.(ruleNotFoundError); !ok {
 			return NoLabel, err
 		}
@@ -272,7 +276,7 @@ func (r *Resolver) resolveProto(imp, pkgRel string) (Label, error) {
 
 // resolveGoProto resolves an import statement in a .proto file to a
 // label for a go_library rule that embeds the corresponding go_proto_library.
-func (r *Resolver) resolveGoProto(imp, pkgRel string) (Label, error) {
+func (r *Resolver) resolveGoProto(imp string, from Label) (Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
 		return Label{}, fmt.Errorf("can't import non-proto: %q", imp)
 	}
@@ -314,7 +318,7 @@ func (r *Resolver) resolveGoProto(imp, pkgRel string) (Label, error) {
 		}
 	}
 
-	if label, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.GoLang, pkgRel); err != nil {
+	if label, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.GoLang, from); err != nil {
 		if _, ok := err.(ruleNotFoundError); !ok {
 			return NoLabel, err
 		}
@@ -330,7 +334,7 @@ func (r *Resolver) resolveGoProto(imp, pkgRel string) (Label, error) {
 	if rel == "." {
 		rel = ""
 	}
-	if pkgRel == "vendor" || strings.HasPrefix(pkgRel, "vendor/") {
+	if from.Pkg == "vendor" || strings.HasPrefix(from.Pkg, "vendor/") {
 		rel = path.Join("vendor", rel)
 	}
 	return r.l.LibraryLabel(rel), nil

@@ -17,6 +17,7 @@ package resolve
 
 import (
 	"fmt"
+	"log"
 	"path"
 	"regexp"
 	"strings"
@@ -118,4 +119,18 @@ func (l Label) Abs(repo, pkg string) Label {
 		return l
 	}
 	return Label{Repo: repo, Pkg: pkg, Name: l.Name}
+}
+
+func (l Label) Equal(other Label) bool {
+	return l.Repo == other.Repo &&
+		l.Pkg == other.Pkg &&
+		l.Name == other.Name &&
+		l.Relative == other.Relative
+}
+
+func packageContains(repo, pkg string, label Label) bool {
+	if label.Relative {
+		log.Panicf("label must not be relative: %s", label)
+	}
+	return repo == label.Repo && (pkg == label.Pkg || strings.HasPrefix(label.Pkg, pkg+"/"))
 }
