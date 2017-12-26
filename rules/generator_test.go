@@ -157,24 +157,3 @@ func TestGeneratorEmptyLegacyProto(t *testing.T) {
 		}
 	}
 }
-
-func TestErrorWhenImportPathEmpty(t *testing.T) {
-	repoRoot := filepath.FromSlash("../testdata/repo/lib")
-	c := testConfig(repoRoot, "")
-
-	var pkg *packages.Package
-	var oldFile *bf.File
-	packages.Walk(c, repoRoot, func(rel string, _ *config.Config, p *packages.Package, f *bf.File, _ bool) {
-		if rel == "" {
-			pkg = p
-			oldFile = f
-		}
-	})
-
-	l := resolve.NewLabeler(c)
-	g := rules.NewGenerator(c, l, oldFile)
-	_, _, err := g.GenerateRules(pkg)
-	if err == nil {
-		t.Error("got success ; want error")
-	}
-}

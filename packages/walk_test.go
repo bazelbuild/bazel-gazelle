@@ -121,7 +121,8 @@ func TestWalkSimple(t *testing.T) {
 	files := []fileSpec{{path: "lib.go", content: "package lib"}}
 	want := []*packages.Package{
 		{
-			Name: "lib",
+			Name:       "lib",
+			ImportPath: "example.com/repo",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"lib.go"},
@@ -129,7 +130,7 @@ func TestWalkSimple(t *testing.T) {
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestWalkNested(t *testing.T) {
@@ -140,8 +141,9 @@ func TestWalkNested(t *testing.T) {
 	}
 	want := []*packages.Package{
 		{
-			Name: "a",
-			Rel:  "a",
+			Name:       "a",
+			Rel:        "a",
+			ImportPath: "example.com/repo/a",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"foo.go"},
@@ -149,8 +151,9 @@ func TestWalkNested(t *testing.T) {
 			},
 		},
 		{
-			Name: "c",
-			Rel:  "b/c",
+			Name:       "c",
+			Rel:        "b/c",
+			ImportPath: "example.com/repo/b/c",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"bar.go"},
@@ -158,8 +161,9 @@ func TestWalkNested(t *testing.T) {
 			},
 		},
 		{
-			Name: "main",
-			Rel:  "b/d",
+			Name:       "main",
+			Rel:        "b/d",
+			ImportPath: "example.com/repo/b/d",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"baz.go"},
@@ -167,7 +171,7 @@ func TestWalkNested(t *testing.T) {
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestProtoOnly(t *testing.T) {
@@ -176,8 +180,9 @@ func TestProtoOnly(t *testing.T) {
 	}
 	want := []*packages.Package{
 		{
-			Name: "a",
-			Rel:  "a",
+			Name:       "a",
+			Rel:        "a",
+			ImportPath: "example.com/repo/a",
 			Proto: packages.ProtoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.proto"},
@@ -185,7 +190,7 @@ func TestProtoOnly(t *testing.T) {
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestMultiplePackagesWithDefault(t *testing.T) {
@@ -195,8 +200,9 @@ func TestMultiplePackagesWithDefault(t *testing.T) {
 	}
 	want := []*packages.Package{
 		{
-			Name: "a",
-			Rel:  "a",
+			Name:       "a",
+			Rel:        "a",
+			ImportPath: "example.com/repo/a",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go"},
@@ -204,7 +210,7 @@ func TestMultiplePackagesWithDefault(t *testing.T) {
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestMultiplePackagesWithoutDefault(t *testing.T) {
@@ -238,8 +244,9 @@ package a;
 	}
 	want := []*packages.Package{
 		{
-			Name: "a",
-			Rel:  "a",
+			Name:       "a",
+			Rel:        "a",
+			ImportPath: "example.com/repo/a",
 			Proto: packages.ProtoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.proto"},
@@ -247,7 +254,7 @@ package a;
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestRootWithPrefix(t *testing.T) {
@@ -257,7 +264,8 @@ func TestRootWithPrefix(t *testing.T) {
 	}
 	want := []*packages.Package{
 		{
-			Name: "a",
+			Name:       "a",
+			ImportPath: "example.com/a",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go"},
@@ -265,7 +273,7 @@ func TestRootWithPrefix(t *testing.T) {
 			},
 		},
 	}
-	checkFiles(t, files, "github.com/a", want)
+	checkFiles(t, files, "example.com/a", want)
 }
 
 func TestRootWithoutPrefix(t *testing.T) {
@@ -324,6 +332,33 @@ func TestVendorResetsPrefix(t *testing.T) {
 	}
 }
 
+func TestPrefixEmpty(t *testing.T) {
+	files := []fileSpec{
+		{path: "a.go", content: "package foo"},
+	}
+	want := []*packages.Package{}
+	checkFiles(t, files, "", want)
+}
+
+func TestProtoImportPath(t *testing.T) {
+	files := []fileSpec{{
+		path: "foo.proto",
+		content: `syntax = "proto3";
+option go_package = "example.com/repo/foo";
+`,
+	}}
+	want := []*packages.Package{{
+		Name:       "foo",
+		ImportPath: "example.com/repo/foo",
+		Proto: packages.ProtoTarget{
+			Sources: packages.PlatformStrings{
+				Generic: []string{"foo.proto"},
+			},
+		},
+	}}
+	checkFiles(t, files, "", want)
+}
+
 func TestTestdata(t *testing.T) {
 	files := []fileSpec{
 		{path: "raw/testdata/"},
@@ -339,8 +374,9 @@ func TestTestdata(t *testing.T) {
 	}
 	want := []*packages.Package{
 		{
-			Name: "raw",
-			Rel:  "raw",
+			Name:       "raw",
+			Rel:        "raw",
+			ImportPath: "example.com/repo/raw",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go"},
@@ -349,8 +385,9 @@ func TestTestdata(t *testing.T) {
 			HasTestdata: true,
 		},
 		{
-			Name: "with_build",
-			Rel:  "with_build",
+			Name:       "with_build",
+			Rel:        "with_build",
+			ImportPath: "example.com/repo/with_build",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go"},
@@ -359,8 +396,9 @@ func TestTestdata(t *testing.T) {
 			HasTestdata: false,
 		},
 		{
-			Name: "with_build_bazel",
-			Rel:  "with_build_bazel",
+			Name:       "with_build_bazel",
+			Rel:        "with_build_bazel",
+			ImportPath: "example.com/repo/with_build_bazel",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go"},
@@ -369,8 +407,9 @@ func TestTestdata(t *testing.T) {
 			HasTestdata: false,
 		},
 		{
-			Name: "with_build_nested",
-			Rel:  "with_build_nested",
+			Name:       "with_build_nested",
+			Rel:        "with_build_nested",
+			ImportPath: "example.com/repo/with_build_nested",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go"},
@@ -379,8 +418,9 @@ func TestTestdata(t *testing.T) {
 			HasTestdata: false,
 		},
 		{
-			Name: "testdata",
-			Rel:  "with_go/testdata",
+			Name:       "testdata",
+			Rel:        "with_go/testdata",
+			ImportPath: "example.com/repo/with_go/testdata",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go"},
@@ -388,8 +428,9 @@ func TestTestdata(t *testing.T) {
 			},
 		},
 		{
-			Name: "with_go",
-			Rel:  "with_go",
+			Name:       "with_go",
+			Rel:        "with_go",
+			ImportPath: "example.com/repo/with_go",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go"},
@@ -398,7 +439,7 @@ func TestTestdata(t *testing.T) {
 			HasTestdata: false,
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestGenerated(t *testing.T) {
@@ -427,8 +468,9 @@ import "github.com/jr_hacker/stuff"
 	}
 	want := []*packages.Package{
 		{
-			Name: "foo",
-			Rel:  "gen",
+			Name:       "foo",
+			Rel:        "gen",
+			ImportPath: "example.com/repo/gen",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"bar.go", "baz.go", "foo.go", "y.s"},
@@ -439,7 +481,7 @@ import "github.com/jr_hacker/stuff"
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestGeneratedCgo(t *testing.T) {
@@ -470,8 +512,9 @@ import "github.com/jr_hacker/stuff"
 	}
 	want := []*packages.Package{
 		{
-			Name: "foo",
-			Rel:  "gen",
+			Name:       "foo",
+			Rel:        "gen",
+			ImportPath: "example.com/repo/gen",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"bar.go", "baz.go", "foo.go", "x.c", "y.s", "z.S"},
@@ -483,7 +526,7 @@ import "github.com/jr_hacker/stuff"
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestExcluded(t *testing.T) {
@@ -523,8 +566,9 @@ genrule(
 	}
 	want := []*packages.Package{
 		{
-			Name: "exclude",
-			Rel:  "exclude",
+			Name:       "exclude",
+			Rel:        "exclude",
+			ImportPath: "example.com/repo/exclude",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"real.go"},
@@ -532,7 +576,7 @@ genrule(
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestExcludedPbGo(t *testing.T) {
@@ -565,8 +609,9 @@ package exclude;
 	}
 	want := []*packages.Package{
 		{
-			Name: "exclude",
-			Rel:  "exclude",
+			Name:       "exclude",
+			Rel:        "exclude",
+			ImportPath: "example.com/repo/exclude",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.pb.go"},
@@ -580,7 +625,7 @@ package exclude;
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestLegacyProtos(t *testing.T) {
@@ -610,8 +655,9 @@ package proto_only;`,
 	}
 	want := []*packages.Package{
 		{
-			Name: "have_pbgo",
-			Rel:  "have_pbgo",
+			Name:       "have_pbgo",
+			Rel:        "have_pbgo",
+			ImportPath: "example.com/repo/have_pbgo",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.pb.go"},
@@ -624,8 +670,9 @@ package proto_only;`,
 				HasPbGo: true,
 			},
 		}, {
-			Name: "no_pbgo",
-			Rel:  "no_pbgo",
+			Name:       "no_pbgo",
+			Rel:        "no_pbgo",
+			ImportPath: "example.com/repo/no_pbgo",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"other.go"},
@@ -639,7 +686,7 @@ package proto_only;`,
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestMalformedBuildFile(t *testing.T) {
@@ -648,7 +695,7 @@ func TestMalformedBuildFile(t *testing.T) {
 		{path: "foo.go", content: "package foo"},
 	}
 	want := []*packages.Package{}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestMultipleBuildFiles(t *testing.T) {
@@ -658,7 +705,7 @@ func TestMultipleBuildFiles(t *testing.T) {
 		{path: "foo.go", content: "package foo"},
 	}
 	want := []*packages.Package{}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }
 
 func TestMalformedGoFile(t *testing.T) {
@@ -668,7 +715,8 @@ func TestMalformedGoFile(t *testing.T) {
 	}
 	want := []*packages.Package{
 		{
-			Name: "foo",
+			Name:       "foo",
+			ImportPath: "example.com/repo",
 			Library: packages.GoTarget{
 				Sources: packages.PlatformStrings{
 					Generic: []string{"a.go", "b.go"},
@@ -676,5 +724,5 @@ func TestMalformedGoFile(t *testing.T) {
 			},
 		},
 	}
-	checkFiles(t, files, "", want)
+	checkFiles(t, files, "example.com/repo", want)
 }

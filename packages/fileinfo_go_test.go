@@ -357,12 +357,16 @@ import "C"
 	if err := ioutil.WriteFile(goFile, content, 0644); err != nil {
 		t.Fatal(err)
 	}
-	c := &config.Config{RepoRoot: repo}
+	c := &config.Config{
+		RepoRoot: repo,
+		GoPrefix: "example.com/repo",
+	}
 	got := buildPackage(c, sub, "sub", []string{"sub.go"}, nil, nil, false)
 	want := &Package{
-		Name: "sub",
-		Dir:  sub,
-		Rel:  "sub",
+		Name:       "sub",
+		Dir:        sub,
+		Rel:        "sub",
+		ImportPath: "example.com/repo/sub",
 		Library: GoTarget{
 			Sources: PlatformStrings{
 				Generic: []string{"sub.go"},

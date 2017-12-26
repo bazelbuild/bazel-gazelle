@@ -265,14 +265,15 @@ func buildPackage(c *config.Config, dir, rel string, pkgFiles, otherFiles, genFi
 	// or I/O errors. We should keep the file in the srcs list and let the
 	// compiler deal with the error.
 	for _, info := range pkgFilesWithUnknownPackage {
-		pkg.addFile(c, info, cgo)
+		if err := pkg.addFile(c, info, cgo); err != nil {
+			log.Print(err)
+		}
 	}
 
 	// Process the other static files.
 	for _, file := range otherFiles {
 		info := otherFileInfo(dir, rel, file)
-		err = pkg.addFile(c, info, cgo)
-		if err != nil {
+		if err := pkg.addFile(c, info, cgo); err != nil {
 			log.Print(err)
 		}
 	}
@@ -292,12 +293,17 @@ func buildPackage(c *config.Config, dir, rel string, pkgFiles, otherFiles, genFi
 			continue
 		}
 		info := fileNameInfo(dir, rel, f)
-		err := pkg.addFile(c, info, cgo)
-		if err != nil {
+		if err := pkg.addFile(c, info, cgo); err != nil {
 			log.Print(err)
 		}
 	}
 
+	if pkg.importPath == "" {
+		if err := pkg.inferImportPath(c); err != nil {
+			log.Print(err)
+			return nil
+		}
+	}
 	return pkg.build()
 }
 
