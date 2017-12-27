@@ -37,6 +37,7 @@ import (
 // If the file can't be read, an error will be logged, and partial information
 // will be returned.
 // This function is intended to match go/build.Context.Import.
+// TODD(#53): extract canonical import path
 func goFileInfo(c *config.Config, dir, rel, name string) fileInfo {
 	info := fileNameInfo(dir, rel, name)
 	fset := token.NewFileSet()

@@ -41,6 +41,9 @@ type Package struct {
 	// Components in Rel are separated with slashes.
 	Rel string
 
+	// ImportPath is the string used to import this package in Go.
+	ImportPath string
+
 	Library, Binary, Test, XTest GoTarget
 	Proto                        ProtoTarget
 
@@ -95,18 +98,6 @@ func (p *Package) IsCommand() bool {
 	return p.Name == "main"
 }
 
-// ImportPath returns the inferred Go import path for this package.
-// TODO(jayconrod): extract canonical import paths from comments on
-// package statements.
-func (p *Package) ImportPath(c *config.Config) string {
-	if p.Rel == c.GoPrefixRel {
-		return c.GoPrefix
-	} else {
-		fromPrefixRel := strings.TrimPrefix(p.Rel, c.GoPrefixRel+"/")
-		return path.Join(c.GoPrefix, fromPrefixRel)
-	}
-}
-
 func (t *GoTarget) HasGo() bool {
 	return t.Sources.HasGo()
 }
@@ -158,6 +149,7 @@ type packageBuilder struct {
 	library, binary, test, xtest goTargetBuilder
 	proto                        protoTargetBuilder
 	hasTestdata                  bool
+	importPath, importPathFile   string
 }
 
 type goTargetBuilder struct {
@@ -224,6 +216,15 @@ func (pb *packageBuilder) addFile(c *config.Config, info fileInfo, cgo bool) err
 		pb.proto.hasPbGo = true
 	}
 
+	if info.importPath != "" {
+		if pb.importPath == "" {
+			pb.importPath = info.importPath
+			pb.importPathFile = info.path
+		} else if pb.importPath != info.importPath {
+			return fmt.Errorf("found import comments %q (%s) and %q (%s)", pb.importPath, pb.importPathFile, info.importPath, info.path)
+		}
+	}
+
 	return nil
 }
 
@@ -256,11 +257,28 @@ func (pb *packageBuilder) firstGoFile() string {
 	return ""
 }
 
+func (pb *packageBuilder) inferImportPath(c *config.Config) error {
+	if pb.importPath != "" {
+		log.Panic("importPath already set")
+	}
+	if pb.rel == c.GoPrefixRel {
+		if c.GoPrefix == "" {
+			return fmt.Errorf("in directory %q, prefix is empty, so importpath would be empty for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line.", pb.dir)
+		}
+		pb.importPath = c.GoPrefix
+	} else {
+		fromPrefixRel := strings.TrimPrefix(pb.rel, c.GoPrefixRel+"/")
+		pb.importPath = path.Join(c.GoPrefix, fromPrefixRel)
+	}
+	return nil
+}
+
 func (pb *packageBuilder) build() *Package {
 	return &Package{
 		Name:        pb.name,
 		Dir:         pb.dir,
 		Rel:         pb.rel,
+		ImportPath:  pb.importPath,
 		Library:     pb.library.build(),
 		Binary:      pb.binary.build(),
 		Test:        pb.test.build(),

@@ -40,7 +40,6 @@ type fileInfo struct {
 	// This may be read from a package comment (in Go) or a go_package
 	// option (in proto). This field is empty for files that don't specify
 	// an import path.
-	// TODO(#874): extract from Go files
 	importPath string
 
 	// category is the type of file, based on extension.
