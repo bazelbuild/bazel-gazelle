@@ -24,7 +24,7 @@ def _gazelle_runner_impl(ctx):
     args.extend(["-go_prefix", ctx.attr.prefix])
   if ctx.attr.build_tags:
     args.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
-  args.extend(ctx.attr.args)
+  args.extend(ctx.attr.extra_args)
 
   out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
   substitutions = {
