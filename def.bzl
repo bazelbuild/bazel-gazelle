@@ -49,8 +49,10 @@ def _gazelle_runner_impl(ctx):
       runfiles = runfiles,
       executable = out_file,
   )]
-
+  
+  
 _gazelle_runner = rule(
+    implementation = _gazelle_runner_impl,
     attrs = {
         "gazelle": attr.label(
             default = "@bazel_gazelle//cmd/gazelle",
@@ -58,26 +60,16 @@ _gazelle_runner = rule(
             cfg = "host",
         ),
         "command": attr.string(
-            values = [
-                "update",
-                "fix",
-            ],
+            values = ["update", "fix"],
             default = "update",
         ),
         "mode": attr.string(
-            values = [
-                "print",
-                "fix",
-                "diff",
-            ],
-            default = "fix",
+            values = ["print", "fix", "diff"],
+            default="fix"
         ),
         "external": attr.string(
-            values = [
-                "external",
-                "vendored",
-            ],
-            default = "external",
+            values = ["external", "vendored"],
+            default="external",
         ),
         "build_tags": attr.string_list(),
         "prefix": attr.string(),
@@ -88,12 +80,11 @@ _gazelle_runner = rule(
             cfg = "data",
         ),
         "_template": attr.label(
-            default = "@bazel_gazelle//internal:gazelle.bash.in",
-            allow_single_file = True,
+            default="@bazel_gazelle//internal:gazelle.bash.in",
+            allow_single_file=True,
         ),
     },
     executable = True,
-    implementation = _gazelle_runner_impl,
 )
 
 def gazelle(name, **kwargs):
