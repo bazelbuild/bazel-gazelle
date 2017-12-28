@@ -10,6 +10,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//config:go_default_library",
+        "//resolve:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
     ],
 )

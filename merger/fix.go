@@ -138,48 +138,38 @@ func squashCgoLibrary(oldFile *bf.File) *bf.File {
 
 // squashExpr combines two expressions. Unlike mergeExpr, squashExpr does not
 // discard information from an "old" expression. It does not sort or de-duplicate
-// elements. The following kinds of expressions are recognized:
-//
-//   * nil
-//   * lists
-//   * calls to select with a dict argument. The dict keys must be strings,
-//     and the values must be lists.
-//   * lists combined with select using +. The list must be the left operand.
+// elements. Any non-scalar expressions that mergeExpr understands can be
+// squashed.
 func squashExpr(x, y bf.Expr) (bf.Expr, error) {
-	xList, xDict, err := exprListAndDict(x)
+	xExprs, err := extractPlatformStringsExprs(x)
 	if err != nil {
 		return nil, err
 	}
-	yList, yDict, err := exprListAndDict(y)
+	yExprs, err := extractPlatformStringsExprs(y)
 	if err != nil {
 		return nil, err
 	}
-
-	squashedList := squashList(xList, yList)
-	squashedDict, err := squashDict(xDict, yDict)
+	squashedExprs, err := squashPlatformStringsExprs(xExprs, yExprs)
 	if err != nil {
 		return nil, err
 	}
+	return makePlatformStringsExpr(squashedExprs), nil
+}
 
-	var squashedSelect bf.Expr
-	if squashedDict != nil {
-		squashedSelect = &bf.CallExpr{
-			X:    &bf.LiteralExpr{Token: "select"},
-			List: []bf.Expr{squashedDict},
-		}
+func squashPlatformStringsExprs(x, y platformStringsExprs) (platformStringsExprs, error) {
+	var ps platformStringsExprs
+	var err error
+	ps.generic = squashList(x.generic, y.generic)
+	if ps.os, err = squashDict(x.os, y.os); err != nil {
+		return platformStringsExprs{}, err
 	}
-
-	if squashedList == nil {
-		return squashedDict, nil
+	if ps.arch, err = squashDict(x.arch, y.arch); err != nil {
+		return platformStringsExprs{}, err
 	}
-	if squashedSelect == nil {
-		return squashedList, nil
+	if ps.platform, err = squashDict(x.platform, y.platform); err != nil {
+		return platformStringsExprs{}, err
 	}
-	return &bf.BinaryExpr{
-		X:  squashedList,
-		Op: "+",
-		Y:  squashedSelect,
-	}, nil
+	return ps, nil
 }
 
 func squashList(x, y *bf.ListExpr) *bf.ListExpr {
