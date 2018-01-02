@@ -41,7 +41,11 @@ go_prefix("github.com/jr_hacker/tools")
 
 go_library(
     name = "go_default_library",
-    srcs = glob(["*.go"]),
+    srcs = [
+        "lex.go",
+        "print.go",
+        "debug.go",
+    ],
 )
 
 go_test(
@@ -316,6 +320,80 @@ go_library(
         ],
         "//conditions:default": [],
     }),
+)
+`,
+	}, {
+		desc: "os and arch",
+		previous: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "generic_1.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "os_linux.go",  # keep
+        ],
+        "//conditions:default": [],
+    }),
+)
+`,
+		current: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "generic_2.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:amd64": ["arch_amd64.go"],
+        "//conditions:default": [],
+    }),
+)
+`,
+		expected: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "generic_2.go",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "os_linux.go",  # keep
+        ],
+        "//conditions:default": [],
+    }) + select({
+        "@io_bazel_rules_go//go/platform:amd64": ["arch_amd64.go"],
+        "//conditions:default": [],
+    }),
+)
+`,
+	}, {
+		desc: "merge error keeps old",
+		previous: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = glob(["*.go"]),
+)
+`,
+		current: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+)
+`,
+		expected: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = glob(["*.go"]),
 )
 `,
 	}, {
