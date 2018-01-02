@@ -94,6 +94,18 @@ repository.
 The prefix only needs to be specified the first time you run Gazelle. To update
 existing BUILD.bazel files, you can just run ``gazelle`` without arguments.
 
+Compatibility
+-------------
+
+Gazelle generates build files that require a minimum version of ``rules_go``
+to build. Check the table below to ensure that you're using compatible versions.
+
++---------------------+------------------------------+------------------------------+
+| **Gazelle version** | **Minimum rules_go version** | **Maximum rules_go version** |
++=====================+==============================+==============================+
+| 0.8.0               | 0.8.0                        | n/a                          |
++---------------------+------------------------------+------------------------------+
+
 Usage
 -----
 
