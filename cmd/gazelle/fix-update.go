@@ -25,12 +25,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/merger"
-	"github.com/bazelbuild/bazel-gazelle/packages"
-	"github.com/bazelbuild/bazel-gazelle/resolve"
-	"github.com/bazelbuild/bazel-gazelle/rules"
-	"github.com/bazelbuild/bazel-gazelle/wspace"
+	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/merger"
+	"github.com/bazelbuild/bazel-gazelle/internal/packages"
+	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
+	"github.com/bazelbuild/bazel-gazelle/internal/rules"
+	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 

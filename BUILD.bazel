@@ -1,12 +1,5 @@
-# gazelle:exclude testdata
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle
 
 load("//:def.bzl", "gazelle")
 
 gazelle(name = "gazelle")
-
-filegroup(
-    name = "testdata",
-    srcs = glob(["testdata/**"]),
-    visibility = [":__subpackages__"],
-)
