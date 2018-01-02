@@ -18,7 +18,7 @@ package main
 import (
 	"os"
 
-	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 

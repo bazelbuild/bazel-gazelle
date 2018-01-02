@@ -23,9 +23,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bazelbuild/bazel-gazelle/merger"
-	"github.com/bazelbuild/bazel-gazelle/repos"
-	"github.com/bazelbuild/bazel-gazelle/wspace"
+	"github.com/bazelbuild/bazel-gazelle/internal/merger"
+	"github.com/bazelbuild/bazel-gazelle/internal/repos"
+	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
