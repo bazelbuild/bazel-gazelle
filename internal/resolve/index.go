@@ -40,8 +40,6 @@ type ruleRecord struct {
 	label      Label
 	lang       config.Language
 	importedAs []importSpec
-	generated  bool
-	replaced   bool
 	embedded   bool
 }
 
@@ -58,56 +56,35 @@ func NewRuleIndex() *RuleIndex {
 	}
 }
 
-// AddRulesFromFile adds existing rules to the index from oldFile
+// AddRulesFromFile adds existing rules to the index from file
 // (which must not be nil).
-func (ix *RuleIndex) AddRulesFromFile(c *config.Config, oldFile *bf.File) {
-	buildRel, err := filepath.Rel(c.RepoRoot, oldFile.Path)
+func (ix *RuleIndex) AddRulesFromFile(c *config.Config, file *bf.File) {
+	buildRel, err := filepath.Rel(c.RepoRoot, file.Path)
 	if err != nil {
-		log.Panicf("file not in repo: %s", oldFile.Path)
+		log.Panicf("file not in repo: %s", file.Path)
 	}
 	buildRel = path.Dir(filepath.ToSlash(buildRel))
 	if buildRel == "." || buildRel == "/" {
 		buildRel = ""
 	}
 
-	for _, stmt := range oldFile.Stmt {
+	for _, stmt := range file.Stmt {
 		if call, ok := stmt.(*bf.CallExpr); ok {
-			ix.addRule(call, c.GoPrefix, buildRel, false)
+			ix.addRule(call, c.GoPrefix, buildRel)
 		}
 	}
 }
 
-// AddGeneratedRules adds newly generated rules to the index. These may
-// replace existing rules with the same label.
-func (ix *RuleIndex) AddGeneratedRules(c *config.Config, buildRel string, rules []bf.Expr) {
-	for _, stmt := range rules {
-		if call, ok := stmt.(*bf.CallExpr); ok {
-			ix.addRule(call, c.GoPrefix, buildRel, true)
-		}
-	}
-}
-
-func (ix *RuleIndex) addRule(call *bf.CallExpr, goPrefix, buildRel string, generated bool) {
+func (ix *RuleIndex) addRule(call *bf.CallExpr, goPrefix, buildRel string) {
 	rule := bf.Rule{Call: call}
 	record := &ruleRecord{
 		rule:      rule,
 		label:     Label{Pkg: buildRel, Name: rule.Name()},
-		generated: generated,
 	}
 
-	if old, ok := ix.labelMap[record.label]; ok {
-		if !old.generated && !generated {
-			log.Printf("multiple rules found with label %s", record.label)
-		}
-		if old.generated && generated {
-			log.Panicf("multiple rules generated with label %s", record.label)
-		}
-		if !generated {
-			// Don't index an existing rule if we already have a generated rule
-			// of the same name.
-			return
-		}
-		old.replaced = true
+	if _, ok := ix.labelMap[record.label]; ok {
+		log.Printf("multiple rules found with label %s", record.label)
+		return
 	}
 
 	kind := rule.Kind()
@@ -137,24 +114,11 @@ func (ix *RuleIndex) addRule(call *bf.CallExpr, goPrefix, buildRel string, gener
 // actions after all rules have been added. This step is necessary because
 // a rule may be indexed differently based on what rules are added later.
 //
-// This function must be called after all AddRulesFromFile and AddGeneratedRules
-// calls but before any findRuleByImport calls.
+// This function must be called after all AddRulesFromFile calls but before any
+// findRuleByImport calls.
 func (ix *RuleIndex) Finish() {
-	ix.removeReplacedRules()
 	ix.skipGoEmbds()
 	ix.buildImportIndex()
-}
-
-// removeReplacedRules removes rules from existing files that were replaced
-// by generated rules.
-func (ix *RuleIndex) removeReplacedRules() {
-	oldRules := ix.rules
-	ix.rules = nil
-	for _, r := range oldRules {
-		if !r.replaced {
-			ix.rules = append(ix.rules, r)
-		}
-	}
 }
 
 // skipGoEmbeds sets the embedded flag on Go library rules that are imported

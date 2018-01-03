@@ -128,13 +128,6 @@ func init() {
 // are empty after merging. attrs is the set of attributes to merge. Attributes
 // not in this set will be left alone if they already exist.
 func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs MergeableAttrs) (mergedFile *bf.File, mergedRules []bf.Expr) {
-	if oldFile == nil {
-		return &bf.File{Stmt: genRules}, genRules
-	}
-	if shouldIgnore(oldFile) {
-		return nil, nil
-	}
-
 	mergedFile = new(bf.File)
 	*mergedFile = *oldFile
 	mergedFile.Stmt = make([]bf.Expr, 0, len(oldFile.Stmt))
@@ -584,18 +577,6 @@ func dictEntryKeyValue(e bf.Expr) (string, *bf.ListExpr, error) {
 		return "", nil, fmt.Errorf("dict value was not list: %#v", kv.Value)
 	}
 	return k.Value, v, nil
-}
-
-// shouldIgnore checks whether "gazelle:ignore" appears at the beginning of
-// a comment before or after any top-level statement in the file.
-func shouldIgnore(oldFile *bf.File) bool {
-	directives := config.ParseDirectives(oldFile)
-	for _, d := range directives {
-		if d.Key == "ignore" {
-			return true
-		}
-	}
-	return false
 }
 
 // shouldKeep returns whether an expression from the original file should be

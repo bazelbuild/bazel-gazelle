@@ -529,6 +529,34 @@ import "github.com/jr_hacker/stuff"
 	checkFiles(t, files, "example.com/repo", want)
 }
 
+func TestIgnore(t *testing.T) {
+	files := []fileSpec{
+		{
+			path: "BUILD",
+			content: "# gazelle:ignore",
+		}, {
+			path: "foo.go",
+			content: "package foo",
+		}, {
+			path: "bar/bar.go",
+			content: "package bar",
+		},
+	}
+	want := []*packages.Package{
+		{
+			Name: "bar",
+			Rel: "bar",
+			ImportPath: "example.com/repo/bar",
+			Library: packages.GoTarget{
+			Sources: packages.PlatformStrings{
+				Generic: []string{"bar.go"},
+			},
+			},
+		},
+	}
+	checkFiles(t, files, "example.com/repo", want)
+}
+
 func TestExcluded(t *testing.T) {
 	files := []fileSpec{
 		{
