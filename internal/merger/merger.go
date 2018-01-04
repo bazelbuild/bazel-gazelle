@@ -51,73 +51,95 @@ var (
 )
 
 func init() {
-	goKinds := []string{
-		"go_library",
-		"go_binary",
-		"go_test",
-		"go_proto_library",
-	}
-	allKinds := append(goKinds, "proto_library")
-
-	preResolveCommonAttrs := []string{"srcs"}
-	preResolveGoAttrs := []string{
-		"cgo",
-		"clinkopts",
-		"copts",
-		"embed",
-		"importpath",
-	}
-	preResolveGoProtoAttrs := []string{
-		"compilers",
-		"proto",
-	}
-
 	PreResolveAttrs = make(MergeableAttrs)
-	for _, kind := range allKinds {
-		PreResolveAttrs[kind] = make(map[string]bool)
-		for _, attr := range preResolveCommonAttrs {
-			PreResolveAttrs[kind][attr] = true
-		}
-	}
-	for _, kind := range goKinds {
-		for _, attr := range preResolveGoAttrs {
-			PreResolveAttrs[kind][attr] = true
-		}
-	}
-	for _, attr := range preResolveGoProtoAttrs {
-		PreResolveAttrs["go_proto_library"][attr] = true
-	}
-
-	postResolveCommonAttrs := []string{
-		"deps",
-		config.GazelleImportsKey,
-	}
-
 	PostResolveAttrs = make(MergeableAttrs)
-	for _, kind := range allKinds {
-		PostResolveAttrs[kind] = make(map[string]bool)
-		for _, attr := range postResolveCommonAttrs {
-			PostResolveAttrs[kind][attr] = true
-		}
-	}
-
-	repoKinds := []string{"go_repository"}
-	repoCommonAttrs := []string{
-		"commit",
-		"importpath",
-		"remote",
-		"sha256",
-		"strip_prefix",
-		"tag",
-		"type",
-		"urls",
-		"vcs",
-	}
 	RepoAttrs = make(MergeableAttrs)
-	for _, kind := range repoKinds {
-		RepoAttrs[kind] = make(map[string]bool)
-		for _, attr := range repoCommonAttrs {
-			RepoAttrs[kind][attr] = true
+	for _, set := range []struct {
+		mergeableAttrs MergeableAttrs
+		kinds, attrs   []string
+	}{
+		{
+			mergeableAttrs: PreResolveAttrs,
+			kinds: []string{
+				"go_library",
+				"go_binary",
+				"go_test",
+				"go_proto_library",
+				"proto_library",
+			},
+			attrs: []string{
+				"srcs",
+			},
+		}, {
+			mergeableAttrs: PreResolveAttrs,
+			kinds: []string{
+				"go_library",
+				"go_proto_library",
+			},
+			attrs: []string{
+				"importpath",
+			},
+		}, {
+			mergeableAttrs: PreResolveAttrs,
+			kinds: []string{
+				"go_library",
+				"go_binary",
+				"go_test",
+				"go_proto_library",
+			},
+			attrs: []string{
+				"cgo",
+				"clinkopts",
+				"copts",
+				"embed",
+			},
+		}, {
+			mergeableAttrs: PreResolveAttrs,
+			kinds: []string{
+				"go_proto_library",
+			},
+			attrs: []string{
+				"compilers",
+				"proto",
+			},
+		}, {
+			mergeableAttrs: PostResolveAttrs,
+			kinds: []string{
+				"go_library",
+				"go_binary",
+				"go_test",
+				"go_proto_library",
+				"proto_library",
+			},
+			attrs: []string{
+				"deps",
+				config.GazelleImportsKey,
+			},
+		}, {
+			mergeableAttrs: RepoAttrs,
+			kinds: []string{
+				"go_repository",
+			},
+			attrs: []string{
+				"commit",
+				"importpath",
+				"remote",
+				"sha256",
+				"strip_prefix",
+				"tag",
+				"type",
+				"urls",
+				"vcs",
+			},
+		},
+	} {
+		for _, kind := range set.kinds {
+			if set.mergeableAttrs[kind] == nil {
+				set.mergeableAttrs[kind] = make(map[string]bool)
+			}
+			for _, attr := range set.attrs {
+				set.mergeableAttrs[kind][attr] = true
+			}
 		}
 	}
 }

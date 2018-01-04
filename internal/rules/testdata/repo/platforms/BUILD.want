@@ -64,5 +64,4 @@ go_test(
         ],
         "//conditions:default": [],
     }),
-    importpath = "example.com/repo/platforms_test",
 )

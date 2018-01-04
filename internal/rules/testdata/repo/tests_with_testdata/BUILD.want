@@ -5,7 +5,6 @@ go_test(
     srcs = ["internal_test.go"],
     _gazelle_imports = ["testing"],
     data = glob(["testdata/**"]),
-    importpath = "example.com/repo/tests_with_testdata",
 )
 
 go_test(
@@ -13,5 +12,4 @@ go_test(
     srcs = ["external_test.go"],
     _gazelle_imports = ["testing"],
     data = glob(["testdata/**"]),
-    importpath = "example.com/repo/tests_with_testdata_test",
 )

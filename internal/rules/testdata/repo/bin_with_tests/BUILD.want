@@ -14,7 +14,6 @@ go_library(
 go_binary(
     name = "bin_with_tests",
     embed = [":go_default_library"],
-    importpath = "example.com/repo/bin_with_tests",
     visibility = ["//visibility:public"],
 )
 
@@ -23,5 +22,4 @@ go_test(
     srcs = ["bin_test.go"],
     _gazelle_imports = ["testing"],
     embed = [":go_default_library"],
-    importpath = "example.com/repo/bin_with_tests",
 )
