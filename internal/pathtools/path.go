@@ -1,4 +1,4 @@
-/* Copyright 2017 The Bazel Authors. All rights reserved.
+/* Copyright 2018 The Bazel Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,23 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package pathtools
 
 import "strings"
 
-// PathHasPrefix returns whether the slash-separated path p has the given
+// HasPrefix returns whether the slash-separated path p has the given
 // prefix. Unlike strings.HasPrefix, this function respects component
 // boundaries, so "/home/foo" is not a prefix is "/home/foobar/baz". If the
 // prefix is empty, this function always returns true.
-func PathHasPrefix(p, prefix string) bool {
+func HasPrefix(p, prefix string) bool {
 	return prefix == "" || p == prefix || strings.HasPrefix(p, prefix+"/")
 }
 
-// PathTrimPrefix returns p without the provided prefix. If p doesn't start
+// TrimPrefix returns p without the provided prefix. If p doesn't start
 // with prefix, it returns p unchanged. Unlike strings.HasPrefix, this function
 // respects component boundaries (assuming slash-separated paths), so
-// PathTrimPrefix("foo/bar", "foo") returns "baz".
-func PathTrimPrefix(p, prefix string) string {
+// TrimPrefix("foo/bar", "foo") returns "baz".
+func TrimPrefix(p, prefix string) string {
 	if prefix == "" {
 		return p
 	}

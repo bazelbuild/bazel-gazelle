@@ -1,4 +1,4 @@
-/* Copyright 2017 The Bazel Authors. All rights reserved.
+/* Copyright 2018 The Bazel Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,11 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package pathtools
 
 import "testing"
 
-func TestPathHasPrefix(t *testing.T) {
+func TestHasPrefix(t *testing.T) {
 	for _, tc := range []struct {
 		desc, path, prefix string
 		want               bool
@@ -50,14 +50,14 @@ func TestPathHasPrefix(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			if got := PathHasPrefix(tc.path, tc.prefix); got != tc.want {
+			if got := HasPrefix(tc.path, tc.prefix); got != tc.want {
 				t.Errorf("got %v ; want %v", got, tc.want)
 			}
 		})
 	}
 }
 
-func TestPathTrimPrefix(t *testing.T) {
+func TestTrimPrefix(t *testing.T) {
 	for _, tc := range []struct {
 		desc, path, prefix, want string
 	}{
@@ -84,7 +84,7 @@ func TestPathTrimPrefix(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			if got := PathTrimPrefix(tc.path, tc.prefix); got != tc.want {
+			if got := TrimPrefix(tc.path, tc.prefix); got != tc.want {
 				t.Errorf("got %q ; want %q", got, tc.want)
 			}
 		})
