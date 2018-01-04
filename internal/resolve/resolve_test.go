@@ -145,6 +145,7 @@ go_library(
 				},
 			},
 			imp:  "example.com/foo",
+			from: Label{Pkg: "sub", Name: "sub"},
 			want: Label{Pkg: "vendor/foo", Name: "vendored"},
 		}, {
 			desc: "deep_vendor_shallow_vendor",

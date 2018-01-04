@@ -21,6 +21,8 @@ import (
 	"path"
 	"regexp"
 	"strings"
+
+	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 )
 
 // A Label represents a label of a build target in Bazel.
@@ -132,5 +134,5 @@ func packageContains(repo, pkg string, label Label) bool {
 	if label.Relative {
 		log.Panicf("label must not be relative: %s", label)
 	}
-	return repo == label.Repo && (pkg == label.Pkg || strings.HasPrefix(label.Pkg, pkg+"/"))
+	return repo == label.Repo && pathtools.HasPrefix(label.Pkg, pkg)
 }

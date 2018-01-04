@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -89,7 +90,7 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		// Check if this directory should be updated.
 		if !isUpdateDir {
 			for _, updateRel := range updateRels {
-				if updateRel == "" || rel == updateRel || strings.HasPrefix(rel, updateRel+"/") {
+				if pathtools.HasPrefix(rel, updateRel) {
 					isUpdateDir = true
 				}
 			}
