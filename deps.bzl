@@ -22,11 +22,10 @@ def gazelle_dependencies():
   )
 
   # TODO(jayconrod): restore when gazelle is no longer built for go_repository.
-  # _maybe(go_repository,
-  #     name = "com_github_pelletier_go_toml",
-  #     importpath = "github.com/pelletier/go-toml",
-  #     commit = "16398bac157da96aa88f98a2df640c7f32af1da2", # v1.0.1 as of 2017-12-19
-  # )
+  _maybe(native.local_repository,
+      name = "com_github_pelletier_go_toml", # v1.0.1 as of 2017-12-19
+      path = "vendor/github.com/pelletier/go-toml",
+  )
 
 def _maybe(repo_rule, name, **kwargs):
   if name not in native.existing_rules():

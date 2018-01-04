@@ -12,5 +12,5 @@ go_library(
     ],
     importpath = "github.com/pelletier/go-toml/query",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/github.com/pelletier/go-toml:go_default_library"],
+    deps = ["//:go_default_library"],
 )
