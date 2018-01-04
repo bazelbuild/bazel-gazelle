@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/common"
 	"golang.org/x/tools/go/vcs"
 )
 
@@ -78,7 +79,7 @@ func (r *externalResolver) resolve(importpath string) (Label, error) {
 
 	var pkg string
 	if importpath != prefix {
-		pkg = strings.TrimPrefix(importpath, prefix+"/")
+		pkg = common.PathTrimPrefix(importpath, prefix)
 	}
 
 	label := r.l.LibraryLabel(pkg)

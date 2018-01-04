@@ -22,6 +22,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/common"
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	bf "github.com/bazelbuild/buildtools/build"
 )
@@ -231,11 +232,8 @@ func (r *Resolver) resolveGo(imp string, from Label) (Label, error) {
 		return label, nil
 	}
 
-	if imp == r.c.GoPrefix {
-		return r.l.LibraryLabel(""), nil
-	}
-	if r.c.GoPrefix == "" || strings.HasPrefix(imp, r.c.GoPrefix+"/") {
-		return r.l.LibraryLabel(strings.TrimPrefix(imp, r.c.GoPrefix+"/")), nil
+	if common.PathHasPrefix(imp, r.c.GoPrefix) {
+		return r.l.LibraryLabel(common.PathTrimPrefix(imp, r.c.GoPrefix)), nil
 	}
 
 	return r.external.resolve(imp)
