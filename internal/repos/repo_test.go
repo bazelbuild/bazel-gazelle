@@ -16,6 +16,9 @@ limitations under the License.
 package repos
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	bf "github.com/bazelbuild/buildtools/build"
@@ -35,5 +38,42 @@ func TestGenerateRepoRules(t *testing.T) {
 )`
 	if got != want {
 		t.Errorf("got %s ; want %s", got, want)
+	}
+}
+
+func TestFindExternalRepo(t *testing.T) {
+	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestFindExternalRepo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	dir, err = filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	name := "foo"
+	externalPath := filepath.Join(dir, "bazel", "output-base", "external", name)
+	if err := os.MkdirAll(externalPath, 0777); err != nil {
+		t.Fatal(err)
+	}
+
+	bazelOutPath := filepath.Join(dir, "bazel", "output-base", "execroot", "test", "bazel-out")
+	if err := os.MkdirAll(bazelOutPath, 0777); err != nil {
+		t.Fatal(err)
+	}
+
+	workspacePath := filepath.Join(dir, "workspace")
+	if err := os.MkdirAll(workspacePath, 0777); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(bazelOutPath, filepath.Join(workspacePath, "bazel-out")); err != nil {
+		t.Fatal(err)
+	}
+
+	if got, err := FindExternalRepo(workspacePath, name); err != nil {
+		t.Fatal(err)
+	} else if got != externalPath {
+		t.Errorf("got %q ; want %q", got, externalPath)
 	}
 }

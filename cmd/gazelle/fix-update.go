@@ -70,7 +70,14 @@ func runFixUpdate(cmd command, args []string) error {
 	if err != nil {
 		return err
 	}
-	c.ShouldFix = cmd == fixCmd
+	if cmd == fixCmd {
+		c.ShouldFix = cmd == fixCmd
+
+		// Only check the version when "fix" is run. Generated build files
+		// frequently work with older version of rules_go, and we don't want to
+		// nag too much since there's no way to disable this warning.
+		checkRulesGoVersion(c.RepoRoot)
+	}
 
 	l := resolve.NewLabeler(c)
 	ruleIndex := resolve.NewRuleIndex()
