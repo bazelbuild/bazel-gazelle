@@ -91,13 +91,11 @@ func runFixUpdate(cmd command, args []string) error {
 		// Fix any problems in the file.
 		if file != nil {
 			file = merger.FixFileMinor(c, file)
+			fixedFile := merger.FixFile(c, file)
 			if cmd == fixCmd {
-				file = merger.FixFile(c, file)
-			} else {
-				fixedFile := merger.FixFile(c, file)
-				if fixedFile != file {
-					log.Printf("%s: warning: file contains rules whose structure is out of date. Consider running 'gazelle fix'.", file.Path)
-				}
+				file = fixedFile
+			} else if fixedFile != file {
+				log.Printf("%s: warning: file contains rules whose structure is out of date. Consider running 'gazelle fix'.", file.Path)
 			}
 		}
 
