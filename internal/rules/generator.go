@@ -142,9 +142,6 @@ func (g *Generator) generateBin(pkg *packages.Package, library string) bf.Expr {
 	}
 	visibility := checkInternalVisibility(pkg.Rel, "//visibility:public")
 	attrs := g.commonAttrs(pkg.Rel, name, visibility, pkg.Binary)
-	// TODO(jayconrod): don't add importpath if it can be inherited from library.
-	// This is blocked by bazelbuild/bazel#3575.
-	attrs = append(attrs, KeyValue{"importpath", pkg.ImportPath})
 	if library != "" {
 		attrs = append(attrs, KeyValue{"embed", []string{":" + library}})
 	}
@@ -205,18 +202,13 @@ func checkInternalVisibility(rel, visibility string) string {
 func (g *Generator) generateTest(pkg *packages.Package, library string, isXTest bool) bf.Expr {
 	name := g.l.TestLabel(pkg.Rel, isXTest).Name
 	target := pkg.Test
-	importpath := pkg.ImportPath
 	if isXTest {
 		target = pkg.XTest
-		importpath += "_test"
 	}
 	if !target.HasGo() {
 		return EmptyRule("go_test", name)
 	}
 	attrs := g.commonAttrs(pkg.Rel, name, "", target)
-	// TODO(jayconrod): don't add importpath if it can be inherited from library.
-	// This is blocked by bazelbuild/bazel#3575.
-	attrs = append(attrs, KeyValue{"importpath", importpath})
 	if library != "" {
 		attrs = append(attrs, KeyValue{"embed", []string{":" + library}})
 	}

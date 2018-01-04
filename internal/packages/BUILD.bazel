@@ -15,6 +15,7 @@ go_library(
     deps = [
         "//internal/common:go_default_library",
         "//internal/config:go_default_library",
+        "//internal/pathtools:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
     ],
 )

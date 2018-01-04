@@ -127,5 +127,4 @@ go_test(
     srcs = ["foo_test.go"],
     _gazelle_imports = ["testing"],
     embed = [":go_default_library"],
-    importpath = "example.com/repo/cgolib_with_build_tags",
 )

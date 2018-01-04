@@ -9,5 +9,4 @@ go_library(
 go_binary(
     name = "cmd",
     embed = [":go_default_library"],
-    importpath = "example.com/repo/default_visibility/cmd",
 )
