@@ -7,7 +7,6 @@ go_test(
         "example.com/repo/tests_import_testdata/testdata",
         "testing",
     ],
-    importpath = "example.com/repo/tests_import_testdata",
 )
 
 go_test(
@@ -17,5 +16,4 @@ go_test(
         "example.com/repo/tests_import_testdata/testdata",
         "testing",
     ],
-    importpath = "example.com/repo/tests_import_testdata_test",
 )

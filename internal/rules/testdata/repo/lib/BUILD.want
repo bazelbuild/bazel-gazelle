@@ -23,7 +23,6 @@ go_test(
     srcs = ["lib_test.go"],
     _gazelle_imports = ["testing"],
     embed = [":go_default_library"],
-    importpath = "example.com/repo/lib",
 )
 
 go_test(
@@ -33,5 +32,4 @@ go_test(
         "example.com/repo/lib",
         "testing",
     ],
-    importpath = "example.com/repo/lib_test",
 )
