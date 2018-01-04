@@ -105,36 +105,7 @@ go_test(
     data = glob(["testdata/*"]),
     embed = [":go_default_library"],
 )
-`},
-	{
-		desc: "ignore top",
-		previous: `# gazelle:ignore
-
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-
-go_library(
-    name = "go_default_library",
-    srcs = [
-        "lex.go",
-        "print.go",
-    ],
-)
-`,
-		ignore: true,
-	}, {
-		desc: "ignore before first",
-		previous: `
-# gazelle:ignore
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-`,
-		ignore: true,
-	}, {
-		desc: "ignore after last",
-		previous: `
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-# gazelle:ignore`,
-		ignore: true,
-	}, {
+`}, {
 		desc: "merge dicts",
 		previous: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")

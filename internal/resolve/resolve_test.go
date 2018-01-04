@@ -263,53 +263,6 @@ go_library(
 	}
 }
 
-func TestIndexGenRuleReplacesOldRule(t *testing.T) {
-	c := &config.Config{
-		GoPrefix: "example.com/repo",
-		DepMode:  config.VendorMode,
-	}
-	ix := NewRuleIndex()
-
-	buildContent := []byte(`
-go_library(
-    name = "go_default_library",
-    importpath = "example.com/old",
-)
-`)
-	oldFile, err := bf.Parse("BUILD.bazel", buildContent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ix.AddRulesFromFile(c, oldFile)
-
-	genContent := []byte(`
-go_library(
-    name = "go_default_library",
-    importpath = "example.com/new",
-)
-`)
-	genFile, err := bf.Parse("gen", genContent)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ix.AddGeneratedRules(c, "", genFile.Stmt)
-
-	ix.Finish()
-
-	got, err := ix.findLabelByImport(importSpec{config.GoLang, "example.com/old"}, config.GoLang, NoLabel)
-	if err == nil {
-		t.Errorf("when importing example.com/old, got %s ; want error", got)
-	}
-
-	got, err = ix.findLabelByImport(importSpec{config.GoLang, "example.com/new"}, config.GoLang, NoLabel)
-	want := Label{Name: "go_default_library"}
-	if err != nil {
-		t.Errorf("when importing example.com/new, got error %v ; want %s", err, want)
-	} else if !reflect.DeepEqual(got, want) {
-		t.Errorf("when importing example.com/new, got %s ; want %s", got, want)
-	}
-}
-
 func TestResolveGoLocal(t *testing.T) {
 	for _, spec := range []struct {
 		importpath string

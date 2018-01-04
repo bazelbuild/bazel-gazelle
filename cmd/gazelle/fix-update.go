@@ -79,31 +79,29 @@ func runFixUpdate(cmd command, args []string) error {
 
 	// Visit all directories in the repository.
 	packages.Walk(c, c.RepoRoot, func(rel string, c *config.Config, pkg *packages.Package, file *bf.File, isUpdateDir bool) {
-		if file != nil {
-			// Fix files in update directories.
-			if isUpdateDir {
-				file = merger.FixFileMinor(c, file)
-				if cmd == fixCmd {
-					file = merger.FixFile(c, file)
-				} else {
-					fixedFile := merger.FixFile(c, file)
-					if fixedFile != file {
-						log.Printf("%s: warning: file contains rules whose structure is out of date. Consider running 'gazelle fix'.", file.Path)
-					}
-				}
-			}
-
-			// Index existing rules.
-			ruleIndex.AddRulesFromFile(c, file)
-		}
-
-		// TODO(#939): delete rules in directories where pkg == nil (no buildable
-		// Go code).
+		// If this file is ignored or if Gazelle was not asked to update this
+		// directory, just index the build file and move on.
 		if !isUpdateDir {
+			if file != nil {
+				ruleIndex.AddRulesFromFile(c, file)
+			}
 			return
 		}
 
-		// Generate rules.
+		// Fix any problems in the file.
+		if file != nil {
+			file = merger.FixFileMinor(c, file)
+			fixedFile := merger.FixFile(c, file)
+			if cmd == fixCmd {
+				file = fixedFile
+			} else if fixedFile != file {
+				log.Printf("%s: warning: file contains rules whose structure is out of date. Consider running 'gazelle fix'.", file.Path)
+			}
+		}
+
+		// Generate new rules and merge them into the existing file (if present).
+		// TODO(#61): delete rules in directories where pkg == nil (no buildable
+		// Go code).
 		if pkg != nil {
 			g := rules.NewGenerator(c, l, file)
 			rules, empty, err := g.GenerateRules(pkg)
@@ -111,20 +109,25 @@ func runFixUpdate(cmd command, args []string) error {
 				log.Print(err)
 				return
 			}
-			file, rules = merger.MergeFile(rules, empty, file, merger.PreResolveAttrs)
 			if file == nil {
-				return
+				file = &bf.File{
+					Path: filepath.Join(c.RepoRoot, filepath.FromSlash(rel), c.DefaultBuildFileName()),
+					Stmt: rules,
+				}
+			} else {
+				file, rules = merger.MergeFile(rules, empty, file, merger.PreResolveAttrs)
 			}
-			if file.Path == "" {
-				file.Path = filepath.Join(c.RepoRoot, filepath.FromSlash(rel), c.DefaultBuildFileName())
-			}
-			ruleIndex.AddGeneratedRules(c, rel, rules)
 			visits = append(visits, visitRecord{
 				pkgRel: rel,
 				rules:  rules,
 				empty:  empty,
 				file:   file,
 			})
+		}
+
+		// Add library rules to the dependency resolution table.
+		if file != nil {
+			ruleIndex.AddRulesFromFile(c, file)
 		}
 	})
 

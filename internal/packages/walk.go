@@ -139,9 +139,13 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		}
 		c = config.InferProtoMode(c, oldFile, directives)
 
+		var ignore bool
 		for _, d := range directives {
-			if d.Key == "exclude" {
+			switch d.Key {
+			case "exclude":
 				excluded = append(excluded, d.Value)
+			case "ignore":
+				ignore = true
 			}
 		}
 
@@ -187,8 +191,8 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		}
 
 		hasPackage := subdirHasPackage || oldFile != nil
-		if haveError || !isUpdateDir {
-			f(rel, c, nil, oldFile, isUpdateDir)
+		if haveError || !isUpdateDir || ignore {
+			f(rel, c, nil, oldFile, false)
 			return hasPackage
 		}
 
@@ -198,7 +202,7 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 			genFiles = findGenFiles(oldFile, excluded)
 		}
 		pkg := buildPackage(c, dir, rel, pkgFiles, otherFiles, genFiles, hasTestdata)
-		f(rel, c, pkg, oldFile, isUpdateDir)
+		f(rel, c, pkg, oldFile, true)
 		return hasPackage || pkg != nil
 	}
 
