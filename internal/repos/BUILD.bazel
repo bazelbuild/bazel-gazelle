@@ -11,8 +11,8 @@ go_library(
     deps = [
         "//internal/resolve:go_default_library",
         "//internal/rules:go_default_library",
+        "//vendor/github.com/pelletier/go-toml:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
-        "@com_github_pelletier_go_toml//:go_default_library",
     ],
 )
 

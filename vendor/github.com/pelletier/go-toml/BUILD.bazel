@@ -1,5 +1,3 @@
-# gazelle:prefix github.com/pelletier/go-toml
-
 # Exclude test files, since they pull in additional dependencies
 # gazelle:exclude benchmark_test.go
 # gazelle:exclude cmd/tomljson/main_test.go
