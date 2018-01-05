@@ -36,6 +36,9 @@ var minimumRulesGoVersion = version.Version{0, 9, 0}
 // if we find an incompatible version, we shouldn't bail out since the
 // incompatibility may not matter in the current workspace.
 func checkRulesGoVersion(repoRoot string) {
+	const message = `Gazelle may not be compatible with this version of rules_go.
+Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
+
 	rulesGoPath, err := repos.FindExternalRepo(repoRoot, config.RulesGoRepoName)
 	if err != nil {
 		return
@@ -48,15 +51,15 @@ func checkRulesGoVersion(repoRoot string) {
 	versionRe := regexp.MustCompile(`(?m)^RULES_GO_VERSION = ['"]([0-9.]*)['"]`)
 	match := versionRe.FindSubmatch(defBzlContent)
 	if match == nil {
-		log.Printf("RULES_GO_VERSION not found in @%s//go:def.bzl. Gazelle may not be compatible with this version of rules_go.", config.RulesGoRepoName)
+		log.Printf("RULES_GO_VERSION not found in @%s//go:def.bzl.\n%s", config.RulesGoRepoName, message)
 		return
 	}
 	vstr := string(match[1])
 	v, err := version.ParseVersion(vstr)
 	if err != nil {
-		log.Printf("RULES_GO_VERSION %q could not be parsed in @%s//go:def.bzl. Gazelle may not be compatible with this version of rules_go.", vstr, config.RulesGoRepoName)
+		log.Printf("RULES_GO_VERSION %q could not be parsed in @%s//go:def.bzl.\n%s", vstr, config.RulesGoRepoName, message)
 	}
 	if v.Compare(minimumRulesGoVersion) < 0 {
-		log.Printf("Gazelle may not be compatible with the version of rules_go in use. Found %s, minimum is %s.", v, minimumRulesGoVersion)
+		log.Printf("Found RULES_GO_VERSION %s. Minimum compatible version is %s.\n%s", v, minimumRulesGoVersion, message)
 	}
 }
