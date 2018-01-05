@@ -17,8 +17,10 @@ package repos
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/rules"
 	bf "github.com/bazelbuild/buildtools/build"
@@ -90,4 +92,31 @@ func generateRepoRule(repo repo) bf.Expr {
 		attrs = append(attrs, rules.KeyValue{Key: "remote", Value: repo.remote})
 	}
 	return rules.NewRule("go_repository", attrs)
+}
+
+// FindExternalRepo attempts to locate the directory where Bazel has fetched
+// the external repository with the given name. An error is returned if the
+// repository directory cannot be located.
+func FindExternalRepo(repoRoot, name string) (string, error) {
+	// See https://docs.bazel.build/versions/master/output_directories.html
+	// for documentation on Bazel directory layout.
+	// We expect the bazel-out symlink in the workspace root directory to point to
+	// <output-base>/execroot/<workspace-name>/bazel-out
+	// We expect the external repository to be checked out at
+	// <output-base>/external/<name>
+	// Note that users can change the prefix for most of the Bazel symlinks with
+	// --symlink_prefix, but this does not include bazel-out.
+	externalPath := strings.Join([]string{repoRoot, "bazel-out", "..", "..", "..", "external", name}, string(os.PathSeparator))
+	cleanPath, err := filepath.EvalSymlinks(externalPath)
+	if err != nil {
+		return "", err
+	}
+	st, err := os.Stat(cleanPath)
+	if err != nil {
+		return "", err
+	}
+	if !st.IsDir() {
+		return "", fmt.Errorf("%s: not a directory", externalPath)
+	}
+	return cleanPath, nil
 }
