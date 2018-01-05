@@ -138,7 +138,7 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 			directives = config.ParseDirectives(oldFile)
 			c = config.ApplyDirectives(c, directives, rel)
 		}
-		c = config.InferProtoMode(c, oldFile, directives)
+		c = config.InferProtoMode(c, rel, oldFile, directives)
 
 		var ignore bool
 		for _, d := range directives {

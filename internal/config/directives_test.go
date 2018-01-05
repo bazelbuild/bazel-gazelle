@@ -104,6 +104,7 @@ func TestInferProtoMode(t *testing.T) {
 	for _, tc := range []struct {
 		desc, content string
 		c             Config
+		rel           string
 		want          ProtoMode
 	}{
 		{
@@ -119,6 +120,10 @@ func TestInferProtoMode(t *testing.T) {
 load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
 `,
 			want: DefaultProtoMode,
+		}, {
+			desc: "vendor",
+			rel:  "vendor",
+			want: DisableProtoMode,
 		}, {
 			desc:    "legacy",
 			content: `load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")`,
@@ -154,7 +159,7 @@ load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
 				directives = ParseDirectives(f)
 			}
 
-			got := InferProtoMode(&tc.c, f, directives)
+			got := InferProtoMode(&tc.c, tc.rel, f, directives)
 			if got.ProtoMode != tc.want {
 				t.Errorf("got proto mode %v ; want %v", got.ProtoMode, tc.want)
 			}
