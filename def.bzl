@@ -97,6 +97,7 @@ def gazelle(name, **kwargs):
     kwargs.pop("args")
   _gazelle_runner(
       name = name,
+      args = ["-bazel_run"],
       workspace = "//:WORKSPACE",
       tags = ["manual"],
       **kwargs
