@@ -17,6 +17,7 @@ package config
 
 import (
 	"log"
+	"path"
 	"regexp"
 	"strings"
 
@@ -129,7 +130,7 @@ func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
 // legacy go_proto_library.bzl is loaded, or if this is the Well Known Types
 // repository, legacy mode is used. If go_proto_library is loaded from another
 // file, proto rule generation is disabled.
-func InferProtoMode(c *Config, f *bf.File, directives []Directive) *Config {
+func InferProtoMode(c *Config, rel string, f *bf.File, directives []Directive) *Config {
 	if c.ProtoMode != DefaultProtoMode {
 		return c
 	}
@@ -146,6 +147,11 @@ func InferProtoMode(c *Config, f *bf.File, directives []Directive) *Config {
 		// generated, which are depended upon by the new rules.
 		modified := *c
 		modified.ProtoMode = LegacyProtoMode
+		return &modified
+	}
+	if path.Base(rel) == "vendor" {
+		modified := *c
+		modified.ProtoMode = DisableProtoMode
 		return &modified
 	}
 	if f == nil {
