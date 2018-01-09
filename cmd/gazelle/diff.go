@@ -25,7 +25,7 @@ import (
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
-func diffFile(c *config.Config, file *bf.File) error {
+func diffFile(c *config.Config, file *bf.File, path string) error {
 	oldContents, err := ioutil.ReadFile(file.Path)
 	if err != nil {
 		oldContents = nil
@@ -43,7 +43,7 @@ func diffFile(c *config.Config, file *bf.File) error {
 	if err := ioutil.WriteFile(f.Name(), newContents, 0666); err != nil {
 		return err
 	}
-	cmd := exec.Command("diff", "-u", "--new-file", file.Path, f.Name())
+	cmd := exec.Command("diff", "-u", "--new-file", path, f.Name())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err = cmd.Run()

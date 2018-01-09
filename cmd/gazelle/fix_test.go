@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -62,12 +63,9 @@ func TestFixFile(t *testing.T) {
 			},
 		},
 	}
+	c := &config.Config{}
 
-	c, _, err := newFixUpdateConfiguration(defaultArgs(dir))
-	if err != nil {
-		t.Fatalf("newFixUpdateConfiguration faied with %v; want success", err)
-	}
-	if err := fixFile(c, stubFile); err != nil {
+	if err := fixFile(c, stubFile, stubFile.Path); err != nil {
 		t.Errorf("fixFile(%#v) failed with %v; want success", stubFile, err)
 		return
 	}

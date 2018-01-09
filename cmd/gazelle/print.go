@@ -22,7 +22,7 @@ import (
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
-func printFile(c *config.Config, f *bf.File) error {
+func printFile(c *config.Config, f *bf.File, _ string) error {
 	_, err := os.Stdout.Write(bf.Format(f))
 	return err
 }
