@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
@@ -86,7 +87,7 @@ func runFixUpdate(cmd command, args []string) error {
 		checkRulesGoVersion(uc.c.RepoRoot)
 	}
 
-	l := resolve.NewLabeler(uc.c)
+	l := label.NewLabeler(uc.c)
 	ruleIndex := resolve.NewRuleIndex()
 
 	var visits []visitRecord

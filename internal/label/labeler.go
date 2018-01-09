@@ -13,13 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resolve
+package label
 
 import (
-	"path"
-	"path/filepath"
-
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 )
 
 // Labeler generates Bazel labels for rules, based on their locations
@@ -47,7 +45,7 @@ func (l *Labeler) TestLabel(rel string, isXTest bool) Label {
 }
 
 func (l *Labeler) BinaryLabel(rel string) Label {
-	name := relBaseName(l.c, rel)
+	name := pathtools.RelBaseName(rel, l.c.GoPrefix, l.c.RepoRoot)
 	return Label{Pkg: rel, Name: name}
 }
 
@@ -57,18 +55,4 @@ func (l *Labeler) ProtoLabel(rel, name string) Label {
 
 func (l *Labeler) GoProtoLabel(rel, name string) Label {
 	return Label{Pkg: rel, Name: name + "_go_proto"}
-}
-
-func relBaseName(c *config.Config, rel string) string {
-	base := path.Base(rel)
-	if base == "." || base == "/" {
-		base = path.Base(c.GoPrefix)
-	}
-	if base == "." || base == "/" {
-		base = filepath.Base(c.RepoRoot)
-	}
-	if base == "." || base == "/" {
-		base = "root"
-	}
-	return base
 }

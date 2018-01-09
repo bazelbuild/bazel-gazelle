@@ -22,9 +22,9 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
-	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rules"
 	bf "github.com/bazelbuild/buildtools/build"
 )
@@ -57,7 +57,7 @@ func TestGenerator(t *testing.T) {
 	repoRoot := filepath.FromSlash("testdata/repo")
 	goPrefix := "example.com/repo"
 	c := testConfig(repoRoot, goPrefix)
-	l := resolve.NewLabeler(c)
+	l := label.NewLabeler(c)
 
 	var dirs []string
 	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, err error) error {
@@ -106,7 +106,7 @@ func TestGenerator(t *testing.T) {
 
 func TestGeneratorEmpty(t *testing.T) {
 	c := testConfig("", "example.com/repo")
-	l := resolve.NewLabeler(c)
+	l := label.NewLabeler(c)
 	g := rules.NewGenerator(c, l, nil)
 
 	pkg := packages.Package{Name: "foo"}
@@ -141,7 +141,7 @@ go_test(name = "go_default_xtest")
 func TestGeneratorEmptyLegacyProto(t *testing.T) {
 	c := testConfig("", "example.com/repo")
 	c.ProtoMode = config.LegacyProtoMode
-	l := resolve.NewLabeler(c)
+	l := label.NewLabeler(c)
 	g := rules.NewGenerator(c, l, nil)
 
 	pkg := packages.Package{Name: "foo"}

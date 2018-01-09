@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resolve
+package label
 
 import (
 	"fmt"
@@ -130,9 +130,26 @@ func (l Label) Equal(other Label) bool {
 		l.Relative == other.Relative
 }
 
-func packageContains(repo, pkg string, label Label) bool {
+// PackageContains tests whether a label is contained within a given repository
+// and package. The label must not be relative.
+func PackageContains(repo, pkg string, label Label) bool {
 	if label.Relative {
 		log.Panicf("label must not be relative: %s", label)
 	}
 	return repo == label.Repo && pathtools.HasPrefix(label.Pkg, pkg)
+}
+
+// ImportPathToBazelRepoName converts a Go import path into a bazel repo name
+// following the guidelines in http://bazel.io/docs/be/functions.html#workspace
+func ImportPathToBazelRepoName(importpath string) string {
+	importpath = strings.ToLower(importpath)
+	components := strings.Split(importpath, "/")
+	labels := strings.Split(components[0], ".")
+	var reversed []string
+	for i := range labels {
+		l := labels[len(labels)-i-1]
+		reversed = append(reversed, l)
+	}
+	repo := strings.Join(append(reversed, components[1:]...), "_")
+	return strings.NewReplacer("-", "_", ".", "_").Replace(repo)
 }

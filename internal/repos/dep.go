@@ -18,7 +18,7 @@ package repos
 import (
 	"io/ioutil"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	toml "github.com/pelletier/go-toml"
 )
 
@@ -44,9 +44,8 @@ func importRepoRulesDep(filename string) ([]repo, error) {
 
 	var repos []repo
 	for _, p := range file.Projects {
-
 		repos = append(repos, repo{
-			name:       resolve.ImportPathToBazelRepoName(p.Name),
+			name:       label.ImportPathToBazelRepoName(p.Name),
 			importPath: p.Name,
 			commit:     p.Revision,
 			remote:     p.Source,

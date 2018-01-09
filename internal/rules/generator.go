@@ -22,14 +22,14 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
-	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
 // NewGenerator returns a new instance of Generator.
 // "oldFile" is the existing build file. May be nil.
-func NewGenerator(c *config.Config, l *resolve.Labeler, oldFile *bf.File) *Generator {
+func NewGenerator(c *config.Config, l *label.Labeler, oldFile *bf.File) *Generator {
 	shouldSetVisibility := oldFile == nil || !hasDefaultVisibility(oldFile)
 	return &Generator{c: c, l: l, shouldSetVisibility: shouldSetVisibility}
 }
@@ -37,7 +37,7 @@ func NewGenerator(c *config.Config, l *resolve.Labeler, oldFile *bf.File) *Gener
 // Generator generates Bazel build rules for Go build targets.
 type Generator struct {
 	c                   *config.Config
-	l                   *resolve.Labeler
+	l                   *label.Labeler
 	shouldSetVisibility bool
 }
 
