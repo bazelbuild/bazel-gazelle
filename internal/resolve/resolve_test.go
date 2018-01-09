@@ -186,7 +186,7 @@ go_library(
 
 			ix.Finish()
 
-			r := NewResolver(c, l, ix)
+			r := NewResolver(c, l, ix, nil)
 			got, err := r.resolveGo(tc.imp, tc.from)
 			if err != nil {
 				if tc.wantErr == "" {
@@ -240,7 +240,7 @@ go_library(
 	ix := NewRuleIndex()
 	ix.AddRulesFromFile(c, f)
 	ix.Finish()
-	r := NewResolver(c, l, ix)
+	r := NewResolver(c, l, ix, nil)
 
 	wantProto := label.Label{Pkg: "sub", Name: "foo_proto"}
 	if got, err := r.resolveProto("sub/bar.proto", label.Label{Pkg: "baz", Name: "baz"}); err != nil {
@@ -297,7 +297,7 @@ func TestResolveGoLocal(t *testing.T) {
 		c := &config.Config{GoPrefix: "example.com/repo"}
 		l := label.NewLabeler(c)
 		ix := NewRuleIndex()
-		r := NewResolver(c, l, ix)
+		r := NewResolver(c, l, ix, nil)
 		label, err := r.resolveGo(spec.importpath, spec.from)
 		if err != nil {
 			t.Errorf("r.resolveGo(%q) failed with %v; want success", spec.importpath, err)
@@ -313,7 +313,7 @@ func TestResolveGoLocalError(t *testing.T) {
 	c := &config.Config{GoPrefix: "example.com/repo"}
 	l := label.NewLabeler(c)
 	ix := NewRuleIndex()
-	r := NewResolver(c, l, ix)
+	r := NewResolver(c, l, ix, nil)
 
 	for _, importpath := range []string{
 		"fmt",
@@ -335,7 +335,7 @@ func TestResolveGoEmptyPrefix(t *testing.T) {
 	c := &config.Config{}
 	l := label.NewLabeler(c)
 	ix := NewRuleIndex()
-	r := NewResolver(c, l, ix)
+	r := NewResolver(c, l, ix, nil)
 
 	imp := "foo"
 	want := label.Label{Pkg: "foo", Name: config.DefaultLibName}
@@ -407,7 +407,7 @@ func TestResolveProto(t *testing.T) {
 			}
 			l := label.NewLabeler(c)
 			ix := NewRuleIndex()
-			r := NewResolver(c, l, ix)
+			r := NewResolver(c, l, ix, nil)
 
 			got, err := r.resolveProto(tc.imp, tc.from)
 			if err != nil {

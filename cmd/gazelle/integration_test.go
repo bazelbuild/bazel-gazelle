@@ -1064,6 +1064,55 @@ go_library(
 	})
 }
 
+func TestCustomRepoNames(t *testing.T) {
+	files := []fileSpec{
+		{
+			path: "WORKSPACE",
+			content: `
+go_repository(
+    name = "custom_repo",
+    importpath = "example.com/bar",
+    commit = "123456",
+)
+`,
+		}, {
+			path: "foo.go",
+			content: `
+package foo
+
+import _ "example.com/bar"
+`,
+		},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	args := []string{"-go_prefix", "example.com/foo"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	checkFiles(t, dir, []fileSpec{
+		{
+			path: "BUILD.bazel",
+			content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+    deps = ["@custom_repo//:go_default_library"],
+)
+`,
+		},
+	})
+}
+
 func TestImportReposFromDep(t *testing.T) {
 	files := []fileSpec{
 		{

@@ -29,6 +29,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
+	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rules"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
@@ -42,6 +43,7 @@ type updateConfig struct {
 	c                 *config.Config
 	emit              emitFunc
 	outDir, outSuffix string
+	repos             []repos.Repo
 }
 
 type emitFunc func(*config.Config, *bf.File, string) error
@@ -150,7 +152,7 @@ func runFixUpdate(cmd command, args []string) error {
 	ruleIndex.Finish()
 
 	// Resolve dependencies.
-	resolver := resolve.NewResolver(uc.c, l, ruleIndex)
+	resolver := resolve.NewResolver(uc.c, l, ruleIndex, uc.repos)
 	for i := range visits {
 		for j := range visits[i].rules {
 			visits[i].rules[j] = resolver.ResolveRule(visits[i].rules[j], visits[i].pkgRel)
@@ -282,7 +284,32 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 	uc.outDir = *outDir
 	uc.outSuffix = *outSuffix
 
-	uc.c.KnownImports = append(uc.c.KnownImports, knownImports...)
+	workspacePath := filepath.Join(uc.c.RepoRoot, "WORKSPACE")
+	workspaceContent, err := ioutil.ReadFile(workspacePath)
+	if os.IsNotExist(err) {
+		workspaceContent = nil
+	} else if err != nil {
+		return nil, err
+	}
+	workspace, err := bf.Parse(workspacePath, workspaceContent)
+	if err != nil {
+		return nil, err
+	}
+	uc.repos = repos.ListRepositories(workspace)
+	repoPrefixes := make(map[string]bool)
+	for _, r := range uc.repos {
+		repoPrefixes[r.GoPrefix] = true
+	}
+	for _, imp := range knownImports {
+		if repoPrefixes[imp] {
+			continue
+		}
+		repo := repos.Repo{
+			Name:     label.ImportPathToBazelRepoName(imp),
+			GoPrefix: imp,
+		}
+		uc.repos = append(uc.repos, repo)
+	}
 
 	return uc, nil
 }
