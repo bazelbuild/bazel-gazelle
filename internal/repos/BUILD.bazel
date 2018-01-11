@@ -9,7 +9,7 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/repos",
     visibility = ["//visibility:public"],
     deps = [
-        "//internal/resolve:go_default_library",
+        "//internal/label:go_default_library",
         "//internal/rules:go_default_library",
         "//vendor/github.com/pelletier/go-toml:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",

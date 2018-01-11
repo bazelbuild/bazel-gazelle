@@ -15,7 +15,11 @@ limitations under the License.
 
 package pathtools
 
-import "strings"
+import (
+	"path"
+	"path/filepath"
+	"strings"
+)
 
 // HasPrefix returns whether the slash-separated path p has the given
 // prefix. Unlike strings.HasPrefix, this function respects component
@@ -37,4 +41,23 @@ func TrimPrefix(p, prefix string) string {
 		return ""
 	}
 	return strings.TrimPrefix(p, prefix+"/")
+}
+
+// RelBaseName returns the base name for rel, a slash-separated path relative
+// to the repository root. If rel is empty, RelBaseName returns the base name
+// of prefix. If prefix is empty, RelBaseName returns the base name of root,
+// the absolute file path of the repository root directory. If that's empty
+// to, then RelBaseName returns "root".
+func RelBaseName(rel, prefix, root string) string {
+	base := path.Base(rel)
+	if base == "." || base == "/" {
+		base = path.Base(prefix)
+	}
+	if base == "." || base == "/" {
+		base = filepath.Base(root)
+	}
+	if base == "." || base == "/" {
+		base = "root"
+	}
+	return base
 }

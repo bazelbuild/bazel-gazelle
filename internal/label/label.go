@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package resolve
+package label
 
 import (
 	"fmt"
@@ -31,6 +31,10 @@ type Label struct {
 	Relative        bool
 }
 
+func New(repo, pkg, name string) Label {
+	return Label{Repo: repo, Pkg: pkg, Name: name}
+}
+
 // NoLabel is the nil value of Label. It is not a valid label and may be
 // returned when an error occurs.
 var NoLabel = Label{}
@@ -41,9 +45,9 @@ var (
 	labelNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_/.+=,@~-]*$`)
 )
 
-// ParseLabel reads a label from a string.
+// Parse reads a label from a string.
 // See https://docs.bazel.build/versions/master/build-ref.html#lexi.
-func ParseLabel(s string) (Label, error) {
+func Parse(s string) (Label, error) {
 	origStr := s
 
 	relative := true
@@ -130,9 +134,30 @@ func (l Label) Equal(other Label) bool {
 		l.Relative == other.Relative
 }
 
-func packageContains(repo, pkg string, label Label) bool {
-	if label.Relative {
-		log.Panicf("label must not be relative: %s", label)
+// Contains returns whether other is contained by the package of l or a
+// sub-package. Neither label may be relative.
+func (l Label) Contains(other Label) bool {
+	if l.Relative {
+		log.Panicf("l must not be relative: %s", l)
 	}
-	return repo == label.Repo && pathtools.HasPrefix(label.Pkg, pkg)
+	if other.Relative {
+		log.Panicf("other must not be relative: %s", other)
+	}
+	result := l.Repo == other.Repo && pathtools.HasPrefix(other.Pkg, l.Pkg)
+	return result
+}
+
+// ImportPathToBazelRepoName converts a Go import path into a bazel repo name
+// following the guidelines in http://bazel.io/docs/be/functions.html#workspace
+func ImportPathToBazelRepoName(importpath string) string {
+	importpath = strings.ToLower(importpath)
+	components := strings.Split(importpath, "/")
+	labels := strings.Split(components[0], ".")
+	var reversed []string
+	for i := range labels {
+		l := labels[len(labels)-i-1]
+		reversed = append(reversed, l)
+	}
+	repo := strings.Join(append(reversed, components[1:]...), "_")
+	return strings.NewReplacer("-", "_", ".", "_").Replace(repo)
 }

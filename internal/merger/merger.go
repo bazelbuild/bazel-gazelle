@@ -23,7 +23,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -357,7 +357,7 @@ func extractPlatformStringsExprs(expr bf.Expr) (platformStringsExprs, error) {
 				if k.Value == "//conditions:default" {
 					continue
 				}
-				key, err := resolve.ParseLabel(k.Value)
+				key, err := label.Parse(k.Value)
 				if err != nil {
 					return platformStringsExprs{}, fmt.Errorf("expression could not be matched: dict key is not label: %q", k.Value)
 				}

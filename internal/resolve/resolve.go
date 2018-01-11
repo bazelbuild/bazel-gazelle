@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	bf "github.com/bazelbuild/buildtools/build"
 )
@@ -31,7 +32,7 @@ import (
 // import statements in protos) into Bazel labels.
 type Resolver struct {
 	c        *config.Config
-	l        *Labeler
+	l        *label.Labeler
 	ix       *RuleIndex
 	external nonlocalResolver
 }
@@ -40,10 +41,10 @@ type Resolver struct {
 // prefix. Once we have smarter import path resolution, this shouldn't
 // be necessary, and we can remove this abstraction.
 type nonlocalResolver interface {
-	resolve(imp string) (Label, error)
+	resolve(imp string) (label.Label, error)
 }
 
-func NewResolver(c *config.Config, l *Labeler, ix *RuleIndex) *Resolver {
+func NewResolver(c *config.Config, l *label.Labeler, ix *RuleIndex) *Resolver {
 	var e nonlocalResolver
 	switch c.DepMode {
 	case config.ExternalMode:
@@ -71,9 +72,9 @@ func (r *Resolver) ResolveRule(e bf.Expr, pkgRel string) bf.Expr {
 		return e
 	}
 	rule := bf.Rule{Call: call}
-	from := Label{Pkg: pkgRel, Name: rule.Name()}
+	from := label.New("", pkgRel, rule.Name())
 
-	var resolve func(imp string, from Label) (Label, error)
+	var resolve func(imp string, from label.Label) (label.Label, error)
 	switch rule.Kind() {
 	case "go_library", "go_binary", "go_test":
 		resolve = r.resolveGo
@@ -211,25 +212,25 @@ func mapExprStrings(e bf.Expr, f func(string) string) bf.Expr {
 // resolveGo resolves an import path from a Go source file to a label.
 // pkgRel is the path to the Go package relative to the repository root; it
 // is used to resolve relative imports.
-func (r *Resolver) resolveGo(imp string, from Label) (Label, error) {
+func (r *Resolver) resolveGo(imp string, from label.Label) (label.Label, error) {
 	if build.IsLocalImport(imp) {
 		cleanRel := path.Clean(path.Join(from.Pkg, imp))
 		if build.IsLocalImport(cleanRel) {
-			return Label{}, fmt.Errorf("relative import path %q from %q points outside of repository", imp, from.Pkg)
+			return label.NoLabel, fmt.Errorf("relative import path %q from %q points outside of repository", imp, from.Pkg)
 		}
 		imp = path.Join(r.c.GoPrefix, cleanRel)
 	}
 
 	if IsStandard(imp) {
-		return Label{}, standardImportError{imp}
+		return label.NoLabel, standardImportError{imp}
 	}
 
-	if label, err := r.ix.findLabelByImport(importSpec{config.GoLang, imp}, config.GoLang, from); err != nil {
+	if l, err := r.ix.findLabelByImport(importSpec{config.GoLang, imp}, config.GoLang, from); err != nil {
 		if _, ok := err.(ruleNotFoundError); !ok {
-			return NoLabel, err
+			return label.NoLabel, err
 		}
 	} else {
-		return label, nil
+		return l, nil
 	}
 
 	if pathtools.HasPrefix(imp, r.c.GoPrefix) {
@@ -247,36 +248,36 @@ const (
 
 // resolveProto resolves an import statement in a .proto file to a label
 // for a proto_library rule.
-func (r *Resolver) resolveProto(imp string, from Label) (Label, error) {
+func (r *Resolver) resolveProto(imp string, from label.Label) (label.Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
-		return Label{}, fmt.Errorf("can't import non-proto: %q", imp)
+		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
 	if isWellKnown(imp) {
 		name := path.Base(imp[:len(imp)-len(".proto")]) + "_proto"
-		return Label{Repo: config.WellKnownTypesProtoRepo, Name: name}, nil
+		return label.New(config.WellKnownTypesProtoRepo, "", name), nil
 	}
 
-	if label, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.ProtoLang, from); err != nil {
+	if l, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.ProtoLang, from); err != nil {
 		if _, ok := err.(ruleNotFoundError); !ok {
-			return NoLabel, err
+			return label.NoLabel, err
 		}
 	} else {
-		return label, nil
+		return l, nil
 	}
 
 	rel := path.Dir(imp)
 	if rel == "." {
 		rel = ""
 	}
-	name := relBaseName(r.c, rel)
+	name := pathtools.RelBaseName(rel, r.c.GoPrefix, r.c.RepoRoot)
 	return r.l.ProtoLabel(rel, name), nil
 }
 
 // resolveGoProto resolves an import statement in a .proto file to a
 // label for a go_library rule that embeds the corresponding go_proto_library.
-func (r *Resolver) resolveGoProto(imp string, from Label) (Label, error) {
+func (r *Resolver) resolveGoProto(imp string, from label.Label) (label.Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
-		return Label{}, fmt.Errorf("can't import non-proto: %q", imp)
+		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
 	stem := imp[:len(imp)-len(".proto")]
 
@@ -316,12 +317,12 @@ func (r *Resolver) resolveGoProto(imp string, from Label) (Label, error) {
 		}
 	}
 
-	if label, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.GoLang, from); err != nil {
+	if l, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.GoLang, from); err != nil {
 		if _, ok := err.(ruleNotFoundError); !ok {
-			return NoLabel, err
+			return label.NoLabel, err
 		}
 	} else {
-		return label, err
+		return l, err
 	}
 
 	// As a fallback, guess the label based on the proto file name. We assume

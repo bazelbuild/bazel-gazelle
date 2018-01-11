@@ -14,8 +14,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//internal/config:go_default_library",
+        "//internal/label:go_default_library",
         "//internal/packages:go_default_library",
-        "//internal/resolve:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@com_github_bazelbuild_buildtools//tables:go_default_library",
     ],
@@ -30,9 +30,9 @@ go_test(
     deps = [
         ":go_default_library",
         "//internal/config:go_default_library",
+        "//internal/label:go_default_library",
         "//internal/merger:go_default_library",
         "//internal/packages:go_default_library",
-        "//internal/resolve:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
     ],
 )

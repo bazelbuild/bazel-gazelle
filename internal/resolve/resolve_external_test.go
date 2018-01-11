@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"golang.org/x/tools/go/vcs"
 )
 
@@ -69,38 +70,23 @@ func TestExternalResolver(t *testing.T) {
 	r := newStubExternalResolver(nil)
 	for _, spec := range []struct {
 		importpath string
-		want       Label
+		want       label.Label
 	}{
 		{
 			importpath: "example.com/repo",
-			want: Label{
-				Repo: "com_example_repo",
-				Name: config.DefaultLibName,
-			},
+			want:       label.New("com_example_repo", "", config.DefaultLibName),
 		},
 		{
 			importpath: "example.com/repo/lib",
-			want: Label{
-				Repo: "com_example_repo",
-				Pkg:  "lib",
-				Name: config.DefaultLibName,
-			},
+			want:       label.New("com_example_repo", "lib", config.DefaultLibName),
 		},
 		{
 			importpath: "example.com/repo.git/lib",
-			want: Label{
-				Repo: "com_example_repo_git",
-				Pkg:  "lib",
-				Name: config.DefaultLibName,
-			},
+			want:       label.New("com_example_repo_git", "lib", config.DefaultLibName),
 		},
 		{
 			importpath: "example.com/lib",
-			want: Label{
-				Repo: "com_example",
-				Pkg:  "lib",
-				Name: config.DefaultLibName,
-			},
+			want:       label.New("com_example", "lib", config.DefaultLibName),
 		},
 	} {
 		l, err := r.resolve(spec.importpath)
@@ -115,7 +101,7 @@ func TestExternalResolver(t *testing.T) {
 }
 
 func newStubExternalResolver(extraKnown []string) *externalResolver {
-	l := NewLabeler(&config.Config{})
+	l := label.NewLabeler(&config.Config{})
 	r := newExternalResolver(l, extraKnown)
 	r.repoRootForImportPath = stubRepoRootForImportPath
 	return r

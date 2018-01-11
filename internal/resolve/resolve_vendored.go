@@ -15,17 +15,21 @@ limitations under the License.
 
 package resolve
 
+import (
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
+)
+
 // vendoredResolver resolves external packages as packages in vendor/.
 type vendoredResolver struct {
-	l *Labeler
+	l *label.Labeler
 }
 
 var _ nonlocalResolver = (*vendoredResolver)(nil)
 
-func newVendoredResolver(l *Labeler) *vendoredResolver {
+func newVendoredResolver(l *label.Labeler) *vendoredResolver {
 	return &vendoredResolver{l}
 }
 
-func (v *vendoredResolver) resolve(importpath string) (Label, error) {
+func (v *vendoredResolver) resolve(importpath string) (label.Label, error) {
 	return v.l.LibraryLabel("vendor/" + importpath), nil
 }

@@ -16,6 +16,7 @@ go_library(
     visibility = ["//visibility:private"],
     deps = [
         "//internal/config:go_default_library",
+        "//internal/label:go_default_library",
         "//internal/merger:go_default_library",
         "//internal/packages:go_default_library",
         "//internal/repos:go_default_library",

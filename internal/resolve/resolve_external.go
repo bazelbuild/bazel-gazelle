@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"path"
 	"regexp"
-	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"golang.org/x/tools/go/vcs"
 )
@@ -32,7 +32,7 @@ import (
 // guidelines in http://bazel.io/docs/be/functions.html#workspace. The remaining
 // portion of the import path is treated as the package name.
 type externalResolver struct {
-	l *Labeler
+	l *label.Labeler
 
 	// repoRootForImportPath is vcs.RepoRootForImportPath by default. It may
 	// be overridden by tests.
@@ -45,7 +45,7 @@ type externalResolver struct {
 
 var _ nonlocalResolver = (*externalResolver)(nil)
 
-func newExternalResolver(l *Labeler, extraKnownImports []string) *externalResolver {
+func newExternalResolver(l *label.Labeler, extraKnownImports []string) *externalResolver {
 	cache := make(map[string]repoRootCacheEntry)
 	for _, e := range []repoRootCacheEntry{
 		{prefix: "golang.org/x", missing: 1},
@@ -71,10 +71,10 @@ func newExternalResolver(l *Labeler, extraKnownImports []string) *externalResolv
 // external repository. It also assumes that the external repository follows the
 // recommended reverse-DNS form of workspace name as described in
 // http://bazel.io/docs/be/functions.html#workspace.
-func (r *externalResolver) resolve(importpath string) (Label, error) {
+func (r *externalResolver) resolve(importpath string) (label.Label, error) {
 	prefix, err := r.lookupPrefix(importpath)
 	if err != nil {
-		return Label{}, err
+		return label.NoLabel, err
 	}
 
 	var pkg string
@@ -82,9 +82,9 @@ func (r *externalResolver) resolve(importpath string) (Label, error) {
 		pkg = pathtools.TrimPrefix(importpath, prefix)
 	}
 
-	label := r.l.LibraryLabel(pkg)
-	label.Repo = ImportPathToBazelRepoName(prefix)
-	return label, nil
+	l := r.l.LibraryLabel(pkg)
+	l.Repo = label.ImportPathToBazelRepoName(prefix)
+	return l, nil
 }
 
 var gopkginPattern = regexp.MustCompile("^(gopkg.in/(?:[^/]+/)?[^/]+\\.v\\d+)(?:/|$)")
@@ -135,21 +135,6 @@ func (r *externalResolver) lookupPrefix(importpath string) (string, error) {
 	prefix = root.Root
 	r.cache[prefix] = repoRootCacheEntry{prefix: prefix}
 	return prefix, nil
-}
-
-// ImportPathToBazelRepoName converts a Go import path into a bazel repo name
-// following the guidelines in http://bazel.io/docs/be/functions.html#workspace
-func ImportPathToBazelRepoName(importpath string) string {
-	importpath = strings.ToLower(importpath)
-	components := strings.Split(importpath, "/")
-	labels := strings.Split(components[0], ".")
-	var reversed []string
-	for i := range labels {
-		l := labels[len(labels)-i-1]
-		reversed = append(reversed, l)
-	}
-	repo := strings.Join(append(reversed, components[1:]...), "_")
-	return strings.NewReplacer("-", "_", ".", "_").Replace(repo)
 }
 
 type repoRootCacheEntry struct {
