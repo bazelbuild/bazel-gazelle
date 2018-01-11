@@ -80,7 +80,7 @@ func (ix *RuleIndex) addRule(call *bf.CallExpr, goPrefix, buildRel string) {
 	rule := bf.Rule{Call: call}
 	record := &ruleRecord{
 		rule:  rule,
-		label: label.Label{Pkg: buildRel, Name: rule.Name()},
+		label: label.New("", buildRel, rule.Name()),
 	}
 
 	if _, ok := ix.labelMap[record.label]; ok {
@@ -141,7 +141,7 @@ func (ix *RuleIndex) skipGoEmbds() {
 				if !ok {
 					continue
 				}
-				embedLabel, err := label.ParseLabel(embedStr.Value)
+				embedLabel, err := label.Parse(embedStr.Value)
 				if err != nil {
 					continue
 				}
@@ -149,7 +149,7 @@ func (ix *RuleIndex) skipGoEmbds() {
 			}
 		}
 		if libraryStr, ok := r.rule.Attr("library").(*bf.StringExpr); ok {
-			if libraryLabel, err := label.ParseLabel(libraryStr.Value); err == nil {
+			if libraryLabel, err := label.Parse(libraryStr.Value); err == nil {
 				embedLabels = append(embedLabels, libraryLabel)
 			}
 		}
@@ -247,7 +247,7 @@ func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, from
 					break
 				}
 			}
-			if isVendored && !label.PackageContains(m.label.Repo, vendorRoot, from) {
+			if isVendored && !label.New(m.label.Repo, vendorRoot, "").Contains(from) {
 				// vendor directory not visible
 				continue
 			}
@@ -301,7 +301,7 @@ func (ix *RuleIndex) findLabelByImport(imp importSpec, lang config.Language, fro
 }
 
 func findGoProtoSources(ix *RuleIndex, r *ruleRecord) []importSpec {
-	protoLabel, err := label.ParseLabel(r.rule.AttrString("proto"))
+	protoLabel, err := label.Parse(r.rule.AttrString("proto"))
 	if err != nil {
 		return nil
 	}
@@ -328,7 +328,7 @@ func findSources(r bf.Rule, buildRel, ext string) []string {
 		if !ok {
 			continue
 		}
-		label, err := label.ParseLabel(src.Value)
+		label, err := label.Parse(src.Value)
 		if err != nil || !label.Relative || !strings.HasSuffix(label.Name, ext) {
 			continue
 		}

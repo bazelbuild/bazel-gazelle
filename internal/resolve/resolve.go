@@ -73,7 +73,7 @@ func (r *Resolver) ResolveRule(e bf.Expr, pkgRel string) bf.Expr {
 		return e
 	}
 	rule := bf.Rule{Call: call}
-	from := label.Label{Pkg: pkgRel, Name: rule.Name()}
+	from := label.New("", pkgRel, rule.Name())
 
 	var resolve func(imp string, from label.Label) (label.Label, error)
 	switch rule.Kind() {
@@ -217,13 +217,13 @@ func (r *Resolver) resolveGo(imp string, from label.Label) (label.Label, error) 
 	if build.IsLocalImport(imp) {
 		cleanRel := path.Clean(path.Join(from.Pkg, imp))
 		if build.IsLocalImport(cleanRel) {
-			return label.Label{}, fmt.Errorf("relative import path %q from %q points outside of repository", imp, from.Pkg)
+			return label.NoLabel, fmt.Errorf("relative import path %q from %q points outside of repository", imp, from.Pkg)
 		}
 		imp = path.Join(r.c.GoPrefix, cleanRel)
 	}
 
 	if IsStandard(imp) {
-		return label.Label{}, standardImportError{imp}
+		return label.NoLabel, standardImportError{imp}
 	}
 
 	if l, err := r.ix.findLabelByImport(importSpec{config.GoLang, imp}, config.GoLang, from); err != nil {
@@ -251,11 +251,11 @@ const (
 // for a proto_library rule.
 func (r *Resolver) resolveProto(imp string, from label.Label) (label.Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
-		return label.Label{}, fmt.Errorf("can't import non-proto: %q", imp)
+		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
 	if isWellKnown(imp) {
 		name := path.Base(imp[:len(imp)-len(".proto")]) + "_proto"
-		return label.Label{Repo: config.WellKnownTypesProtoRepo, Name: name}, nil
+		return label.New(config.WellKnownTypesProtoRepo, "", name), nil
 	}
 
 	if l, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.ProtoLang, from); err != nil {
@@ -278,7 +278,7 @@ func (r *Resolver) resolveProto(imp string, from label.Label) (label.Label, erro
 // label for a go_library rule that embeds the corresponding go_proto_library.
 func (r *Resolver) resolveGoProto(imp string, from label.Label) (label.Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
-		return label.Label{}, fmt.Errorf("can't import non-proto: %q", imp)
+		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
 	stem := imp[:len(imp)-len(".proto")]
 

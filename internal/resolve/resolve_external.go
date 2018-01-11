@@ -99,7 +99,7 @@ func newExternalResolver(l *label.Labeler, repos []repos.Repo) *externalResolver
 func (r *externalResolver) resolve(importpath string) (label.Label, error) {
 	prefix, err := r.lookupPrefix(importpath)
 	if err != nil {
-		return label.Label{}, err
+		return label.NoLabel, err
 	}
 
 	repo, ok := r.prefixToName[prefix]

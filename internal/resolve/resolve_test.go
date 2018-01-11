@@ -50,7 +50,7 @@ func TestResolveGoIndex(t *testing.T) {
 			desc: "no_match",
 			imp:  "example.com/foo",
 			// fall back to external resolver
-			want: label.Label{Pkg: "vendor/example.com/foo", Name: config.DefaultLibName},
+			want: label.New("", "vendor/example.com/foo", config.DefaultLibName),
 		}, {
 			desc: "simple",
 			buildFiles: []fileSpec{{
@@ -62,7 +62,7 @@ go_library(
 )
 `}},
 			imp:  "example.com/foo",
-			want: label.Label{Pkg: "foo", Name: "go_default_library"},
+			want: label.New("", "foo", "go_default_library"),
 		}, {
 			desc: "test_and_library_not_indexed",
 			buildFiles: []fileSpec{{
@@ -81,7 +81,7 @@ go_binary(
 			}},
 			imp: "example.com/foo",
 			// fall back to external resolver
-			want: label.Label{Pkg: "vendor/example.com/foo", Name: config.DefaultLibName},
+			want: label.New("", "vendor/example.com/foo", config.DefaultLibName),
 		}, {
 			desc: "multiple_rules_ambiguous",
 			buildFiles: []fileSpec{{
@@ -122,8 +122,8 @@ go_library(
 				},
 			},
 			imp:  "example.com/foo",
-			from: label.Label{Pkg: "b", Name: "b"},
-			want: label.Label{Name: "root"},
+			from: label.New("", "b", "b"),
+			want: label.New("", "", "root"),
 		}, {
 			desc: "vendor_supercedes_nonvendor",
 			buildFiles: []fileSpec{
@@ -146,8 +146,8 @@ go_library(
 				},
 			},
 			imp:  "example.com/foo",
-			from: label.Label{Pkg: "sub", Name: "sub"},
-			want: label.Label{Pkg: "vendor/foo", Name: "vendored"},
+			from: label.New("", "sub", "sub"),
+			want: label.New("", "vendor/foo", "vendored"),
 		}, {
 			desc: "deep_vendor_shallow_vendor",
 			buildFiles: []fileSpec{
@@ -170,8 +170,8 @@ go_library(
 				},
 			},
 			imp:  "example.com/foo",
-			from: label.Label{Pkg: "shallow/deep", Name: "deep"},
-			want: label.Label{Pkg: "shallow/deep/vendor", Name: "deep"},
+			from: label.New("", "shallow/deep", "deep"),
+			want: label.New("", "shallow/deep/vendor", "deep"),
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -242,24 +242,24 @@ go_library(
 	ix.Finish()
 	r := NewResolver(c, l, ix, nil)
 
-	wantProto := label.Label{Pkg: "sub", Name: "foo_proto"}
-	if got, err := r.resolveProto("sub/bar.proto", label.Label{Pkg: "baz", Name: "baz"}); err != nil {
+	wantProto := label.New("", "sub", "foo_proto")
+	if got, err := r.resolveProto("sub/bar.proto", label.New("", "baz", "baz")); err != nil {
 		t.Error(err)
 	} else if !reflect.DeepEqual(got, wantProto) {
 		t.Errorf("resolveProto: got %s ; want %s", got, wantProto)
 	}
-	_, err = r.resolveProto("sub/bar.proto", label.Label{Pkg: "sub", Name: "foo_proto"})
+	_, err = r.resolveProto("sub/bar.proto", label.New("", "sub", "foo_proto"))
 	if _, ok := err.(selfImportError); !ok {
 		t.Errorf("resolveProto: got %v ; want selfImportError", err)
 	}
 
-	wantGoProto := label.Label{Pkg: "sub", Name: "embed"}
-	if got, err := r.resolveGoProto("sub/bar.proto", label.Label{Pkg: "baz", Name: "baz"}); err != nil {
+	wantGoProto := label.New("", "sub", "embed")
+	if got, err := r.resolveGoProto("sub/bar.proto", label.New("", "baz", "baz")); err != nil {
 		t.Error(err)
 	} else if !reflect.DeepEqual(got, wantGoProto) {
 		t.Errorf("resolveGoProto: got %s ; want %s", got, wantGoProto)
 	}
-	_, err = r.resolveGoProto("sub/bar.proto", label.Label{Pkg: "sub", Name: "foo_go_proto"})
+	_, err = r.resolveGoProto("sub/bar.proto", label.New("", "sub", "foo_go_proto"))
 	if _, ok := err.(selfImportError); !ok {
 		t.Errorf("resolveGoProto: got %v ; want selfImportError", err)
 	}
@@ -272,26 +272,26 @@ func TestResolveGoLocal(t *testing.T) {
 	}{
 		{
 			importpath: "example.com/repo",
-			want:       label.Label{Name: config.DefaultLibName},
+			want:       label.New("", "", config.DefaultLibName),
 		}, {
 			importpath: "example.com/repo/lib",
-			want:       label.Label{Pkg: "lib", Name: config.DefaultLibName},
+			want:       label.New("", "lib", config.DefaultLibName),
 		}, {
 			importpath: "example.com/repo/another",
-			want:       label.Label{Pkg: "another", Name: config.DefaultLibName},
+			want:       label.New("", "another", config.DefaultLibName),
 		}, {
 			importpath: "example.com/repo",
-			want:       label.Label{Name: config.DefaultLibName},
+			want:       label.New("", "", config.DefaultLibName),
 		}, {
 			importpath: "example.com/repo/lib/sub",
-			want:       label.Label{Pkg: "lib/sub", Name: config.DefaultLibName},
+			want:       label.New("", "lib/sub", config.DefaultLibName),
 		}, {
 			importpath: "example.com/repo/another",
-			want:       label.Label{Pkg: "another", Name: config.DefaultLibName},
+			want:       label.New("", "another", config.DefaultLibName),
 		}, {
 			importpath: "../y",
-			from:       label.Label{Pkg: "x", Name: "x"},
-			want:       label.Label{Pkg: "y", Name: config.DefaultLibName},
+			from:       label.New("", "x", "x"),
+			want:       label.New("", "y", config.DefaultLibName),
 		},
 	} {
 		c := &config.Config{GoPrefix: "example.com/repo"}
@@ -338,7 +338,7 @@ func TestResolveGoEmptyPrefix(t *testing.T) {
 	r := NewResolver(c, l, ix, nil)
 
 	imp := "foo"
-	want := label.Label{Pkg: "foo", Name: config.DefaultLibName}
+	want := label.New("", "foo", config.DefaultLibName)
 	if got, err := r.resolveGo(imp, label.NoLabel); err != nil {
 		t.Errorf("r.resolveGo(%q) failed with %v; want success", imp, err)
 	} else if !reflect.DeepEqual(got, want) {
@@ -362,42 +362,42 @@ func TestResolveProto(t *testing.T) {
 		{
 			desc:        "root",
 			imp:         "foo.proto",
-			wantProto:   label.Label{Name: "repo_proto"},
-			wantGoProto: label.Label{Name: config.DefaultLibName},
+			wantProto:   label.New("", "", "repo_proto"),
+			wantGoProto: label.New("", "", config.DefaultLibName),
 		}, {
 			desc:        "sub",
 			imp:         "foo/bar/bar.proto",
-			wantProto:   label.Label{Pkg: "foo/bar", Name: "bar_proto"},
-			wantGoProto: label.Label{Pkg: "foo/bar", Name: config.DefaultLibName},
+			wantProto:   label.New("", "foo/bar", "bar_proto"),
+			wantGoProto: label.New("", "foo/bar", config.DefaultLibName),
 		}, {
 			desc:        "vendor",
 			depMode:     config.VendorMode,
 			imp:         "foo/bar/bar.proto",
-			from:        label.Label{Pkg: "vendor"},
-			wantProto:   label.Label{Pkg: "foo/bar", Name: "bar_proto"},
-			wantGoProto: label.Label{Pkg: "vendor/foo/bar", Name: config.DefaultLibName},
+			from:        label.New("", "vendor", ""),
+			wantProto:   label.New("", "foo/bar", "bar_proto"),
+			wantGoProto: label.New("", "vendor/foo/bar", config.DefaultLibName),
 		}, {
 			desc:        "well known",
 			imp:         "google/protobuf/any.proto",
-			wantProto:   label.Label{Repo: "com_google_protobuf", Name: "any_proto"},
-			wantGoProto: label.Label{Repo: "com_github_golang_protobuf", Pkg: "ptypes/any", Name: config.DefaultLibName},
+			wantProto:   label.New("com_google_protobuf", "", "any_proto"),
+			wantGoProto: label.New("com_github_golang_protobuf", "ptypes/any", config.DefaultLibName),
 		}, {
 			desc:        "well known vendor",
 			depMode:     config.VendorMode,
 			imp:         "google/protobuf/any.proto",
-			wantProto:   label.Label{Repo: "com_google_protobuf", Name: "any_proto"},
-			wantGoProto: label.Label{Pkg: "vendor/github.com/golang/protobuf/ptypes/any", Name: config.DefaultLibName},
+			wantProto:   label.New("com_google_protobuf", "", "any_proto"),
+			wantGoProto: label.New("", "vendor/github.com/golang/protobuf/ptypes/any", config.DefaultLibName),
 		}, {
 			desc:        "descriptor",
 			imp:         "google/protobuf/descriptor.proto",
-			wantProto:   label.Label{Repo: "com_google_protobuf", Name: "descriptor_proto"},
-			wantGoProto: label.Label{Repo: "com_github_golang_protobuf", Pkg: "protoc-gen-go/descriptor", Name: config.DefaultLibName},
+			wantProto:   label.New("com_google_protobuf", "", "descriptor_proto"),
+			wantGoProto: label.New("com_github_golang_protobuf", "protoc-gen-go/descriptor", config.DefaultLibName),
 		}, {
 			desc:        "descriptor vendor",
 			depMode:     config.VendorMode,
 			imp:         "google/protobuf/descriptor.proto",
-			wantProto:   label.Label{Repo: "com_google_protobuf", Name: "descriptor_proto"},
-			wantGoProto: label.Label{Pkg: "vendor/github.com/golang/protobuf/protoc-gen-go/descriptor", Name: config.DefaultLibName},
+			wantProto:   label.New("com_google_protobuf", "", "descriptor_proto"),
+			wantGoProto: label.New("", "vendor/github.com/golang/protobuf/protoc-gen-go/descriptor", config.DefaultLibName),
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

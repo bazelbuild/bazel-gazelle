@@ -88,42 +88,23 @@ func TestExternalResolver(t *testing.T) {
 	}{
 		{
 			importpath: "example.com/repo",
-			want: label.Label{
-				Repo: "com_example_repo",
-				Name: config.DefaultLibName,
-			},
+			want:       label.New("com_example_repo", "", config.DefaultLibName),
 		}, {
 			importpath: "example.com/repo/lib",
-			want: label.Label{
-				Repo: "com_example_repo",
-				Pkg:  "lib",
-				Name: config.DefaultLibName,
-			},
+			want:       label.New("com_example_repo", "lib", config.DefaultLibName),
 		}, {
 			importpath: "example.com/repo/lib",
 			repos: []repos.Repo{{
 				Name:     "custom_repo_name",
 				GoPrefix: "example.com/repo",
 			}},
-			want: label.Label{
-				Repo: "custom_repo_name",
-				Pkg:  "lib",
-				Name: config.DefaultLibName,
-			},
+			want: label.New("custom_repo_name", "lib", config.DefaultLibName),
 		}, {
 			importpath: "example.com/repo.git/lib",
-			want: label.Label{
-				Repo: "com_example_repo_git",
-				Pkg:  "lib",
-				Name: config.DefaultLibName,
-			},
+			want:       label.New("com_example_repo_git", "lib", config.DefaultLibName),
 		}, {
 			importpath: "example.com/lib",
-			want: label.Label{
-				Repo: "com_example",
-				Pkg:  "lib",
-				Name: config.DefaultLibName,
-			},
+			want:       label.New("com_example", "lib", config.DefaultLibName),
 		},
 	} {
 		r := newStubExternalResolver(spec.repos)
