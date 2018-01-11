@@ -240,8 +240,8 @@ func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, from
 			isVendored := false
 			vendorRoot := ""
 			parts := strings.Split(m.label.Pkg, "/")
-			for i, part := range parts {
-				if part == "vendor" {
+			for i := len(parts) - 1; i >= 0; i-- {
+				if parts[i] == "vendor" {
 					isVendored = true
 					vendorRoot = strings.Join(parts[:i], "/")
 					break
@@ -257,18 +257,18 @@ func (ix *RuleIndex) findRuleByImport(imp importSpec, lang config.Language, from
 				bestMatchIsVendored = isVendored
 				bestMatchVendorRoot = vendorRoot
 				matchError = nil
-			} else if !isVendored && (bestMatchIsVendored || len(vendorRoot) < len(bestMatchVendorRoot)) {
+			} else if (!isVendored && bestMatchIsVendored) || (isVendored && len(vendorRoot) < len(bestMatchVendorRoot)) {
 				// Current match is worse
 			} else {
 				// Match is ambiguous
-				matchError = fmt.Errorf("multiple rules (%s and %s) may be imported with %q", bestMatch.label, m.label, imp.imp)
+				matchError = fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", bestMatch.label, m.label, imp.imp, from)
 			}
 
 		default:
 			if bestMatch == nil {
 				bestMatch = m
 			} else {
-				matchError = fmt.Errorf("multiple rules (%s and %s) may be imported with %q", bestMatch.label, m.label, imp.imp)
+				matchError = fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", bestMatch.label, m.label, imp.imp, from)
 			}
 		}
 	}
