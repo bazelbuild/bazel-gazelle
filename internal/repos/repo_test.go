@@ -19,16 +19,17 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func TestGenerateRepoRules(t *testing.T) {
-	repo := repo{
-		name:       "org_golang_x_tools",
-		importPath: "golang.org/x/tools",
-		commit:     "123456",
+	repo := Repo{
+		Name:     "org_golang_x_tools",
+		GoPrefix: "golang.org/x/tools",
+		Commit:   "123456",
 	}
 	got := bf.FormatString(generateRepoRule(repo))
 	want := `go_repository(
@@ -75,5 +76,43 @@ func TestFindExternalRepo(t *testing.T) {
 		t.Fatal(err)
 	} else if got != externalPath {
 		t.Errorf("got %q ; want %q", got, externalPath)
+	}
+}
+
+func TestListRepositories(t *testing.T) {
+	for _, tc := range []struct {
+		desc, workspace string
+		want            []Repo
+	}{
+		{
+			desc: "empty",
+			want: nil,
+		}, {
+			desc: "go_repository",
+			workspace: `
+go_repository(
+    name = "custom_repo",
+    commit = "123456",
+    remote = "https://example.com/repo",
+    importpath = "example.com/repo",
+)
+`,
+			want: []Repo{{
+				Name:     "custom_repo",
+				GoPrefix: "example.com/repo",
+				Remote:   "https://example.com/repo",
+				Commit:   "123456",
+			}},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			workspace, err := bf.Parse("WORKSPACE", []byte(tc.workspace))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := ListRepositories(workspace); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("got %#v ; want %#v", got, tc.want)
+			}
+		})
 	}
 }

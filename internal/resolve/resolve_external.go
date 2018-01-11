@@ -22,6 +22,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
+	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"golang.org/x/tools/go/vcs"
 )
 
@@ -41,30 +42,54 @@ type externalResolver struct {
 	// cache stores lookup results, both positive and negative to reduce
 	// network fetches when there are multiple imports on the same external repo.
 	cache map[string]repoRootCacheEntry
+
+	// prefixToName maps import path prefixes to repository names.
+	prefixToName map[string]string
+}
+
+type repoRootCacheEntry struct {
+	// prefix is part of an import path that corresponds to a repository root,
+	// possibly with some components missing.
+	prefix string
+
+	// missing is the number of components missing from prefix to make a full
+	// repository root prefix. For most repositories, this is 0, meaning the
+	// prefix is the full path to the repository root. For some well-known sites,
+	// this is non-zero. For example, we can store the prefix "github.com" with
+	// missing as 2, since GitHub always has two path components before the
+	// actual repository.
+	missing int
+
+	// err is an error we encountered when resolving this prefix. This is used
+	// for caching negative results.
+	err error
 }
 
 var _ nonlocalResolver = (*externalResolver)(nil)
 
-func newExternalResolver(l *label.Labeler, extraKnownImports []string) *externalResolver {
-	cache := make(map[string]repoRootCacheEntry)
+func newExternalResolver(l *label.Labeler, repos []repos.Repo) *externalResolver {
+	resolver := &externalResolver{
+		l:                     l,
+		cache:                 make(map[string]repoRootCacheEntry),
+		prefixToName:          make(map[string]string),
+		repoRootForImportPath: vcs.RepoRootForImportPath,
+	}
+
 	for _, e := range []repoRootCacheEntry{
 		{prefix: "golang.org/x", missing: 1},
 		{prefix: "google.golang.org", missing: 1},
 		{prefix: "cloud.google.com", missing: 1},
 		{prefix: "github.com", missing: 2},
 	} {
-		cache[e.prefix] = e
+		resolver.cache[e.prefix] = e
 	}
 
-	for _, e := range extraKnownImports {
-		cache[e] = repoRootCacheEntry{prefix: e, missing: 0}
+	for _, e := range repos {
+		resolver.cache[e.GoPrefix] = repoRootCacheEntry{prefix: e.GoPrefix, missing: 0}
+		resolver.prefixToName[e.GoPrefix] = e.Name
 	}
 
-	return &externalResolver{
-		l:     l,
-		cache: cache,
-		repoRootForImportPath: vcs.RepoRootForImportPath,
-	}
+	return resolver
 }
 
 // Resolve resolves "importpath" into a label, assuming that it is a label in an
@@ -77,13 +102,19 @@ func (r *externalResolver) resolve(importpath string) (label.Label, error) {
 		return label.NoLabel, err
 	}
 
+	repo, ok := r.prefixToName[prefix]
+	if !ok {
+		repo = label.ImportPathToBazelRepoName(prefix)
+		r.prefixToName[prefix] = repo
+	}
+
 	var pkg string
 	if importpath != prefix {
 		pkg = pathtools.TrimPrefix(importpath, prefix)
 	}
 
 	l := r.l.LibraryLabel(pkg)
-	l.Repo = label.ImportPathToBazelRepoName(prefix)
+	l.Repo = repo
 	return l, nil
 }
 
@@ -135,22 +166,4 @@ func (r *externalResolver) lookupPrefix(importpath string) (string, error) {
 	prefix = root.Root
 	r.cache[prefix] = repoRootCacheEntry{prefix: prefix}
 	return prefix, nil
-}
-
-type repoRootCacheEntry struct {
-	// prefix is part of an import path that corresponds to a repository root,
-	// possibly with some components missing.
-	prefix string
-
-	// missing is the number of components missing from prefix to make a full
-	// repository root prefix. For most repositories, this is 0, meaning the
-	// prefix is the full path to the repository root. For some well-known sites,
-	// this is non-zero. For example, we can store the prefix "github.com" with
-	// missing as 2, since GitHub always has two path components before the
-	// actual repository.
-	missing int
-
-	// err is an error we encountered when resolving this prefix. This is used
-	// for caching negative results.
-	err error
 }

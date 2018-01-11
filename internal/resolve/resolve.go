@@ -25,6 +25,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
+	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -44,11 +45,11 @@ type nonlocalResolver interface {
 	resolve(imp string) (label.Label, error)
 }
 
-func NewResolver(c *config.Config, l *label.Labeler, ix *RuleIndex) *Resolver {
+func NewResolver(c *config.Config, l *label.Labeler, ix *RuleIndex, repos []repos.Repo) *Resolver {
 	var e nonlocalResolver
 	switch c.DepMode {
 	case config.ExternalMode:
-		e = newExternalResolver(l, c.KnownImports)
+		e = newExternalResolver(l, repos)
 	case config.VendorMode:
 		e = newVendoredResolver(l)
 	}

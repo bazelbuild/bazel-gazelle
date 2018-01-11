@@ -26,17 +26,31 @@ import (
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
-type repo struct {
-	name       string
-	importPath string
-	commit     string
-	remote     string
+// Repo describes an external repository rule declared in a Bazel
+// WORKSPACE file.
+type Repo struct {
+	// Name is the value of the "name" attribute of the repository rule.
+	Name string
+
+	// GoPrefix is the portion of the Go import path for the root of this
+	// repository. Usually the same as Remote.
+	GoPrefix string
+
+	// Commit is the revision at which a repository is checked out (for example,
+	// a Git commit id).
+	Commit string
+
+	// Tag is the name of the version at which a repository is checked out.
+	Tag string
+
+	// Remote is the URL the repository can be cloned or checked out from.
+	Remote string
 }
 
-type byName []repo
+type byName []Repo
 
 func (s byName) Len() int           { return len(s) }
-func (s byName) Less(i, j int) bool { return s[i].name < s[j].name }
+func (s byName) Less(i, j int) bool { return s[i].Name < s[j].Name }
 func (s byName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 type lockFileFormat int
@@ -46,7 +60,7 @@ const (
 	depFormat
 )
 
-var lockFileParsers = map[lockFileFormat]func(string) ([]repo, error){
+var lockFileParsers = map[lockFileFormat]func(string) ([]Repo, error){
 	depFormat: importRepoRulesDep,
 }
 
@@ -82,14 +96,14 @@ func getLockFileFormat(filename string) lockFileFormat {
 	}
 }
 
-func generateRepoRule(repo repo) bf.Expr {
+func generateRepoRule(repo Repo) bf.Expr {
 	attrs := []rules.KeyValue{
-		{Key: "name", Value: repo.name},
-		{Key: "commit", Value: repo.commit},
-		{Key: "importpath", Value: repo.importPath},
+		{Key: "name", Value: repo.Name},
+		{Key: "commit", Value: repo.Commit},
+		{Key: "importpath", Value: repo.GoPrefix},
 	}
-	if repo.remote != "" {
-		attrs = append(attrs, rules.KeyValue{Key: "remote", Value: repo.remote})
+	if repo.Remote != "" {
+		attrs = append(attrs, rules.KeyValue{Key: "remote", Value: repo.Remote})
 	}
 	return rules.NewRule("go_repository", attrs)
 }
@@ -119,4 +133,54 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 		return "", fmt.Errorf("%s: not a directory", externalPath)
 	}
 	return cleanPath, nil
+}
+
+// ListRepositories extracts metadata about repositories declared in a
+// WORKSPACE file.
+//
+// The set of repositories returned is necessarily incomplete, since we don't
+// evaluate the file, and repositories may be declared in macros in other files.
+func ListRepositories(workspace *bf.File) []Repo {
+	var repos []Repo
+	for _, e := range workspace.Stmt {
+		call, ok := e.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		r := bf.Rule{Call: call}
+		name := r.Name()
+		if name == "" {
+			continue
+		}
+		var repo Repo
+		switch r.Kind() {
+		case "go_repository":
+			// TODO(jayconrod): extract other fields needed by go_repository.
+			// Currently, we don't use the result of this function to produce new
+			// go_repository rules, so it doesn't matter.
+			goPrefix := r.AttrString("importpath")
+			revision := r.AttrString("commit")
+			remote := r.AttrString("remote")
+			if goPrefix == "" {
+				continue
+			}
+			repo = Repo{
+				Name:     name,
+				GoPrefix: goPrefix,
+				Commit:   revision,
+				Remote:   remote,
+			}
+
+			// TODO(jayconrod): infer from {new_,}git_repository, {new_,}http_archive
+
+		default:
+			continue
+		}
+		repos = append(repos, repo)
+	}
+
+	// TODO(jayconrod): look for directives that describe repositories that
+	// aren't declared in the top-level of WORKSPACE (e.g., behind a macro).
+
+	return repos
 }

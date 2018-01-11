@@ -23,14 +23,15 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"golang.org/x/tools/go/vcs"
 )
 
 func TestSpecialCases(t *testing.T) {
 	for _, c := range []struct {
-		in, want   string
-		extraKnown []string
-		wantError  bool
+		in, want  string
+		repos     []repos.Repo
+		wantError bool
 	}{
 		{in: "golang.org/x/net/context", want: "golang.org/x/net"},
 		{in: "golang.org/x/tools/go/vcs", want: "golang.org/x/tools"},
@@ -43,17 +44,30 @@ func TestSpecialCases(t *testing.T) {
 		{in: "gopkg.in/src-d/go-git.v4", want: "gopkg.in/src-d/go-git.v4"},
 		{in: "unsupported.org/x/net/context", wantError: true},
 		{
-			in:         "private.com/my/repo/package/path",
-			extraKnown: []string{"other-host.com/repo", "private.com/my/repo"},
-			want:       "private.com/my/repo",
+			in: "private.com/my/repo/package/path",
+			repos: []repos.Repo{
+				{
+					Name:     "com_other_host_repo",
+					GoPrefix: "other-host.com/repo",
+				}, {
+					Name:     "com_private_my_repo",
+					GoPrefix: "private.com/my/repo",
+				},
+			},
+			want: "private.com/my/repo",
 		},
 		{
-			in:         "unsupported.org/x/net/context",
-			extraKnown: []string{"private.com/my/repo"},
-			wantError:  true,
+			in: "unsupported.org/x/net/context",
+			repos: []repos.Repo{
+				{
+					Name:     "com_private_my_repo",
+					GoPrefix: "private.com/my/repo",
+				},
+			},
+			wantError: true,
 		},
 	} {
-		r := newStubExternalResolver(c.extraKnown)
+		r := newStubExternalResolver(c.repos)
 		if got, err := r.lookupPrefix(c.in); err != nil {
 			if !c.wantError {
 				t.Errorf("unexpected error: %v", err)
@@ -67,28 +81,33 @@ func TestSpecialCases(t *testing.T) {
 }
 
 func TestExternalResolver(t *testing.T) {
-	r := newStubExternalResolver(nil)
 	for _, spec := range []struct {
 		importpath string
+		repos      []repos.Repo
 		want       label.Label
 	}{
 		{
 			importpath: "example.com/repo",
 			want:       label.New("com_example_repo", "", config.DefaultLibName),
-		},
-		{
+		}, {
 			importpath: "example.com/repo/lib",
 			want:       label.New("com_example_repo", "lib", config.DefaultLibName),
-		},
-		{
+		}, {
+			importpath: "example.com/repo/lib",
+			repos: []repos.Repo{{
+				Name:     "custom_repo_name",
+				GoPrefix: "example.com/repo",
+			}},
+			want: label.New("custom_repo_name", "lib", config.DefaultLibName),
+		}, {
 			importpath: "example.com/repo.git/lib",
 			want:       label.New("com_example_repo_git", "lib", config.DefaultLibName),
-		},
-		{
+		}, {
 			importpath: "example.com/lib",
 			want:       label.New("com_example", "lib", config.DefaultLibName),
 		},
 	} {
+		r := newStubExternalResolver(spec.repos)
 		l, err := r.resolve(spec.importpath)
 		if err != nil {
 			t.Errorf("r.ResolveGo(%q) failed with %v; want success", spec.importpath, err)
@@ -100,9 +119,9 @@ func TestExternalResolver(t *testing.T) {
 	}
 }
 
-func newStubExternalResolver(extraKnown []string) *externalResolver {
+func newStubExternalResolver(repos []repos.Repo) *externalResolver {
 	l := label.NewLabeler(&config.Config{})
-	r := newExternalResolver(l, extraKnown)
+	r := newExternalResolver(l, repos)
 	r.repoRootForImportPath = stubRepoRootForImportPath
 	return r
 }

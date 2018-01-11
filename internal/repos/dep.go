@@ -32,7 +32,7 @@ type depProject struct {
 	Source   string `toml:"source"`
 }
 
-func importRepoRulesDep(filename string) ([]repo, error) {
+func importRepoRulesDep(filename string) ([]Repo, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -42,13 +42,13 @@ func importRepoRulesDep(filename string) ([]repo, error) {
 		return nil, err
 	}
 
-	var repos []repo
+	var repos []Repo
 	for _, p := range file.Projects {
-		repos = append(repos, repo{
-			name:       label.ImportPathToBazelRepoName(p.Name),
-			importPath: p.Name,
-			commit:     p.Revision,
-			remote:     p.Source,
+		repos = append(repos, Repo{
+			Name:     label.ImportPathToBazelRepoName(p.Name),
+			GoPrefix: p.Name,
+			Commit:   p.Revision,
+			Remote:   p.Source,
 		})
 	}
 	return repos, nil
