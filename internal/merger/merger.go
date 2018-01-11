@@ -99,7 +99,6 @@ func init() {
 				"go_proto_library",
 			},
 			attrs: []string{
-				"compilers",
 				"proto",
 			},
 		}, {
