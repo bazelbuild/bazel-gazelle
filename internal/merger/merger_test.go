@@ -751,6 +751,7 @@ go_binary(
     name = "old",
     srcs = ["bin.go"],
     embed = [":go_default_library"],
+    importpath = "foo",
 )
 `,
 		current: `
