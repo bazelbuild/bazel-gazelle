@@ -74,7 +74,7 @@ func newExternalResolver(l *label.Labeler, extraKnownImports []string) *external
 func (r *externalResolver) resolve(importpath string) (label.Label, error) {
 	prefix, err := r.lookupPrefix(importpath)
 	if err != nil {
-		return label.Label{}, err
+		return label.NoLabel, err
 	}
 
 	var pkg string

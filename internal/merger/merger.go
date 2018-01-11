@@ -357,7 +357,7 @@ func extractPlatformStringsExprs(expr bf.Expr) (platformStringsExprs, error) {
 				if k.Value == "//conditions:default" {
 					continue
 				}
-				key, err := label.ParseLabel(k.Value)
+				key, err := label.Parse(k.Value)
 				if err != nil {
 					return platformStringsExprs{}, fmt.Errorf("expression could not be matched: dict key is not label: %q", k.Value)
 				}

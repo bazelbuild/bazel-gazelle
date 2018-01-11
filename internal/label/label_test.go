@@ -51,7 +51,7 @@ func TestLabelString(t *testing.T) {
 	}
 }
 
-func TestParseLabel(t *testing.T) {
+func TestParse(t *testing.T) {
 	for _, tc := range []struct {
 		str     string
 		want    Label
@@ -69,7 +69,7 @@ func TestParseLabel(t *testing.T) {
 		{str: "@a//b", want: Label{Repo: "a", Pkg: "b", Name: "b"}},
 		{str: "@a//b:c", want: Label{Repo: "a", Pkg: "b", Name: "c"}},
 	} {
-		got, err := ParseLabel(tc.str)
+		got, err := Parse(tc.str)
 		if err != nil && !tc.wantErr {
 			t.Errorf("for string %q: got error %s ; want success", tc.str, err)
 			continue
