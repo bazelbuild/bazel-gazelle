@@ -48,12 +48,17 @@ var (
 	// RepoAttrs is the set of attributes that should be merged in repository
 	// rules in WORKSPACE.
 	RepoAttrs MergeableAttrs
+
+	// nonEmptyAttrs is the set of attributes that disqualify a rule from being
+	// deleted after merge.
+	nonEmptyAttrs MergeableAttrs
 )
 
 func init() {
 	PreResolveAttrs = make(MergeableAttrs)
 	PostResolveAttrs = make(MergeableAttrs)
 	RepoAttrs = make(MergeableAttrs)
+	nonEmptyAttrs = make(MergeableAttrs)
 	for _, set := range []struct {
 		mergeableAttrs MergeableAttrs
 		kinds, attrs   []string
@@ -130,6 +135,36 @@ func init() {
 				"urls",
 				"vcs",
 			},
+		}, {
+			mergeableAttrs: nonEmptyAttrs,
+			kinds: []string{
+				"go_binary",
+				"go_library",
+				"go_test",
+				"proto_library",
+			},
+			attrs: []string{
+				"srcs",
+				"deps",
+			},
+		}, {
+			mergeableAttrs: nonEmptyAttrs,
+			kinds: []string{
+				"go_binary",
+				"go_library",
+				"go_test",
+			},
+			attrs: []string{
+				"embed",
+			},
+		}, {
+			mergeableAttrs: nonEmptyAttrs,
+			kinds: []string{
+				"go_proto_library",
+			},
+			attrs: []string{
+				"proto",
+			},
 		},
 	} {
 		for _, kind := range set.kinds {
@@ -156,7 +191,7 @@ func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs Merg
 		if oldRule, ok := s.(*bf.CallExpr); ok {
 			if genRule, _, ok := match(empty, oldRule); ok && genRule != nil {
 				s = mergeRule(genRule, oldRule, attrs, oldFile.Path)
-				if s == nil {
+				if isRuleEmpty(s) {
 					// Deleted empty rule
 					continue
 				}
@@ -244,9 +279,6 @@ func mergeRule(gen, old *bf.CallExpr, attrs MergeableAttrs, filename string) bf.
 		}
 	}
 
-	if isEmpty(&merged) {
-		return nil
-	}
 	return &merged
 }
 
@@ -649,17 +681,23 @@ func name(c *bf.CallExpr) string {
 	return (&bf.Rule{c}).Name()
 }
 
-func isEmpty(c *bf.CallExpr) bool {
-	for _, arg := range c.List {
-		kwarg, ok := arg.(*bf.BinaryExpr)
-		if !ok || kwarg.Op != "=" {
-			return false
-		}
-		key, ok := kwarg.X.(*bf.LiteralExpr)
-		if !ok {
-			return false
-		}
-		if key.Token != "name" && key.Token != "visibility" {
+// isRuleEmpty returns true if a rule cannot be built because it has no sources,
+// dependencies, or embeds after merging. This is based on a per-kind whitelist
+// of attributes. Other attributes, like "name" and "visibility" don't affect
+// emptiness. Always returns false for expressions that aren't in the known
+// set of rules.
+func isRuleEmpty(e bf.Expr) bool {
+	c, ok := e.(*bf.CallExpr)
+	if !ok {
+		return false
+	}
+	r := bf.Rule{Call: c}
+	kind := r.Kind()
+	if nonEmptyAttrs[kind] == nil {
+		return false
+	}
+	for _, attr := range r.AttrKeys() {
+		if nonEmptyAttrs[kind][attr] {
 			return false
 		}
 	}
