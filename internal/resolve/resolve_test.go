@@ -172,6 +172,30 @@ go_library(
 			imp:  "example.com/foo",
 			from: label.New("", "shallow/deep", "deep"),
 			want: label.New("", "shallow/deep/vendor", "deep"),
+		}, {
+			desc: "nested_vendor",
+			buildFiles: []fileSpec{
+				{
+					rel: "vendor/a",
+					content: `
+go_library(
+    name = "a",
+    importpath = "a",
+)
+`,
+				}, {
+					rel: "vendor/b/vendor/a",
+					content: `
+go_library(
+    name = "a",
+    importpath = "a",
+)
+`,
+				},
+			},
+			imp:  "a",
+			from: label.New("", "vendor/b/c", "c"),
+			want: label.New("", "vendor/b/vendor/a", "a"),
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
