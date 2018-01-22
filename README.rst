@@ -33,19 +33,27 @@ Setup
 Running Gazelle with Bazel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To use Gazelle in a new project, add the code below to the WORKSPACE file in
-the root directory of your repository. This should come *after* 
-``io_bazel_rules_go`` and its dependencies are loaded.
+To use Gazelle in a new project, add the ``bazel_gazelle`` repository and its
+dependencies to your WORKSPACE file before ``go_rules_dependencies`` is called.
+It should look like this:
 
 .. code:: bzl
 
-  http_archive(
-      name = "bazel_gazelle",
-      url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.8/bazel-gazelle-0.8.tar.gz",
-      sha256 = "e3dadf036c769d1f40603b86ae1f0f90d11837116022d9b06e4cd88cae786676",
-  )
-  load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
-  gazelle_dependencies()
+    http_archive(
+        name = "io_bazel_rules_go",
+        url = "https://github.com/bazelbuild/rules_go/releases/download/0.9.0/rules_go-0.9.0.tar.gz",
+        sha256 = "4d8d6244320dd751590f9100cf39fd7a4b75cd901e1f3ffdfd6f048328883695",
+    )
+    http_archive(
+        name = "bazel_gazelle",
+        url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.8/bazel-gazelle-0.8.tar.gz",
+        sha256 = "e3dadf036c769d1f40603b86ae1f0f90d11837116022d9b06e4cd88cae786676",
+    )
+    load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+    go_rules_dependencies()
+    go_register_toolchains()
+    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+    gazelle_dependencies()
       
 Add the code below to the BUILD or BUILD.bazel file in the root directory
 of your repository. Replace the string in ``prefix`` with the portion of
