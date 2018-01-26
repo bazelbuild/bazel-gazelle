@@ -45,11 +45,11 @@ type nonlocalResolver interface {
 	resolve(imp string) (label.Label, error)
 }
 
-func NewResolver(c *config.Config, l *label.Labeler, ix *RuleIndex, repos []repos.Repo) *Resolver {
+func NewResolver(c *config.Config, l *label.Labeler, ix *RuleIndex, rc *repos.RemoteCache) *Resolver {
 	var e nonlocalResolver
 	switch c.DepMode {
 	case config.ExternalMode:
-		e = newExternalResolver(l, repos)
+		e = newExternalResolver(l, rc)
 	case config.VendorMode:
 		e = newVendoredResolver(l)
 	}

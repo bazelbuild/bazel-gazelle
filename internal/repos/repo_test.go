@@ -31,7 +31,7 @@ func TestGenerateRepoRules(t *testing.T) {
 		GoPrefix: "golang.org/x/tools",
 		Commit:   "123456",
 	}
-	got := bf.FormatString(generateRepoRule(repo))
+	got := bf.FormatString(GenerateRule(repo))
 	want := `go_repository(
     name = "org_golang_x_tools",
     commit = "123456",

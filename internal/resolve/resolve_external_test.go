@@ -24,61 +24,9 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
+
 	"golang.org/x/tools/go/vcs"
 )
-
-func TestSpecialCases(t *testing.T) {
-	for _, c := range []struct {
-		in, want  string
-		repos     []repos.Repo
-		wantError bool
-	}{
-		{in: "golang.org/x/net/context", want: "golang.org/x/net"},
-		{in: "golang.org/x/tools/go/vcs", want: "golang.org/x/tools"},
-		{in: "golang.org/x/goimports", want: "golang.org/x/goimports"},
-		{in: "cloud.google.com/fashion/industry", want: "cloud.google.com/fashion"},
-		{in: "github.com/foo", wantError: true},
-		{in: "github.com/foo/bar", want: "github.com/foo/bar"},
-		{in: "github.com/foo/bar/baz", want: "github.com/foo/bar"},
-		{in: "gopkg.in/yaml.v2", want: "gopkg.in/yaml.v2"},
-		{in: "gopkg.in/src-d/go-git.v4", want: "gopkg.in/src-d/go-git.v4"},
-		{in: "unsupported.org/x/net/context", wantError: true},
-		{
-			in: "private.com/my/repo/package/path",
-			repos: []repos.Repo{
-				{
-					Name:     "com_other_host_repo",
-					GoPrefix: "other-host.com/repo",
-				}, {
-					Name:     "com_private_my_repo",
-					GoPrefix: "private.com/my/repo",
-				},
-			},
-			want: "private.com/my/repo",
-		},
-		{
-			in: "unsupported.org/x/net/context",
-			repos: []repos.Repo{
-				{
-					Name:     "com_private_my_repo",
-					GoPrefix: "private.com/my/repo",
-				},
-			},
-			wantError: true,
-		},
-	} {
-		r := newStubExternalResolver(c.repos)
-		if got, err := r.lookupPrefix(c.in); err != nil {
-			if !c.wantError {
-				t.Errorf("unexpected error: %v", err)
-			}
-		} else if c.wantError {
-			t.Errorf("unexpected success: %v", c.in)
-		} else if got != c.want {
-			t.Errorf("specialCases(%q) = %q; want %q", c.in, got, c.want)
-		}
-	}
-}
 
 func TestExternalResolver(t *testing.T) {
 	for _, spec := range []struct {
@@ -119,11 +67,17 @@ func TestExternalResolver(t *testing.T) {
 	}
 }
 
-func newStubExternalResolver(repos []repos.Repo) *externalResolver {
+func newStubExternalResolver(knownRepos []repos.Repo) *externalResolver {
 	l := label.NewLabeler(&config.Config{})
-	r := newExternalResolver(l, repos)
-	r.repoRootForImportPath = stubRepoRootForImportPath
-	return r
+	rc := newStubRemoteCache(knownRepos)
+	return newExternalResolver(l, rc)
+}
+
+func newStubRemoteCache(knownRepos []repos.Repo) *repos.RemoteCache {
+	rc := repos.NewRemoteCache(knownRepos)
+	rc.RepoRootForImportPath = stubRepoRootForImportPath
+	rc.HeadCmd = nil
+	return rc
 }
 
 // stubRepoRootForImportPath is a stub implementation of vcs.RepoRootForImportPath

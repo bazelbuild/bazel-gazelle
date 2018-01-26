@@ -337,13 +337,14 @@ func TestResolveGoLocalError(t *testing.T) {
 	c := &config.Config{GoPrefix: "example.com/repo"}
 	l := label.NewLabeler(c)
 	ix := NewRuleIndex()
-	r := NewResolver(c, l, ix, nil)
+	rc := newStubRemoteCache(nil)
+	r := NewResolver(c, l, ix, rc)
 
 	for _, importpath := range []string{
 		"fmt",
-		"example.com/another",
-		"example.com/another/sub",
-		"example.com/repo_suffix",
+		"unknown.com/another",
+		"unknown.com/another/sub",
+		"unknown.com/repo_suffix",
 	} {
 		if l, err := r.resolveGo(importpath, label.NoLabel); err == nil {
 			t.Errorf("r.resolveGo(%q) = %s; want error", importpath, l)
