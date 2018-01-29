@@ -29,7 +29,6 @@ go_test(
         "resolve_test.go",
     ],
     embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/resolve",
     deps = [
         "//internal/config:go_default_library",
         "//internal/label:go_default_library",

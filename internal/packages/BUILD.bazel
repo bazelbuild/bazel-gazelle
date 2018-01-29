@@ -29,7 +29,6 @@ go_test(
         "package_test.go",
     ],
     embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/packages",
     deps = ["//internal/config:go_default_library"],
 )
 
@@ -37,7 +36,6 @@ go_test(
     name = "go_default_xtest",
     size = "small",
     srcs = ["walk_test.go"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/packages_test",
     deps = [
         ":go_default_library",
         "//internal/config:go_default_library",

@@ -23,6 +23,5 @@ go_test(
         "repo_test.go",
     ],
     embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/repos",
     deps = ["@com_github_bazelbuild_buildtools//build:go_default_library"],
 )
