@@ -26,7 +26,6 @@ go_test(
     size = "small",
     srcs = ["generator_test.go"],
     data = glob(["testdata/**"]),
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/rules_test",
     deps = [
         ":go_default_library",
         "//internal/config:go_default_library",

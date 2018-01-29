@@ -11,6 +11,5 @@ go_library(
 go_binary(
     name = "tomljson",
     embed = [":go_default_library"],
-    importpath = "github.com/pelletier/go-toml/cmd/tomljson",
     visibility = ["//visibility:public"],
 )

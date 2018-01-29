@@ -12,5 +12,4 @@ go_test(
     size = "small",
     srcs = ["finder_test.go"],
     embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/wspace",
 )

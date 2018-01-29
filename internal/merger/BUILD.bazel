@@ -23,7 +23,6 @@ go_test(
         "merger_test.go",
     ],
     embed = [":go_default_library"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/merger",
     deps = [
         "//internal/config:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
