@@ -837,3 +837,86 @@ func TestMergeFile(t *testing.T) {
 		})
 	}
 }
+
+func TestMatch(t *testing.T) {
+	for _, tc := range []struct {
+		desc, gen, old string
+		wantIndex      int
+		wantError      bool
+	}{
+		{
+			desc:      "no_match",
+			gen:       `go_library(name = "lib")`,
+			wantIndex: -1,
+		}, {
+			desc:      "name_match",
+			gen:       `go_library(name = "lib")`,
+			old:       `go_library(name = "lib", srcs = ["lib.go"])`,
+			wantIndex: 0,
+		}, {
+			desc:      "name_match_kind_different",
+			gen:       `go_library(name = "lib")`,
+			old:       `cc_library(name = "lib")`,
+			wantError: true,
+		}, {
+			desc: "multiple_name_match",
+			gen:  `go_library(name = "lib")`,
+			old: `
+go_library(name = "lib")
+go_library(name = "lib")
+`,
+			wantError: true,
+		}, {
+			desc:      "attr_match",
+			gen:       `go_library(name = "x", importpath = "foo")`,
+			old:       `go_library(name = "y", importpath = "foo")`,
+			wantIndex: 0,
+		}, {
+			desc: "multiple_attr_match",
+			gen:  `go_library(name = "x", importpath = "foo")`,
+			old: `
+go_library(name = "y", importpath = "foo")
+go_library(name = "z", importpath = "foo")
+`,
+			wantError: true,
+		}, {
+			desc:      "second_attr_match",
+			gen:       `go_proto_library(name = "x_go_proto", proto = ":x_proto")`,
+			old:       `go_proto_library(name = "y_go_proto", proto = ":x_proto")`,
+			wantIndex: 0,
+		}, {
+			desc:      "any_match",
+			gen:       `go_binary(name = "x")`,
+			old:       `go_binary(name = "y")`,
+			wantIndex: 0,
+		}, {
+			desc: "multiple_any_match",
+			gen:  `go_binary(name = "x")`,
+			old: `
+go_binary(name = "y")
+go_binary(name = "z")
+`,
+			wantError: true,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			genFile, err := bf.Parse("gen", []byte(tc.gen))
+			if err != nil {
+				t.Fatal(err)
+			}
+			oldFile, err := bf.Parse("old", []byte(tc.old))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, gotIndex, gotErr := match(oldFile.Stmt, genFile.Stmt[0].(*bf.CallExpr)); gotErr != nil {
+				if !tc.wantError {
+					t.Fatalf("unexpected error: %v", gotErr)
+				}
+			} else if tc.wantError {
+				t.Fatal("unexpected success")
+			} else if gotIndex != tc.wantIndex {
+				t.Fatal("got index %d ; want %d", gotIndex, tc.wantIndex)
+			}
+		})
+	}
+}

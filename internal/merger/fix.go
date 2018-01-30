@@ -293,15 +293,7 @@ func removeLegacyProto(c *config.Config, oldFile *bf.File) *bf.File {
 		sort.Ints(deletedIndices)
 	}
 	fixedFile := *oldFile
-	fixedFile.Stmt = make([]bf.Expr, 0, len(oldFile.Stmt)-len(deletedIndices))
-	di := 0
-	for i, stmt := range oldFile.Stmt {
-		if di < len(deletedIndices) && i == deletedIndices[di] {
-			di++
-			continue
-		}
-		fixedFile.Stmt = append(fixedFile.Stmt, stmt)
-	}
+	fixedFile.Stmt = deleteIndices(oldFile.Stmt, deletedIndices)
 	return &fixedFile
 }
 
