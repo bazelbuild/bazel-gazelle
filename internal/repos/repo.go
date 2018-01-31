@@ -45,6 +45,10 @@ type Repo struct {
 
 	// Remote is the URL the repository can be cloned or checked out from.
 	Remote string
+
+	// VCS is the version control system used to check out the repository.
+	// May also be "http" for HTTP archives.
+	VCS string
 }
 
 type byName []Repo
@@ -82,7 +86,7 @@ func ImportRepoRules(filename string) ([]bf.Expr, error) {
 
 	rules := make([]bf.Expr, 0, len(repos))
 	for _, repo := range repos {
-		rules = append(rules, generateRepoRule(repo))
+		rules = append(rules, GenerateRule(repo))
 	}
 	return rules, nil
 }
@@ -96,7 +100,9 @@ func getLockFileFormat(filename string) lockFileFormat {
 	}
 }
 
-func generateRepoRule(repo Repo) bf.Expr {
+// GenerateRule returns a repository rule for the given repository that can
+// be written in a WORKSPACE file.
+func GenerateRule(repo Repo) bf.Expr {
 	attrs := []rules.KeyValue{
 		{Key: "name", Value: repo.Name},
 		{Key: "commit", Value: repo.Commit},
@@ -104,6 +110,9 @@ func generateRepoRule(repo Repo) bf.Expr {
 	}
 	if repo.Remote != "" {
 		attrs = append(attrs, rules.KeyValue{Key: "remote", Value: repo.Remote})
+	}
+	if repo.VCS != "" {
+		attrs = append(attrs, rules.KeyValue{Key: "vcs", Value: repo.VCS})
 	}
 	return rules.NewRule("go_repository", attrs)
 }
@@ -161,6 +170,7 @@ func ListRepositories(workspace *bf.File) []Repo {
 			goPrefix := r.AttrString("importpath")
 			revision := r.AttrString("commit")
 			remote := r.AttrString("remote")
+			vcs := r.AttrString("vcs")
 			if goPrefix == "" {
 				continue
 			}
@@ -169,9 +179,11 @@ func ListRepositories(workspace *bf.File) []Repo {
 				GoPrefix: goPrefix,
 				Commit:   revision,
 				Remote:   remote,
+				VCS:      vcs,
 			}
 
-			// TODO(jayconrod): infer from {new_,}git_repository, {new_,}http_archive
+			// TODO(jayconrod): infer from {new_,}git_repository, {new_,}http_archive,
+			// local_repository.
 
 		default:
 			continue

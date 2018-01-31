@@ -152,7 +152,8 @@ func runFixUpdate(cmd command, args []string) error {
 	ruleIndex.Finish()
 
 	// Resolve dependencies.
-	resolver := resolve.NewResolver(uc.c, l, ruleIndex, uc.repos)
+	rc := repos.NewRemoteCache(uc.repos)
+	resolver := resolve.NewResolver(uc.c, l, ruleIndex, rc)
 	for i := range visits {
 		for j := range visits[i].rules {
 			visits[i].rules[j] = resolver.ResolveRule(visits[i].rules[j], visits[i].pkgRel)
