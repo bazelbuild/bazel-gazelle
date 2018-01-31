@@ -56,6 +56,9 @@ type Config struct {
 
 	// ProtoMode determines how rules are generated for protos.
 	ProtoMode ProtoMode
+
+	// ProtoModeExplicit indicates whether the proto mode was set explicitly.
+	ProtoModeExplicit bool
 }
 
 var DefaultValidBuildFileNames = []string{"BUILD.bazel", "BUILD"}

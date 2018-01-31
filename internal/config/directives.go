@@ -115,6 +115,7 @@ func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
 				continue
 			}
 			modified.ProtoMode = protoMode
+			modified.ProtoModeExplicit = true
 			didModify = true
 		}
 	}
@@ -131,7 +132,7 @@ func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
 // repository, legacy mode is used. If go_proto_library is loaded from another
 // file, proto rule generation is disabled.
 func InferProtoMode(c *Config, rel string, f *bf.File, directives []Directive) *Config {
-	if c.ProtoMode != DefaultProtoMode {
+	if c.ProtoMode != DefaultProtoMode || c.ProtoModeExplicit {
 		return c
 	}
 	for _, d := range directives {

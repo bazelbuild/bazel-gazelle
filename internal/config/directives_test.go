@@ -121,6 +121,14 @@ load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
 `,
 			want: DefaultProtoMode,
 		}, {
+			desc:    "explicit_no_override",
+			content: `load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")`,
+			c: Config{
+				ProtoMode:         DefaultProtoMode,
+				ProtoModeExplicit: true,
+			},
+			want: DefaultProtoMode,
+		}, {
 			desc: "vendor",
 			rel:  "vendor",
 			want: DisableProtoMode,

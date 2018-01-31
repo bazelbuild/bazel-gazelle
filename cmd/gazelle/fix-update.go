@@ -199,7 +199,8 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 	mode := fs.String("mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
 	outDir := fs.String("experimental_out_dir", "", "write build files to an alternate directory tree")
 	outSuffix := fs.String("experimental_out_suffix", "", "extra suffix appended to build file names. Only used if -experimental_out_dir is also set.")
-	proto := fs.String("proto", "default", "default: generates new proto rules\n\tdisable: does not touch proto rules\n\tlegacy (deprecated): generates old proto rules")
+	var proto explicitFlag
+	fs.Var(&proto, "proto", "default: generates new proto rules\n\tdisable: does not touch proto rules\n\tlegacy (deprecated): generates old proto rules")
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
 			fixUpdateUsage(fs)
@@ -271,9 +272,12 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 		return nil, err
 	}
 
-	uc.c.ProtoMode, err = config.ProtoModeFromString(*proto)
-	if err != nil {
-		return nil, err
+	if proto.set {
+		uc.c.ProtoMode, err = config.ProtoModeFromString(proto.value)
+		if err != nil {
+			return nil, err
+		}
+		uc.c.ProtoModeExplicit = true
 	}
 
 	emit, ok := modeFromName[*mode]
