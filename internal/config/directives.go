@@ -164,7 +164,8 @@ func InferProtoMode(c *Config, rel string, f *bf.File, directives []Directive) *
 		if !ok {
 			continue
 		}
-		if x, ok := c.X.(*bf.LiteralExpr); !ok || x.Token != "load" || len(c.List) == 0 {
+		x, ok := c.X.(*bf.LiteralExpr)
+		if !ok || x.Token != "load" || len(c.List) == 0 {
 			continue
 		}
 		name, ok := c.List[0].(*bf.StringExpr)
