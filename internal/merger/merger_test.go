@@ -796,6 +796,72 @@ go_library(
     ],
 )
 `,
+	}, {
+		desc: "match and rename",
+		previous: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+go_binary(
+    name = "custom_bin",
+    embed = [":custom_library"],
+)
+
+go_library(
+    name = "custom_library",
+    embed = [":custom_proto_library"],
+    importpath = "example.com/repo/foo",
+)
+
+go_proto_library(
+    name = "custom_proto_library",
+    importpath = "example.com/repo/foo",
+    proto = ":foo_proto",
+)
+`,
+		current: `
+go_binary(
+    name = "bin",
+    srcs = ["bin.go"],
+    embed = [":go_default_library"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["lib.go"],
+    embed = [":foo_proto_library"],
+    importpath = "example.com/repo/foo",
+)
+
+go_proto_library(
+    name = "foo_proto_library",
+    importpath = "example.com/repo/foo",
+    proto = ":foo_proto",
+)
+`,
+		expected: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+go_binary(
+    name = "custom_bin",
+    embed = [":custom_library"],
+    srcs = ["bin.go"],
+)
+
+go_library(
+    name = "custom_library",
+    embed = [":custom_proto_library"],
+    importpath = "example.com/repo/foo",
+    srcs = ["lib.go"],
+)
+
+go_proto_library(
+    name = "custom_proto_library",
+    importpath = "example.com/repo/foo",
+    proto = ":foo_proto",
+)
+`,
 	},
 }
 
@@ -880,11 +946,6 @@ go_library(name = "z", importpath = "foo")
 `,
 			wantError: true,
 		}, {
-			desc:      "second_attr_match",
-			gen:       `go_proto_library(name = "x_go_proto", proto = ":x_proto")`,
-			old:       `go_proto_library(name = "y_go_proto", proto = ":x_proto")`,
-			wantIndex: 0,
-		}, {
 			desc:      "any_match",
 			gen:       `go_binary(name = "x")`,
 			old:       `go_binary(name = "y")`,
@@ -915,7 +976,7 @@ go_binary(name = "z")
 			} else if tc.wantError {
 				t.Fatal("unexpected success")
 			} else if gotIndex != tc.wantIndex {
-				t.Fatal("got index %d ; want %d", gotIndex, tc.wantIndex)
+				t.Fatalf("got index %d ; want %d", gotIndex, tc.wantIndex)
 			}
 		})
 	}
