@@ -117,10 +117,10 @@ func init() {
 	}
 	KnownOSs = make([]string, 0, len(KnownOSSet))
 	KnownArchs = make([]string, 0, len(KnownArchSet))
-	for os, _ := range KnownOSSet {
+	for os := range KnownOSSet {
 		KnownOSs = append(KnownOSs, os)
 	}
-	for arch, _ := range KnownArchSet {
+	for arch := range KnownArchSet {
 		KnownArchs = append(KnownArchs, arch)
 	}
 	sort.Strings(KnownOSs)

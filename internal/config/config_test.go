@@ -31,7 +31,7 @@ func TestPreprocessTags(t *testing.T) {
 	unexpectedTags := []string{"x", "cgo", "go1.8", "go1.7"}
 	for _, tag := range unexpectedTags {
 		if c.GenericTags[tag] {
-			t.Errorf("tag %q unexpectedly set")
+			t.Errorf("tag %q unexpectedly set", tag)
 		}
 	}
 }
