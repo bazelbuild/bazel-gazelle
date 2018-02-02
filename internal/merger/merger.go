@@ -184,37 +184,73 @@ func init() {
 // are empty after merging. attrs is the set of attributes to merge. Attributes
 // not in this set will be left alone if they already exist.
 func MergeFile(genRules []bf.Expr, empty []bf.Expr, oldFile *bf.File, attrs MergeableAttrs) (mergedFile *bf.File, mergedRules []bf.Expr) {
+	// Merge empty rules into the file and delete any rules which become empty.
 	mergedFile = new(bf.File)
 	*mergedFile = *oldFile
-	mergedFile.Stmt = make([]bf.Expr, 0, len(oldFile.Stmt))
-	for _, s := range oldFile.Stmt {
-		if oldRule, ok := s.(*bf.CallExpr); ok {
-			if genRule, _, ok := match(empty, oldRule); ok && genRule != nil {
-				s = mergeRule(genRule, oldRule, attrs, oldFile.Path)
-				if isRuleEmpty(s) {
-					// Deleted empty rule
-					continue
-				}
+	mergedFile.Stmt = append([]bf.Expr{}, oldFile.Stmt...)
+	var deletedIndices []int
+	for _, s := range empty {
+		emptyCall := s.(*bf.CallExpr)
+		if oldCall, i, _ := match(oldFile.Stmt, emptyCall); oldCall != nil {
+			mergedRule := mergeRule(emptyCall, oldCall, attrs, oldFile.Path)
+			if isRuleEmpty(mergedRule) {
+				deletedIndices = append(deletedIndices, i)
+			} else {
+				mergedFile.Stmt[i] = mergedRule
 			}
 		}
-		mergedFile.Stmt = append(mergedFile.Stmt, s)
 	}
-	oldStmtCount := len(mergedFile.Stmt)
+	if len(deletedIndices) > 0 {
+		sort.Ints(deletedIndices)
+		mergedFile.Stmt = deleteIndices(mergedFile.Stmt, deletedIndices)
+	}
 
-	for _, s := range genRules {
-		genRule, ok := s.(*bf.CallExpr)
-		if !ok {
-			log.Panicf("got %v expected only CallExpr in genRules", s)
-		}
-		oldRule, i, ok := match(mergedFile.Stmt[:oldStmtCount], genRule)
-		if oldRule == nil {
-			mergedFile.Stmt = append(mergedFile.Stmt, genRule)
-			mergedRules = append(mergedRules, genRule)
+	// Match generated rules with existing rules in the file. Keep track of
+	// rules with non-standard names.
+	matchIndices := make([]int, len(genRules))
+	matchErrors := make([]error, len(genRules))
+	substitutions := make(map[string]string)
+	for i, s := range genRules {
+		genCall := s.(*bf.CallExpr)
+		oldCall, oldIndex, err := match(mergedFile.Stmt, genCall)
+		if err != nil {
+			// TODO(jayconrod): add a verbose mode and log errors. They are too chatty
+			// to print by default.
+			matchErrors[i] = err
 			continue
-		} else if ok {
-			merged := mergeRule(genRule, oldRule, attrs, oldFile.Path)
-			mergedFile.Stmt[i] = merged
-			mergedRules = append(mergedRules, mergedFile.Stmt[i])
+		}
+		matchIndices[i] = oldIndex // < 0 indicates no match
+		if oldCall != nil {
+			oldRule := bf.Rule{Call: oldCall}
+			genRule := bf.Rule{Call: genCall}
+			oldName := oldRule.Name()
+			genName := genRule.Name()
+			if oldName != genName {
+				substitutions[genName] = oldName
+			}
+		}
+	}
+
+	// Rename labels in generated rules that refer to other generated rules.
+	if len(substitutions) > 0 {
+		genRules = append([]bf.Expr{}, genRules...)
+		for i, s := range genRules {
+			genRules[i] = substituteRule(s.(*bf.CallExpr), substitutions)
+		}
+	}
+
+	// Merge generated rules with existing rules or append to the end of the file.
+	for i := range genRules {
+		if matchErrors[i] != nil {
+			continue
+		}
+		if matchIndices[i] < 0 {
+			mergedFile.Stmt = append(mergedFile.Stmt, genRules[i])
+			mergedRules = append(mergedRules, genRules[i])
+		} else {
+			mergedRule := mergeRule(genRules[i].(*bf.CallExpr), mergedFile.Stmt[matchIndices[i]].(*bf.CallExpr), attrs, oldFile.Path)
+			mergedFile.Stmt[matchIndices[i]] = mergedRule
+			mergedRules = append(mergedRules, mergedRule)
 		}
 	}
 
@@ -632,6 +668,89 @@ func dictEntryKeyValue(e bf.Expr) (string, *bf.ListExpr, error) {
 	return k.Value, v, nil
 }
 
+// substituteAttrs contains a list of attributes for each kind that should be
+// processed by substituteRule and substituteExpr. Note that "name" does not
+// need to be substituted since it's not mergeable.
+var substituteAttrs = map[string][]string{
+	"go_binary":        {"embed"},
+	"go_library":       {"embed"},
+	"go_test":          {"embed"},
+	"go_proto_library": {"proto"},
+}
+
+// substituteRule replaces local labels (those beginning with ":", referring to
+// targets in the same package) according to a substitution map. This is used
+// to update generated rules before merging when the corresponding existing
+// rules have different names. If substituteRule replaces a string, it returns
+// a new expression; it will not modify the original expression.
+func substituteRule(call *bf.CallExpr, substitutions map[string]string) *bf.CallExpr {
+	rule := bf.Rule{Call: call}
+	attrs, ok := substituteAttrs[rule.Kind()]
+	if !ok {
+		return call
+	}
+
+	didCopy := false
+	for i, arg := range call.List {
+		kv, ok := arg.(*bf.BinaryExpr)
+		if !ok || kv.Op != "=" {
+			continue
+		}
+		key, ok := kv.X.(*bf.LiteralExpr)
+		shouldRename := false
+		for _, k := range attrs {
+			shouldRename = shouldRename || key.Token == k
+		}
+		if !shouldRename {
+			continue
+		}
+
+		value := substituteExpr(kv.Y, substitutions)
+		if value != kv.Y {
+			if !didCopy {
+				didCopy = true
+				callCopy := *call
+				callCopy.List = append([]bf.Expr{}, call.List...)
+				call = &callCopy
+			}
+			kvCopy := *kv
+			kvCopy.Y = value
+			call.List[i] = &kvCopy
+		}
+	}
+	return call
+}
+
+// substituteExpr replaces local labels according to a substitution map.
+// It only supports string and list expressions (which should be sufficient
+// for generated rules). If it replaces a string, it returns a new expression;
+// otherwise, it returns e.
+func substituteExpr(e bf.Expr, substitutions map[string]string) bf.Expr {
+	switch e := e.(type) {
+	case *bf.StringExpr:
+		if rename, ok := substitutions[strings.TrimPrefix(e.Value, ":")]; ok {
+			return &bf.StringExpr{Value: ":" + rename}
+		}
+	case *bf.ListExpr:
+		var listCopy *bf.ListExpr
+		for i, elem := range e.List {
+			renamed := substituteExpr(elem, substitutions)
+			if renamed != elem {
+				if listCopy == nil {
+					listCopy = new(bf.ListExpr)
+					*listCopy = *e
+					listCopy.List = append([]bf.Expr{}, e.List...)
+				}
+				listCopy.List[i] = renamed
+			}
+		}
+		if listCopy != nil {
+			return listCopy
+		}
+	}
+	return e
+}
+
 // shouldKeep returns whether an expression from the original file should be
 // preserved. This is true if it has a prefix or end-of-line comment "keep".
 // Note that bf.Rewrite recognizes "keep sorted" comments which are different,
@@ -646,31 +765,101 @@ func shouldKeep(e bf.Expr) bool {
 	return false
 }
 
-// match looks for the matching CallExpr in stmts. It returns a matching rule
-// (or nil), the index of the rule, and whether the match was complete.
+// matchAttrs contains lists of attributes for each kind that are used in
+// matching. For example, importpath attributes can be used to match go_library
+// rules, even when the names are different.
+var matchAttrs = map[string][]string{
+	"go_library":       {"importpath"},
+	"go_proto_library": {"importpath"},
+	"go_repository":    {"importpath"},
+}
+
+// matchAny is a set of kinds which may be matched regardless of attributes.
+// For example, if there is only one go_binary in a package, any go_binary
+// rule will match.
+var matchAny = map[string]bool{"go_binary": true}
+
+// match searches for a rule that can be merged with x in stmts.
 //
-// match scans CallExprs in stmts based on the "name" attribute and the kind.
-// If "name" and kind both match, the rule, its index, and true are returned.
-// If "name" matches but "kind" does not, the rule, its index, and false are
-// returned. If no rule matches "name", nil, -1, and false are returned.
-func match(stmts []bf.Expr, x *bf.CallExpr) (*bf.CallExpr, int, bool) {
+// A rule is considered a match if its kind is equal to x's kind AND either its
+// name is equal OR at least one of the attributes in matchAttrs is equal.
+//
+// If there are no matches, nil, -1, and nil are returned.
+//
+// If a rule has the same name but a different kind, nil, -1, and an error
+// are returned.
+//
+// If there is exactly one match, the rule, its index in stmts, and nil
+// are returned.
+//
+// If there are multiple matches, match will attempt to disambiguate, based on
+// the quality of the match (name match is best, then attribute match in the
+// order that attributes are listed). If disambiguation is successful,
+// the rule, its index in stmts, and nil are returned. Otherwise, nil, -1,
+// and an error are returned.
+func match(stmts []bf.Expr, x *bf.CallExpr) (*bf.CallExpr, int, error) {
+	type matchInfo struct {
+		rule  bf.Rule
+		index int
+	}
+
 	xr := bf.Rule{x}
 	xname := xr.Name()
 	xkind := xr.Kind()
+	var nameMatches []matchInfo
+	var kindMatches []matchInfo
 	for i, s := range stmts {
 		y, ok := s.(*bf.CallExpr)
 		if !ok {
 			continue
 		}
 		yr := bf.Rule{Call: y}
-		yname := yr.Name()
-		if xname != yname {
+		if xname == yr.Name() {
+			nameMatches = append(nameMatches, matchInfo{yr, i})
+		}
+		if xkind == yr.Kind() {
+			kindMatches = append(kindMatches, matchInfo{yr, i})
+		}
+	}
+
+	if len(nameMatches) == 1 {
+		if ykind := nameMatches[0].rule.Kind(); xkind != ykind {
+			return nil, -1, fmt.Errorf("could not merge %s(%s): a rule of the same name has kind %s", xkind, xname, ykind)
+		}
+		return nameMatches[0].rule.Call, nameMatches[0].index, nil
+	}
+	if len(nameMatches) > 1 {
+		return nil, -1, fmt.Errorf("could not merge %s(%s): multiple rules have the same name", xname)
+	}
+
+	attrs := matchAttrs[xr.Kind()]
+	for _, key := range attrs {
+		var attrMatches []matchInfo
+		xvalue := xr.AttrString(key)
+		if xvalue == "" {
 			continue
 		}
-		ykind := yr.Kind()
-		return y, i, xkind == ykind
+		for _, m := range kindMatches {
+			if xvalue == m.rule.AttrString(key) {
+				attrMatches = append(attrMatches, m)
+			}
+		}
+		if len(attrMatches) == 1 {
+			return attrMatches[0].rule.Call, attrMatches[0].index, nil
+		} else if len(attrMatches) > 1 {
+			return nil, -1, fmt.Errorf("could not merge %s(%s): multiple rules have the same attribute %s = %q", xkind, xname, key, xvalue)
+		}
 	}
-	return nil, -1, false
+
+	if matchAny[xkind] {
+		if len(kindMatches) == 1 {
+			return kindMatches[0].rule.Call, kindMatches[0].index, nil
+		} else if len(kindMatches) > 1 {
+			return nil, -1, fmt.Errorf("could not merge %s(%s): multiple rules have the same kind but different names", xkind, xname)
+		}
+	}
+
+	return nil, -1, nil
 }
 
 func kind(c *bf.CallExpr) string {
@@ -719,4 +908,19 @@ func stringValue(e bf.Expr) string {
 		return ""
 	}
 	return s.Value
+}
+
+// deleteIndices copies a list, dropping elements at deletedIndices.
+// deletedIndices must be sorted.
+func deleteIndices(stmt []bf.Expr, deletedIndices []int) []bf.Expr {
+	kept := make([]bf.Expr, 0, len(stmt)-len(deletedIndices))
+	di := 0
+	for i, s := range stmt {
+		if di < len(deletedIndices) && i == deletedIndices[di] {
+			di++
+			continue
+		}
+		kept = append(kept, s)
+	}
+	return kept
 }

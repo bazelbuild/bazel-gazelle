@@ -796,6 +796,72 @@ go_library(
     ],
 )
 `,
+	}, {
+		desc: "match and rename",
+		previous: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+go_binary(
+    name = "custom_bin",
+    embed = [":custom_library"],
+)
+
+go_library(
+    name = "custom_library",
+    embed = [":custom_proto_library"],
+    importpath = "example.com/repo/foo",
+)
+
+go_proto_library(
+    name = "custom_proto_library",
+    importpath = "example.com/repo/foo",
+    proto = ":foo_proto",
+)
+`,
+		current: `
+go_binary(
+    name = "bin",
+    srcs = ["bin.go"],
+    embed = [":go_default_library"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["lib.go"],
+    embed = [":foo_proto_library"],
+    importpath = "example.com/repo/foo",
+)
+
+go_proto_library(
+    name = "foo_proto_library",
+    importpath = "example.com/repo/foo",
+    proto = ":foo_proto",
+)
+`,
+		expected: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+go_binary(
+    name = "custom_bin",
+    embed = [":custom_library"],
+    srcs = ["bin.go"],
+)
+
+go_library(
+    name = "custom_library",
+    embed = [":custom_proto_library"],
+    importpath = "example.com/repo/foo",
+    srcs = ["lib.go"],
+)
+
+go_proto_library(
+    name = "custom_proto_library",
+    importpath = "example.com/repo/foo",
+    proto = ":foo_proto",
+)
+`,
 	},
 }
 
@@ -833,6 +899,84 @@ func TestMergeFile(t *testing.T) {
 
 			if got := string(bf.Format(mergedFile)); got != want {
 				t.Fatalf("%s: got %s; want %s", tc.desc, got, want)
+			}
+		})
+	}
+}
+
+func TestMatch(t *testing.T) {
+	for _, tc := range []struct {
+		desc, gen, old string
+		wantIndex      int
+		wantError      bool
+	}{
+		{
+			desc:      "no_match",
+			gen:       `go_library(name = "lib")`,
+			wantIndex: -1,
+		}, {
+			desc:      "name_match",
+			gen:       `go_library(name = "lib")`,
+			old:       `go_library(name = "lib", srcs = ["lib.go"])`,
+			wantIndex: 0,
+		}, {
+			desc:      "name_match_kind_different",
+			gen:       `go_library(name = "lib")`,
+			old:       `cc_library(name = "lib")`,
+			wantError: true,
+		}, {
+			desc: "multiple_name_match",
+			gen:  `go_library(name = "lib")`,
+			old: `
+go_library(name = "lib")
+go_library(name = "lib")
+`,
+			wantError: true,
+		}, {
+			desc:      "attr_match",
+			gen:       `go_library(name = "x", importpath = "foo")`,
+			old:       `go_library(name = "y", importpath = "foo")`,
+			wantIndex: 0,
+		}, {
+			desc: "multiple_attr_match",
+			gen:  `go_library(name = "x", importpath = "foo")`,
+			old: `
+go_library(name = "y", importpath = "foo")
+go_library(name = "z", importpath = "foo")
+`,
+			wantError: true,
+		}, {
+			desc:      "any_match",
+			gen:       `go_binary(name = "x")`,
+			old:       `go_binary(name = "y")`,
+			wantIndex: 0,
+		}, {
+			desc: "multiple_any_match",
+			gen:  `go_binary(name = "x")`,
+			old: `
+go_binary(name = "y")
+go_binary(name = "z")
+`,
+			wantError: true,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			genFile, err := bf.Parse("gen", []byte(tc.gen))
+			if err != nil {
+				t.Fatal(err)
+			}
+			oldFile, err := bf.Parse("old", []byte(tc.old))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, gotIndex, gotErr := match(oldFile.Stmt, genFile.Stmt[0].(*bf.CallExpr)); gotErr != nil {
+				if !tc.wantError {
+					t.Fatalf("unexpected error: %v", gotErr)
+				}
+			} else if tc.wantError {
+				t.Fatal("unexpected success")
+			} else if gotIndex != tc.wantIndex {
+				t.Fatalf("got index %d ; want %d", gotIndex, tc.wantIndex)
 			}
 		})
 	}
