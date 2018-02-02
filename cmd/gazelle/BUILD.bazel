@@ -34,6 +34,13 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
+go_binary(
+    name = "gazelle_pure",
+    embed = [":go_default_library"],
+    pure = "on",
+    visibility = ["//visibility:public"],
+)
+
 go_test(
     name = "go_default_test",
     size = "small",
