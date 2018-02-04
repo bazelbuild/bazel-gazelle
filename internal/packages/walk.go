@@ -81,6 +81,8 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		rootRel = ""
 	}
 
+	symlinks := symlinkResolver{root: root, visited: []string{root}}
+
 	// visit walks the directory tree in post-order. It returns whether the
 	// given directory or any subdirectory contained a build file or buildable
 	// source code. This affects whether "testdata" directories are considered
@@ -174,11 +176,16 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 				(c.ProtoMode != config.DisableProtoMode && strings.HasSuffix(base, ".proto")):
 				pkgFiles = append(pkgFiles, base)
 
+			case f.Mode()&os.ModeSymlink != 0:
+				if symlinks.follow(dir, base) {
+					subdirs = append(subdirs, base)
+				} else {
+					otherFiles = append(otherFiles, base)
+				}
 			default:
 				otherFiles = append(otherFiles, base)
 			}
 		}
-
 		// Recurse into subdirectories.
 		hasTestdata := false
 		subdirHasPackage := false
@@ -414,4 +421,39 @@ func excludedForSubdir(excluded []string, subdir string) []string {
 		filtered = append(filtered, e[i+1:])
 	}
 	return filtered
+}
+
+type symlinkResolver struct {
+	root    string
+	visited []string
+}
+
+// Decide if symlink dir/base should be followed.
+func (r *symlinkResolver) follow(dir, base string) bool {
+	if dir == r.root && strings.HasPrefix(base, "bazel-") {
+		// Links such as bazel-<workspace>, bazel-out, bazel-genfiles are created by
+		// Bazel to point to internal build directories.
+		return false
+	}
+	// See if the symlink points to a tree that has been already visited.
+	fullpath := filepath.Join(dir, base)
+	dest, err := os.Readlink(fullpath)
+	if err != nil {
+		log.Printf("readlink %v: %v", fullpath, err)
+		return false
+	}
+	dest = filepath.Join(dir, dest)
+	for _, p := range r.visited {
+		if strings.HasPrefix(dest, p) || strings.HasPrefix(p, dest) {
+			log.Printf("%s: skip symlink inside workspace: %s", fullpath, dest)
+			return false
+		}
+	}
+	r.visited = append(r.visited, dest)
+	stat, err := os.Stat(fullpath)
+	if err != nil {
+		log.Printf("stat %s: %v", dest, err)
+		return false
+	}
+	return stat.IsDir()
 }

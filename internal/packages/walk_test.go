@@ -34,7 +34,7 @@ func tempDir() (string, error) {
 }
 
 type fileSpec struct {
-	path, content string
+	path, content, symlink string
 }
 
 func checkFiles(t *testing.T, files []fileSpec, goPrefix string, want []*packages.Package) {
@@ -74,6 +74,12 @@ func createFiles(files []fileSpec) (string, error) {
 		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 			return "", err
 		}
+		if f.symlink != "" {
+			if err := os.Symlink(f.symlink, path); err != nil {
+				return "", err
+			}
+			continue
+		}
 		if err := ioutil.WriteFile(path, []byte(f.content), 0600); err != nil {
 			return "", err
 		}
@@ -93,7 +99,11 @@ func walkPackages(c *config.Config) []*packages.Package {
 
 func checkPackages(t *testing.T, got []*packages.Package, want []*packages.Package) {
 	if len(got) != len(want) {
-		t.Fatalf("got %d packages; want %d", len(got), len(want))
+		names := []string{}
+		for _, p := range got {
+			names = append(names, p.Name)
+		}
+		t.Fatalf("got %d packages %v; want %d", len(got), names, len(want))
 	}
 	for i := 0; i < len(got); i++ {
 		checkPackage(t, got[i], want[i])
@@ -532,25 +542,25 @@ import "github.com/jr_hacker/stuff"
 func TestIgnore(t *testing.T) {
 	files := []fileSpec{
 		{
-			path: "BUILD",
+			path:    "BUILD",
 			content: "# gazelle:ignore",
 		}, {
-			path: "foo.go",
+			path:    "foo.go",
 			content: "package foo",
 		}, {
-			path: "bar/bar.go",
+			path:    "bar/bar.go",
 			content: "package bar",
 		},
 	}
 	want := []*packages.Package{
 		{
-			Name: "bar",
-			Rel: "bar",
+			Name:       "bar",
+			Rel:        "bar",
 			ImportPath: "example.com/repo/bar",
 			Library: packages.GoTarget{
-			Sources: packages.PlatformStrings{
-				Generic: []string{"bar.go"},
-			},
+				Sources: packages.PlatformStrings{
+					Generic: []string{"bar.go"},
+				},
 			},
 		},
 	}
@@ -753,4 +763,145 @@ func TestMalformedGoFile(t *testing.T) {
 		},
 	}
 	checkFiles(t, files, "example.com/repo", want)
+}
+
+func TestSymlinksBasic(t *testing.T) {
+	files := []fileSpec{
+		{path: "root/a.go", content: "package a"},
+		{path: "root/b", symlink: "../b"},   // symlink outside repo is followed
+		{path: "root/c", symlink: "c"},      // symlink inside repo is not followed.
+		{path: "root/d", symlink: "../b/d"}, // symlink under root/b not followed
+		{path: "root/e", symlink: "../e"},
+		{path: "c/c.go", symlink: "package c"},
+		{path: "b/b.go", content: "package b"},
+		{path: "b/d/d.go", content: "package d"},
+		{path: "e/loop", symlink: "loop2"}, // symlink loop
+		{path: "e/loop2", symlink: "loop"},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatalf("createFiles() failed with %v; want success", err)
+	}
+	want := []*packages.Package{
+		{
+			Name:       "d",
+			Dir:        dir + "/root/b/d",
+			Rel:        "b/d",
+			ImportPath: "example.com/repo/b/d",
+			Library: packages.GoTarget{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"d.go"},
+				},
+			},
+		},
+		{
+			Name:       "b",
+			Dir:        dir + "/root/b",
+			Rel:        "b",
+			ImportPath: "example.com/repo/b",
+			Library: packages.GoTarget{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"b.go"},
+				},
+			},
+		},
+		{
+			Name:       "a",
+			Dir:        dir + "/root",
+			ImportPath: "example.com/repo",
+			Library: packages.GoTarget{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"a.go"},
+				},
+			},
+		},
+	}
+	c := &config.Config{
+		RepoRoot:            dir + "/root",
+		GoPrefix:            "example.com/repo",
+		Dirs:                []string{dir + "/root"},
+		ValidBuildFileNames: config.DefaultValidBuildFileNames,
+	}
+	got := walkPackages(c)
+	checkPackages(t, got, want)
+}
+
+func TestSymlinksIgnore(t *testing.T) {
+	files := []fileSpec{
+		{
+			path:    "root/BUILD",
+			content: "# gazelle:exclude b",
+		},
+		{path: "root/b", symlink: "../b"},
+		{path: "b/b.go", content: "package b"},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatalf("createFiles() failed with %v; want success", err)
+	}
+	want := []*packages.Package{}
+	c := &config.Config{
+		RepoRoot:            dir + "/root",
+		GoPrefix:            "example.com/repo",
+		Dirs:                []string{dir + "/root"},
+		ValidBuildFileNames: config.DefaultValidBuildFileNames,
+	}
+	got := walkPackages(c)
+	checkPackages(t, got, want)
+}
+
+func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
+	files := []fileSpec{
+		{
+			path:    "root/BUILD",
+			content: "# gazelle:exclude b",
+		},
+		{path: "root/b", symlink: "../b"},  // ignored
+		{path: "root/b2", symlink: "../b"}, // not ignored
+		{path: "b/b.go", content: "package b"},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatalf("createFiles() failed with %v; want success", err)
+	}
+	want := []*packages.Package{
+		{
+			Name:       "b",
+			Dir:        dir + "/root/b2",
+			Rel:        "b2",
+			ImportPath: "example.com/repo/b2",
+			Library: packages.GoTarget{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"b.go"},
+				},
+			},
+		},
+	}
+	c := &config.Config{
+		RepoRoot:            dir + "/root",
+		GoPrefix:            "example.com/repo",
+		Dirs:                []string{dir + "/root"},
+		ValidBuildFileNames: config.DefaultValidBuildFileNames,
+	}
+	got := walkPackages(c)
+	checkPackages(t, got, want)
+}
+
+func TestSymlinksDangling(t *testing.T) {
+	files := []fileSpec{
+		{path: "root/b", symlink: "../b"},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatalf("createFiles() failed with %v; want success", err)
+	}
+	want := []*packages.Package{}
+	c := &config.Config{
+		RepoRoot:            dir + "/root",
+		GoPrefix:            "example.com/repo",
+		Dirs:                []string{dir + "/root"},
+		ValidBuildFileNames: config.DefaultValidBuildFileNames,
+	}
+	got := walkPackages(c)
+	checkPackages(t, got, want)
 }
