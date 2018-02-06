@@ -18,13 +18,13 @@ import (
 	"testing"
 )
 
-type testCase struct {
-	dir  string
-	want string // "" means should fail
-}
-
 func TestFind(t *testing.T) {
-	tmp, err := ioutil.TempDir("", "")
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tmp, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,20 +41,28 @@ func TestFind(t *testing.T) {
 	}
 
 	tmpBase := filepath.Join(tmp, "base")
-
-	for _, tc := range []testCase{
+	for _, tc := range []struct {
+		dir, want string // want == "" means an error is expected
+	}{
+		{tmp, ""},
 		{tmpBase, tmpBase},
-		{filepath.Join(tmpBase, "sub"), tmpBase}} {
-
-		d, err := Find(tc.dir)
-		if err != nil {
-			if tc.want != "" {
-				t.Errorf("Find(%q) want %q, got %v", tc.dir, tc.want, err)
+		{filepath.Join(tmpBase, "sub"), tmpBase},
+	} {
+		t.Run(tc.dir, func(t *testing.T) {
+			if got, err := Find(tc.dir); err != nil && tc.want != "" {
+				t.Errorf("in %s, Find(%q): got %v, want %q", wd, tc.dir, err, tc.want)
+			} else if got != tc.want {
+				t.Errorf("in %s, Find(%q): got %q, want %q", wd, tc.dir, got, tc.want)
 			}
-			continue
-		}
-		if d != tc.want {
-			t.Errorf("Find(%q) got %q, want %q", tc.dir, d, tc.want)
-		}
+			if err := os.Chdir(tc.dir); err != nil {
+				t.Fatal(err)
+			}
+			defer os.Chdir(wd)
+			if got, err := Find("."); err != nil && tc.want != "" {
+				t.Errorf(`in %s, Find("."): got %v, want %q`, tc.dir, err, tc.want)
+			} else if got != tc.want {
+				t.Errorf(`in %s, Find("."): got %q, want %q`, tc.dir, got, tc.want)
+			}
+		})
 	}
 }
