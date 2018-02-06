@@ -49,6 +49,9 @@ x_binary(
         "//old/b:b_lib",
         "@c//old:c_lib",
     ],
+    locs = [
+        "abc $(location  //old/b) $(locations //old/b:b_lib) xyz",
+    ],
 )
 `,
 			}},
@@ -64,6 +67,9 @@ x_binary(
         "//new/b",
         "//new/b:b_lib",
         "@c//old:c_lib",
+    ],
+    locs = [
+        "abc $(location  //new/b) $(locations //new/b:b_lib) xyz",
     ],
 )
 `,

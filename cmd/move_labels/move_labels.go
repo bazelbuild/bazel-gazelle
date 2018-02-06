@@ -25,6 +25,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
@@ -118,7 +119,12 @@ func moveLabelsInFile(file *build.File, from, to string) {
 			return nil
 		}
 		label := str.Value
-		moved := moveLabel(from, to, label)
+		var moved string
+		if strings.Contains(label, "$(location") {
+			moved = moveLocations(from, to, label)
+		} else {
+			moved = moveLabel(from, to, label)
+		}
 		if moved == label {
 			return nil
 		}
@@ -138,6 +144,25 @@ func moveLabel(from, to, str string) string {
 	}
 	l.Pkg = path.Join(to, pathtools.TrimPrefix(l.Pkg, from))
 	return l.String()
+}
+
+var locationsRegexp = regexp.MustCompile(`\$\(locations?\s*([^)]*)\)`)
+
+// moveLocations fixes labels within $(location) and $(locations) expansions.
+func moveLocations(from, to, str string) string {
+	matches := locationsRegexp.FindAllStringSubmatchIndex(str, -1)
+	buf := new(bytes.Buffer)
+	pos := 0
+	for _, match := range matches {
+		buf.WriteString(str[pos:match[2]])
+		label := str[match[2]:match[3]]
+		moved := moveLabel(from, to, label)
+		buf.WriteString(moved)
+		buf.WriteString(str[match[3]:match[1]])
+		pos = match[1]
+	}
+	buf.WriteString(str[pos:])
+	return buf.String()
 }
 
 func isBuiltinLabel(label string) bool {
