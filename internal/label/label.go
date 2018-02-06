@@ -41,7 +41,7 @@ var NoLabel = Label{}
 
 var (
 	labelRepoRegexp = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
-	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/.-]*$`)
+	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._-]*$`)
 	labelNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_/.+=,@~-]*$`)
 )
 
@@ -93,7 +93,7 @@ func Parse(s string) (Label, error) {
 		return NoLabel, fmt.Errorf("label parse error: empty package and name: %q", origStr)
 	}
 	if name == "" {
-		name = pkg
+		name = path.Base(pkg)
 	}
 
 	return Label{
