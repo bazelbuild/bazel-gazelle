@@ -95,7 +95,7 @@ func runFixUpdate(cmd command, args []string) error {
 	var visits []visitRecord
 
 	// Visit all directories in the repository.
-	packages.Walk(uc.c, uc.c.RepoRoot, func(rel string, c *config.Config, pkg *packages.Package, file *bf.File, isUpdateDir bool) {
+	packages.Walk(uc.c, uc.c.RepoRoot, func(dir, rel string, c *config.Config, pkg *packages.Package, file *bf.File, isUpdateDir bool) {
 		// If this file is ignored or if Gazelle was not asked to update this
 		// directory, just index the build file and move on.
 		if !isUpdateDir {
@@ -116,9 +116,13 @@ func runFixUpdate(cmd command, args []string) error {
 			}
 		}
 
+		// If the file exists, but no Go code is present, create an empty package.
+		// This lets us delete existing rules.
+		if pkg == nil && file != nil {
+			pkg = packages.EmptyPackage(c, dir, rel)
+		}
+
 		// Generate new rules and merge them into the existing file (if present).
-		// TODO(#61): delete rules in directories where pkg == nil (no buildable
-		// Go code).
 		if pkg != nil {
 			g := rules.NewGenerator(c, l, file)
 			rules, empty, err := g.GenerateRules(pkg)

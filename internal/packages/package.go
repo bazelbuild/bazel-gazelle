@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 )
 
 // Package contains metadata about a Go package extracted from a directory.
@@ -96,6 +97,20 @@ type PlatformStrings struct {
 // IsCommand returns true if the package name is "main".
 func (p *Package) IsCommand() bool {
 	return p.Name == "main"
+}
+
+// EmptyPackage returns an empty package. The package name and import path
+// are inferred from the directory name and configuration. This is useful
+// for deleting rules in directories which no longer have source files.
+func EmptyPackage(c *config.Config, dir, rel string) *Package {
+	packageName := pathtools.RelBaseName(rel, c.GoPrefix, c.RepoRoot)
+	pb := packageBuilder{
+		name: packageName,
+		dir:  dir,
+		rel:  rel,
+	}
+	pb.inferImportPath(c)
+	return pb.build()
 }
 
 func (t *GoTarget) HasGo() bool {

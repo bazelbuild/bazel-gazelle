@@ -31,6 +31,8 @@ import (
 
 // A WalkFunc is a callback called by Walk in each visited directory.
 //
+// dir is the absolute file system path to the directory being visited.
+//
 // rel is the relative slash-separated path to the directory from the
 // repository root. Will be "" for the repository root directory itself.
 //
@@ -46,7 +48,7 @@ import (
 // was no file.
 //
 // isUpdateDir is true for directories that Gazelle was asked to update.
-type WalkFunc func(rel string, c *config.Config, pkg *Package, oldFile *bf.File, isUpdateDir bool)
+type WalkFunc func(dir, rel string, c *config.Config, pkg *Package, oldFile *bf.File, isUpdateDir bool)
 
 // Walk traverses a directory tree. In each directory, Walk parses existing
 // build files. In directories that Gazelle was asked to update (c.Dirs), Walk
@@ -193,7 +195,7 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 
 		hasPackage := subdirHasPackage || oldFile != nil
 		if haveError || !isUpdateDir || ignore {
-			f(rel, c, nil, oldFile, false)
+			f(dir, rel, c, nil, oldFile, false)
 			return hasPackage
 		}
 
@@ -203,7 +205,7 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 			genFiles = findGenFiles(oldFile, excluded)
 		}
 		pkg := buildPackage(c, dir, rel, pkgFiles, otherFiles, genFiles, hasTestdata)
-		f(rel, c, pkg, oldFile, true)
+		f(dir, rel, c, pkg, oldFile, true)
 		return hasPackage || pkg != nil
 	}
 

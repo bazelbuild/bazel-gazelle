@@ -83,7 +83,7 @@ func createFiles(files []fileSpec) (string, error) {
 
 func walkPackages(c *config.Config) []*packages.Package {
 	var pkgs []*packages.Package
-	packages.Walk(c, c.RepoRoot, func(_ string, _ *config.Config, pkg *packages.Package, _ *bf.File, _ bool) {
+	packages.Walk(c, c.RepoRoot, func(_, _ string, _ *config.Config, pkg *packages.Package, _ *bf.File, _ bool) {
 		if pkg != nil {
 			pkgs = append(pkgs, pkg)
 		}
@@ -316,7 +316,7 @@ func TestVendorResetsPrefix(t *testing.T) {
 		ValidBuildFileNames: config.DefaultValidBuildFileNames,
 		GoPrefix:            basePrefix,
 	}
-	packages.Walk(c, c.RepoRoot, func(rel string, c *config.Config, _ *packages.Package, _ *bf.File, _ bool) {
+	packages.Walk(c, c.RepoRoot, func(_, rel string, c *config.Config, _ *packages.Package, _ *bf.File, _ bool) {
 		if path.Base(rel) != "vendor" {
 			return
 		}
@@ -532,25 +532,25 @@ import "github.com/jr_hacker/stuff"
 func TestIgnore(t *testing.T) {
 	files := []fileSpec{
 		{
-			path: "BUILD",
+			path:    "BUILD",
 			content: "# gazelle:ignore",
 		}, {
-			path: "foo.go",
+			path:    "foo.go",
 			content: "package foo",
 		}, {
-			path: "bar/bar.go",
+			path:    "bar/bar.go",
 			content: "package bar",
 		},
 	}
 	want := []*packages.Package{
 		{
-			Name: "bar",
-			Rel: "bar",
+			Name:       "bar",
+			Rel:        "bar",
 			ImportPath: "example.com/repo/bar",
 			Library: packages.GoTarget{
-			Sources: packages.PlatformStrings{
-				Generic: []string{"bar.go"},
-			},
+				Sources: packages.PlatformStrings{
+					Generic: []string{"bar.go"},
+				},
 			},
 		},
 	}
