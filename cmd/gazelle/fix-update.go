@@ -233,11 +233,7 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 			return nil, fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
 		}
 	} else {
-		cwd, err := filepath.Abs(".")
-		if err != nil {
-			return nil, err
-		}
-		uc.c.RepoRoot, err = wspace.Find(cwd)
+		uc.c.RepoRoot, err = wspace.Find(".")
 		if err != nil {
 			return nil, fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
 		}
