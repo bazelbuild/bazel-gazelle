@@ -13,14 +13,8 @@
 # limitations under the License.
 
 def _http_archive_impl(ctx):
-  if not ctx.attr.url and not ctx.attr.urls:
-    fail("either 'url' or 'urls' must be specified")
-  if ctx.attr.url and ctx.attr.urls:
-    fail("'url' and 'urls' may not both be specified")
-
-  urls = [ctx.attr.url] if ctx.attr.url else ctx.attr.urls
   ctx.download_and_extract(
-      url = urls,
+      url = ctx.attr.urls,
       sha256 = ctx.attr.sha256,
       type = ctx.attr.type,
       stripPrefix = ctx.attr.strip_prefix,
@@ -31,7 +25,6 @@ def _http_archive_impl(ctx):
 http_archive = repository_rule(
     implementation = _http_archive_impl,
     attrs = {
-        "url": attr.string(),
         "urls": attr.string_list(),
         "sha256": attr.string(),
         "strip_prefix": attr.string(),
