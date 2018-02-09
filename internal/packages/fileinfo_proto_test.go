@@ -115,6 +115,14 @@ import "second.proto";`,
 				importPath:  "github.com/example/project",
 			},
 		}, {
+			desc:  "go_package_simple",
+			name:  "gopkg_simple.proto",
+			proto: `option go_package = "bar";`,
+			want: fileInfo{
+				packageName: "bar",
+				importPath:  "",
+			},
+		}, {
 			desc:  "service",
 			name:  "service.proto",
 			proto: `service ChatService {}`,
