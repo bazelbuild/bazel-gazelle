@@ -60,12 +60,18 @@ func protoFileInfo(c *config.Config, dir, rel, name string) fileInfo {
 
 		case match[goPackageSubexpIndex] != nil:
 			gopkg := unquoteProtoString(match[goPackageSubexpIndex])
-			if i := strings.LastIndexByte(gopkg, ';'); i != -1 {
-				info.importPath = gopkg[:i]
-				info.packageName = gopkg[i+1:]
+			// If there's no / in the package option, then it's just a
+			// simple package name, not a full import path.
+			if strings.LastIndexByte(gopkg, '/') == -1 {
+				info.packageName = gopkg
 			} else {
-				info.importPath = gopkg
-				info.packageName = path.Base(gopkg)
+				if i := strings.LastIndexByte(gopkg, ';'); i != -1 {
+					info.importPath = gopkg[:i]
+					info.packageName = gopkg[i+1:]
+				} else {
+					info.importPath = gopkg
+					info.packageName = path.Base(gopkg)
+				}
 			}
 
 		case match[serviceSubexpIndex] != nil:
