@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:lib.bzl", "shell")
+load("//internal:go_repository.bzl", "go_repository")
 
 def _gazelle_runner_impl(ctx):
   args = [

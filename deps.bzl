@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go:def.bzl", "go_repository")
+load("//internal:go_repository.bzl", "go_repository_tools")
 
 def gazelle_dependencies():
+  go_repository_tools(name = "bazel_gazelle_go_repository_tools")
+
   _maybe(native.git_repository,
       name = "bazel_skylib",
       remote = "https://github.com/bazelbuild/bazel-skylib",
