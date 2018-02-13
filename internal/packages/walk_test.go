@@ -887,6 +887,40 @@ func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
 	checkPackages(t, got, want)
 }
 
+func TestSymlinksChained(t *testing.T) {
+	files := []fileSpec{
+		{path: "root/b", symlink: "../link0"},
+		{path: "link0", symlink: "b"},
+		{path: "root/b2", symlink: "../b"},
+		{path: "b/b.go", content: "package b"},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatalf("createFiles() failed with %v; want success", err)
+	}
+	want := []*packages.Package{
+		{
+			Name:       "b",
+			Dir:        dir + "/root/b",
+			Rel:        "b",
+			ImportPath: "example.com/repo/b",
+			Library: packages.GoTarget{
+				Sources: packages.PlatformStrings{
+					Generic: []string{"b.go"},
+				},
+			},
+		},
+	}
+	c := &config.Config{
+		RepoRoot:            dir + "/root",
+		GoPrefix:            "example.com/repo",
+		Dirs:                []string{dir + "/root"},
+		ValidBuildFileNames: config.DefaultValidBuildFileNames,
+	}
+	got := walkPackages(c)
+	checkPackages(t, got, want)
+}
+
 func TestSymlinksDangling(t *testing.T) {
 	files := []fileSpec{
 		{path: "root/b", symlink: "../b"},

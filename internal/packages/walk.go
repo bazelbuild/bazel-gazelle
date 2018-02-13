@@ -176,12 +176,9 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 				(c.ProtoMode != config.DisableProtoMode && strings.HasSuffix(base, ".proto")):
 				pkgFiles = append(pkgFiles, base)
 
-			case f.Mode()&os.ModeSymlink != 0:
-				if symlinks.follow(dir, base) {
-					subdirs = append(subdirs, base)
-				} else {
-					otherFiles = append(otherFiles, base)
-				}
+			case f.Mode()&os.ModeSymlink != 0 && symlinks.follow(dir, base):
+				subdirs = append(subdirs, base)
+
 			default:
 				otherFiles = append(otherFiles, base)
 			}
@@ -437,22 +434,24 @@ func (r *symlinkResolver) follow(dir, base string) bool {
 	}
 	// See if the symlink points to a tree that has been already visited.
 	fullpath := filepath.Join(dir, base)
-	dest, err := os.Readlink(fullpath)
+	dest, err := filepath.EvalSymlinks(fullpath)
 	if err != nil {
-		log.Printf("readlink %v: %v", fullpath, err)
 		return false
 	}
-	dest = filepath.Join(dir, dest)
+	if !filepath.IsAbs(dest) {
+		dest, err = filepath.Abs(filepath.Join(dir, dest))
+		if err != nil {
+			return false
+		}
+	}
 	for _, p := range r.visited {
-		if strings.HasPrefix(dest, p) || strings.HasPrefix(p, dest) {
-			log.Printf("%s: skip symlink inside workspace: %s", fullpath, dest)
+		if pathtools.HasPrefix(dest, p) || pathtools.HasPrefix(p, dest) {
 			return false
 		}
 	}
 	r.visited = append(r.visited, dest)
 	stat, err := os.Stat(fullpath)
 	if err != nil {
-		log.Printf("stat %s: %v", dest, err)
 		return false
 	}
 	return stat.IsDir()
