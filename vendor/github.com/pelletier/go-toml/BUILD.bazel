@@ -1,0 +1,38 @@
+# Exclude test files, since they pull in additional dependencies
+# gazelle:exclude benchmark_test.go
+# gazelle:exclude cmd/tomljson/main_test.go
+# gazelle:exclude doc_test.go
+# gazelle:exclude keysparsing_test.go
+# gazelle:exclude lexer_test.go
+# gazelle:exclude marshal_test.go
+# gazelle:exclude marshal_test.toml
+# gazelle:exclude parser_test.go
+# gazelle:exclude position_test.go
+# gazelle:exclude query/lexer_test.go
+# gazelle:exclude query/match_test.go
+# gazelle:exclude query/parser_test.go
+# gazelle:exclude query/query_test.go
+# gazelle:exclude token_test.go
+# gazelle:exclude toml_test.go
+# gazelle:exclude tomltree_create_test.go
+# gazelle:exclude tomltree_write_test.go
+
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "doc.go",
+        "keysparsing.go",
+        "lexer.go",
+        "marshal.go",
+        "parser.go",
+        "position.go",
+        "token.go",
+        "toml.go",
+        "tomltree_create.go",
+        "tomltree_write.go",
+    ],
+    importpath = "github.com/pelletier/go-toml",
+    visibility = ["//visibility:public"],
+)

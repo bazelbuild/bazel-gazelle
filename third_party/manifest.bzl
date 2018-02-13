@@ -1,11 +1,4 @@
 manifest = {
-    "com_github_pelletier_go_toml": {
-        "@bazel_gazelle//third_party:com_github_pelletier_go_toml/cmd/tomljson/BUILD.bazel.in": "cmd/tomljson/BUILD.bazel",
-        "@bazel_gazelle//third_party:com_github_pelletier_go_toml/cmd/tomll/BUILD.bazel.in": "cmd/tomll/BUILD.bazel",
-        "@bazel_gazelle//third_party:com_github_pelletier_go_toml/cmd/BUILD.bazel.in": "cmd/BUILD.bazel",
-        "@bazel_gazelle//third_party:com_github_pelletier_go_toml/BUILD.bazel.in": "BUILD.bazel",
-        "@bazel_gazelle//third_party:com_github_pelletier_go_toml/query/BUILD.bazel.in": "query/BUILD.bazel",
-    },
     "org_golang_x_tools": {
         "@bazel_gazelle//third_party:org_golang_x_tools/present/BUILD.bazel.in": "present/BUILD.bazel",
         "@bazel_gazelle//third_party:org_golang_x_tools/benchmark/parse/BUILD.bazel.in": "benchmark/parse/BUILD.bazel",
