@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//:lib.bzl", "shell")
+load("//internal:overlay_repository.bzl", "git_repository", "http_archive")
 
 def _gazelle_runner_impl(ctx):
   args = [
