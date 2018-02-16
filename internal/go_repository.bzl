@@ -59,8 +59,6 @@ def _go_repository_impl(ctx):
     if "HTTPS_PROXY" in ctx.os.environ:
       fetch_repo_env["HTTPS_PROXY"] = ctx.os.environ["HTTPS_PROXY"]
 
-    # TODO(yugui): support submodule?
-    # c.f. https://www.bazel.io/versions/master/docs/be/workspace.html#git_repository.init_submodules
     _fetch_repo = "@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx))
     args = [
         ctx.path(Label(_fetch_repo)), 
@@ -161,7 +159,7 @@ go_repository = repository_rule(
         ),
     },
 )
-"""See go/workspace.rst#go-repository for full documentation."""
+"""See repository.rst#go-repository for full documentation."""
 
 _GO_REPOSITORY_TOOLS_BUILD_FILE = """
 package(default_visibility = ["//visibility:public"])
