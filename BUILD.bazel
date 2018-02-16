@@ -3,3 +3,5 @@
 load("//:def.bzl", "gazelle")
 
 gazelle(name = "gazelle")
+
+exports_files(["WORKSPACE"])

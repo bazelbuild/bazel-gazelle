@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["fetch_repo.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/cmd/fetch_repo",
+    visibility = ["//visibility:private"],
+    deps = ["@org_golang_x_tools//go/vcs:go_default_library"],
+)
+
+go_binary(
+    name = "fetch_repo",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
