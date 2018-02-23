@@ -29,6 +29,10 @@ func TestFind(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(tmp)
+	tmp, err = filepath.EvalSymlinks(tmp) // on macOS, TEST_TEMPDIR is a symlink
+	if err != nil {
+		t.Fatal(err)
+	}
 	if parent, err := Find(tmp); err == nil {
 		t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, tmp)
 	}
