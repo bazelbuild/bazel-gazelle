@@ -803,7 +803,7 @@ func match(stmts []bf.Expr, x *bf.CallExpr) (*bf.CallExpr, int, error) {
 		index int
 	}
 
-	xr := bf.Rule{x}
+	xr := bf.Rule{Call: x}
 	xname := xr.Name()
 	xkind := xr.Kind()
 	var nameMatches []matchInfo
@@ -863,11 +863,11 @@ func match(stmts []bf.Expr, x *bf.CallExpr) (*bf.CallExpr, int, error) {
 }
 
 func kind(c *bf.CallExpr) string {
-	return (&bf.Rule{c}).Kind()
+	return (&bf.Rule{Call: c}).Kind()
 }
 
 func name(c *bf.CallExpr) string {
-	return (&bf.Rule{c}).Name()
+	return (&bf.Rule{Call: c}).Name()
 }
 
 // isRuleEmpty returns true if a rule cannot be built because it has no sources,

@@ -90,7 +90,7 @@ func squashCgoLibrary(oldFile *bf.File) *bf.File {
 	// Copy the comments and attributes from cgo_library into go_library. If no
 	// go_library exists, create an empty one.
 	var fixedGoLibraryExpr bf.CallExpr
-	fixedGoLibrary := bf.Rule{&fixedGoLibraryExpr}
+	fixedGoLibrary := bf.Rule{Call: &fixedGoLibraryExpr}
 	if goLibrary.Call == nil {
 		fixedGoLibrary.SetKind("go_library")
 		fixedGoLibrary.SetAttr("name", &bf.StringExpr{Value: config.DefaultLibName})

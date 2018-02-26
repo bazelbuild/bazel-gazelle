@@ -180,7 +180,7 @@ func hasDefaultVisibility(oldFile *bf.File) bool {
 		if !ok {
 			continue
 		}
-		r := bf.Rule{c}
+		r := bf.Rule{Call: c}
 		if r.Kind() == "package" && r.Attr("default_visibility") != nil {
 			return true
 		}
