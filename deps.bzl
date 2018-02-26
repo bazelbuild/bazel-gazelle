@@ -34,7 +34,7 @@ def gazelle_dependencies():
   _maybe(_git_repository,
       name = "com_github_bazelbuild_buildtools",
       remote = "https://github.com/bazelbuild/buildtools",
-      commit = "a05406a1a855c6d8ebfc368555ace7638d83c0d9", # 0.6.0 as of 2018-02-09
+      commit = "80c7f0d45d7e40fa1f7362852697d4a03df557b3", # master as of 2018-02-26
   )
 
   # io_bazel_rules_go also declares this (for now). Keep in sync.

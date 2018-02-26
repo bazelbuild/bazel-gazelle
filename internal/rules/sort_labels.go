@@ -42,7 +42,7 @@ func SortLabels(f *bf.File) {
 		if !ok {
 			continue
 		}
-		r := bf.Rule{c}
+		r := bf.Rule{Call: c}
 		if !goRuleKinds[r.Kind()] {
 			continue
 		}
