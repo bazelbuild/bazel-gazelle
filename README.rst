@@ -329,16 +329,34 @@ When Gazelle is run by Bazel, most of the flags above can be encoded in the
 Directives
 ~~~~~~~~~~
 
-Gazelle supports several directives, written as comments in build files.
+Gazelle supports several directives, written as top-level comments in
+build files. These are of the form ``# gazelle:key value``. Most directories
+apply in both the current directory and in subdirectories.
 
-* ``# gazelle:ignore``: may be written at the top level of any build file.
-  Gazelle will not update files with this comment.
-* ``# gazelle:exclude path``: may be written at the top level of
-  any build file. If the path refers to a source file, Gazelle won't include
+* ``# gazelle:build_file_name BUILD.bazel,BUILD``: a comma-separated list of
+  file names that Gazelle will recognize as Bazel build files. When Gazelle
+  creates a new file, it will use the first name in this list.
+* ``# gazelle:build_tags foo,bar,baz``: a comma-separated list of build tags
+  that Gazelle will consider as always true.
+* ``# gazelle:exclude path``: prevents Gazelle from processing a file or
+  directory. If the path refers to a source file, Gazelle won't include
   it in any rules. If the path refers to a directory, Gazelle won't recurse
   into it. The path may refer to something in a subdirectory, for example,
   a testdata directory somewhere in a vendor tree. This directive may be
   repeated to exclude multiple paths, one per line.
+* ``# gazelle:ignore``: prevents Gazelle from updating the build file. Gazelle
+  will still read rules in the build file and may modify build files in
+  subdirectories. Use ``# gazelle:exclude`` to ignore a subdirectory.
+* ``# gazelle:importmap_prefix path``: a prefix for ``importmap`` attributes
+  on library rules. The full ``importmap`` for a package is determined by
+  concatenating this prefix with the relative path from the directory where 
+  the prefix is set to the package directory. This is set automatically in
+  vendor directories.
+* ``# gazelle:prefix example.com/repo``: a prefix for ``importpath`` attributes
+  on library rules. The full ``importpath`` for a package is determined by
+  concatenating this prefix with the relative path from the directory where
+  the prefix is set to the package directory. This may also be set with the
+  ``-go_prefix`` parameter.
 * ``# gazelle:proto <mode>``: Tells Gazelle how to generate rules for .proto
   files. Applies to the current directory and subdirectories. Valid values for
   ``mode`` are:
@@ -354,9 +372,10 @@ Gazelle supports several directives, written as comments in build files.
   * ``disable``: .proto files are ignored. Gazelle will run in this mode
     automatically if ``go_proto_library`` is loaded from any other source,
     but this can be overridden with a directive.
-* ``# keep``: may be written before a rule to prevent the rule from being
-  updated or after a source file, dependency, or flag to prevent it from being
-  removed.
+
+In addition to directives, Gazelle supports ``# keep`` comments that protect
+parts of build files from being modified. ``# keep`` may be written before
+a rule, before an attribute, or after a string within a list.
 
 Example
 ^^^^^^^

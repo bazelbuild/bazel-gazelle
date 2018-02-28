@@ -300,6 +300,7 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 	if err != nil {
 		return nil, err
 	}
+	uc.c.RepoName = findWorkspaceName(workspace)
 	uc.repos = repos.ListRepositories(workspace)
 	repoPrefixes := make(map[string]bool)
 	for _, r := range uc.repos {
@@ -406,6 +407,20 @@ func loadGoPrefix(c *config.Config) (string, error) {
 		return v.Value, nil
 	}
 	return "", fmt.Errorf("-go_prefix not set, and no # gazelle:prefix directive found in %s", f.Path)
+}
+
+func findWorkspaceName(f *bf.File) string {
+	for _, stmt := range f.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		rule := bf.Rule{Call: call}
+		if rule.Kind() == "workspace" {
+			return rule.Name()
+		}
+	}
+	return ""
 }
 
 func isDescendingDir(dir, root string) bool {

@@ -86,6 +86,11 @@ func TestApplyDirectives(t *testing.T) {
 			directives: []Directive{{"prefix", "example.com/repo"}},
 			rel:        "sub",
 			want:       Config{GoPrefix: "example.com/repo", GoPrefixRel: "sub"},
+		}, {
+			desc:       "importmap_prefix",
+			directives: []Directive{{"importmap_prefix", "example.com/repo"}},
+			rel:        "sub",
+			want:       Config{GoImportMapPrefix: "example.com/repo", GoImportMapPrefixRel: "sub"},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

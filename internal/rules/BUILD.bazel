@@ -16,6 +16,7 @@ go_library(
         "//internal/config:go_default_library",
         "//internal/label:go_default_library",
         "//internal/packages:go_default_library",
+        "//internal/pathtools:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@com_github_bazelbuild_buildtools//tables:go_default_library",
     ],

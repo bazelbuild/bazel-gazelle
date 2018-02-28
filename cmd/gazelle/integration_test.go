@@ -510,8 +510,10 @@ func TestBuildFileNameIgnoresBuild(t *testing.T) {
 
 func TestExternalVendor(t *testing.T) {
 	files := []fileSpec{
-		{path: "WORKSPACE"},
 		{
+			path:    "WORKSPACE",
+			content: `workspace(name = "banana")`,
+		}, {
 			path: "a.go",
 			content: `package foo
 
@@ -559,6 +561,7 @@ go_library(
 go_library(
     name = "go_default_library",
     srcs = ["bar.go"],
+    importmap = "banana/vendor/golang.org/x/bar",
     importpath = "golang.org/x/bar",
     visibility = ["//visibility:public"],
     deps = ["//vendor/golang.org/x/baz:go_default_library"],
@@ -967,6 +970,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
+    importmap = "sub/vendor/example.com/foo",
     importpath = "example.com/foo",
     visibility = ["//visibility:public"],
 )
