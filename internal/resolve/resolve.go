@@ -283,39 +283,7 @@ func (r *Resolver) resolveGoProto(imp string, from label.Label) (label.Label, er
 	stem := imp[:len(imp)-len(".proto")]
 
 	if isWellKnown(stem) {
-		// Well Known Type
-		base := path.Base(stem)
-		if base == "descriptor" {
-			switch r.c.DepMode {
-			case config.ExternalMode:
-				label := r.l.LibraryLabel(descriptorPkg)
-				if r.c.GoPrefix != config.WellKnownTypesGoPrefix {
-					label.Repo = config.WellKnownTypesGoProtoRepo
-				}
-				return label, nil
-			case config.VendorMode:
-				pkg := path.Join("vendor", config.WellKnownTypesGoPrefix, descriptorPkg)
-				label := r.l.LibraryLabel(pkg)
-				return label, nil
-			default:
-				log.Panicf("unknown external mode: %v", r.c.DepMode)
-			}
-		}
-
-		switch r.c.DepMode {
-		case config.ExternalMode:
-			pkg := path.Join(wellKnownGoProtoPkg, base)
-			label := r.l.LibraryLabel(pkg)
-			if r.c.GoPrefix != config.WellKnownTypesGoPrefix {
-				label.Repo = config.WellKnownTypesGoProtoRepo
-			}
-			return label, nil
-		case config.VendorMode:
-			pkg := path.Join("vendor", config.WellKnownTypesGoPrefix, wellKnownGoProtoPkg, base)
-			return r.l.LibraryLabel(pkg), nil
-		default:
-			log.Panicf("unknown external mode: %v", r.c.DepMode)
-		}
+		return label.NoLabel, standardImportError{imp}
 	}
 
 	if l, err := r.ix.findLabelByImport(importSpec{config.ProtoLang, imp}, config.GoLang, from); err != nil {
