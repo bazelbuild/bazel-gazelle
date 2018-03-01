@@ -15,7 +15,7 @@ go_library(
     deps = [
         "//internal/config:go_default_library",
         "//internal/pathtools:go_default_library",
-        "@com_github_bazelbuild_buildtools//build:go_default_library",
+        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
     ],
 )
 
@@ -39,6 +39,6 @@ go_test(
     deps = [
         ":go_default_library",
         "//internal/config:go_default_library",
-        "@com_github_bazelbuild_buildtools//build:go_default_library",
+        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
     ],
 )
