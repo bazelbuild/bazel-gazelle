@@ -405,24 +405,24 @@ func TestResolveProto(t *testing.T) {
 			desc:        "well known",
 			imp:         "google/protobuf/any.proto",
 			wantProto:   label.New("com_google_protobuf", "", "any_proto"),
-			wantGoProto: label.New("com_github_golang_protobuf", "ptypes/any", config.DefaultLibName),
+			wantGoProto: label.NoLabel,
 		}, {
 			desc:        "well known vendor",
 			depMode:     config.VendorMode,
 			imp:         "google/protobuf/any.proto",
 			wantProto:   label.New("com_google_protobuf", "", "any_proto"),
-			wantGoProto: label.New("", "vendor/github.com/golang/protobuf/ptypes/any", config.DefaultLibName),
+			wantGoProto: label.NoLabel,
 		}, {
 			desc:        "descriptor",
 			imp:         "google/protobuf/descriptor.proto",
 			wantProto:   label.New("com_google_protobuf", "", "descriptor_proto"),
-			wantGoProto: label.New("com_github_golang_protobuf", "protoc-gen-go/descriptor", config.DefaultLibName),
+			wantGoProto: label.NoLabel,
 		}, {
 			desc:        "descriptor vendor",
 			depMode:     config.VendorMode,
 			imp:         "google/protobuf/descriptor.proto",
 			wantProto:   label.New("com_google_protobuf", "", "descriptor_proto"),
-			wantGoProto: label.New("", "vendor/github.com/golang/protobuf/protoc-gen-go/descriptor", config.DefaultLibName),
+			wantGoProto: label.NoLabel,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -436,18 +436,22 @@ func TestResolveProto(t *testing.T) {
 
 			got, err := r.resolveProto(tc.imp, tc.from)
 			if err != nil {
-				t.Errorf("resolveProto: got error %v ; want success", err)
+				t.Errorf("resolveProto: got error %v; want success", err)
 			}
 			if !reflect.DeepEqual(got, tc.wantProto) {
-				t.Errorf("resolveProto: got %s ; want %s", got, tc.wantProto)
+				t.Errorf("resolveProto: got %s; want %s", got, tc.wantProto)
 			}
 
 			got, err = r.resolveGoProto(tc.imp, tc.from)
 			if err != nil {
-				t.Errorf("resolveGoProto: go error %v ; want success", err)
+				if tc.wantGoProto != label.NoLabel {
+					t.Errorf("resolveGoProto: got error %v; want %s", got, tc.wantGoProto)
+				} else if _, ok := err.(standardImportError); !ok {
+					t.Errorf("resolveGoProto: got error %v; want standardImportError", err)
+				}
 			}
-			if !reflect.DeepEqual(got, tc.wantGoProto) {
-				t.Errorf("resolveGoProto: got %s ; want %s", got, tc.wantGoProto)
+			if !got.Equal(tc.wantGoProto) {
+				t.Errorf("resolveGoProto: got %s; want %s", got, tc.wantGoProto)
 			}
 		})
 	}
