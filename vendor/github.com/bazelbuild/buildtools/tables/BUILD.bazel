@@ -1,0 +1,11 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "jsonparser.go",
+        "tables.go",
+    ],
+    importpath = "github.com/bazelbuild/buildtools/tables",
+    visibility = ["//visibility:public"],
+)
