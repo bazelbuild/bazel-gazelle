@@ -31,13 +31,6 @@ def gazelle_dependencies():
   )
 
   # io_bazel_rules_go also declares this (for now). Keep in sync.
-  _maybe(_git_repository,
-      name = "com_github_bazelbuild_buildtools",
-      remote = "https://github.com/bazelbuild/buildtools",
-      commit = "80c7f0d45d7e40fa1f7362852697d4a03df557b3", # master as of 2018-02-26
-  )
-
-  # io_bazel_rules_go also declares this (for now). Keep in sync.
   _maybe(_http_archive,
       name = "org_golang_x_tools",
       # release-branch.go1.9, as of 2017-08-25
