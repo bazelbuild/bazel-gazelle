@@ -47,6 +47,63 @@ func FixFile(c *config.Config, f *bf.File) {
 	removeLegacyProto(c, f)
 }
 
+// migrateLibraryEmbed converts "library" attributes to "embed" attributes,
+// preserving comments. This only applies to Go rules, and only if there is
+// no keep comment on "library" and no existing "embed" attribute.
+func migrateLibraryEmbed(c *config.Config, f *bf.File) {
+	for _, stmt := range f.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok || shouldKeep(stmt) {
+			continue
+		}
+		rule := bf.Rule{Call: call}
+		if !isGoRule(rule.Kind()) {
+			continue
+		}
+		libExpr := rule.Attr("library")
+		if libExpr == nil || shouldKeep(libExpr) || rule.Attr("embed") != nil {
+			continue
+		}
+		rule.DelAttr("library")
+		rule.SetAttr("embed", &bf.ListExpr{List: []bf.Expr{libExpr}})
+	}
+}
+
+// migrateGrpcCompilers converts "go_grpc_library" rules into "go_proto_library"
+// rules with a "compilers" attribute.
+func migrateGrpcCompilers(c *config.Config, f *bf.File) {
+	for _, stmt := range f.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		rule := bf.Rule{Call: call}
+		if rule.Kind() != "go_grpc_library" || shouldKeep(stmt) || rule.Attr("compilers") != nil {
+			continue
+		}
+		rule.SetKind("go_proto_library")
+		rule.SetAttr("compilers", &bf.ListExpr{
+			List: []bf.Expr{&bf.StringExpr{Value: config.GrpcCompilerLabel}},
+		})
+	}
+}
+
+// removeBinaryImportPath removes "importpath" attributes from "go_binary"
+// and "go_test" rules. These are now deprecated.
+func removeBinaryImportPath(c *config.Config, f *bf.File) {
+	for _, stmt := range f.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		rule := bf.Rule{Call: call}
+		if rule.Kind() != "go_binary" && rule.Kind() != "go_test" {
+			continue
+		}
+		rule.DelAttr("importpath")
+	}
+}
+
 // squashCgoLibrary removes cgo_library rules with the default name and
 // merges their attributes with go_library with the default name. If no
 // go_library rule exists, a new one will be created.
@@ -287,63 +344,6 @@ func removeLegacyProto(c *config.Config, f *bf.File) {
 		sort.Ints(deletedIndices)
 	}
 	f.Stmt = deleteIndices(f.Stmt, deletedIndices)
-}
-
-// migrateLibraryEmbed converts "library" attributes to "embed" attributes,
-// preserving comments. This only applies to Go rules, and only if there is
-// no keep comment on "library" and no existing "embed" attribute.
-func migrateLibraryEmbed(c *config.Config, f *bf.File) {
-	for _, stmt := range f.Stmt {
-		call, ok := stmt.(*bf.CallExpr)
-		if !ok || shouldKeep(stmt) {
-			continue
-		}
-		rule := bf.Rule{Call: call}
-		if !isGoRule(rule.Kind()) {
-			continue
-		}
-		libExpr := rule.Attr("library")
-		if libExpr == nil || shouldKeep(libExpr) || rule.Attr("embed") != nil {
-			continue
-		}
-		rule.DelAttr("library")
-		rule.SetAttr("embed", &bf.ListExpr{List: []bf.Expr{libExpr}})
-	}
-}
-
-// migrateGrpcCompilers converts "go_grpc_library" rules into "go_proto_library"
-// rules with a "compilers" attribute.
-func migrateGrpcCompilers(c *config.Config, f *bf.File) {
-	for _, stmt := range f.Stmt {
-		call, ok := stmt.(*bf.CallExpr)
-		if !ok {
-			continue
-		}
-		rule := bf.Rule{Call: call}
-		if rule.Kind() != "go_grpc_library" || shouldKeep(stmt) || rule.Attr("compilers") != nil {
-			continue
-		}
-		rule.SetKind("go_proto_library")
-		rule.SetAttr("compilers", &bf.ListExpr{
-			List: []bf.Expr{&bf.StringExpr{Value: config.GrpcCompilerLabel}},
-		})
-	}
-}
-
-// removeBinaryImportPath removes "importpath" attributes from "go_binary"
-// and "go_test" rules. These are now deprecated.
-func removeBinaryImportPath(c *config.Config, f *bf.File) {
-	for _, stmt := range f.Stmt {
-		call, ok := stmt.(*bf.CallExpr)
-		if !ok {
-			continue
-		}
-		rule := bf.Rule{Call: call}
-		if rule.Kind() != "go_binary" && rule.Kind() != "go_test" {
-			continue
-		}
-		rule.DelAttr("importpath")
-	}
 }
 
 // FixLoads removes loads of unused go rules and adds loads of newly used rules.
