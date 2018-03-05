@@ -30,7 +30,7 @@ import (
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
-type updateReposFn func(c *updateReposConfiguration, oldFile *bf.File) (*bf.File, error)
+type updateReposFn func(c *updateReposConfiguration, oldFile *bf.File) error
 
 type updateReposConfiguration struct {
 	fn           updateReposFn
@@ -50,18 +50,17 @@ func updateRepos(args []string) error {
 	if err != nil {
 		return fmt.Errorf("error reading %q: %v", workspacePath, err)
 	}
-	oldFile, err := bf.Parse(workspacePath, content)
+	f, err := bf.Parse(workspacePath, content)
 	if err != nil {
 		return fmt.Errorf("error parsing %q: %v", workspacePath, err)
 	}
 
-	mergedFile, err := c.fn(c, oldFile)
-	if err != nil {
+	if err := c.fn(c, f); err != nil {
 		return err
 	}
-	merger.FixLoads(mergedFile)
-	if err := ioutil.WriteFile(mergedFile.Path, bf.Format(mergedFile), 0666); err != nil {
-		return fmt.Errorf("error writing %q: %v", mergedFile.Path, err)
+	merger.FixLoads(f)
+	if err := ioutil.WriteFile(f.Path, bf.Format(f), 0666); err != nil {
+		return fmt.Errorf("error writing %q: %v", f.Path, err)
 	}
 	return nil
 }
@@ -132,8 +131,8 @@ FLAGS:
 `)
 }
 
-func updateImportPaths(c *updateReposConfiguration, oldFile *bf.File) (*bf.File, error) {
-	rs := repos.ListRepositories(oldFile)
+func updateImportPaths(c *updateReposConfiguration, f *bf.File) error {
+	rs := repos.ListRepositories(f)
 	rc := repos.NewRemoteCache(rs)
 
 	genRules := make([]bf.Expr, len(c.importPaths))
@@ -158,19 +157,19 @@ func updateImportPaths(c *updateReposConfiguration, oldFile *bf.File) (*bf.File,
 
 	for _, err := range errs {
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	mergedFile, _ := merger.MergeFile(genRules, nil, oldFile, merger.RepoAttrs)
-	return mergedFile, nil
+	merger.MergeFile(genRules, nil, f, merger.RepoAttrs)
+	return nil
 }
 
-func importFromLockFile(c *updateReposConfiguration, oldFile *bf.File) (*bf.File, error) {
+func importFromLockFile(c *updateReposConfiguration, f *bf.File) error {
 	genRules, err := repos.ImportRepoRules(c.lockFilename)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	mergedFile, _ := merger.MergeFile(genRules, nil, oldFile, merger.RepoAttrs)
-	return mergedFile, nil
+	merger.MergeFile(genRules, nil, f, merger.RepoAttrs)
+	return nil
 }

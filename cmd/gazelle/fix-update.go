@@ -130,7 +130,7 @@ func runFixUpdate(cmd command, args []string) error {
 					Stmt: rules,
 				}
 			} else {
-				file, rules = merger.MergeFile(rules, empty, file, merger.PreResolveAttrs)
+				rules = merger.MergeFile(rules, empty, file, merger.PreResolveAttrs)
 			}
 			visits = append(visits, visitRecord{
 				pkgRel: rel,
@@ -156,7 +156,7 @@ func runFixUpdate(cmd command, args []string) error {
 		for j := range visits[i].rules {
 			visits[i].rules[j] = resolver.ResolveRule(visits[i].rules[j], visits[i].pkgRel)
 		}
-		visits[i].file, _ = merger.MergeFile(visits[i].rules, visits[i].empty, visits[i].file, merger.PostResolveAttrs)
+		merger.MergeFile(visits[i].rules, visits[i].empty, visits[i].file, merger.PostResolveAttrs)
 	}
 
 	// Emit merged files.
