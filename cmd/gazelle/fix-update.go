@@ -107,13 +107,7 @@ func runFixUpdate(cmd command, args []string) error {
 
 		// Fix any problems in the file.
 		if file != nil {
-			file = merger.FixFileMinor(c, file)
-			fixedFile := merger.FixFile(c, file)
-			if cmd == fixCmd {
-				file = fixedFile
-			} else if fixedFile != file {
-				log.Printf("%s: warning: file contains rules whose structure is out of date. Consider running 'gazelle fix'.", file.Path)
-			}
+			merger.FixFile(c, file)
 		}
 
 		// If the file exists, but no Go code is present, create an empty package.
@@ -168,7 +162,7 @@ func runFixUpdate(cmd command, args []string) error {
 	// Emit merged files.
 	for _, v := range visits {
 		rules.SortLabels(v.file)
-		v.file = merger.FixLoads(v.file)
+		merger.FixLoads(v.file)
 		bf.Rewrite(v.file, nil) // have buildifier 'format' our rules.
 
 		path := v.file.Path

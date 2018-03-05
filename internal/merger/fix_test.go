@@ -316,11 +316,10 @@ go_test(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			fix := func(f *bf.File) *bf.File {
-				c := &config.Config{}
-				return FixFile(c, FixFileMinor(c, f))
-			}
-			testFix(t, tc, fix)
+			testFix(t, tc, func(f *bf.File) {
+				c := &config.Config{ShouldFix: true}
+				FixFile(c, f)
+			})
 		})
 	}
 }
@@ -486,13 +485,13 @@ grpc_proto_library(
 	}
 }
 
-func testFix(t *testing.T, tc fixTestCase, fix func(*bf.File) *bf.File) {
-	oldFile, err := bf.Parse("old", []byte(tc.old))
+func testFix(t *testing.T, tc fixTestCase, fix func(*bf.File)) {
+	f, err := bf.Parse("old", []byte(tc.old))
 	if err != nil {
 		t.Fatalf("%s: parse error: %v", tc.desc, err)
 	}
-	fixedFile := fix(oldFile)
-	if got := string(bf.Format(fixedFile)); got != tc.want {
+	fix(f)
+	if got := string(bf.Format(f)); got != tc.want {
 		t.Fatalf("%s: got %s; want %s", tc.desc, got, tc.want)
 	}
 }

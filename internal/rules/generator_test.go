@@ -91,7 +91,7 @@ func TestGenerator(t *testing.T) {
 		}
 		f := &bf.File{Stmt: rs}
 		rules.SortLabels(f)
-		f = merger.FixLoads(f)
+		merger.FixLoads(f)
 		got := string(bf.Format(f))
 
 		wantPath := filepath.Join(pkg.Dir, "BUILD.want")

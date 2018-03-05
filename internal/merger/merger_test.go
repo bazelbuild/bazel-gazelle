@@ -890,7 +890,7 @@ func TestMergeFile(t *testing.T) {
 			if mergedFile != nil && tc.ignore {
 				t.Fatalf("%s: got file; want nil", tc.desc)
 			}
-			mergedFile = FixLoads(mergedFile)
+			FixLoads(mergedFile)
 
 			want := tc.expected
 			if len(want) > 0 && want[0] == '\n' {

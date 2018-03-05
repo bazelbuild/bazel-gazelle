@@ -59,7 +59,7 @@ func updateRepos(args []string) error {
 	if err != nil {
 		return err
 	}
-	mergedFile = merger.FixLoads(mergedFile)
+	merger.FixLoads(mergedFile)
 	if err := ioutil.WriteFile(mergedFile.Path, bf.Format(mergedFile), 0666); err != nil {
 		return fmt.Errorf("error writing %q: %v", mergedFile.Path, err)
 	}
