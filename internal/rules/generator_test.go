@@ -41,16 +41,17 @@ func testConfig(repoRoot, goPrefix string) *config.Config {
 	return c
 }
 
-func packageFromDir(c *config.Config, dir string) (*packages.Package, *bf.File) {
+func packageFromDir(conf *config.Config, dir string) (*config.Config, *packages.Package, *bf.File) {
 	var pkg *packages.Package
 	var oldFile *bf.File
-	packages.Walk(c, dir, func(_, rel string, _ *config.Config, p *packages.Package, f *bf.File, _ bool) {
+	packages.Walk(conf, dir, func(_, rel string, c *config.Config, p *packages.Package, f *bf.File, _ bool) {
 		if p != nil && p.Dir == dir {
+			conf = c
 			pkg = p
 			oldFile = f
 		}
 	})
-	return pkg, oldFile
+	return conf, pkg, oldFile
 }
 
 func TestGenerator(t *testing.T) {
@@ -79,7 +80,10 @@ func TestGenerator(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		pkg, oldFile := packageFromDir(c, dir)
+		c, pkg, oldFile := packageFromDir(c, dir)
+		if pkg == nil {
+			t.Fatalf("%s: no package produced", dir)
+		}
 		g := rules.NewGenerator(c, l, oldFile)
 		rs, _, err := g.GenerateRules(pkg)
 		if err != nil {

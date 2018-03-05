@@ -24,6 +24,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
+	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -119,8 +120,8 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 	goProtoAttrs := []KeyValue{
 		{"name", goProtoName},
 		{"proto", ":" + protoName},
-		{"importpath", pkg.ImportPath},
 	}
+	goProtoAttrs = append(goProtoAttrs, g.importAttrs(pkg)...)
 	if pkg.Proto.HasServices {
 		goProtoAttrs = append(goProtoAttrs, KeyValue{"compilers", []string{"@io_bazel_rules_go//proto:go_grpc"}})
 	}
@@ -162,7 +163,7 @@ func (g *Generator) generateLib(pkg *packages.Package, goProtoName string) (stri
 	}
 
 	attrs := g.commonAttrs(pkg.Rel, name, visibility, pkg.Library)
-	attrs = append(attrs, KeyValue{"importpath", pkg.ImportPath})
+	attrs = append(attrs, g.importAttrs(pkg)...)
 	if goProtoName != "" {
 		attrs = append(attrs, KeyValue{"embed", []string{":" + goProtoName}})
 	}
@@ -239,6 +240,18 @@ func (g *Generator) commonAttrs(pkgRel, name, visibility string, target packages
 	imports := target.Imports
 	if !imports.IsEmpty() {
 		attrs = append(attrs, KeyValue{config.GazelleImportsKey, imports})
+	}
+	return attrs
+}
+
+func (g *Generator) importAttrs(pkg *packages.Package) []KeyValue {
+	attrs := []KeyValue{{"importpath", pkg.ImportPath}}
+	if g.c.GoImportMapPrefix != "" {
+		fromPrefixRel := pathtools.TrimPrefix(pkg.Rel, g.c.GoImportMapPrefixRel)
+		importMap := path.Join(g.c.GoImportMapPrefix, fromPrefixRel)
+		if importMap != pkg.ImportPath {
+			attrs = append(attrs, KeyValue{"importmap", importMap})
+		}
 	}
 	return attrs
 }
