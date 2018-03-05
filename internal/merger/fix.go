@@ -43,6 +43,7 @@ func FixFile(c *config.Config, f *bf.File) {
 	migrateLibraryEmbed(c, f)
 	migrateGrpcCompilers(c, f)
 	removeBinaryImportPath(c, f)
+	flattenSrcs(c, f)
 	squashCgoLibrary(c, f)
 	removeLegacyProto(c, f)
 }
@@ -344,6 +345,114 @@ func removeLegacyProto(c *config.Config, f *bf.File) {
 		sort.Ints(deletedIndices)
 	}
 	f.Stmt = deleteIndices(f.Stmt, deletedIndices)
+}
+
+// flattenSrcs transforms srcs attributes structured as concatenations of
+// lists and selects (generated from PlatformStrings; see
+// extractPlatformStringsExprs for matching details) into a sorted,
+// de-duplicated list. Comments are accumulated and de-duplicated across
+// duplicate expressions.
+func flattenSrcs(c *config.Config, f *bf.File) {
+	for _, stmt := range f.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		rule := bf.Rule{Call: call}
+		if !isGoRule(rule.Kind()) {
+			continue
+		}
+		oldSrcs := rule.Attr("srcs")
+		if oldSrcs == nil {
+			continue
+		}
+		flatSrcs := flattenSrcsExpr(oldSrcs)
+		rule.SetAttr("srcs", flatSrcs)
+	}
+}
+
+func flattenSrcsExpr(oldSrcs bf.Expr) bf.Expr {
+	oldExprs, err := extractPlatformStringsExprs(oldSrcs)
+	if err != nil {
+		return oldSrcs
+	}
+
+	unique := make(map[string]*bf.StringExpr)
+	type elemComment struct{ elem, com string }
+	seenComments := make(map[elemComment]bool)
+	addElem := func(e bf.Expr) bool {
+		s, ok := e.(*bf.StringExpr)
+		if !ok {
+			return false
+		}
+		sCopy, ok := unique[s.Value]
+		if !ok {
+			// Make a copy of s. We may modify it when we consolidate comments from
+			// duplicate strings. We don't want to modify the original in case this
+			// function fails (due to a later failed pattern match).
+			sCopy = new(bf.StringExpr)
+			*sCopy = *s
+			sCopy.Comments.Before = make([]bf.Comment, 0, len(s.Comments.Before))
+			sCopy.Comments.Suffix = make([]bf.Comment, 0, len(s.Comments.Suffix))
+			unique[s.Value] = sCopy
+		}
+		for _, c := range s.Comment().Before {
+			if key := (elemComment{s.Value, c.Token}); !seenComments[key] {
+				sCopy.Comments.Before = append(sCopy.Comments.Before, c)
+				seenComments[key] = true
+			}
+		}
+		for _, c := range s.Comment().Suffix {
+			if key := (elemComment{s.Value, c.Token}); !seenComments[key] {
+				sCopy.Comments.Suffix = append(sCopy.Comments.Suffix, c)
+				seenComments[key] = true
+			}
+		}
+		return true
+	}
+	addList := func(e bf.Expr) bool {
+		l, ok := e.(*bf.ListExpr)
+		if !ok {
+			return false
+		}
+		for _, elem := range l.List {
+			if !addElem(elem) {
+				return false
+			}
+		}
+		return true
+	}
+	addDict := func(d *bf.DictExpr) bool {
+		for _, kv := range d.List {
+			if !addList(kv.(*bf.KeyValueExpr).Value) {
+				return false
+			}
+		}
+		return true
+	}
+
+	if oldExprs.generic != nil {
+		if !addList(oldExprs.generic) {
+			return oldSrcs
+		}
+	}
+	for _, d := range []*bf.DictExpr{oldExprs.os, oldExprs.arch, oldExprs.platform} {
+		if d == nil {
+			continue
+		}
+		if !addDict(d) {
+			return oldSrcs
+		}
+	}
+
+	sortedExprs := make([]bf.Expr, 0, len(unique))
+	for _, e := range unique {
+		sortedExprs = append(sortedExprs, e)
+	}
+	sort.Slice(sortedExprs, func(i, j int) bool {
+		return sortedExprs[i].(*bf.StringExpr).Value < sortedExprs[j].(*bf.StringExpr).Value
+	})
+	return &bf.ListExpr{List: sortedExprs}
 }
 
 // FixLoads removes loads of unused go rules and adds loads of newly used rules.

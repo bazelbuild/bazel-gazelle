@@ -4,16 +4,10 @@ go_library(
     name = "go_default_library",
     srcs = [
         "gen.go",
+        "gen_linux.go",
+        "gen_static_darwin.go",
         "static.go",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "gen_static_darwin.go",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "gen_linux.go",
-        ],
-        "//conditions:default": [],
-    }),
+    ],
     _gazelle_imports = select({
         "@io_bazel_rules_go//go/platform:darwin": [
             "github.com/jr_hacker/darwin",

@@ -5,31 +5,19 @@ go_library(
     srcs = [
         "cgo_generic.c",
         "cgo_generic.go",
+        "cgo_linux.c",
+        "cgo_linux.go",
         "generic.go",
         "no_cgo.go",
         "release.go",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "suffix_darwin.go",
-            "tag_d.go",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "cgo_linux.c",
-            "cgo_linux.go",
-            "suffix_linux.go",
-            "tag_l.go",
-        ],
-        "//conditions:default": [],
-    }) + select({
-        "@io_bazel_rules_go//go/platform:amd64": [
-            "suffix_amd64.go",
-            "tag_a.go",
-        ],
-        "@io_bazel_rules_go//go/platform:arm": [
-            "suffix_arm.go",
-        ],
-        "//conditions:default": [],
-    }),
+        "suffix_amd64.go",
+        "suffix_arm.go",
+        "suffix_darwin.go",
+        "suffix_linux.go",
+        "tag_a.go",
+        "tag_d.go",
+        "tag_l.go",
+    ],
     _gazelle_imports = [
         "example.com/repo/platforms/generic",
     ] + select({
@@ -58,10 +46,6 @@ go_test(
     name = "go_default_xtest",
     srcs = [
         "generic_test.go",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:linux": [
-            "suffix_linux_test.go",
-        ],
-        "//conditions:default": [],
-    }),
+        "suffix_linux_test.go",
+    ],
 )

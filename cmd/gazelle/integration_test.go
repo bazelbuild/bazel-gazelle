@@ -159,10 +159,10 @@ go_library(
     name = "go_default_library",
     srcs = select({
         "@io_bazel_rules_go//go/platform:linux": [
-						# top comment
-						"foo.go",  # side comment
-						# bar comment
-						"bar.go",
+            # foo comment
+            "foo.go",  # side comment
+            # bar comment
+            "bar.go",
         ],
         "//conditions:default": [],
     }),
@@ -198,15 +198,12 @@ package foo
 
 go_library(
     name = "go_default_library",
-    srcs = select({
-        "@io_bazel_rules_go//go/platform:linux": [
-            # top comment
-            # bar comment
-            "bar.go",
-            "foo.go",  # side comment
-        ],
-        "//conditions:default": [],
-    }),
+    srcs = [
+        # bar comment
+        "bar.go",
+        # foo comment
+        "foo.go",  # side comment
+    ],
     importpath = "example.com/foo",
     visibility = ["//visibility:public"],
     deps = select({

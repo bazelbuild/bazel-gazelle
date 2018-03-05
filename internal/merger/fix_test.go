@@ -123,6 +123,40 @@ go_test(
 )
 `,
 		},
+		// flattenSrcs tests
+		{
+			desc: "flatten srcs",
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "gen.go",
+    ] + select({
+        "@io_bazel_rules_go//platform:darwin_amd64": [
+            # darwin
+            "foo.go", # keep
+        ],
+        "@io_bazel_rules_go//platform:linux_amd64": [
+            # linux
+            "foo.go", # keep
+        ],
+    }),
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        # darwin
+        # linux
+        "foo.go",  # keep
+        "gen.go",
+    ],
+)
+`,
+		},
 		// squashCgoLibrary tests
 		{
 			desc: "no cgo_library",
