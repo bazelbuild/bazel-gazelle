@@ -28,6 +28,101 @@ type fixTestCase struct {
 
 func TestFixFile(t *testing.T) {
 	for _, tc := range []fixTestCase{
+		// migrateLibraryEmbed tests
+		{
+			desc: "library migrated to embed",
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    library = ":go_default_library",
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+		},
+		// migrateGrpcCompilers tests
+		{
+			desc: "go_grpc_library migrated to compilers",
+			old: `load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_grpc_library(
+    name = "foo_go_proto",
+    importpath = "example.com/repo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+)
+`,
+			want: `load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "foo_go_proto",
+    importpath = "example.com/repo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+)
+`,
+		},
+		// removeBinaryImportPath tests
+		{
+			desc: "binary importpath removed",
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+
+go_binary(
+    name = "cmd",
+    srcs = ["main.go"],
+    importpath = "example.com/repo",
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["main_test.go"],
+    importpath = "example.com/repo",
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+
+go_binary(
+    name = "cmd",
+    srcs = ["main.go"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["main_test.go"],
+)
+`,
+		},
 		// squashCgoLibrary tests
 		{
 			desc: "no cgo_library",
@@ -219,108 +314,12 @@ go_proto_library(name = "foo_proto")
 			want: `go_proto_library(name = "foo_proto")
 `,
 		},
-		// migrateLibraryEmbed tests
-		{
-			desc: "library migrated to embed",
-			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-
-go_library(
-    name = "go_default_library",
-    srcs = ["foo.go"],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["foo_test.go"],
-    library = ":go_default_library",
-)
-`,
-			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-
-go_library(
-    name = "go_default_library",
-    srcs = ["foo.go"],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["foo_test.go"],
-    embed = [":go_default_library"],
-)
-`,
-		},
-		// migrateGrpcCompilers tests
-		{
-			desc: "go_grpc_library migrated to compilers",
-			old: `load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
-
-proto_library(
-    name = "foo_proto",
-    srcs = ["foo.proto"],
-    visibility = ["//visibility:public"],
-)
-
-go_grpc_library(
-    name = "foo_go_proto",
-    importpath = "example.com/repo",
-    proto = ":foo_proto",
-    visibility = ["//visibility:public"],
-)
-`,
-			want: `load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
-
-proto_library(
-    name = "foo_proto",
-    srcs = ["foo.proto"],
-    visibility = ["//visibility:public"],
-)
-
-go_proto_library(
-    name = "foo_go_proto",
-    importpath = "example.com/repo",
-    proto = ":foo_proto",
-    visibility = ["//visibility:public"],
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-)
-`,
-		},
-		// removeBinaryImportPath tests
-		{
-			desc: "binary importpath removed",
-			old: `load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-
-go_binary(
-    name = "cmd",
-    srcs = ["main.go"],
-    importpath = "example.com/repo",
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["main_test.go"],
-    importpath = "example.com/repo",
-)
-`,
-			want: `load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-
-go_binary(
-    name = "cmd",
-    srcs = ["main.go"],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["main_test.go"],
-)
-`,
-		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			fix := func(f *bf.File) *bf.File {
-				c := &config.Config{}
-				return FixFile(c, FixFileMinor(c, f))
-			}
-			testFix(t, tc, fix)
+			testFix(t, tc, func(f *bf.File) {
+				c := &config.Config{ShouldFix: true}
+				FixFile(c, f)
+			})
 		})
 	}
 }
@@ -486,13 +485,13 @@ grpc_proto_library(
 	}
 }
 
-func testFix(t *testing.T, tc fixTestCase, fix func(*bf.File) *bf.File) {
-	oldFile, err := bf.Parse("old", []byte(tc.old))
+func testFix(t *testing.T, tc fixTestCase, fix func(*bf.File)) {
+	f, err := bf.Parse("old", []byte(tc.old))
 	if err != nil {
 		t.Fatalf("%s: parse error: %v", tc.desc, err)
 	}
-	fixedFile := fix(oldFile)
-	if got := string(bf.Format(fixedFile)); got != tc.want {
+	fix(f)
+	if got := string(bf.Format(f)); got != tc.want {
 		t.Fatalf("%s: got %s; want %s", tc.desc, got, tc.want)
 	}
 }

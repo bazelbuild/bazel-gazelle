@@ -28,7 +28,6 @@ import (
 
 type testCase struct {
 	desc, previous, current, empty, expected string
-	ignore                                   bool
 }
 
 var testCases = []testCase{
@@ -872,7 +871,7 @@ func TestMergeFile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			oldFile, err := bf.Parse("previous", []byte(tc.previous))
+			f, err := bf.Parse("previous", []byte(tc.previous))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
@@ -880,24 +879,15 @@ func TestMergeFile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			mergedFile, _ := MergeFile(genFile.Stmt, emptyFile.Stmt, oldFile, PreResolveAttrs)
-			if mergedFile == nil {
-				if !tc.ignore {
-					t.Errorf("%s: got nil; want file", tc.desc)
-				}
-				return
-			}
-			if mergedFile != nil && tc.ignore {
-				t.Fatalf("%s: got file; want nil", tc.desc)
-			}
-			mergedFile = FixLoads(mergedFile)
+			MergeFile(genFile.Stmt, emptyFile.Stmt, f, PreResolveAttrs)
+			FixLoads(f)
 
 			want := tc.expected
 			if len(want) > 0 && want[0] == '\n' {
 				want = want[1:]
 			}
 
-			if got := string(bf.Format(mergedFile)); got != want {
+			if got := string(bf.Format(f)); got != want {
 				t.Fatalf("%s: got %s; want %s", tc.desc, got, want)
 			}
 		})

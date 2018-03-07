@@ -107,13 +107,7 @@ func runFixUpdate(cmd command, args []string) error {
 
 		// Fix any problems in the file.
 		if file != nil {
-			file = merger.FixFileMinor(c, file)
-			fixedFile := merger.FixFile(c, file)
-			if cmd == fixCmd {
-				file = fixedFile
-			} else if fixedFile != file {
-				log.Printf("%s: warning: file contains rules whose structure is out of date. Consider running 'gazelle fix'.", file.Path)
-			}
+			merger.FixFile(c, file)
 		}
 
 		// If the file exists, but no Go code is present, create an empty package.
@@ -136,7 +130,7 @@ func runFixUpdate(cmd command, args []string) error {
 					Stmt: rules,
 				}
 			} else {
-				file, rules = merger.MergeFile(rules, empty, file, merger.PreResolveAttrs)
+				rules = merger.MergeFile(rules, empty, file, merger.PreResolveAttrs)
 			}
 			visits = append(visits, visitRecord{
 				pkgRel: rel,
@@ -162,13 +156,13 @@ func runFixUpdate(cmd command, args []string) error {
 		for j := range visits[i].rules {
 			visits[i].rules[j] = resolver.ResolveRule(visits[i].rules[j], visits[i].pkgRel)
 		}
-		visits[i].file, _ = merger.MergeFile(visits[i].rules, visits[i].empty, visits[i].file, merger.PostResolveAttrs)
+		merger.MergeFile(visits[i].rules, visits[i].empty, visits[i].file, merger.PostResolveAttrs)
 	}
 
 	// Emit merged files.
 	for _, v := range visits {
 		rules.SortLabels(v.file)
-		v.file = merger.FixLoads(v.file)
+		merger.FixLoads(v.file)
 		bf.Rewrite(v.file, nil) // have buildifier 'format' our rules.
 
 		path := v.file.Path
