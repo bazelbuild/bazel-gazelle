@@ -3,66 +3,15 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
+        "asm_linux.S",
+        "asm_other.S",
         "foo.go",
         "foo.h",
-    ] + select({
-        "@io_bazel_rules_go//go/platform:android": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:dragonfly": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:freebsd": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "asm_linux.S",
-            "foo_linux.c",
-            "pure_linux.go",
-        ],
-        "@io_bazel_rules_go//go/platform:nacl": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:netbsd": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:openbsd": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:plan9": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:solaris": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "@io_bazel_rules_go//go/platform:windows": [
-            "asm_other.S",
-            "foo_other.c",
-            "pure_other.go",
-        ],
-        "//conditions:default": [],
-    }),
+        "foo_linux.c",
+        "foo_other.c",
+        "pure_linux.go",
+        "pure_other.go",
+    ],
     _gazelle_imports = [
         "example.com/repo/lib",
         "fmt",

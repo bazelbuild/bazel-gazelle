@@ -129,6 +129,34 @@ func (ps *PlatformStrings) IsEmpty() bool {
 	return len(ps.Generic) == 0 && len(ps.OS) == 0 && len(ps.Arch) == 0 && len(ps.Platform) == 0
 }
 
+func (ps *PlatformStrings) Flat() []string {
+	unique := make(map[string]struct{})
+	for _, s := range ps.Generic {
+		unique[s] = struct{}{}
+	}
+	for _, ss := range ps.OS {
+		for _, s := range ss {
+			unique[s] = struct{}{}
+		}
+	}
+	for _, ss := range ps.Arch {
+		for _, s := range ss {
+			unique[s] = struct{}{}
+		}
+	}
+	for _, ss := range ps.Platform {
+		for _, s := range ss {
+			unique[s] = struct{}{}
+		}
+	}
+	flat := make([]string, 0, len(unique))
+	for s := range unique {
+		flat = append(flat, s)
+	}
+	sort.Strings(flat)
+	return flat
+}
+
 func (ps *PlatformStrings) firstGoFile() string {
 	for _, f := range ps.Generic {
 		if strings.HasSuffix(f, ".go") {

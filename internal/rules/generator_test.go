@@ -75,36 +75,30 @@ func TestGenerator(t *testing.T) {
 	}
 
 	for _, dir := range dirs {
-		rel, err := filepath.Rel(repoRoot, dir)
-		if err != nil {
-			t.Fatal(err)
-		}
+		rel, _ := filepath.Rel(repoRoot, dir)
+		t.Run(rel, func(t *testing.T) {
+			c, pkg, oldFile := packageFromDir(c, dir)
+			g := rules.NewGenerator(c, l, oldFile)
+			rs, _, err := g.GenerateRules(pkg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			f := &bf.File{Stmt: rs}
+			rules.SortLabels(f)
+			merger.FixLoads(f)
+			got := string(bf.Format(f))
 
-		c, pkg, oldFile := packageFromDir(c, dir)
-		if pkg == nil {
-			t.Fatalf("%s: no package produced", dir)
-		}
-		g := rules.NewGenerator(c, l, oldFile)
-		rs, _, err := g.GenerateRules(pkg)
-		if err != nil {
-			t.Fatal(err)
-		}
-		f := &bf.File{Stmt: rs}
-		rules.SortLabels(f)
-		merger.FixLoads(f)
-		got := string(bf.Format(f))
+			wantPath := filepath.Join(pkg.Dir, "BUILD.want")
+			wantBytes, err := ioutil.ReadFile(wantPath)
+			if err != nil {
+				t.Fatalf("error reading %s: %v", wantPath, err)
+			}
+			want := string(wantBytes)
 
-		wantPath := filepath.Join(pkg.Dir, "BUILD.want")
-		wantBytes, err := ioutil.ReadFile(wantPath)
-		if err != nil {
-			t.Errorf("error reading %s: %v", wantPath, err)
-			continue
-		}
-		want := string(wantBytes)
-
-		if got != want {
-			t.Errorf("g.Generate(%q, %#v) = %s; want %s", rel, pkg, got, want)
-		}
+			if got != want {
+				t.Errorf("g.Generate(%q, %#v) = %s; want %s", rel, pkg, got, want)
+			}
+		})
 	}
 }
 

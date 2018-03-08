@@ -223,7 +223,7 @@ func (g *Generator) generateTest(pkg *packages.Package, library string, isXTest 
 func (g *Generator) commonAttrs(pkgRel, name, visibility string, target packages.GoTarget) []KeyValue {
 	attrs := []KeyValue{{"name", name}}
 	if !target.Sources.IsEmpty() {
-		attrs = append(attrs, KeyValue{"srcs", target.Sources})
+		attrs = append(attrs, KeyValue{"srcs", target.Sources.Flat()})
 	}
 	if target.Cgo {
 		attrs = append(attrs, KeyValue{"cgo", true})
