@@ -477,6 +477,58 @@ grpc_proto_library(
     name = "bar_go_proto",
 )
 `,
+		}, {
+			desc: "moved symbol",
+			old: `
+load("@io_bazel_rules_go//go:def.bzl", "go_repository")
+
+go_repository(name = "foo")
+`,
+			want: `
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+go_repository(name = "foo")
+`,
+		}, {
+			desc: "moved symbols with others",
+			old: `
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_repository")
+
+go_rules_dependencies()
+
+go_repository(name = "foo")
+`,
+			want: `
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+go_repository(name = "foo")
+`,
+		}, {
+			desc: "load after",
+			old: `
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+
+go_rules_dependencies()
+
+go_register_toolchains()
+
+go_repository(name = "foo")
+`,
+			want: `
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+
+go_rules_dependencies()
+
+go_register_toolchains()
+
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+go_repository(name = "foo")
+`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -491,7 +543,12 @@ func testFix(t *testing.T, tc fixTestCase, fix func(*bf.File)) {
 		t.Fatalf("%s: parse error: %v", tc.desc, err)
 	}
 	fix(f)
-	if got := string(bf.Format(f)); got != tc.want {
-		t.Fatalf("%s: got %s; want %s", tc.desc, got, tc.want)
+	want := tc.want
+	if len(want) > 0 && want[0] == '\n' {
+		// Strip leading newline, added for readability
+		want = want[1:]
+	}
+	if got := string(bf.Format(f)); got != want {
+		t.Fatalf("%s: got %s; want %s", tc.desc, got, want)
 	}
 }

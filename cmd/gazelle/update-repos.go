@@ -54,6 +54,7 @@ func updateRepos(args []string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing %q: %v", workspacePath, err)
 	}
+	merger.FixWorkspace(f)
 
 	if err := c.fn(c, f); err != nil {
 		return err

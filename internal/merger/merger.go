@@ -910,6 +910,9 @@ func stringValue(e bf.Expr) string {
 // deleteIndices copies a list, dropping elements at deletedIndices.
 // deletedIndices must be sorted.
 func deleteIndices(stmt []bf.Expr, deletedIndices []int) []bf.Expr {
+	if len(deletedIndices) == 0 {
+		return stmt
+	}
 	kept := make([]bf.Expr, 0, len(stmt)-len(deletedIndices))
 	di := 0
 	for i, s := range stmt {
