@@ -315,7 +315,7 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 }
 
 func fixUpdateUsage(fs *flag.FlagSet) {
-	fmt.Fprintln(os.Stderr, `usage: gazelle [fix|update] [flags...] [package-dirs...]
+	fmt.Fprint(os.Stderr, `usage: gazelle [fix|update] [flags...] [package-dirs...]
 
 The update command creates new build files and update existing BUILD files
 when needed.
@@ -338,6 +338,7 @@ subdirectories. All directories must be under the directory specified by
 WORKSPACE file.
 
 FLAGS:
+
 `)
 	fs.PrintDefaults()
 }
