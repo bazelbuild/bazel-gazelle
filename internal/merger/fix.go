@@ -530,7 +530,11 @@ func FixLoads(f *bf.File) {
 	// Fix the load statements. The order is important, so we iterate over
 	// knownLoads instead of knownFiles.
 	changed := false
-	var newFirstLoads []*bf.CallExpr
+	type newLoad struct {
+		index int
+		load  *bf.CallExpr
+	}
+	var newLoads []newLoad
 	for _, l := range knownLoads {
 		file := l.file
 		first := true
@@ -550,7 +554,8 @@ func FixLoads(f *bf.File) {
 		if first {
 			load := fixLoad(nil, file, usedKinds[file])
 			if load != nil {
-				newFirstLoads = append(newFirstLoads, load)
+				index := newLoadIndex(f.Stmt, l.after)
+				newLoads = append(newLoads, newLoad{index, load})
 				changed = true
 			}
 		}
@@ -558,15 +563,21 @@ func FixLoads(f *bf.File) {
 	if !changed {
 		return
 	}
+	sort.Slice(newLoads, func(i, j int) bool {
+		return newLoads[i].index < newLoads[j].index
+	})
 
-	// Rebuild the file.
+	// Rebuild the file. Insert new loads at appropriate indices, replace fixed
+	// loads, and drop deleted loads.
 	oldStmt := f.Stmt
-	f.Stmt = make([]bf.Expr, 0, len(oldStmt)+len(newFirstLoads))
-	for _, l := range newFirstLoads {
-		f.Stmt = append(f.Stmt, l)
-	}
+	f.Stmt = make([]bf.Expr, 0, len(oldStmt)+len(newLoads))
+	newLoadIndex := 0
 	loadIndex := 0
 	for i, stmt := range oldStmt {
+		for newLoadIndex < len(newLoads) && i == newLoads[newLoadIndex].index {
+			f.Stmt = append(f.Stmt, newLoads[newLoadIndex].load)
+			newLoadIndex++
+		}
 		if loadIndex < len(loads) && i == loads[loadIndex].index {
 			if loads[loadIndex].fixed != nil {
 				f.Stmt = append(f.Stmt, loads[loadIndex].fixed)
@@ -579,19 +590,27 @@ func FixLoads(f *bf.File) {
 }
 
 // knownLoads is a list of files Gazelle will generate loads from and
-// the symbols it knows about.  All symbols Gazelle ever generated
+// the symbols it knows about. All symbols Gazelle ever generated
 // loads for are present, including symbols it no longer uses (e.g.,
 // cgo_library). Manually loaded symbols (e.g., go_embed_data) are not
-// included. The order of the files here will match the order of
-// generated load statements. The symbols should be sorted
-// lexicographically.
+// included.
+//
+// Some symbols have a list of function calls that they should be loaded
+// after. This is important for WORKSPACE, where function calls may
+// introduce new repository names.
+//
+// The order of the files here will match the order of generated load
+// statements. The symbols should be sorted lexicographically. If a
+// symbol appears in more than one file (e.g., because it was moved),
+// it will be loaded from the last file in this list.
 var knownLoads = []struct {
 	file  string
 	kinds []string
+	after []string
 }{
 	{
-		"@io_bazel_rules_go//go:def.bzl",
-		[]string{
+		file: "@io_bazel_rules_go//go:def.bzl",
+		kinds: []string{
 			"cgo_library",
 			"go_binary",
 			"go_library",
@@ -600,10 +619,20 @@ var knownLoads = []struct {
 			"go_test",
 		},
 	}, {
-		"@io_bazel_rules_go//proto:def.bzl",
-		[]string{
+		file: "@io_bazel_rules_go//proto:def.bzl",
+		kinds: []string{
 			"go_grpc_library",
 			"go_proto_library",
+		},
+	}, {
+		file: "@bazel_gazelle//:deps.bzl",
+		kinds: []string{
+			"go_repository",
+		},
+		after: []string{
+			"go_rules_dependencies",
+			"go_register_toolchains",
+			"gazelle_dependencies",
 		},
 	},
 }
@@ -688,6 +717,73 @@ func fixLoad(load *bf.CallExpr, file string, kinds map[string]bool) *bf.CallExpr
 		return nil
 	}
 	return &fixed
+}
+
+// newLoadIndex returns the index in stmts where a new load statement should
+// be inserted. after is a list of function names that the load should not
+// be inserted before.
+func newLoadIndex(stmts []bf.Expr, after []string) int {
+	if len(after) == 0 {
+		return 0
+	}
+	index := 0
+	for i, stmt := range stmts {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		x, ok := call.X.(*bf.LiteralExpr)
+		if !ok {
+			continue
+		}
+		for _, a := range after {
+			if x.Token == a {
+				index = i + 1
+			}
+		}
+	}
+	return index
+}
+
+// FixWorkspace updates rules in the WORKSPACE file f that were used with an
+// older version of rules_go or gazelle.
+func FixWorkspace(f *bf.File) {
+	removeLegacyGoRepository(f)
+}
+
+// removeLegacyGoRepository removes loads of go_repository from
+// @io_bazel_rules_go. FixLoads should be called after this; it will load from
+// @bazel_gazelle.
+func removeLegacyGoRepository(f *bf.File) {
+	var deletedStmtIndices []int
+	for stmtIndex, stmt := range f.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok || len(call.List) < 1 {
+			continue
+		}
+		if x, ok := call.X.(*bf.LiteralExpr); !ok || x.Token != "load" {
+			continue
+		}
+		if path, ok := call.List[0].(*bf.StringExpr); !ok || path.Value != "@io_bazel_rules_go//go:def.bzl" {
+			continue
+		}
+		var deletedArgIndices []int
+		for argIndex, arg := range call.List {
+			str, ok := arg.(*bf.StringExpr)
+			if !ok {
+				continue
+			}
+			if str.Value == "go_repository" {
+				deletedArgIndices = append(deletedArgIndices, argIndex)
+			}
+		}
+		if len(call.List)-len(deletedArgIndices) == 1 {
+			deletedStmtIndices = append(deletedStmtIndices, stmtIndex)
+		} else {
+			call.List = deleteIndices(call.List, deletedArgIndices)
+		}
+	}
+	f.Stmt = deleteIndices(f.Stmt, deletedStmtIndices)
 }
 
 type byString []*bf.StringExpr

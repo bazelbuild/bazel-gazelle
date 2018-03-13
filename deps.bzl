@@ -12,26 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@bazel_gazelle//internal:go_repository.bzl", "go_repository_tools")
-load("@bazel_gazelle//internal:overlay_repository.bzl",
-    _git_repository = "git_repository",
-    _http_archive = "http_archive",
+load(
+    "@bazel_gazelle//internal:go_repository.bzl",
+    "go_repository",
+    _go_repository_tools = "go_repository_tools",
+)
+load(
+    "@bazel_gazelle//internal:overlay_repository.bzl",
+    "git_repository",
+    "http_archive",
 )
 load("@bazel_gazelle//third_party:manifest.bzl",
     _manifest = "manifest",
 )
 
 def gazelle_dependencies():
-  go_repository_tools(name = "bazel_gazelle_go_repository_tools")
+  _go_repository_tools(name = "bazel_gazelle_go_repository_tools")
 
-  _maybe(_git_repository,
+  _maybe(git_repository,
       name = "bazel_skylib",
       remote = "https://github.com/bazelbuild/bazel-skylib",
       commit = "f3dd8fd95a7d078cb10fd7fb475b22c3cdbcb307", # 0.2.0 as of 2017-12-04
   )
 
   # io_bazel_rules_go also declares this (for now). Keep in sync.
-  _maybe(_http_archive,
+  _maybe(http_archive,
       name = "org_golang_x_tools",
       # release-branch.go1.9, as of 2017-08-25
       urls = ["https://codeload.github.com/golang/tools/zip/5d2fd3ccab986d52112bf301d47a819783339d0e"],
@@ -42,7 +47,7 @@ def gazelle_dependencies():
 
   # TODO(jayconrod): restore when rules_go go_repository_tools no longer
   # requires this to be vendored.
-  # _maybe(_git_repository,
+  # _maybe(git_repository,
   #     name = "com_github_pelletier_go_toml",
   #     remote = "https://github.com/pelletier/go-toml",
   #     commit = "16398bac157da96aa88f98a2df640c7f32af1da2", # v1.0.1 as of 2017-12-19

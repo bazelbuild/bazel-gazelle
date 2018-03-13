@@ -284,18 +284,21 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 	uc.outSuffix = *outSuffix
 
 	workspacePath := filepath.Join(uc.c.RepoRoot, "WORKSPACE")
-	workspaceContent, err := ioutil.ReadFile(workspacePath)
-	if os.IsNotExist(err) {
-		workspaceContent = nil
-	} else if err != nil {
-		return nil, err
+	if workspaceContent, err := ioutil.ReadFile(workspacePath); err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	} else {
+		workspace, err := bf.Parse(workspacePath, workspaceContent)
+		if err != nil {
+			return nil, err
+		}
+		if err := fixWorkspace(uc, workspace); err != nil {
+			return nil, err
+		}
+		uc.c.RepoName = findWorkspaceName(workspace)
+		uc.repos = repos.ListRepositories(workspace)
 	}
-	workspace, err := bf.Parse(workspacePath, workspaceContent)
-	if err != nil {
-		return nil, err
-	}
-	uc.c.RepoName = findWorkspaceName(workspace)
-	uc.repos = repos.ListRepositories(workspace)
 	repoPrefixes := make(map[string]bool)
 	for _, r := range uc.repos {
 		repoPrefixes[r.GoPrefix] = true
@@ -401,6 +404,25 @@ func loadGoPrefix(c *config.Config) (string, error) {
 		return v.Value, nil
 	}
 	return "", fmt.Errorf("-go_prefix not set, and no # gazelle:prefix directive found in %s", f.Path)
+}
+
+func fixWorkspace(uc *updateConfig, workspace *bf.File) error {
+	if !uc.c.ShouldFix {
+		return nil
+	}
+	shouldFix := false
+	for _, d := range uc.c.Dirs {
+		if d == uc.c.RepoRoot {
+			shouldFix = true
+		}
+	}
+	if !shouldFix {
+		return nil
+	}
+
+	merger.FixWorkspace(workspace)
+	merger.FixLoads(workspace)
+	return uc.emit(uc.c, workspace, workspace.Path)
 }
 
 func findWorkspaceName(f *bf.File) string {
