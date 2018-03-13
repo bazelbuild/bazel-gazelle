@@ -115,7 +115,7 @@ func newUpdateReposConfiguration(args []string) (*updateReposConfiguration, erro
 }
 
 func updateReposUsage(fs *flag.FlagSet) {
-	fmt.Fprintln(os.Stderr, `usage:
+	fmt.Fprint(os.Stderr, `usage:
 
 # Add/update repositories by import path
 gazelle update-repos example.com/repo1 example.com/repo2
@@ -129,6 +129,7 @@ update-repos can also import repository rules from a vendoring tool's lock
 file (currently only deps' Gopkg.lock is supported).
 
 FLAGS:
+
 `)
 }
 

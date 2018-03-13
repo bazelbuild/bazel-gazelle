@@ -31,7 +31,7 @@ import (
 func main() {
 	log.SetFlags(0)
 	if len(os.Args) != 3 {
-		log.Fatalf("usage: %s packages.txt out.go")
+		log.Fatalf("usage: %s packages.txt out.go", os.Args[0])
 	}
 
 	packagesTxtPath := os.Args[1]

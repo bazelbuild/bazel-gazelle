@@ -372,7 +372,7 @@ func TestResolveGoEmptyPrefix(t *testing.T) {
 
 	imp = "fmt"
 	if _, err := r.resolveGo(imp, label.NoLabel); err == nil {
-		t.Errorf("r.resolveGo(%q) succeeded; want failure")
+		t.Errorf("r.resolveGo(%q) succeeded; want failure", imp)
 	}
 }
 

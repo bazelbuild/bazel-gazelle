@@ -470,9 +470,9 @@ func TestErrorOutsideWorkspace(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			if err := runGazelle(c.dir, c.args); err == nil {
-				t.Fatal("got success; want %q", c.want)
+				t.Fatalf("got success; want %q", c.want)
 			} else if !strings.Contains(err.Error(), c.want) {
-				t.Fatal("got %q; want %q", err, c.want)
+				t.Fatalf("got %q; want %q", err, c.want)
 			}
 		})
 	}

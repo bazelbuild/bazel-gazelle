@@ -826,7 +826,7 @@ func match(stmts []bf.Expr, x *bf.CallExpr) (*bf.CallExpr, int, error) {
 		return nameMatches[0].rule.Call, nameMatches[0].index, nil
 	}
 	if len(nameMatches) > 1 {
-		return nil, -1, fmt.Errorf("could not merge %s(%s): multiple rules have the same name", xname)
+		return nil, -1, fmt.Errorf("could not merge %s(%s): multiple rules have the same name", xkind, xname)
 	}
 
 	attrs := matchAttrs[xr.Kind()]
