@@ -456,3 +456,21 @@ func TestResolveProto(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveGoWKT(t *testing.T) {
+	c := &config.Config{}
+	l := label.NewLabeler(c)
+	ix := NewRuleIndex()
+	r := NewResolver(c, l, ix, nil)
+
+	want := label.Label{
+		Repo: config.RulesGoRepoName,
+		Pkg:  config.WellKnownTypesPkg,
+		Name: "any_go_proto",
+	}
+	if got, err := r.resolveGo("github.com/golang/protobuf/ptypes/any", label.NoLabel); err != nil {
+		t.Error(err)
+	} else if !got.Equal(want) {
+		t.Errorf("got %s; want %s", got, want)
+	}
+}

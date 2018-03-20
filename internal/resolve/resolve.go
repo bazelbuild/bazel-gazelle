@@ -226,6 +226,14 @@ func (r *Resolver) resolveGo(imp string, from label.Label) (label.Label, error) 
 		return label.NoLabel, standardImportError{imp}
 	}
 
+	if isWellKnownGo(imp) {
+		return label.Label{
+			Repo: config.RulesGoRepoName,
+			Pkg:  config.WellKnownTypesPkg,
+			Name: path.Base(imp) + "_go_proto",
+		}, nil
+	}
+
 	if l, err := r.ix.findLabelByImport(importSpec{config.GoLang, imp}, config.GoLang, from); err != nil {
 		if _, ok := err.(ruleNotFoundError); !ok {
 			return label.NoLabel, err
@@ -241,19 +249,13 @@ func (r *Resolver) resolveGo(imp string, from label.Label) (label.Label, error) 
 	return r.external.resolve(imp)
 }
 
-const (
-	wellKnownPrefix     = "google/protobuf/"
-	wellKnownGoProtoPkg = "ptypes"
-	descriptorPkg       = "protoc-gen-go/descriptor"
-)
-
 // resolveProto resolves an import statement in a .proto file to a label
 // for a proto_library rule.
 func (r *Resolver) resolveProto(imp string, from label.Label) (label.Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
 		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
-	if isWellKnown(imp) {
+	if isWellKnownProto(imp) {
 		name := path.Base(imp[:len(imp)-len(".proto")]) + "_proto"
 		return label.New(config.WellKnownTypesProtoRepo, "", name), nil
 	}
@@ -282,7 +284,7 @@ func (r *Resolver) resolveGoProto(imp string, from label.Label) (label.Label, er
 	}
 	stem := imp[:len(imp)-len(".proto")]
 
-	if isWellKnown(stem) {
+	if isWellKnownProto(stem) {
 		return label.NoLabel, standardImportError{imp}
 	}
 
@@ -313,6 +315,11 @@ func IsStandard(imp string) bool {
 	return stdPackages[imp]
 }
 
-func isWellKnown(imp string) bool {
-	return strings.HasPrefix(imp, wellKnownPrefix) && strings.TrimPrefix(imp, wellKnownPrefix) == path.Base(imp)
+func isWellKnownProto(imp string) bool {
+	return pathtools.HasPrefix(imp, config.WellKnownTypesProtoPrefix) && pathtools.TrimPrefix(imp, config.WellKnownTypesProtoPrefix) == path.Base(imp)
+}
+
+func isWellKnownGo(imp string) bool {
+	prefix := config.WellKnownTypesGoPrefix + "/ptypes/"
+	return strings.HasPrefix(imp, prefix) && strings.TrimPrefix(imp, prefix) == path.Base(imp)
 }
