@@ -238,6 +238,10 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 			return nil, fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
 		}
 	}
+	uc.c.RepoRoot, err = filepath.EvalSymlinks(uc.c.RepoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("failed to evaluate symlinks for repo root: %v", err)
+	}
 
 	for _, dir := range uc.c.Dirs {
 		if !isDescendingDir(dir, uc.c.RepoRoot) {

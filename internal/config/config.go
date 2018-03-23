@@ -27,7 +27,8 @@ type Config struct {
 	// Dirs is a list of absolute paths to directories where Gazelle should run.
 	Dirs []string
 
-	// RepoRoot is the absolute path to the root directory of the repository.
+	// RepoRoot is the absolute, canonical path to the root directory of the
+	// repository with all symlinks resolved.
 	RepoRoot string
 
 	// ValidBuildFileNames is a list of base names that are considered valid
