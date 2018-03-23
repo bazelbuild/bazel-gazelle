@@ -2,7 +2,11 @@ Gazelle build file generator
 ============================
 
 .. All external links are here
-.. _go_repository: https://github.com/bazelbuild/rules_go/blob/master/go/workspace.rst#go-repository
+.. _Architecture of Gazelle: Design.rst
+.. _Repository rules: repository.rst
+.. _go_repository: repository.rst#go_repository
+.. _git_repository: repository.rst#git_repository
+.. _http_archive: repository.rst#http_archive
 .. _Gazelle in rules_go: https://github.com/bazelbuild/rules_go/tree/master/go/tools/gazelle
 .. _fix: #fix-and-update
 .. _update: #fix-and-update
@@ -19,13 +23,22 @@ Gazelle is a build file generator for Go projects. It can create new
 BUILD.bazel files for a project that follows "go build" conventions, and it
 can update existing build files to include new files and options. Gazelle can
 be invoked directly in a project workspace, or it can be run on an external
-repository during the build as part of the go_repository_ rule.
+repository during the build as part of the `go_repository`_ rule.
 
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
 
 .. contents:: **Contents** 
   :depth: 2
+
+**See also:**
+
+* `Architecture of Gazelle`_
+* `Repository rules`_
+
+  * `go_repository`_
+  * `git_repository`_
+  * `http_archive`_
 
 Setup
 -----
