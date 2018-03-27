@@ -60,6 +60,9 @@ func updateRepos(args []string) error {
 		return err
 	}
 	merger.FixLoads(f)
+	if err := merger.CheckGazelleLoaded(f); err != nil {
+		return err
+	}
 	if err := ioutil.WriteFile(f.Path, bf.Format(f), 0666); err != nil {
 		return fmt.Errorf("error writing %q: %v", f.Path, err)
 	}

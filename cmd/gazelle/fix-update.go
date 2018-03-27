@@ -427,6 +427,9 @@ func fixWorkspace(uc *updateConfig, workspace *bf.File) error {
 
 	merger.FixWorkspace(workspace)
 	merger.FixLoads(workspace)
+	if err := merger.CheckGazelleLoaded(workspace); err != nil {
+		return err
+	}
 	return uc.emit(uc.c, workspace, workspace.Path)
 }
 

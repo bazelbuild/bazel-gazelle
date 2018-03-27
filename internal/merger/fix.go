@@ -16,8 +16,10 @@ limitations under the License.
 package merger
 
 import (
+	"fmt"
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	bf "github.com/bazelbuild/buildtools/build"
@@ -749,6 +751,58 @@ func newLoadIndex(stmts []bf.Expr, after []string) int {
 // older version of rules_go or gazelle.
 func FixWorkspace(f *bf.File) {
 	removeLegacyGoRepository(f)
+}
+
+// CheckGazelleLoaded searches the given WORKSPACE file for a repository named
+// "bazel_gazelle". If no such repository is found *and* the repo is not
+// declared with a directive *and* at least one load statement mentions
+// the repository, a descriptive error will be returned.
+//
+// This should be called after modifications have been made to WORKSPACE
+// (i.e., after FixLoads) before writing it to disk.
+func CheckGazelleLoaded(f *bf.File) error {
+	needGazelle := false
+	for _, stmt := range f.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		x, ok := call.X.(*bf.LiteralExpr)
+		if !ok {
+			continue
+		}
+		if x.Token == "load" {
+			if len(call.List) == 0 {
+				continue
+			}
+			if s, ok := call.List[0].(*bf.StringExpr); ok && strings.HasPrefix(s.Value, "@bazel_gazelle//") {
+				needGazelle = true
+			}
+			continue
+		}
+		rule := bf.Rule{Call: call}
+		if rule.Name() == "bazel_gazelle" {
+			return nil
+		}
+	}
+	if !needGazelle {
+		return nil
+	}
+	for _, d := range config.ParseDirectives(f) {
+		if d.Key != "repo" {
+			continue
+		}
+		if fs := strings.Fields(d.Value); len(fs) > 0 && fs[0] == "bazel_gazelle" {
+			return nil
+		}
+	}
+	return fmt.Errorf(`%s: error: bazel_gazelle is not declared in WORKSPACE.
+Without this repository, Gazelle cannot safely modify the WORKSPACE file.
+See the instructions at https://github.com/bazelbuild/bazel-gazelle.
+If the bazel_gazelle is declared inside a macro, you can suppress this error
+by adding a comment like this to WORKSPACE:
+    # gazelle:repo bazel_gazelle
+`, f.Path)
 }
 
 // removeLegacyGoRepository removes loads of go_repository from
