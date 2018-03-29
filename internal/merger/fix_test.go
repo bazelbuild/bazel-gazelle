@@ -283,20 +283,20 @@ cgo_library(
 go_library(
     name = "go_default_library",
     srcs = [
-        "pure.go",
         "cgo.go",
+        "pure.go",
     ],
     deps = [
-        "pure_deps",
         "cgo_deps",
+        "pure_deps",
     ],
     data = [
-        "pure_data",
         "cgo_data",
+        "pure_data",
     ],
     gc_goopts = [
-        "pure_gc_goopts",
         "cgo_gc_goopts",
+        "pure_gc_goopts",
     ],
     cgo = True,
     cdeps = ["cdeps"],
@@ -304,6 +304,63 @@ go_library(
 )
 # after go_library
 # after cgo_library
+`,
+		},
+		// squashXtest tests
+		{
+			desc: "rename xtest",
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
+go_test(
+    name = "go_default_xtest",
+    srcs = ["x_test.go"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "go_default_test",
+    srcs = ["x_test.go"],
+)
+`,
+		}, {
+			desc: "squash xtest",
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "go_default_test",
+    srcs = ["i_test.go"],
+    deps = [
+        ":i_dep",
+        ":shared_dep",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_xtest",
+    srcs = ["x_test.go"],
+    deps = [
+        ":x_dep",
+        ":shared_dep",
+    ],
+    visibility = ["//visibility:public"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "i_test.go",
+        "x_test.go",
+    ],
+    deps = [
+        ":i_dep",
+        ":shared_dep",
+        ":x_dep",
+    ],
+    visibility = ["//visibility:public"],
+)
 `,
 		},
 		// removeLegacyProto tests
