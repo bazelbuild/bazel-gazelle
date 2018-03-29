@@ -20,16 +20,13 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["lib_test.go"],
-    _gazelle_imports = ["testing"],
-    embed = [":go_default_library"],
-)
-
-go_test(
-    name = "go_default_xtest",
-    srcs = ["lib_external_test.go"],
+    srcs = [
+        "lib_external_test.go",
+        "lib_test.go",
+    ],
     _gazelle_imports = [
         "example.com/repo/lib",
         "testing",
     ],
+    embed = [":go_default_library"],
 )

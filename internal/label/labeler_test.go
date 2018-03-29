@@ -24,7 +24,7 @@ import (
 func TestLabelerGo(t *testing.T) {
 	for _, tc := range []struct {
 		name, rel                             string
-		wantLib, wantBin, wantTest, wantXTest string
+		wantLib, wantBin, wantTest string
 	}{
 		{
 			name:      "root_hierarchical",
@@ -32,14 +32,12 @@ func TestLabelerGo(t *testing.T) {
 			wantLib:   "//:go_default_library",
 			wantBin:   "//:root",
 			wantTest:  "//:go_default_test",
-			wantXTest: "//:go_default_xtest",
 		}, {
 			name:      "sub_hierarchical",
 			rel:       "sub",
 			wantLib:   "//sub:go_default_library",
 			wantBin:   "//sub",
 			wantTest:  "//sub:go_default_test",
-			wantXTest: "//sub:go_default_xtest",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -52,11 +50,8 @@ func TestLabelerGo(t *testing.T) {
 			if got := l.BinaryLabel(tc.rel).String(); got != tc.wantBin {
 				t.Errorf("for binary in %s: got %q ; want %q", tc.rel, got, tc.wantBin)
 			}
-			if got := l.TestLabel(tc.rel, false).String(); got != tc.wantTest {
+			if got := l.TestLabel(tc.rel).String(); got != tc.wantTest {
 				t.Errorf("for test in %s: got %q ; want %q", tc.rel, got, tc.wantTest)
-			}
-			if got := l.TestLabel(tc.rel, true).String(); got != tc.wantXTest {
-				t.Errorf("for test in %s: got %q ; want %q", tc.rel, got, tc.wantXTest)
 			}
 		})
 	}

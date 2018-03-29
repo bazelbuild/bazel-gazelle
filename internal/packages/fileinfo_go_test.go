@@ -49,7 +49,6 @@ func TestGoFileInfo(t *testing.T) {
 			fileInfo{
 				packageName: "foo",
 				isTest:      true,
-				isXTest:     true,
 			},
 		},
 		{
@@ -59,7 +58,6 @@ func TestGoFileInfo(t *testing.T) {
 			fileInfo{
 				packageName: "foo_test",
 				isTest:      false,
-				isXTest:     false,
 			},
 		},
 		{
@@ -155,7 +153,6 @@ package route
 		got = fileInfo{
 			packageName: got.packageName,
 			isTest:      got.isTest,
-			isXTest:     got.isXTest,
 			imports:     got.imports,
 			isCgo:       got.isCgo,
 			tags:        got.tags,

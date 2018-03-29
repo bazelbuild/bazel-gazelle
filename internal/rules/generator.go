@@ -55,8 +55,7 @@ func (g *Generator) GenerateRules(pkg *packages.Package) (rules []bf.Expr, empty
 
 	rs = append(rs,
 		g.generateBin(pkg, libName),
-		g.generateTest(pkg, libName, false),
-		g.generateTest(pkg, "", true))
+		g.generateTest(pkg, libName))
 
 	for _, r := range rs {
 		if isEmpty(r) {
@@ -200,16 +199,12 @@ func checkInternalVisibility(rel, visibility string) string {
 	return visibility
 }
 
-func (g *Generator) generateTest(pkg *packages.Package, library string, isXTest bool) bf.Expr {
-	name := g.l.TestLabel(pkg.Rel, isXTest).Name
-	target := pkg.Test
-	if isXTest {
-		target = pkg.XTest
-	}
-	if !target.HasGo() {
+func (g *Generator) generateTest(pkg *packages.Package, library string) bf.Expr {
+	name := g.l.TestLabel(pkg.Rel).Name
+	if !pkg.Test.HasGo() {
 		return EmptyRule("go_test", name)
 	}
-	attrs := g.commonAttrs(pkg.Rel, name, "", target)
+	attrs := g.commonAttrs(pkg.Rel, name, "", pkg.Test)
 	if library != "" {
 		attrs = append(attrs, KeyValue{"embed", []string{":" + library}})
 	}

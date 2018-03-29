@@ -119,8 +119,6 @@ go_library(name = "go_default_library")
 go_binary(name = "repo")
 
 go_test(name = "go_default_test")
-
-go_test(name = "go_default_xtest")
 `
 	_, empty, err := g.GenerateRules(&pkg)
 	if err != nil {
