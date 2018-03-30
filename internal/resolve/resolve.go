@@ -76,13 +76,16 @@ func (r *Resolver) ResolveRule(e bf.Expr, pkgRel string) bf.Expr {
 	from := label.New("", pkgRel, rule.Name())
 
 	var resolve func(imp string, from label.Label) (label.Label, error)
+	var embeds []label.Label
 	switch rule.Kind() {
 	case "go_library", "go_binary", "go_test":
 		resolve = r.resolveGo
+		embeds = getEmbedsGo(call, from)
 	case "proto_library":
 		resolve = r.resolveProto
 	case "go_proto_library", "go_grpc_library":
 		resolve = r.resolveGoProto
+		embeds = getEmbedsGo(call, from)
 	default:
 		return e
 	}
@@ -102,6 +105,11 @@ func (r *Resolver) ResolveRule(e bf.Expr, pkgRel string) bf.Expr {
 				return ""
 			default:
 				log.Print(err)
+				return ""
+			}
+		}
+		for _, e := range embeds {
+			if label.Equal(e) {
 				return ""
 			}
 		}
@@ -308,6 +316,21 @@ func (r *Resolver) resolveGoProto(imp string, from label.Label) (label.Label, er
 		rel = path.Join("vendor", rel)
 	}
 	return r.l.LibraryLabel(rel), nil
+}
+
+func getEmbedsGo(call *bf.CallExpr, from label.Label) []label.Label {
+	rule := bf.Rule{Call: call}
+	embedStrings := rule.AttrStrings("embed")
+	embedLabels := make([]label.Label, 0, len(embedStrings))
+	for _, s := range embedStrings {
+		l, err := label.Parse(s)
+		if err != nil {
+			continue
+		}
+		l = l.Abs(from.Repo, from.Pkg)
+		embedLabels = append(embedLabels, l)
+	}
+	return embedLabels
 }
 
 // IsStandard returns whether a package is in the standard library.
