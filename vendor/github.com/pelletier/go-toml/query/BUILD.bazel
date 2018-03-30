@@ -10,6 +10,7 @@ go_library(
         "query.go",
         "tokens.go",
     ],
+    importmap = "bazel_gazelle/vendor/github.com/pelletier/go-toml/query",
     importpath = "github.com/pelletier/go-toml/query",
     visibility = ["//visibility:public"],
     deps = ["//vendor/github.com/pelletier/go-toml:go_default_library"],

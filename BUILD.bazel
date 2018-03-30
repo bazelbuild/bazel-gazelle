@@ -2,6 +2,9 @@
 
 load("//:def.bzl", "gazelle")
 
-gazelle(name = "gazelle")
+gazelle(
+    name = "gazelle",
+    command = "fix",
+)
 
 exports_files(["WORKSPACE"])
