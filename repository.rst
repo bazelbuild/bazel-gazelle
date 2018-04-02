@@ -189,6 +189,11 @@ external Go projects.
 |                                                                                                         |
 | This sets Gazelle's ``-proto`` command line flag.                                                       |
 +--------------------------------+----------------------+-------------------------------------------------+
+| :param:`build_extra_args`      | :type:`string list`  | :value:`[]`                                     |
++--------------------------------+----------------------+-------------------------------------------------+
+| A list of additional command line arguments to pass to Gazelle when                                     |
+| generating build files.                                                                                 |
++--------------------------------+----------------------+-------------------------------------------------+
 
 git_repository
 --------------
