@@ -85,11 +85,19 @@ After adding this code, you can run Gazelle with Bazel.
 
 .. code::
 
-  bazel run //:gazelle
+  $ bazel run //:gazelle
 
 This will generate new BUILD.bazel files for your project. You can run the same
 command in the future to update existing BUILD.bazel files to include new source
 files or options.
+
+You can pass additional arguments to Gazelle after a ``--`` argument. This
+can be used to run alternate commands like ``update-repos`` that the ``gazelle``
+rule does not support directly.
+
+.. code::
+
+  $ bazel run //:gazelle -- update-repos -from_file=Gopkg.lock
 
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -289,8 +297,24 @@ The following flags are accepted:
 ~~~~~~~~~~~~~~~~
 
 The ``update-repos`` command updates repository rules in the WORKSPACE file.
-Currently, this can only be used to import repositories from a vendoring tool's
-lock file. More functionality will be added in the future.
+It can be used to add new repository rules or update existing rules to the 
+latest version. It can also import repository rules from a dep Gopkg.lock file.
+
+.. code:: bash
+
+  # Add or update a repository by import path
+  $ gazelle update-repos example.com/new/repo
+
+  # Import repositories from Gopkg.lock
+  $ gazelle update-repos -from_file=Gopkg.lock
+
+:Note: ``update-repos`` is not directly supported by the ``gazelle`` rule.
+  You can run it through the ``gazelle`` rule by passing extra arguments after
+  ``--``. For example:
+
+  .. code::
+
+    $ bazel run //:gazelle -- update-repos example.com/new/repo
 
 The following flags are accepted:
 

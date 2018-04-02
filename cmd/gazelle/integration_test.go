@@ -1303,6 +1303,34 @@ go_binary(
 	})
 }
 
+func TestFixWorkspaceWithoutGazelle(t *testing.T) {
+	files := []fileSpec{
+		{
+			path: "WORKSPACE",
+			content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_repository")
+
+go_repository(
+    name = "com_example_repo",
+    importpath = "example.com/repo",
+    tag = "1.2.3",
+)
+`,
+		},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	if err := runGazelle(dir, []string{"fix", "-go_prefix="}); err == nil {
+		t.Error("got success; want error")
+	} else if want := "bazel_gazelle is not declared"; !strings.Contains(err.Error(), want) {
+		t.Errorf("got error %v; want error containing %q", err, want)
+	}
+}
+
 // TODO(jayconrod): more tests
 //   run in fix mode in testdata directories to create new files
 //   run in diff mode in testdata directories to update existing files (no change)
