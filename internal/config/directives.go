@@ -43,6 +43,7 @@ var knownTopLevelDirectives = map[string]bool{
 	"exclude":          true,
 	"ignore":           true,
 	"importmap_prefix": true,
+	"repo":             true,
 	"prefix":           true,
 	"proto":            true,
 }
