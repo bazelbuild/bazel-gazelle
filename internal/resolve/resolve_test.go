@@ -474,3 +474,40 @@ func TestResolveGoWKT(t *testing.T) {
 		t.Errorf("got %s; want %s", got, want)
 	}
 }
+
+func TestResolveGoSkipEmbeds(t *testing.T) {
+	c := &config.Config{}
+	l := label.NewLabeler(c)
+	ix := NewRuleIndex()
+	r := NewResolver(c, l, ix, nil)
+
+	f, err := bf.Parse("(test)", []byte(`
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["lib.go"],
+    importpath = "example.com/repo/lib",
+)
+
+go_test(
+    name = "go_default_test",
+    embed = [":go_default_library"],
+    _gazelle_imports = [
+        "example.com/repo/lib",
+    ],
+)
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ix.AddRulesFromFile(c, f)
+	ix.Finish()
+	test := f.Stmt[len(f.Stmt)-1]
+	test = r.ResolveRule(test, "")
+	testRule := bf.Rule{Call: test.(*bf.CallExpr)}
+	testDeps := testRule.Attr("deps")
+	if testDeps != nil {
+		t.Errorf("got deps = %s; want nil", bf.FormatString(testDeps))
+	}
+}

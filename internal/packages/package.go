@@ -45,8 +45,8 @@ type Package struct {
 	// ImportPath is the string used to import this package in Go.
 	ImportPath string
 
-	Library, Binary, Test, XTest GoTarget
-	Proto                        ProtoTarget
+	Library, Binary, Test GoTarget
+	Proto                 ProtoTarget
 
 	HasTestdata bool
 }
@@ -188,11 +188,11 @@ func (ps *PlatformStrings) firstGoFile() string {
 }
 
 type packageBuilder struct {
-	name, dir, rel               string
-	library, binary, test, xtest goTargetBuilder
-	proto                        protoTargetBuilder
-	hasTestdata                  bool
-	importPath, importPathFile   string
+	name, dir, rel             string
+	library, binary, test      goTargetBuilder
+	proto                      protoTargetBuilder
+	hasTestdata                bool
+	importPath, importPathFile string
 }
 
 type goTargetBuilder struct {
@@ -240,11 +240,6 @@ func (pb *packageBuilder) addFile(c *config.Config, info fileInfo, cgo bool) err
 		!cgo && (info.category == cExt || info.category == csExt) ||
 		c.ProtoMode == config.DisableProtoMode && info.category == protoExt:
 		return nil
-	case info.isXTest:
-		if info.isCgo {
-			return fmt.Errorf("%s: use of cgo in test not supported", info.path)
-		}
-		pb.xtest.addFile(c, info)
 	case info.isTest:
 		if info.isCgo {
 			return fmt.Errorf("%s: use of cgo in test not supported", info.path)
@@ -286,7 +281,6 @@ func (pb *packageBuilder) firstGoFile() string {
 		pb.library.sources,
 		pb.binary.sources,
 		pb.test.sources,
-		pb.xtest.sources,
 	}
 	for _, sb := range goSrcs {
 		if sb.strs != nil {
@@ -325,7 +319,6 @@ func (pb *packageBuilder) build() *Package {
 		Library:     pb.library.build(),
 		Binary:      pb.binary.build(),
 		Test:        pb.test.build(),
-		XTest:       pb.xtest.build(),
 		Proto:       pb.proto.build(),
 		HasTestdata: pb.hasTestdata,
 	}

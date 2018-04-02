@@ -43,9 +43,10 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
+    name = "go_default_test",
     srcs = [
         "generic_test.go",
         "suffix_linux_test.go",
     ],
+    embed = [":go_default_library"],
 )

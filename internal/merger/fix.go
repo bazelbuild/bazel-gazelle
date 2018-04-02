@@ -16,6 +16,7 @@ limitations under the License.
 package merger
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"sort"
@@ -47,6 +48,7 @@ func FixFile(c *config.Config, f *bf.File) {
 	removeBinaryImportPath(c, f)
 	flattenSrcs(c, f)
 	squashCgoLibrary(c, f)
+	squashXtest(c, f)
 	removeLegacyProto(c, f)
 }
 
@@ -186,20 +188,119 @@ func squashCgoLibrary(c *config.Config, f *bf.File) {
 	}
 }
 
-// squashExpr combines two expressions. Unlike mergeExpr, squashExpr does not
-// discard information from an "old" expression. It does not sort or de-duplicate
-// elements. Any non-scalar expressions that mergeExpr understands can be
-// squashed.
-func squashExpr(x, y bf.Expr) (bf.Expr, error) {
-	xExprs, err := extractPlatformStringsExprs(x)
+// squashXtest removes go_test rules with the default external name and merges
+// their attributes with a go_test rule with the default internal name. If
+// no internal go_test rule exists, a new one will be created (effectively
+// renaming the old rule).
+func squashXtest(c *config.Config, f *bf.File) {
+	// Search for internal and external tests.
+	var itest, xtest bf.Rule
+	xtestIndex := -1
+	for i, stmt := range f.Stmt {
+		call, ok := stmt.(*bf.CallExpr)
+		if !ok {
+			continue
+		}
+		rule := bf.Rule{Call: call}
+		if rule.Kind() != "go_test" {
+			continue
+		}
+		if name := rule.Name(); name == config.DefaultTestName {
+			itest = rule
+		} else if name == config.DefaultXTestName {
+			xtest = rule
+			xtestIndex = i
+		}
+	}
+
+	if xtest.Call == nil || shouldKeep(xtest.Call) || (itest.Call != nil && shouldKeep(itest.Call)) {
+		return
+	}
+	if !c.ShouldFix {
+		if itest.Call == nil {
+			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to rename to go_default_test.", f.Path)
+		} else {
+			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to squash with go_default_test.", f.Path)
+		}
+		return
+	}
+
+	// If there was no internal test, we can just rename the external test.
+	if itest.Call == nil {
+		xtest.SetAttr("name", &bf.StringExpr{Value: config.DefaultTestName})
+		return
+	}
+
+	// Attempt to squash.
+	if err := squashRule(xtest.Call, itest.Call, f.Path); err != nil {
+		log.Print(err)
+		return
+	}
+
+	// Delete the external test.
+	f.Stmt = append(f.Stmt[:xtestIndex], f.Stmt[xtestIndex+1:]...)
+
+	// Copy comments and attributes from external test to internal test.
+	itest.Call.Comments.Before = append(itest.Call.Comments.Before, xtest.Call.Comments.Before...)
+	itest.Call.Comments.Suffix = append(itest.Call.Comments.Suffix, xtest.Call.Comments.Suffix...)
+	itest.Call.Comments.After = append(itest.Call.Comments.After, xtest.Call.Comments.After...)
+}
+
+// squashRule copies information in mergeable attributes from src into dst. This
+// works similarly to mergeRule, but it doesn't discard information from dst. It
+// detects duplicate elements, but it doesn't sort elements after squashing.
+// If squashing fails because the expression is understood, an error is
+// returned, and neither rule is modified.
+func squashRule(src, dst *bf.CallExpr, filename string) error {
+	srcRule := bf.Rule{Call: src}
+	dstRule := bf.Rule{Call: dst}
+	kind := dstRule.Kind()
+	type squashedAttr struct {
+		key  string
+		attr bf.Expr
+	}
+	var squashedAttrs []squashedAttr
+	for _, k := range srcRule.AttrKeys() {
+		srcExpr := srcRule.Attr(k)
+		dstExpr := dstRule.Attr(k)
+		if dstExpr == nil {
+			dstRule.SetAttr(k, srcExpr)
+			continue
+		}
+		if !PreResolveAttrs[kind][k] && !PostResolveAttrs[kind][k] {
+			// keep non-mergeable attributes in dst (e.g., name, visibility)
+			continue
+		}
+		squashedExpr, err := squashExpr(srcExpr, dstExpr)
+		if err != nil {
+			start, end := dstExpr.Span()
+			return fmt.Errorf("%s:%d.%d-%d.%d: could not squash expression", filename, start.Line, start.LineRune, end.Line, end.LineRune)
+		}
+		squashedAttrs = append(squashedAttrs, squashedAttr{key: k, attr: squashedExpr})
+	}
+	for _, a := range squashedAttrs {
+		dstRule.SetAttr(a.key, a.attr)
+	}
+	return nil
+}
+
+func squashExpr(src, dst bf.Expr) (bf.Expr, error) {
+	if shouldKeep(dst) {
+		return dst, nil
+	}
+	if isScalar(dst) {
+		// may lose src, but they should always be the same.
+		return dst, nil
+	}
+	srcExprs, err := extractPlatformStringsExprs(src)
 	if err != nil {
 		return nil, err
 	}
-	yExprs, err := extractPlatformStringsExprs(y)
+	dstExprs, err := extractPlatformStringsExprs(dst)
 	if err != nil {
 		return nil, err
 	}
-	squashedExprs, err := squashPlatformStringsExprs(xExprs, yExprs)
+	squashedExprs, err := squashPlatformStringsExprs(srcExprs, dstExprs)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +310,9 @@ func squashExpr(x, y bf.Expr) (bf.Expr, error) {
 func squashPlatformStringsExprs(x, y platformStringsExprs) (platformStringsExprs, error) {
 	var ps platformStringsExprs
 	var err error
-	ps.generic = squashList(x.generic, y.generic)
+	if ps.generic, err = squashList(x.generic, y.generic); err != nil {
+		return platformStringsExprs{}, err
+	}
 	if ps.os, err = squashDict(x.os, y.os); err != nil {
 		return platformStringsExprs{}, err
 	}
@@ -222,19 +325,34 @@ func squashPlatformStringsExprs(x, y platformStringsExprs) (platformStringsExprs
 	return ps, nil
 }
 
-func squashList(x, y *bf.ListExpr) *bf.ListExpr {
+func squashList(x, y *bf.ListExpr) (*bf.ListExpr, error) {
 	if x == nil {
-		return y
+		return y, nil
 	}
 	if y == nil {
-		return x
+		return x, nil
 	}
-	squashed := *x
+
+	ls := makeListSquasher()
+	for _, e := range x.List {
+		s, ok := e.(*bf.StringExpr)
+		if !ok {
+			return nil, errors.New("could not squash non-string")
+		}
+		ls.add(s)
+	}
+	for _, e := range y.List {
+		s, ok := e.(*bf.StringExpr)
+		if !ok {
+			return nil, errors.New("could not squash non-string")
+		}
+		ls.add(s)
+	}
+	squashed := ls.list()
 	squashed.Comments.Before = append(x.Comments.Before, y.Comments.Before...)
 	squashed.Comments.Suffix = append(x.Comments.Suffix, y.Comments.Suffix...)
 	squashed.Comments.After = append(x.Comments.After, y.Comments.After...)
-	squashed.List = append(x.List, y.List...)
-	return &squashed
+	return squashed, nil
 }
 
 func squashDict(x, y *bf.DictExpr) (*bf.DictExpr, error) {
@@ -245,47 +363,62 @@ func squashDict(x, y *bf.DictExpr) (*bf.DictExpr, error) {
 		return x, nil
 	}
 
+	cases := make(map[string]*bf.KeyValueExpr)
+	addCase := func(e bf.Expr) error {
+		kv := e.(*bf.KeyValueExpr)
+		key, ok := kv.Key.(*bf.StringExpr)
+		if !ok {
+			return errors.New("could not squash non-string dict key")
+		}
+		if _, ok := kv.Value.(*bf.ListExpr); !ok {
+			return errors.New("could not squash non-list dict value")
+		}
+		if c, ok := cases[key.Value]; ok {
+			if sq, err := squashList(kv.Value.(*bf.ListExpr), c.Value.(*bf.ListExpr)); err != nil {
+				return err
+			} else {
+				c.Value = sq
+			}
+		} else {
+			kvCopy := *kv
+			cases[key.Value] = &kvCopy
+		}
+		return nil
+	}
+
+	for _, e := range x.List {
+		if err := addCase(e); err != nil {
+			return nil, err
+		}
+	}
+	for _, e := range y.List {
+		if err := addCase(e); err != nil {
+			return nil, err
+		}
+	}
+
+	keys := make([]string, 0, len(cases))
+	haveDefault := false
+	for k := range cases {
+		if k == "//conditions:default" {
+			haveDefault = true
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	if haveDefault {
+		keys = append(keys, "//conditions:default") // must be last
+	}
+
 	squashed := *x
 	squashed.Comments.Before = append(x.Comments.Before, y.Comments.Before...)
 	squashed.Comments.Suffix = append(x.Comments.Suffix, y.Comments.Suffix...)
 	squashed.Comments.After = append(x.Comments.After, y.Comments.After...)
-
-	xCaseIndex := make(map[string]int)
-	for i, e := range x.List {
-		kv, ok := e.(*bf.KeyValueExpr)
-		if !ok {
-			continue
-		}
-		key, ok := kv.Key.(*bf.StringExpr)
-		if !ok {
-			continue
-		}
-		xCaseIndex[key.Value] = i
+	squashed.List = make([]bf.Expr, 0, len(cases))
+	for _, k := range keys {
+		squashed.List = append(squashed.List, cases[k])
 	}
-
-	for _, e := range y.List {
-		kv, ok := e.(*bf.KeyValueExpr)
-		if !ok {
-			squashed.List = append(squashed.List, e)
-			continue
-		}
-		key, ok := e.(*bf.StringExpr)
-		if !ok {
-			squashed.List = append(squashed.List, e)
-			continue
-		}
-		i, ok := xCaseIndex[key.Value]
-		if !ok {
-			squashed.List = append(squashed.List, e)
-			continue
-		}
-		squashedElem, err := squashExpr(x.List[i], kv.Value)
-		if err != nil {
-			return nil, err
-		}
-		x.List[i] = squashedElem
-	}
-
 	return &squashed, nil
 }
 
@@ -379,37 +512,13 @@ func flattenSrcsExpr(oldSrcs bf.Expr) bf.Expr {
 		return oldSrcs
 	}
 
-	unique := make(map[string]*bf.StringExpr)
-	type elemComment struct{ elem, com string }
-	seenComments := make(map[elemComment]bool)
+	ls := makeListSquasher()
 	addElem := func(e bf.Expr) bool {
 		s, ok := e.(*bf.StringExpr)
 		if !ok {
 			return false
 		}
-		sCopy, ok := unique[s.Value]
-		if !ok {
-			// Make a copy of s. We may modify it when we consolidate comments from
-			// duplicate strings. We don't want to modify the original in case this
-			// function fails (due to a later failed pattern match).
-			sCopy = new(bf.StringExpr)
-			*sCopy = *s
-			sCopy.Comments.Before = make([]bf.Comment, 0, len(s.Comments.Before))
-			sCopy.Comments.Suffix = make([]bf.Comment, 0, len(s.Comments.Suffix))
-			unique[s.Value] = sCopy
-		}
-		for _, c := range s.Comment().Before {
-			if key := (elemComment{s.Value, c.Token}); !seenComments[key] {
-				sCopy.Comments.Before = append(sCopy.Comments.Before, c)
-				seenComments[key] = true
-			}
-		}
-		for _, c := range s.Comment().Suffix {
-			if key := (elemComment{s.Value, c.Token}); !seenComments[key] {
-				sCopy.Comments.Suffix = append(sCopy.Comments.Suffix, c)
-				seenComments[key] = true
-			}
-		}
+		ls.add(s)
 		return true
 	}
 	addList := func(e bf.Expr) bool {
@@ -447,14 +556,7 @@ func flattenSrcsExpr(oldSrcs bf.Expr) bf.Expr {
 		}
 	}
 
-	sortedExprs := make([]bf.Expr, 0, len(unique))
-	for _, e := range unique {
-		sortedExprs = append(sortedExprs, e)
-	}
-	sort.Slice(sortedExprs, func(i, j int) bool {
-		return sortedExprs[i].(*bf.StringExpr).Value < sortedExprs[j].(*bf.StringExpr).Value
-	})
-	return &bf.ListExpr{List: sortedExprs}
+	return ls.list()
 }
 
 // FixLoads removes loads of unused go rules and adds loads of newly used rules.
@@ -838,6 +940,62 @@ func removeLegacyGoRepository(f *bf.File) {
 		}
 	}
 	f.Stmt = deleteIndices(f.Stmt, deletedStmtIndices)
+}
+
+// listSquasher builds a sorted, deduplicated list of string expressions. If
+// a string expression is added multiple times, comments are consolidated.
+// The original expressions are not modified.
+type listSquasher struct {
+	unique       map[string]*bf.StringExpr
+	seenComments map[elemComment]bool
+}
+
+type elemComment struct {
+	elem, com string
+}
+
+func makeListSquasher() listSquasher {
+	return listSquasher{
+		unique:       make(map[string]*bf.StringExpr),
+		seenComments: make(map[elemComment]bool),
+	}
+}
+
+func (ls *listSquasher) add(s *bf.StringExpr) {
+	sCopy, ok := ls.unique[s.Value]
+	if !ok {
+		// Make a copy of s. We may modify it when we consolidate comments from
+		// duplicate strings. We don't want to modify the original in case this
+		// function fails (due to a later failed pattern match).
+		sCopy = new(bf.StringExpr)
+		*sCopy = *s
+		sCopy.Comments.Before = make([]bf.Comment, 0, len(s.Comments.Before))
+		sCopy.Comments.Suffix = make([]bf.Comment, 0, len(s.Comments.Suffix))
+		ls.unique[s.Value] = sCopy
+	}
+	for _, c := range s.Comment().Before {
+		if key := (elemComment{s.Value, c.Token}); !ls.seenComments[key] {
+			sCopy.Comments.Before = append(sCopy.Comments.Before, c)
+			ls.seenComments[key] = true
+		}
+	}
+	for _, c := range s.Comment().Suffix {
+		if key := (elemComment{s.Value, c.Token}); !ls.seenComments[key] {
+			sCopy.Comments.Suffix = append(sCopy.Comments.Suffix, c)
+			ls.seenComments[key] = true
+		}
+	}
+}
+
+func (ls *listSquasher) list() *bf.ListExpr {
+	sortedExprs := make([]bf.Expr, 0, len(ls.unique))
+	for _, e := range ls.unique {
+		sortedExprs = append(sortedExprs, e)
+	}
+	sort.Slice(sortedExprs, func(i, j int) bool {
+		return sortedExprs[i].(*bf.StringExpr).Value < sortedExprs[j].(*bf.StringExpr).Value
+	})
+	return &bf.ListExpr{List: sortedExprs}
 }
 
 type byString []*bf.StringExpr

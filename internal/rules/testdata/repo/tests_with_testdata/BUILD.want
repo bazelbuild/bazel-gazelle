@@ -2,14 +2,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
 go_test(
     name = "go_default_test",
-    srcs = ["internal_test.go"],
-    _gazelle_imports = ["testing"],
-    data = glob(["testdata/**"]),
-)
-
-go_test(
-    name = "go_default_xtest",
-    srcs = ["external_test.go"],
+    srcs = [
+        "external_test.go",
+        "internal_test.go",
+    ],
     _gazelle_imports = ["testing"],
     data = glob(["testdata/**"]),
 )

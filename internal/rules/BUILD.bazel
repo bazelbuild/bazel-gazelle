@@ -23,12 +23,12 @@ go_library(
 )
 
 go_test(
-    name = "go_default_xtest",
+    name = "go_default_test",
     size = "small",
     srcs = ["generator_test.go"],
     data = glob(["testdata/**"]),
+    embed = [":go_default_library"],
     deps = [
-        ":go_default_library",
         "//internal/config:go_default_library",
         "//internal/label:go_default_library",
         "//internal/merger:go_default_library",

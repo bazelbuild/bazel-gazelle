@@ -38,6 +38,7 @@ go_binary(
     name = "gazelle_pure",
     embed = [":go_default_library"],
     pure = "on",
+    tags = ["manual"],
     visibility = ["//visibility:public"],
 )
 

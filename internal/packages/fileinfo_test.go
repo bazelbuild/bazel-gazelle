@@ -247,18 +247,16 @@ func TestFileNameInfo(t *testing.T) {
 			"ignored test file",
 			"foo_test.py",
 			fileInfo{
-				ext:     ".py",
-				isTest:  false,
-				isXTest: false,
+				ext:    ".py",
+				isTest: false,
 			},
 		},
 		{
 			"ignored xtest file",
 			"foo_xtest.py",
 			fileInfo{
-				ext:     ".py",
-				isTest:  false,
-				isXTest: false,
+				ext:    ".py",
+				isTest: false,
 			},
 		},
 		{
