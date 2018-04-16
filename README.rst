@@ -54,13 +54,13 @@ It should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        url = "https://github.com/bazelbuild/rules_go/releases/download/0.10.3/rules_go-0.10.3.tar.gz",
-        sha256 = "feba3278c13cde8d67e341a837f69a029f698d7a27ddbb2a202be7a10b22142a",
+        url = "https://github.com/bazelbuild/rules_go/releases/download/0.11.0/rules_go-0.11.0.tar.gz",
+        sha256 = "a020ae0f170778e849ca7bf4f310ff49a26144e85b2f9cb97e8cad69256efeaa",
     )
     http_archive(
         name = "bazel_gazelle",
-        url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.10.1/bazel-gazelle-0.10.1.tar.gz",
-        sha256 = "d03625db67e9fb0905bbd206fa97e32ae9da894fe234a493e7517fd25faec914",
+        url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.11.0/bazel-gazelle-0.11.0.tar.gz",
+        sha256 = "92a3c59734dad2ef85dc731dbcb2bc23c4568cded79d4b87ebccd787eb89e8d0",
     )
     load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
     go_rules_dependencies()
@@ -136,7 +136,9 @@ to build. Check the table below to ensure that you're using compatible versions.
 +---------------------+------------------------------+------------------------------+
 | 0.9                 | 0.9.0                        | n/a                          |
 +---------------------+------------------------------+------------------------------+
-| 0.10.0              | 0.9.0                        | n/a                          |
+| 0.10.0              | 0.9.0                        | 0.11.0                       |
++---------------------+------------------------------+------------------------------+
+| 0.11.0              | 0.11.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
