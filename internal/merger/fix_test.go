@@ -93,36 +93,6 @@ go_proto_library(
 )
 `,
 		},
-		// removeBinaryImportPath tests
-		{
-			desc: "binary importpath removed",
-			old: `load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-
-go_binary(
-    name = "cmd",
-    srcs = ["main.go"],
-    importpath = "example.com/repo",
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["main_test.go"],
-    importpath = "example.com/repo",
-)
-`,
-			want: `load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
-
-go_binary(
-    name = "cmd",
-    srcs = ["main.go"],
-)
-
-go_test(
-    name = "go_default_test",
-    srcs = ["main_test.go"],
-)
-`,
-		},
 		// flattenSrcs tests
 		{
 			desc: "flatten srcs",
