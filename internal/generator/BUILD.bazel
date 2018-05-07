@@ -10,7 +10,7 @@ go_library(
         "generator.go",
         "sort_labels.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/rules",
+    importpath = "github.com/bazelbuild/bazel-gazelle/internal/generator",
     visibility = ["//visibility:public"],
     deps = [
         "//internal/config:go_default_library",
