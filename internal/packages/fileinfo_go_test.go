@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 func TestGoFileInfo(t *testing.T) {
@@ -365,10 +366,10 @@ import "C"
 		Rel:        "sub",
 		ImportPath: "example.com/repo/sub",
 		Library: GoTarget{
-			Sources: PlatformStrings{
+			Sources: rule.PlatformStrings{
 				Generic: []string{"sub.go"},
 			},
-			COpts: PlatformStrings{
+			COpts: rule.PlatformStrings{
 				Generic: []string{"-Isub/.."},
 			},
 			Cgo: true,

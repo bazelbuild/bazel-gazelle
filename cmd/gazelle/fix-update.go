@@ -32,6 +32,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	bf "github.com/bazelbuild/buildtools/build"
 )
@@ -161,7 +162,7 @@ func runFixUpdate(cmd command, args []string) error {
 
 	// Emit merged files.
 	for _, v := range visits {
-		generator.SortLabels(v.file)
+		rule.SortLabels(v.file)
 		merger.FixLoads(v.file)
 		bf.Rewrite(v.file, nil) // have buildifier 'format' our rules.
 

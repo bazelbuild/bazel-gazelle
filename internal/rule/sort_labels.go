@@ -13,13 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package generator
+package rule
 
 import (
 	"sort"
 	"strings"
 
-	bf "github.com/bazelbuild/buildtools/build"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 var (
@@ -36,13 +36,13 @@ var (
 // Go rules using the same order as buildifier. Buildifier also sorts string
 // lists, but not those involved with "select" expressions.
 // TODO(jayconrod): remove this when bazelbuild/buildtools#122 is fixed.
-func SortLabels(f *bf.File) {
+func SortLabels(f *bzl.File) {
 	for _, s := range f.Stmt {
-		c, ok := s.(*bf.CallExpr)
+		c, ok := s.(*bzl.CallExpr)
 		if !ok {
 			continue
 		}
-		r := bf.Rule{Call: c}
+		r := bzl.Rule{Call: c}
 		if !goRuleKinds[r.Kind()] {
 			continue
 		}
@@ -51,20 +51,20 @@ func SortLabels(f *bf.File) {
 			if attr == nil {
 				continue
 			}
-			bf.Walk(attr.Y, sortExprLabels)
+			bzl.Walk(attr.Y, sortExprLabels)
 		}
 	}
 }
 
-func sortExprLabels(e bf.Expr, _ []bf.Expr) {
-	list, ok := e.(*bf.ListExpr)
+func sortExprLabels(e bzl.Expr, _ []bzl.Expr) {
+	list, ok := e.(*bzl.ListExpr)
 	if !ok || len(list.List) == 0 {
 		return
 	}
 
 	keys := make([]stringSortKey, len(list.List))
 	for i, elem := range list.List {
-		s, ok := elem.(*bf.StringExpr)
+		s, ok := elem.(*bzl.StringExpr)
 		if !ok {
 			return // don't sort lists unless all elements are strings
 		}
@@ -94,10 +94,10 @@ type stringSortKey struct {
 	split    []string
 	value    string
 	original int
-	x        bf.Expr
+	x        bzl.Expr
 }
 
-func makeSortKey(index int, x *bf.StringExpr) stringSortKey {
+func makeSortKey(index int, x *bzl.StringExpr) stringSortKey {
 	key := stringSortKey{
 		value:    x.Value,
 		original: index,

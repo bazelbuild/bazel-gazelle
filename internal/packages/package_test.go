@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 func TestAddPlatformStrings(t *testing.T) {
@@ -27,30 +28,30 @@ func TestAddPlatformStrings(t *testing.T) {
 	for _, tc := range []struct {
 		desc, filename string
 		tags           []tagLine
-		want           PlatformStrings
+		want           rule.PlatformStrings
 	}{
 		{
 			desc:     "generic",
 			filename: "foo.go",
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				Generic: []string{"foo.go"},
 			},
 		}, {
 			desc:     "os",
 			filename: "foo_linux.go",
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				OS: map[string][]string{"linux": []string{"foo_linux.go"}},
 			},
 		}, {
 			desc:     "arch",
 			filename: "foo_amd64.go",
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				Arch: map[string][]string{"amd64": []string{"foo_amd64.go"}},
 			},
 		}, {
 			desc:     "os and arch",
 			filename: "foo_linux_amd64.go",
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				Platform: map[config.Platform][]string{
 					config.Platform{OS: "linux", Arch: "amd64"}: []string{"foo_linux_amd64.go"},
 				},
@@ -59,7 +60,7 @@ func TestAddPlatformStrings(t *testing.T) {
 			desc:     "os not arch",
 			filename: "foo.go",
 			tags:     []tagLine{{{"solaris", "!arm"}}},
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				Platform: map[config.Platform][]string{
 					config.Platform{OS: "solaris", Arch: "amd64"}: []string{"foo.go"},
 				},
@@ -84,7 +85,7 @@ func TestDuplicatePlatformStrings(t *testing.T) {
 	for _, tc := range []struct {
 		desc string
 		add  func(sb *platformStringsBuilder)
-		want PlatformStrings
+		want rule.PlatformStrings
 	}{
 		{
 			desc: "both generic",
@@ -92,7 +93,7 @@ func TestDuplicatePlatformStrings(t *testing.T) {
 				sb.addGenericString("a")
 				sb.addGenericString("a")
 			},
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				Generic: []string{"a"},
 			},
 		}, {
@@ -101,7 +102,7 @@ func TestDuplicatePlatformStrings(t *testing.T) {
 				sb.addOSString("a", []string{"linux"})
 				sb.addGenericString("a")
 			},
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				Generic: []string{"a"},
 			},
 		}, {
@@ -110,7 +111,7 @@ func TestDuplicatePlatformStrings(t *testing.T) {
 				sb.addOSString("a", []string{"solaris"})
 				sb.addArchString("a", []string{"mips"})
 			},
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				Platform: map[config.Platform][]string{
 					config.Platform{OS: "solaris", Arch: "amd64"}: {"a"},
 					config.Platform{OS: "linux", Arch: "mips"}:    {"a"},
@@ -122,7 +123,7 @@ func TestDuplicatePlatformStrings(t *testing.T) {
 				sb.addPlatformString("a", []config.Platform{{OS: "linux", Arch: "mips"}})
 				sb.addOSString("a", []string{"solaris"})
 			},
-			want: PlatformStrings{
+			want: rule.PlatformStrings{
 				Platform: map[config.Platform][]string{
 					config.Platform{OS: "solaris", Arch: "amd64"}: {"a"},
 					config.Platform{OS: "linux", Arch: "mips"}:    {"a"},

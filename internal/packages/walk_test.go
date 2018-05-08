@@ -26,6 +26,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -134,7 +135,7 @@ func TestWalkSimple(t *testing.T) {
 			Name:       "lib",
 			ImportPath: "example.com/repo",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"lib.go"},
 				},
 			},
@@ -155,7 +156,7 @@ func TestWalkNested(t *testing.T) {
 			Rel:        "a",
 			ImportPath: "example.com/repo/a",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"foo.go"},
 				},
 			},
@@ -165,7 +166,7 @@ func TestWalkNested(t *testing.T) {
 			Rel:        "b/c",
 			ImportPath: "example.com/repo/b/c",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"bar.go"},
 				},
 			},
@@ -175,7 +176,7 @@ func TestWalkNested(t *testing.T) {
 			Rel:        "b/d",
 			ImportPath: "example.com/repo/b/d",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"baz.go"},
 				},
 			},
@@ -194,7 +195,7 @@ func TestProtoOnly(t *testing.T) {
 			Rel:        "a",
 			ImportPath: "example.com/repo/a",
 			Proto: packages.ProtoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.proto"},
 				},
 			},
@@ -214,7 +215,7 @@ func TestMultiplePackagesWithDefault(t *testing.T) {
 			Rel:        "a",
 			ImportPath: "example.com/repo/a",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -258,7 +259,7 @@ package a;
 			Rel:        "a",
 			ImportPath: "example.com/repo/a",
 			Proto: packages.ProtoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.proto"},
 				},
 			},
@@ -277,7 +278,7 @@ func TestRootWithPrefix(t *testing.T) {
 			Name:       "a",
 			ImportPath: "example.com/a",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -361,7 +362,7 @@ option go_package = "example.com/repo/foo";
 		Name:       "foo",
 		ImportPath: "example.com/repo/foo",
 		Proto: packages.ProtoTarget{
-			Sources: packages.PlatformStrings{
+			Sources: rule.PlatformStrings{
 				Generic: []string{"foo.proto"},
 			},
 		},
@@ -388,7 +389,7 @@ func TestTestdata(t *testing.T) {
 			Rel:        "raw",
 			ImportPath: "example.com/repo/raw",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -399,7 +400,7 @@ func TestTestdata(t *testing.T) {
 			Rel:        "with_build",
 			ImportPath: "example.com/repo/with_build",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -410,7 +411,7 @@ func TestTestdata(t *testing.T) {
 			Rel:        "with_build_bazel",
 			ImportPath: "example.com/repo/with_build_bazel",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -421,7 +422,7 @@ func TestTestdata(t *testing.T) {
 			Rel:        "with_build_nested",
 			ImportPath: "example.com/repo/with_build_nested",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -432,7 +433,7 @@ func TestTestdata(t *testing.T) {
 			Rel:        "with_go/testdata",
 			ImportPath: "example.com/repo/with_go/testdata",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -442,7 +443,7 @@ func TestTestdata(t *testing.T) {
 			Rel:        "with_go",
 			ImportPath: "example.com/repo/with_go",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -482,10 +483,10 @@ import "github.com/jr_hacker/stuff"
 			Rel:        "gen",
 			ImportPath: "example.com/repo/gen",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"bar.go", "baz.go", "foo.go", "y.s"},
 				},
-				Imports: packages.PlatformStrings{
+				Imports: rule.PlatformStrings{
 					Generic: []string{"github.com/jr_hacker/stuff"},
 				},
 			},
@@ -526,10 +527,10 @@ import "github.com/jr_hacker/stuff"
 			Rel:        "gen",
 			ImportPath: "example.com/repo/gen",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"bar.go", "baz.go", "foo.go", "x.c", "y.s", "z.S"},
 				},
-				Imports: packages.PlatformStrings{
+				Imports: rule.PlatformStrings{
 					Generic: []string{"github.com/jr_hacker/stuff"},
 				},
 				Cgo: true,
@@ -558,7 +559,7 @@ func TestIgnore(t *testing.T) {
 			Rel:        "bar",
 			ImportPath: "example.com/repo/bar",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"bar.go"},
 				},
 			},
@@ -608,7 +609,7 @@ genrule(
 			Rel:        "exclude",
 			ImportPath: "example.com/repo/exclude",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"real.go"},
 				},
 			},
@@ -651,12 +652,12 @@ package exclude;
 			Rel:        "exclude",
 			ImportPath: "example.com/repo/exclude",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.pb.go"},
 				},
 			},
 			Proto: packages.ProtoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"b.proto"},
 				},
 				HasPbGo: true,
@@ -697,12 +698,12 @@ package proto_only;`,
 			Rel:        "have_pbgo",
 			ImportPath: "example.com/repo/have_pbgo",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.pb.go"},
 				},
 			},
 			Proto: packages.ProtoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.proto"},
 				},
 				HasPbGo: true,
@@ -712,12 +713,12 @@ package proto_only;`,
 			Rel:        "no_pbgo",
 			ImportPath: "example.com/repo/no_pbgo",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"other.go"},
 				},
 			},
 			Proto: packages.ProtoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"b.proto"},
 				},
 				HasPbGo: false,
@@ -756,7 +757,7 @@ func TestMalformedGoFile(t *testing.T) {
 			Name:       "foo",
 			ImportPath: "example.com/repo",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go", "b.go"},
 				},
 			},
@@ -789,7 +790,7 @@ func TestSymlinksBasic(t *testing.T) {
 			Rel:        "b/d",
 			ImportPath: "example.com/repo/b/d",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"d.go"},
 				},
 			},
@@ -800,7 +801,7 @@ func TestSymlinksBasic(t *testing.T) {
 			Rel:        "b",
 			ImportPath: "example.com/repo/b",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"b.go"},
 				},
 			},
@@ -810,7 +811,7 @@ func TestSymlinksBasic(t *testing.T) {
 			Dir:        dir + "/root",
 			ImportPath: "example.com/repo",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"a.go"},
 				},
 			},
@@ -871,7 +872,7 @@ func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
 			Rel:        "b2",
 			ImportPath: "example.com/repo/b2",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"b.go"},
 				},
 			},
@@ -905,7 +906,7 @@ func TestSymlinksChained(t *testing.T) {
 			Rel:        "b",
 			ImportPath: "example.com/repo/b",
 			Library: packages.GoTarget{
-				Sources: packages.PlatformStrings{
+				Sources: rule.PlatformStrings{
 					Generic: []string{"b.go"},
 				},
 			},

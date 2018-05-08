@@ -22,7 +22,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/generator"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -103,18 +103,18 @@ func getLockFileFormat(filename string) lockFileFormat {
 // GenerateRule returns a repository rule for the given repository that can
 // be written in a WORKSPACE file.
 func GenerateRule(repo Repo) bf.Expr {
-	attrs := []generator.KeyValue{
+	attrs := []rule.KeyValue{
 		{Key: "name", Value: repo.Name},
 		{Key: "commit", Value: repo.Commit},
 		{Key: "importpath", Value: repo.GoPrefix},
 	}
 	if repo.Remote != "" {
-		attrs = append(attrs, generator.KeyValue{Key: "remote", Value: repo.Remote})
+		attrs = append(attrs, rule.KeyValue{Key: "remote", Value: repo.Remote})
 	}
 	if repo.VCS != "" {
-		attrs = append(attrs, generator.KeyValue{Key: "vcs", Value: repo.VCS})
+		attrs = append(attrs, rule.KeyValue{Key: "vcs", Value: repo.VCS})
 	}
-	return generator.NewRule("go_repository", attrs)
+	return rule.NewRule("go_repository", attrs)
 }
 
 // FindExternalRepo attempts to locate the directory where Bazel has fetched

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package generator
+package rule
 
 import (
 	"fmt"
@@ -22,9 +22,7 @@ import (
 	"sort"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/packages"
-	bf "github.com/bazelbuild/buildtools/build"
-	bt "github.com/bazelbuild/buildtools/tables"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 // KeyValue represents a key-value pair. This gets converted into a
@@ -40,33 +38,9 @@ type GlobValue struct {
 	Excludes []string
 }
 
-// EmptyRule generates an empty rule with the given kind and name.
-func EmptyRule(kind, name string) *bf.CallExpr {
-	return NewRule(kind, []KeyValue{{"name", name}})
-}
-
-// NewRule generates a rule of the given kind with the given attributes.
-func NewRule(kind string, kwargs []KeyValue) *bf.CallExpr {
-	sort.Sort(byAttrName(kwargs))
-
-	var list []bf.Expr
-	for _, arg := range kwargs {
-		expr := newValue(arg.Value)
-		list = append(list, &bf.BinaryExpr{
-			X:  &bf.LiteralExpr{Token: arg.Key},
-			Op: "=",
-			Y:  expr,
-		})
-	}
-
-	return &bf.CallExpr{
-		X:    &bf.LiteralExpr{Token: kind},
-		List: list,
-	}
-}
-
-// newValue converts a Go value into the corresponding expression in Bazel BUILD file.
-func newValue(val interface{}) bf.Expr {
+// ExprFromValue converts a Go value into the corresponding expression in Bazel
+// BUILD file.
+func ExprFromValue(val interface{}) bzl.Expr {
 	rv := reflect.ValueOf(val)
 	switch rv.Kind() {
 	case reflect.Bool:
@@ -74,91 +48,91 @@ func newValue(val interface{}) bf.Expr {
 		if rv.Bool() {
 			tok = "True"
 		}
-		return &bf.LiteralExpr{Token: tok}
+		return &bzl.LiteralExpr{Token: tok}
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return &bf.LiteralExpr{Token: fmt.Sprintf("%d", val)}
+		return &bzl.LiteralExpr{Token: fmt.Sprintf("%d", val)}
 
 	case reflect.Float32, reflect.Float64:
-		return &bf.LiteralExpr{Token: fmt.Sprintf("%f", val)}
+		return &bzl.LiteralExpr{Token: fmt.Sprintf("%f", val)}
 
 	case reflect.String:
-		return &bf.StringExpr{Value: val.(string)}
+		return &bzl.StringExpr{Value: val.(string)}
 
 	case reflect.Slice, reflect.Array:
-		var list []bf.Expr
+		var list []bzl.Expr
 		for i := 0; i < rv.Len(); i++ {
-			elem := newValue(rv.Index(i).Interface())
+			elem := ExprFromValue(rv.Index(i).Interface())
 			list = append(list, elem)
 		}
-		return &bf.ListExpr{List: list}
+		return &bzl.ListExpr{List: list}
 
 	case reflect.Map:
 		rkeys := rv.MapKeys()
 		sort.Sort(byString(rkeys))
-		args := make([]bf.Expr, len(rkeys))
+		args := make([]bzl.Expr, len(rkeys))
 		for i, rk := range rkeys {
 			label := fmt.Sprintf("@%s//go/platform:%s", config.RulesGoRepoName, mapKeyString(rk))
-			k := &bf.StringExpr{Value: label}
-			v := newValue(rv.MapIndex(rk).Interface())
-			if l, ok := v.(*bf.ListExpr); ok {
+			k := &bzl.StringExpr{Value: label}
+			v := ExprFromValue(rv.MapIndex(rk).Interface())
+			if l, ok := v.(*bzl.ListExpr); ok {
 				l.ForceMultiLine = true
 			}
-			args[i] = &bf.KeyValueExpr{Key: k, Value: v}
+			args[i] = &bzl.KeyValueExpr{Key: k, Value: v}
 		}
-		args = append(args, &bf.KeyValueExpr{
-			Key:   &bf.StringExpr{Value: "//conditions:default"},
-			Value: &bf.ListExpr{},
+		args = append(args, &bzl.KeyValueExpr{
+			Key:   &bzl.StringExpr{Value: "//conditions:default"},
+			Value: &bzl.ListExpr{},
 		})
-		sel := &bf.CallExpr{
-			X:    &bf.LiteralExpr{Token: "select"},
-			List: []bf.Expr{&bf.DictExpr{List: args, ForceMultiLine: true}},
+		sel := &bzl.CallExpr{
+			X:    &bzl.LiteralExpr{Token: "select"},
+			List: []bzl.Expr{&bzl.DictExpr{List: args, ForceMultiLine: true}},
 		}
 		return sel
 
 	case reflect.Struct:
 		switch val := val.(type) {
 		case GlobValue:
-			patternsValue := newValue(val.Patterns)
-			globArgs := []bf.Expr{patternsValue}
+			patternsValue := ExprFromValue(val.Patterns)
+			globArgs := []bzl.Expr{patternsValue}
 			if len(val.Excludes) > 0 {
-				excludesValue := newValue(val.Excludes)
-				globArgs = append(globArgs, &bf.KeyValueExpr{
-					Key:   &bf.StringExpr{Value: "excludes"},
+				excludesValue := ExprFromValue(val.Excludes)
+				globArgs = append(globArgs, &bzl.KeyValueExpr{
+					Key:   &bzl.StringExpr{Value: "excludes"},
 					Value: excludesValue,
 				})
 			}
-			return &bf.CallExpr{
-				X:    &bf.LiteralExpr{Token: "glob"},
+			return &bzl.CallExpr{
+				X:    &bzl.LiteralExpr{Token: "glob"},
 				List: globArgs,
 			}
 
-		case packages.PlatformStrings:
-			var pieces []bf.Expr
+		case PlatformStrings:
+			var pieces []bzl.Expr
 			if len(val.Generic) > 0 {
-				pieces = append(pieces, newValue(val.Generic))
+				pieces = append(pieces, ExprFromValue(val.Generic))
 			}
 			if len(val.OS) > 0 {
-				pieces = append(pieces, newValue(val.OS))
+				pieces = append(pieces, ExprFromValue(val.OS))
 			}
 			if len(val.Arch) > 0 {
-				pieces = append(pieces, newValue(val.Arch))
+				pieces = append(pieces, ExprFromValue(val.Arch))
 			}
 			if len(val.Platform) > 0 {
-				pieces = append(pieces, newValue(val.Platform))
+				pieces = append(pieces, ExprFromValue(val.Platform))
 			}
 			if len(pieces) == 0 {
-				return &bf.ListExpr{}
+				return &bzl.ListExpr{}
 			} else if len(pieces) == 1 {
 				return pieces[0]
 			} else {
 				e := pieces[0]
-				if list, ok := e.(*bf.ListExpr); ok {
+				if list, ok := e.(*bzl.ListExpr); ok {
 					list.ForceMultiLine = true
 				}
 				for _, piece := range pieces[1:] {
-					e = &bf.BinaryExpr{X: e, Y: piece, Op: "+"}
+					e = &bzl.BinaryExpr{X: e, Y: piece, Op: "+"}
 				}
 				return e
 			}
@@ -179,25 +153,6 @@ func mapKeyString(k reflect.Value) string {
 		log.Panicf("unexpected map key: %v", k)
 		return ""
 	}
-}
-
-type byAttrName []KeyValue
-
-var _ sort.Interface = byAttrName{}
-
-func (s byAttrName) Len() int {
-	return len(s)
-}
-
-func (s byAttrName) Less(i, j int) bool {
-	if cmp := bt.NamePriority[s[i].Key] - bt.NamePriority[s[j].Key]; cmp != 0 {
-		return cmp < 0
-	}
-	return s[i].Key < s[j].Key
-}
-
-func (s byAttrName) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
 }
 
 type byString []reflect.Value
