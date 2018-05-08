@@ -463,15 +463,34 @@ func TestResolveGoWKT(t *testing.T) {
 	ix := NewRuleIndex()
 	r := NewResolver(c, l, ix, nil)
 
-	want := label.Label{
-		Repo: config.RulesGoRepoName,
-		Pkg:  config.WellKnownTypesPkg,
-		Name: "any_go_proto",
-	}
-	if got, err := r.resolveGo("github.com/golang/protobuf/ptypes/any", label.NoLabel); err != nil {
-		t.Error(err)
-	} else if !got.Equal(want) {
-		t.Errorf("got %s; want %s", got, want)
+	for _, tc := range []struct {
+		imp, want string
+	}{
+		{"github.com/golang/protobuf/ptypes/any", "any_go_proto"},
+		{"github.com/golang/protobuf/ptypes/api", "api_go_proto"},
+		{"github.com/golang/protobuf/protoc-gen-go/descriptor", "descriptor_go_proto"},
+		{"github.com/golang/protobuf/ptypes/duration", "duration_go_proto"},
+		{"github.com/golang/protobuf/ptypes/empty", "empty_go_proto"},
+		{"google.golang.org/genproto/protobuf/field_mask", "field_mask_go_proto"},
+		{"google.golang.org/genproto/protobuf/source_context", "source_context_go_proto"},
+		{"github.com/golang/protobuf/ptypes/struct", "struct_go_proto"},
+		{"github.com/golang/protobuf/ptypes/timestamp", "timestamp_go_proto"},
+		{"github.com/golang/protobuf/ptypes/wrappers", "wrappers_go_proto"},
+		{"github.com/golang/protobuf/protoc-gen-go/plugin", "compiler_plugin_go_proto"},
+		{"google.golang.org/genproto/protobuf/ptype", "type_go_proto"},
+	} {
+		t.Run(tc.want, func(t *testing.T) {
+			want := label.Label{
+				Repo: config.RulesGoRepoName,
+				Pkg:  config.WellKnownTypesPkg,
+				Name: tc.want,
+			}
+			if got, err := r.resolveGo(tc.imp, label.NoLabel); err != nil {
+				t.Error(err)
+			} else if !got.Equal(want) {
+				t.Errorf("got %s; want %s", got, want)
+			}
+		})
 	}
 }
 
