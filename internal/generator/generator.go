@@ -25,6 +25,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -81,56 +82,56 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 
 	if g.c.ProtoMode == config.LegacyProtoMode {
 		if !pkg.Proto.HasProto() {
-			return "", []bf.Expr{EmptyRule("filegroup", filegroupName)}
+			return "", []bf.Expr{rule.EmptyRule("filegroup", filegroupName)}
 		}
-		attrs := []KeyValue{
+		attrs := []rule.KeyValue{
 			{Key: "name", Value: filegroupName},
 			{Key: "srcs", Value: pkg.Proto.Sources},
 		}
 		if g.shouldSetVisibility {
-			attrs = append(attrs, KeyValue{"visibility", []string{checkInternalVisibility(pkg.Rel, "//visibility:public")}})
+			attrs = append(attrs, rule.KeyValue{"visibility", []string{checkInternalVisibility(pkg.Rel, "//visibility:public")}})
 		}
-		return "", []bf.Expr{NewRule("filegroup", attrs)}
+		return "", []bf.Expr{rule.NewRule("filegroup", attrs)}
 	}
 
 	if !pkg.Proto.HasProto() {
 		return "", []bf.Expr{
-			EmptyRule("filegroup", filegroupName),
-			EmptyRule("proto_library", protoName),
-			EmptyRule("go_proto_library", goProtoName),
+			rule.EmptyRule("filegroup", filegroupName),
+			rule.EmptyRule("proto_library", protoName),
+			rule.EmptyRule("go_proto_library", goProtoName),
 		}
 	}
 
 	var rules []bf.Expr
 	visibility := []string{checkInternalVisibility(pkg.Rel, "//visibility:public")}
-	protoAttrs := []KeyValue{
+	protoAttrs := []rule.KeyValue{
 		{"name", protoName},
 		{"srcs", pkg.Proto.Sources},
 	}
 	if g.shouldSetVisibility {
-		protoAttrs = append(protoAttrs, KeyValue{"visibility", visibility})
+		protoAttrs = append(protoAttrs, rule.KeyValue{"visibility", visibility})
 	}
 	imports := pkg.Proto.Imports
 	if !imports.IsEmpty() {
-		protoAttrs = append(protoAttrs, KeyValue{config.GazelleImportsKey, imports})
+		protoAttrs = append(protoAttrs, rule.KeyValue{config.GazelleImportsKey, imports})
 	}
-	rules = append(rules, NewRule("proto_library", protoAttrs))
+	rules = append(rules, rule.NewRule("proto_library", protoAttrs))
 
-	goProtoAttrs := []KeyValue{
+	goProtoAttrs := []rule.KeyValue{
 		{"name", goProtoName},
 		{"proto", ":" + protoName},
 	}
 	goProtoAttrs = append(goProtoAttrs, g.importAttrs(pkg)...)
 	if pkg.Proto.HasServices {
-		goProtoAttrs = append(goProtoAttrs, KeyValue{"compilers", []string{"@io_bazel_rules_go//proto:go_grpc"}})
+		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{"compilers", []string{"@io_bazel_rules_go//proto:go_grpc"}})
 	}
 	if g.shouldSetVisibility {
-		goProtoAttrs = append(goProtoAttrs, KeyValue{"visibility", visibility})
+		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{"visibility", visibility})
 	}
 	if !imports.IsEmpty() {
-		goProtoAttrs = append(goProtoAttrs, KeyValue{config.GazelleImportsKey, imports})
+		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{config.GazelleImportsKey, imports})
 	}
-	rules = append(rules, NewRule("go_proto_library", goProtoAttrs))
+	rules = append(rules, rule.NewRule("go_proto_library", goProtoAttrs))
 
 	return goProtoName, rules
 }
@@ -138,20 +139,20 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 func (g *Generator) generateBin(pkg *packages.Package, library string) bf.Expr {
 	name := g.l.BinaryLabel(pkg.Rel).Name
 	if !pkg.IsCommand() || pkg.Binary.Sources.IsEmpty() && library == "" {
-		return EmptyRule("go_binary", name)
+		return rule.EmptyRule("go_binary", name)
 	}
 	visibility := checkInternalVisibility(pkg.Rel, "//visibility:public")
 	attrs := g.commonAttrs(pkg.Rel, name, visibility, pkg.Binary)
 	if library != "" {
-		attrs = append(attrs, KeyValue{"embed", []string{":" + library}})
+		attrs = append(attrs, rule.KeyValue{"embed", []string{":" + library}})
 	}
-	return NewRule("go_binary", attrs)
+	return rule.NewRule("go_binary", attrs)
 }
 
 func (g *Generator) generateLib(pkg *packages.Package, goProtoName string) (string, *bf.CallExpr) {
 	name := g.l.LibraryLabel(pkg.Rel).Name
 	if !pkg.Library.HasGo() && goProtoName == "" {
-		return "", EmptyRule("go_library", name)
+		return "", rule.EmptyRule("go_library", name)
 	}
 	var visibility string
 	if pkg.IsCommand() {
@@ -164,10 +165,10 @@ func (g *Generator) generateLib(pkg *packages.Package, goProtoName string) (stri
 	attrs := g.commonAttrs(pkg.Rel, name, visibility, pkg.Library)
 	attrs = append(attrs, g.importAttrs(pkg)...)
 	if goProtoName != "" {
-		attrs = append(attrs, KeyValue{"embed", []string{":" + goProtoName}})
+		attrs = append(attrs, rule.KeyValue{"embed", []string{":" + goProtoName}})
 	}
 
-	rule := NewRule("go_library", attrs)
+	rule := rule.NewRule("go_library", attrs)
 	return name, rule
 }
 
@@ -202,50 +203,50 @@ func checkInternalVisibility(rel, visibility string) string {
 func (g *Generator) generateTest(pkg *packages.Package, library string) bf.Expr {
 	name := g.l.TestLabel(pkg.Rel).Name
 	if !pkg.Test.HasGo() {
-		return EmptyRule("go_test", name)
+		return rule.EmptyRule("go_test", name)
 	}
 	attrs := g.commonAttrs(pkg.Rel, name, "", pkg.Test)
 	if library != "" {
-		attrs = append(attrs, KeyValue{"embed", []string{":" + library}})
+		attrs = append(attrs, rule.KeyValue{"embed", []string{":" + library}})
 	}
 	if pkg.HasTestdata {
-		glob := GlobValue{Patterns: []string{"testdata/**"}}
-		attrs = append(attrs, KeyValue{"data", glob})
+		glob := rule.GlobValue{Patterns: []string{"testdata/**"}}
+		attrs = append(attrs, rule.KeyValue{"data", glob})
 	}
-	return NewRule("go_test", attrs)
+	return rule.NewRule("go_test", attrs)
 }
 
-func (g *Generator) commonAttrs(pkgRel, name, visibility string, target packages.GoTarget) []KeyValue {
-	attrs := []KeyValue{{"name", name}}
+func (g *Generator) commonAttrs(pkgRel, name, visibility string, target packages.GoTarget) []rule.KeyValue {
+	attrs := []rule.KeyValue{{"name", name}}
 	if !target.Sources.IsEmpty() {
-		attrs = append(attrs, KeyValue{"srcs", target.Sources.Flat()})
+		attrs = append(attrs, rule.KeyValue{"srcs", target.Sources.Flat()})
 	}
 	if target.Cgo {
-		attrs = append(attrs, KeyValue{"cgo", true})
+		attrs = append(attrs, rule.KeyValue{"cgo", true})
 	}
 	if !target.CLinkOpts.IsEmpty() {
-		attrs = append(attrs, KeyValue{"clinkopts", g.options(target.CLinkOpts, pkgRel)})
+		attrs = append(attrs, rule.KeyValue{"clinkopts", g.options(target.CLinkOpts, pkgRel)})
 	}
 	if !target.COpts.IsEmpty() {
-		attrs = append(attrs, KeyValue{"copts", g.options(target.COpts, pkgRel)})
+		attrs = append(attrs, rule.KeyValue{"copts", g.options(target.COpts, pkgRel)})
 	}
 	if g.shouldSetVisibility && visibility != "" {
-		attrs = append(attrs, KeyValue{"visibility", []string{visibility}})
+		attrs = append(attrs, rule.KeyValue{"visibility", []string{visibility}})
 	}
 	imports := target.Imports
 	if !imports.IsEmpty() {
-		attrs = append(attrs, KeyValue{config.GazelleImportsKey, imports})
+		attrs = append(attrs, rule.KeyValue{config.GazelleImportsKey, imports})
 	}
 	return attrs
 }
 
-func (g *Generator) importAttrs(pkg *packages.Package) []KeyValue {
-	attrs := []KeyValue{{"importpath", pkg.ImportPath}}
+func (g *Generator) importAttrs(pkg *packages.Package) []rule.KeyValue {
+	attrs := []rule.KeyValue{{"importpath", pkg.ImportPath}}
 	if g.c.GoImportMapPrefix != "" {
 		fromPrefixRel := pathtools.TrimPrefix(pkg.Rel, g.c.GoImportMapPrefixRel)
 		importMap := path.Join(g.c.GoImportMapPrefix, fromPrefixRel)
 		if importMap != pkg.ImportPath {
-			attrs = append(attrs, KeyValue{"importmap", importMap})
+			attrs = append(attrs, rule.KeyValue{"importmap", importMap})
 		}
 	}
 	return attrs
@@ -265,7 +266,7 @@ var (
 // root-relative paths that Bazel can understand. For example, if a cgo file
 // in //foo declares an include flag in its copts: "-Ibar", this method
 // will transform that flag into "-Ifoo/bar".
-func (g *Generator) options(opts packages.PlatformStrings, pkgRel string) packages.PlatformStrings {
+func (g *Generator) options(opts rule.PlatformStrings, pkgRel string) rule.PlatformStrings {
 	fixPath := func(opt string) string {
 		if strings.HasPrefix(opt, "/") {
 			return opt

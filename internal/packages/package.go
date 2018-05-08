@@ -24,6 +24,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 // Package contains metadata about a Go package extracted from a directory.
@@ -53,45 +54,19 @@ type Package struct {
 
 // GoTarget contains metadata about a buildable Go target in a package.
 type GoTarget struct {
-	Sources, Imports PlatformStrings
-	COpts, CLinkOpts PlatformStrings
+	Sources, Imports rule.PlatformStrings
+	COpts, CLinkOpts rule.PlatformStrings
 	Cgo              bool
 }
 
 // ProtoTarget contains metadata about proto files in a package.
 type ProtoTarget struct {
-	Sources, Imports PlatformStrings
+	Sources, Imports rule.PlatformStrings
 	HasServices      bool
 
 	// HasPbGo indicates whether unexcluded .pb.go files are present in the
 	// same package. They will not be in this target's sources.
 	HasPbGo bool
-}
-
-// PlatformStrings contains a set of strings associated with a buildable
-// Go target in a package. This is used to store source file names,
-// import paths, and flags.
-//
-// Strings are stored in four sets: generic strings, OS-specific strings,
-// arch-specific strings, and OS-and-arch-specific strings. A string may not
-// be duplicated within a list or across sets; however, a string may appear
-// in more than one list within a set (e.g., in "linux" and "windows" within
-// the OS set). Strings within each list should be sorted, though this may
-// not be relied upon.
-type PlatformStrings struct {
-	// Generic is a list of strings not specific to any platform.
-	Generic []string
-
-	// OS is a map from OS name (anything in config.KnownOSs) to
-	// OS-specific strings.
-	OS map[string][]string
-
-	// Arch is a map from architecture name (anything in config.KnownArchs) to
-	// architecture-specific strings.
-	Arch map[string][]string
-
-	// Platform is a map from platforms to OS and architecture-specific strings.
-	Platform map[config.Platform][]string
 }
 
 // IsCommand returns true if the package name is "main".
@@ -114,77 +89,11 @@ func EmptyPackage(c *config.Config, dir, rel string) *Package {
 }
 
 func (t *GoTarget) HasGo() bool {
-	return t.Sources.HasGo()
+	return t.Sources.HasExt(".go")
 }
 
 func (t *ProtoTarget) HasProto() bool {
 	return !t.Sources.IsEmpty()
-}
-
-func (ps *PlatformStrings) HasGo() bool {
-	return ps.firstGoFile() != ""
-}
-
-func (ps *PlatformStrings) IsEmpty() bool {
-	return len(ps.Generic) == 0 && len(ps.OS) == 0 && len(ps.Arch) == 0 && len(ps.Platform) == 0
-}
-
-func (ps *PlatformStrings) Flat() []string {
-	unique := make(map[string]struct{})
-	for _, s := range ps.Generic {
-		unique[s] = struct{}{}
-	}
-	for _, ss := range ps.OS {
-		for _, s := range ss {
-			unique[s] = struct{}{}
-		}
-	}
-	for _, ss := range ps.Arch {
-		for _, s := range ss {
-			unique[s] = struct{}{}
-		}
-	}
-	for _, ss := range ps.Platform {
-		for _, s := range ss {
-			unique[s] = struct{}{}
-		}
-	}
-	flat := make([]string, 0, len(unique))
-	for s := range unique {
-		flat = append(flat, s)
-	}
-	sort.Strings(flat)
-	return flat
-}
-
-func (ps *PlatformStrings) firstGoFile() string {
-	for _, f := range ps.Generic {
-		if strings.HasSuffix(f, ".go") {
-			return f
-		}
-	}
-	for _, fs := range ps.OS {
-		for _, f := range fs {
-			if strings.HasSuffix(f, ".go") {
-				return f
-			}
-		}
-	}
-	for _, fs := range ps.Arch {
-		for _, f := range fs {
-			if strings.HasSuffix(f, ".go") {
-				return f
-			}
-		}
-	}
-	for _, fs := range ps.Platform {
-		for _, f := range fs {
-			if strings.HasSuffix(f, ".go") {
-				return f
-			}
-		}
-	}
-	return ""
 }
 
 type packageBuilder struct {
@@ -518,8 +427,8 @@ func (sb *platformStringsBuilder) addPlatformString(s string, platforms []config
 	sb.strs[s] = si
 }
 
-func (sb *platformStringsBuilder) build() PlatformStrings {
-	var ps PlatformStrings
+func (sb *platformStringsBuilder) build() rule.PlatformStrings {
+	var ps rule.PlatformStrings
 	for s, si := range sb.strs {
 		switch si.set {
 		case genericSet:
@@ -591,61 +500,4 @@ func (si *platformStringInfo) convertToPlatforms() {
 		}
 		si.archs = nil
 	}
-}
-
-// MapSlice applies a function that processes slices of strings to the strings
-// in "ps" and returns a new PlatformStrings with the results.
-func (ps *PlatformStrings) MapSlice(f func([]string) ([]string, error)) (PlatformStrings, []error) {
-	var errors []error
-
-	mapSlice := func(ss []string) []string {
-		rs, err := f(ss)
-		if err != nil {
-			errors = append(errors, err)
-			return nil
-		}
-		return rs
-	}
-
-	mapStringMap := func(m map[string][]string) map[string][]string {
-		if m == nil {
-			return nil
-		}
-		rm := make(map[string][]string)
-		for k, ss := range m {
-			ss = mapSlice(ss)
-			if len(ss) > 0 {
-				rm[k] = ss
-			}
-		}
-		if len(rm) == 0 {
-			return nil
-		}
-		return rm
-	}
-
-	mapPlatformMap := func(m map[config.Platform][]string) map[config.Platform][]string {
-		if m == nil {
-			return nil
-		}
-		rm := make(map[config.Platform][]string)
-		for k, ss := range m {
-			ss = mapSlice(ss)
-			if len(ss) > 0 {
-				rm[k] = ss
-			}
-		}
-		if len(rm) == 0 {
-			return nil
-		}
-		return rm
-	}
-
-	result := PlatformStrings{
-		Generic:  mapSlice(ps.Generic),
-		OS:       mapStringMap(ps.OS),
-		Arch:     mapStringMap(ps.Arch),
-		Platform: mapPlatformMap(ps.Platform),
-	}
-	return result, errors
 }

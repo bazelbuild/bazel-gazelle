@@ -26,6 +26,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	bf "github.com/bazelbuild/buildtools/build"
 )
 
@@ -84,7 +85,7 @@ func TestGenerator(t *testing.T) {
 				t.Fatal(err)
 			}
 			f := &bf.File{Stmt: rs}
-			generator.SortLabels(f)
+			rule.SortLabels(f)
 			merger.FixLoads(f)
 			got := string(bf.Format(f))
 
