@@ -259,7 +259,15 @@ func (r *Resolver) resolveProto(imp string, from label.Label) (label.Label, erro
 	if !strings.HasSuffix(imp, ".proto") {
 		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
+
 	if isWellKnownProto(imp) {
+		switch imp {
+		case "google/api/annotations.proto":
+			return label.New("com_github_googleapis_googleapis", "google/api", "api_proto"), nil
+		case "github.com/gogo/protobuf/gogoproto/gogo.proto", "gogoproto/gogo.proto":
+			return label.New("gogo_special_proto", "github.com/gogo/protobuf/gogoproto", "gogoproto"), nil
+		}
+
 		name := path.Base(imp[:len(imp)-len(".proto")]) + "_proto"
 		return label.New(config.WellKnownTypesProtoRepo, "", name), nil
 	}
@@ -287,6 +295,11 @@ func (r *Resolver) resolveGoProto(imp string, from label.Label) (label.Label, er
 		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
 	stem := imp[:len(imp)-len(".proto")]
+
+	switch imp {
+	case "google/api/annotations.proto":
+		return label.New("com_github_googleapis_googleapis", "google/api", "api_go_proto"), nil
+	}
 
 	if isWellKnownProto(stem) {
 		return label.NoLabel, standardImportError{imp}
@@ -335,7 +348,11 @@ func IsStandard(imp string) bool {
 }
 
 func isWellKnownProto(imp string) bool {
-	return pathtools.HasPrefix(imp, config.WellKnownTypesProtoPrefix) && pathtools.TrimPrefix(imp, config.WellKnownTypesProtoPrefix) == path.Base(imp)
+
+	return (pathtools.HasPrefix(imp, "github.com/gogo/protobuf/gogoproto") && pathtools.TrimPrefix(imp, "github.com/gogo/protobuf/gogoproto") == path.Base(imp)) ||
+		(pathtools.HasPrefix(imp, "google/api") && pathtools.TrimPrefix(imp, "google/api") == path.Base(imp)) ||
+		(pathtools.HasPrefix(imp, config.WellKnownTypesProtoPrefix) && pathtools.TrimPrefix(imp, config.WellKnownTypesProtoPrefix) == path.Base(imp))
+
 }
 
 func resolveWellKnownGo(imp string) label.Label {
@@ -370,7 +387,20 @@ func resolveWellKnownGo(imp string) label.Label {
 			Pkg:  config.WellKnownTypesPkg,
 			Name: "type_go_proto",
 		}
+	case "github.com/gogo/protobuf/gogoproto":
+		return label.Label{
+			Repo: "@gogo_special_proto",
+			Pkg:  "github.com/gogo/protobuf/gogoproto",
+			Name: "gogoproto",
+		}
+	case "google/api":
+		return label.Label{
+			Repo: "@com_github_googleapis_googleapis",
+			Pkg:  "//google/api:api_go_proto",
+			Name: path.Base(imp),
+		}
 	}
+
 	return label.NoLabel
 }
 

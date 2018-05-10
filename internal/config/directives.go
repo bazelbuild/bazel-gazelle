@@ -127,6 +127,15 @@ func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
 			modified.ProtoMode = protoMode
 			modified.ProtoModeExplicit = true
 			didModify = true
+		case "proto_service":
+			protoServiceMode, err := ProtoServiceModeFromString(d.Value)
+			if err != nil {
+				log.Print(err)
+				continue
+			}
+			modified.ProtoServiceMode = protoServiceMode
+			modified.ProtoServiceModeExplicit = true
+			didModify = true
 		}
 	}
 	if !didModify {

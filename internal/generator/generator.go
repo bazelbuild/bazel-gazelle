@@ -122,9 +122,30 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 		{"proto", ":" + protoName},
 	}
 	goProtoAttrs = append(goProtoAttrs, g.importAttrs(pkg)...)
-	if pkg.Proto.HasServices {
-		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{"compilers", []string{"@io_bazel_rules_go//proto:go_grpc"}})
+
+	var compilers []string
+
+	if g.c.ProtoMode == config.GoGoProtoMode {
+		compilers = append(compilers, "@io_bazel_rules_go//proto:gogo_grpc")
+	} else {
+		compilers = append(compilers, "@io_bazel_rules_go//proto:gogo_grpc")
 	}
+
+	if pkg.Proto.HasServices {
+		switch g.c.ProtoServiceMode {
+		case config.GRPCGateway:
+			compilers = append(compilers,
+				"@io_bazel_rules_go//proto:go_grpc_gateway",
+			)
+		case config.GRPCGatewayGoGo:
+			compilers = append(compilers,
+				"@io_bazel_rules_go//proto:gogo_grpc_gateway",
+			)
+		default:
+			// do nothing
+		}
+	}
+
 	if g.shouldSetVisibility {
 		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{"visibility", visibility})
 	}

@@ -73,6 +73,12 @@ type Config struct {
 
 	// ProtoModeExplicit indicates whether the proto mode was set explicitly.
 	ProtoModeExplicit bool
+
+	// ProtoServiceMode determines how rules are generated for protos services.
+	ProtoServiceMode ProtoServiceMode
+
+	// ProtoServiceModeExplicit indicates whether the proto mode was set explicitly.
+	ProtoServiceModeExplicit bool
 }
 
 var DefaultValidBuildFileNames = []string{"BUILD.bazel", "BUILD"}
@@ -169,6 +175,9 @@ const (
 	// as normal sources.
 	DisableProtoMode
 
+	// Same as default mode but use gogo protobuf compiler
+	GoGoProtoMode
+
 	// LegacyProtoMode generates filegroups for .proto files if .pb.go files
 	// are present in the same directory.
 	LegacyProtoMode
@@ -178,11 +187,40 @@ func ProtoModeFromString(s string) (ProtoMode, error) {
 	switch s {
 	case "default":
 		return DefaultProtoMode, nil
+	case "gogo":
+		return GoGoProtoMode, nil
 	case "disable":
 		return DisableProtoMode, nil
 	case "legacy":
 		return LegacyProtoMode, nil
 	default:
 		return 0, fmt.Errorf("unrecognized proto mode: %q", s)
+	}
+}
+
+// ProtoServiceMode determines how grpc servcies are generated.
+type ProtoServiceMode int
+
+const (
+	// Default ProtoServiceMode
+	DefaultProtoServiceMode ProtoServiceMode = iota
+
+	// GRPCGateway add go_grpc_gateway to the compiler rules
+	GRPCGateway
+
+	// GRPCGateway add gogo_grpc_gateway to the compiler rules
+	GRPCGatewayGoGo
+)
+
+func ProtoServiceModeFromString(s string) (ProtoServiceMode, error) {
+	switch s {
+	case "default":
+		return DefaultProtoServiceMode, nil
+	case "grpc_gateway":
+		return GRPCGateway, nil
+	case "gogo_grpc_gateway":
+		return GRPCGatewayGoGo, nil
+	default:
+		return 0, fmt.Errorf("unrecognized grpc gateway proto mode: %q", s)
 	}
 }
