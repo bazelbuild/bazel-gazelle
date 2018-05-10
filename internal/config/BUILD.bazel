@@ -7,6 +7,7 @@ go_library(
         "constants.go",
         "directives.go",
         "platform.go",
+        "types.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/config",
     visibility = ["//visibility:public"],

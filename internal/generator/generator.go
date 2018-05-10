@@ -82,7 +82,7 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 
 	if g.c.ProtoMode == config.LegacyProtoMode {
 		if !pkg.Proto.HasProto() {
-			return "", []bf.Expr{rule.EmptyRule("filegroup", filegroupName)}
+			return "", []bf.Expr{rule.EmptyRuleAST("filegroup", filegroupName)}
 		}
 		attrs := []rule.KeyValue{
 			{Key: "name", Value: filegroupName},
@@ -91,14 +91,14 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 		if g.shouldSetVisibility {
 			attrs = append(attrs, rule.KeyValue{"visibility", []string{checkInternalVisibility(pkg.Rel, "//visibility:public")}})
 		}
-		return "", []bf.Expr{rule.NewRule("filegroup", attrs)}
+		return "", []bf.Expr{rule.NewRuleAST("filegroup", attrs)}
 	}
 
 	if !pkg.Proto.HasProto() {
 		return "", []bf.Expr{
-			rule.EmptyRule("filegroup", filegroupName),
-			rule.EmptyRule("proto_library", protoName),
-			rule.EmptyRule("go_proto_library", goProtoName),
+			rule.EmptyRuleAST("filegroup", filegroupName),
+			rule.EmptyRuleAST("proto_library", protoName),
+			rule.EmptyRuleAST("go_proto_library", goProtoName),
 		}
 	}
 
@@ -115,7 +115,7 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 	if !imports.IsEmpty() {
 		protoAttrs = append(protoAttrs, rule.KeyValue{config.GazelleImportsKey, imports})
 	}
-	rules = append(rules, rule.NewRule("proto_library", protoAttrs))
+	rules = append(rules, rule.NewRuleAST("proto_library", protoAttrs))
 
 	goProtoAttrs := []rule.KeyValue{
 		{"name", goProtoName},
@@ -131,7 +131,7 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 	if !imports.IsEmpty() {
 		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{config.GazelleImportsKey, imports})
 	}
-	rules = append(rules, rule.NewRule("go_proto_library", goProtoAttrs))
+	rules = append(rules, rule.NewRuleAST("go_proto_library", goProtoAttrs))
 
 	return goProtoName, rules
 }
@@ -139,20 +139,20 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 func (g *Generator) generateBin(pkg *packages.Package, library string) bf.Expr {
 	name := g.l.BinaryLabel(pkg.Rel).Name
 	if !pkg.IsCommand() || pkg.Binary.Sources.IsEmpty() && library == "" {
-		return rule.EmptyRule("go_binary", name)
+		return rule.EmptyRuleAST("go_binary", name)
 	}
 	visibility := checkInternalVisibility(pkg.Rel, "//visibility:public")
 	attrs := g.commonAttrs(pkg.Rel, name, visibility, pkg.Binary)
 	if library != "" {
 		attrs = append(attrs, rule.KeyValue{"embed", []string{":" + library}})
 	}
-	return rule.NewRule("go_binary", attrs)
+	return rule.NewRuleAST("go_binary", attrs)
 }
 
 func (g *Generator) generateLib(pkg *packages.Package, goProtoName string) (string, *bf.CallExpr) {
 	name := g.l.LibraryLabel(pkg.Rel).Name
 	if !pkg.Library.HasGo() && goProtoName == "" {
-		return "", rule.EmptyRule("go_library", name)
+		return "", rule.EmptyRuleAST("go_library", name)
 	}
 	var visibility string
 	if pkg.IsCommand() {
@@ -168,7 +168,7 @@ func (g *Generator) generateLib(pkg *packages.Package, goProtoName string) (stri
 		attrs = append(attrs, rule.KeyValue{"embed", []string{":" + goProtoName}})
 	}
 
-	rule := rule.NewRule("go_library", attrs)
+	rule := rule.NewRuleAST("go_library", attrs)
 	return name, rule
 }
 
@@ -203,7 +203,7 @@ func checkInternalVisibility(rel, visibility string) string {
 func (g *Generator) generateTest(pkg *packages.Package, library string) bf.Expr {
 	name := g.l.TestLabel(pkg.Rel).Name
 	if !pkg.Test.HasGo() {
-		return rule.EmptyRule("go_test", name)
+		return rule.EmptyRuleAST("go_test", name)
 	}
 	attrs := g.commonAttrs(pkg.Rel, name, "", pkg.Test)
 	if library != "" {
@@ -213,7 +213,7 @@ func (g *Generator) generateTest(pkg *packages.Package, library string) bf.Expr 
 		glob := rule.GlobValue{Patterns: []string{"testdata/**"}}
 		attrs = append(attrs, rule.KeyValue{"data", glob})
 	}
-	return rule.NewRule("go_test", attrs)
+	return rule.NewRuleAST("go_test", attrs)
 }
 
 func (g *Generator) commonAttrs(pkgRel, name, visibility string, target packages.GoTarget) []rule.KeyValue {

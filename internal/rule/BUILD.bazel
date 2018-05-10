@@ -1,8 +1,10 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
+        "expr.go",
+        "merge.go",
         "platform_strings.go",
         "rule.go",
         "sort_labels.go",
@@ -12,7 +14,15 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/config:go_default_library",
+        "//internal/label:go_default_library",
         "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
         "//vendor/github.com/bazelbuild/buildtools/tables:go_default_library",
     ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["rule_test.go"],
+    embed = [":go_default_library"],
+    deps = ["//vendor/github.com/bazelbuild/buildtools/build:go_default_library"],
 )
