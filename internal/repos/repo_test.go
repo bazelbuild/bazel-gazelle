@@ -20,9 +20,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 func TestGenerateRepoRules(t *testing.T) {
@@ -31,7 +32,10 @@ func TestGenerateRepoRules(t *testing.T) {
 		GoPrefix: "golang.org/x/tools",
 		Commit:   "123456",
 	}
-	got := bf.FormatString(GenerateRule(repo))
+	r := GenerateRule(repo)
+	f := rule.EmptyFile("test")
+	r.Insert(f)
+	got := strings.TrimSpace(string(f.Format()))
 	want := `go_repository(
     name = "org_golang_x_tools",
     commit = "123456",
@@ -106,7 +110,7 @@ go_repository(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			workspace, err := bf.Parse("WORKSPACE", []byte(tc.workspace))
+			workspace, err := rule.LoadData("WORKSPACE", []byte(tc.workspace))
 			if err != nil {
 				t.Fatal(err)
 			}

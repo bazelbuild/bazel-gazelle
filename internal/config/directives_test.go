@@ -19,7 +19,7 @@ import (
 	"reflect"
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 func TestParseDirectives(t *testing.T) {
@@ -49,7 +49,7 @@ foo(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			f, err := bf.Parse("test.bazel", []byte(tc.content))
+			f, err := bzl.Parse("test.bazel", []byte(tc.content))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -161,11 +161,11 @@ load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			var f *bf.File
+			var f *bzl.File
 			var directives []Directive
 			if tc.content != "" {
 				var err error
-				f, err = bf.Parse("BUILD.bazel", []byte(tc.content))
+				f, err = bzl.Parse("BUILD.bazel", []byte(tc.content))
 				if err != nil {
 					t.Fatalf("error parsing build file: %v", err)
 				}

@@ -24,7 +24,8 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
-	bf "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 // RuleIndex is a table of rules in a workspace, indexed by label and by
@@ -37,7 +38,7 @@ type RuleIndex struct {
 
 // ruleRecord contains information about a rule relevant to import indexing.
 type ruleRecord struct {
-	rule       bf.Rule
+	rule       *rule.Rule
 	label      label.Label
 	lang       config.Language
 	importedAs []importSpec
@@ -59,7 +60,7 @@ func NewRuleIndex() *RuleIndex {
 
 // AddRulesFromFile adds existing rules to the index from file
 // (which must not be nil).
-func (ix *RuleIndex) AddRulesFromFile(c *config.Config, file *bf.File) {
+func (ix *RuleIndex) AddRulesFromFile(c *config.Config, file *rule.File) {
 	buildRel, err := filepath.Rel(c.RepoRoot, file.Path)
 	if err != nil {
 		log.Panicf("file not in repo: %s", file.Path)
@@ -69,18 +70,15 @@ func (ix *RuleIndex) AddRulesFromFile(c *config.Config, file *bf.File) {
 		buildRel = ""
 	}
 
-	for _, stmt := range file.Stmt {
-		if call, ok := stmt.(*bf.CallExpr); ok {
-			ix.addRule(call, c.GoPrefix, buildRel)
-		}
+	for _, r := range file.Rules {
+		ix.addRule(r, c.GoPrefix, buildRel)
 	}
 }
 
-func (ix *RuleIndex) addRule(call *bf.CallExpr, goPrefix, buildRel string) {
-	rule := bf.Rule{Call: call}
+func (ix *RuleIndex) addRule(r *rule.Rule, goPrefix, buildRel string) {
 	record := &ruleRecord{
-		rule:  rule,
-		label: label.New("", buildRel, rule.Name()),
+		rule:  r,
+		label: label.New("", buildRel, r.Name()),
 	}
 
 	if _, ok := ix.labelMap[record.label]; ok {
@@ -88,18 +86,18 @@ func (ix *RuleIndex) addRule(call *bf.CallExpr, goPrefix, buildRel string) {
 		return
 	}
 
-	kind := rule.Kind()
+	kind := r.Kind()
 	switch {
 	case isGoLibrary(kind):
 		record.lang = config.GoLang
-		if imp := rule.AttrString("importpath"); imp != "" {
+		if imp := r.AttrString("importpath"); imp != "" {
 			record.importedAs = []importSpec{{lang: config.GoLang, imp: imp}}
 		}
 		// Additional proto imports may be added in Finish.
 
 	case kind == "proto_library":
 		record.lang = config.ProtoLang
-		for _, s := range findSources(rule, buildRel, ".proto") {
+		for _, s := range findSources(r, buildRel, ".proto") {
 			record.importedAs = append(record.importedAs, importSpec{lang: config.ProtoLang, imp: s})
 		}
 
@@ -135,9 +133,9 @@ func (ix *RuleIndex) skipGoEmbds() {
 		importpath := r.rule.AttrString("importpath")
 
 		var embedLabels []label.Label
-		if embedList, ok := r.rule.Attr("embed").(*bf.ListExpr); ok {
+		if embedList, ok := r.rule.Attr("embed").(*bzl.ListExpr); ok {
 			for _, embedElem := range embedList.List {
-				embedStr, ok := embedElem.(*bf.StringExpr)
+				embedStr, ok := embedElem.(*bzl.StringExpr)
 				if !ok {
 					continue
 				}
@@ -148,7 +146,7 @@ func (ix *RuleIndex) skipGoEmbds() {
 				embedLabels = append(embedLabels, embedLabel)
 			}
 		}
-		if libraryStr, ok := r.rule.Attr("library").(*bf.StringExpr); ok {
+		if libraryStr, ok := r.rule.Attr("library").(*bzl.StringExpr); ok {
 			if libraryLabel, err := label.Parse(libraryStr.Value); err == nil {
 				embedLabels = append(embedLabels, libraryLabel)
 			}
@@ -316,19 +314,11 @@ func findGoProtoSources(ix *RuleIndex, r *ruleRecord) []importSpec {
 	return importedAs
 }
 
-func findSources(r bf.Rule, buildRel, ext string) []string {
-	srcsExpr := r.Attr("srcs")
-	srcsList, ok := srcsExpr.(*bf.ListExpr)
-	if !ok {
-		return nil
-	}
-	var srcs []string
-	for _, srcExpr := range srcsList.List {
-		src, ok := srcExpr.(*bf.StringExpr)
-		if !ok {
-			continue
-		}
-		label, err := label.Parse(src.Value)
+func findSources(r *rule.Rule, buildRel, ext string) []string {
+	srcStrs := r.AttrStrings("srcs")
+	srcs := make([]string, 0, len(srcStrs))
+	for _, src := range srcStrs {
+		label, err := label.Parse(src)
 		if err != nil || !label.Relative || !strings.HasSuffix(label.Name, ext) {
 			continue
 		}

@@ -34,7 +34,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
-	bf "github.com/bazelbuild/buildtools/build"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 // updateConfig holds configuration information needed to run the fix and
@@ -47,7 +47,7 @@ type updateConfig struct {
 	repos             []repos.Repo
 }
 
-type emitFunc func(*config.Config, *bf.File, string) error
+type emitFunc func(*config.Config, *bzl.File, string) error
 
 var modeFromName = map[string]emitFunc{
 	"print": printFile,
@@ -63,13 +63,13 @@ type visitRecord struct {
 	pkgRel string
 
 	// rules is a list of generated Go rules.
-	rules []bf.Expr
+	rules []*rule.Rule
 
 	// empty is a list of empty Go rules that may be deleted.
-	empty []bf.Expr
+	empty []*rule.Rule
 
 	// file is the build file being processed.
-	file *bf.File
+	file *rule.File
 }
 
 type byPkgRel []visitRecord
@@ -96,7 +96,7 @@ func runFixUpdate(cmd command, args []string) error {
 	var visits []visitRecord
 
 	// Visit all directories in the repository.
-	packages.Walk(uc.c, uc.c.RepoRoot, func(dir, rel string, c *config.Config, pkg *packages.Package, file *bf.File, isUpdateDir bool) {
+	packages.Walk(uc.c, uc.c.RepoRoot, func(dir, rel string, c *config.Config, pkg *packages.Package, file *rule.File, isUpdateDir bool) {
 		// If this file is ignored or if Gazelle was not asked to update this
 		// directory, just index the build file and move on.
 		if !isUpdateDir {
@@ -120,18 +120,14 @@ func runFixUpdate(cmd command, args []string) error {
 		// Generate new rules and merge them into the existing file (if present).
 		if pkg != nil {
 			g := generator.NewGenerator(c, l, file)
-			rules, empty, err := g.GenerateRules(pkg)
-			if err != nil {
-				log.Print(err)
-				return
-			}
+			rules, empty := g.GenerateRules(pkg)
 			if file == nil {
-				file = &bf.File{
-					Path: filepath.Join(c.RepoRoot, filepath.FromSlash(rel), c.DefaultBuildFileName()),
-					Stmt: rules,
+				file = rule.EmptyFile(filepath.Join(c.RepoRoot, filepath.FromSlash(rel), c.DefaultBuildFileName()))
+				for _, r := range rules {
+					r.Insert(file)
 				}
 			} else {
-				rules = merger.MergeFile(rules, empty, file, merger.PreResolveAttrs)
+				rules = merger.MergeFile(file, empty, rules, merger.PreResolveAttrs)
 			}
 			visits = append(visits, visitRecord{
 				pkgRel: rel,
@@ -153,25 +149,25 @@ func runFixUpdate(cmd command, args []string) error {
 	// Resolve dependencies.
 	rc := repos.NewRemoteCache(uc.repos)
 	resolver := resolve.NewResolver(uc.c, l, ruleIndex, rc)
-	for i := range visits {
-		for j := range visits[i].rules {
-			visits[i].rules[j] = resolver.ResolveRule(visits[i].rules[j], visits[i].pkgRel)
+	for _, v := range visits {
+		for _, r := range v.rules {
+			resolver.ResolveRule(r, v.pkgRel)
 		}
-		merger.MergeFile(visits[i].rules, visits[i].empty, visits[i].file, merger.PostResolveAttrs)
+		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolveAttrs)
 	}
 
 	// Emit merged files.
 	for _, v := range visits {
-		rule.SortLabels(v.file)
 		merger.FixLoads(v.file)
-		bf.Rewrite(v.file, nil) // have buildifier 'format' our rules.
+		v.file.Sync()
+		bzl.Rewrite(v.file.File, nil) // have buildifier 'format' our rules.
 
 		path := v.file.Path
 		if uc.outDir != "" {
 			stem := filepath.Base(v.file.Path) + uc.outSuffix
 			path = filepath.Join(uc.outDir, v.pkgRel, stem)
 		}
-		if err := uc.emit(uc.c, v.file, path); err != nil {
+		if err := uc.emit(uc.c, v.file.File, path); err != nil {
 			log.Print(err)
 		}
 	}
@@ -289,15 +285,11 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 	uc.outSuffix = *outSuffix
 
 	workspacePath := filepath.Join(uc.c.RepoRoot, "WORKSPACE")
-	if workspaceContent, err := ioutil.ReadFile(workspacePath); err != nil {
+	if workspace, err := rule.LoadFile(workspacePath); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}
 	} else {
-		workspace, err := bf.Parse(workspacePath, workspaceContent)
-		if err != nil {
-			return nil, err
-		}
 		if err := fixWorkspace(uc, workspace); err != nil {
 			return nil, err
 		}
@@ -351,7 +343,7 @@ FLAGS:
 	fs.PrintDefaults()
 }
 
-func loadBuildFile(c *config.Config, dir string) (*bf.File, error) {
+func loadBuildFile(c *config.Config, dir string) (*bzl.File, error) {
 	var buildPath string
 	for _, base := range c.ValidBuildFileNames {
 		p := filepath.Join(dir, base)
@@ -375,7 +367,7 @@ func loadBuildFile(c *config.Config, dir string) (*bf.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bf.Parse(buildPath, data)
+	return bzl.Parse(buildPath, data)
 }
 
 func loadGoPrefix(c *config.Config) (string, error) {
@@ -389,11 +381,11 @@ func loadGoPrefix(c *config.Config) (string, error) {
 		}
 	}
 	for _, s := range f.Stmt {
-		c, ok := s.(*bf.CallExpr)
+		c, ok := s.(*bzl.CallExpr)
 		if !ok {
 			continue
 		}
-		l, ok := c.X.(*bf.LiteralExpr)
+		l, ok := c.X.(*bzl.LiteralExpr)
 		if !ok {
 			continue
 		}
@@ -403,16 +395,16 @@ func loadGoPrefix(c *config.Config) (string, error) {
 		if len(c.List) != 1 {
 			return "", fmt.Errorf("-go_prefix not set, and %s has go_prefix(%v) with too many args", f.Path, c.List)
 		}
-		v, ok := c.List[0].(*bf.StringExpr)
+		v, ok := c.List[0].(*bzl.StringExpr)
 		if !ok {
-			return "", fmt.Errorf("-go_prefix not set, and %s has go_prefix(%v) which is not a string", f.Path, bf.FormatString(c.List[0]))
+			return "", fmt.Errorf("-go_prefix not set, and %s has go_prefix(%v) which is not a string", f.Path, bzl.FormatString(c.List[0]))
 		}
 		return v.Value, nil
 	}
 	return "", fmt.Errorf("-go_prefix not set, and no # gazelle:prefix directive found in %s", f.Path)
 }
 
-func fixWorkspace(uc *updateConfig, workspace *bf.File) error {
+func fixWorkspace(uc *updateConfig, workspace *rule.File) error {
 	if !uc.c.ShouldFix {
 		return nil
 	}
@@ -431,18 +423,14 @@ func fixWorkspace(uc *updateConfig, workspace *bf.File) error {
 	if err := merger.CheckGazelleLoaded(workspace); err != nil {
 		return err
 	}
-	return uc.emit(uc.c, workspace, workspace.Path)
+	workspace.Sync()
+	return uc.emit(uc.c, workspace.File, workspace.Path)
 }
 
-func findWorkspaceName(f *bf.File) string {
-	for _, stmt := range f.Stmt {
-		call, ok := stmt.(*bf.CallExpr)
-		if !ok {
-			continue
-		}
-		rule := bf.Rule{Call: call}
-		if rule.Kind() == "workspace" {
-			return rule.Name()
+func findWorkspaceName(f *rule.File) string {
+	for _, r := range f.Rules {
+		if r.Kind() == "workspace" {
+			return r.Name()
 		}
 	}
 	return ""

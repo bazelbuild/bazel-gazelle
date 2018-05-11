@@ -23,15 +23,15 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
-	bf "github.com/bazelbuild/buildtools/build"
 )
 
 // NewGenerator returns a new instance of Generator.
 // "oldFile" is the existing build file. May be nil.
-func NewGenerator(c *config.Config, l *label.Labeler, oldFile *bf.File) *Generator {
+func NewGenerator(c *config.Config, l *label.Labeler, oldFile *rule.File) *Generator {
 	shouldSetVisibility := oldFile == nil || !hasDefaultVisibility(oldFile)
 	return &Generator{c: c, l: l, shouldSetVisibility: shouldSetVisibility}
 }
@@ -45,9 +45,8 @@ type Generator struct {
 
 // GenerateRules generates a list of rules for targets in "pkg". It also returns
 // a list of empty rules that may be deleted from an existing file.
-func (g *Generator) GenerateRules(pkg *packages.Package) (rules []bf.Expr, empty []bf.Expr, err error) {
-	var rs []bf.Expr
-
+func (g *Generator) GenerateRules(pkg *packages.Package) (gen, empty []*rule.Rule) {
+	var rs []*rule.Rule
 	protoLibName, protoRules := g.generateProto(pkg)
 	rs = append(rs, protoRules...)
 
@@ -59,17 +58,19 @@ func (g *Generator) GenerateRules(pkg *packages.Package) (rules []bf.Expr, empty
 		g.generateTest(pkg, libName))
 
 	for _, r := range rs {
-		if isEmpty(r) {
+		// TODO(jayconrod): don't depend on merger package. Get NonEmptyAttrs from
+		// the Language interface when that's introduced.
+		if r.IsEmpty(merger.NonEmptyAttrs) {
 			empty = append(empty, r)
 		} else {
-			rules = append(rules, r)
+			gen = append(gen, r)
 		}
 	}
 
-	return rules, empty, nil
+	return gen, empty
 }
 
-func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
+func (g *Generator) generateProto(pkg *packages.Package) (string, []*rule.Rule) {
 	if g.c.ProtoMode == config.DisableProtoMode {
 		// Don't create or delete proto rules in this mode. Any existing rules
 		// are likely hand-written.
@@ -81,78 +82,72 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []bf.Expr) {
 	goProtoName := g.l.GoProtoLabel(pkg.Rel, pkg.Name).Name
 
 	if g.c.ProtoMode == config.LegacyProtoMode {
+		filegroup := rule.NewRule("filegroup", filegroupName)
 		if !pkg.Proto.HasProto() {
-			return "", []bf.Expr{rule.EmptyRuleAST("filegroup", filegroupName)}
+			return "", []*rule.Rule{filegroup}
 		}
-		attrs := []rule.KeyValue{
-			{Key: "name", Value: filegroupName},
-			{Key: "srcs", Value: pkg.Proto.Sources},
-		}
+		filegroup.SetAttr("srcs", pkg.Proto.Sources)
 		if g.shouldSetVisibility {
-			attrs = append(attrs, rule.KeyValue{"visibility", []string{checkInternalVisibility(pkg.Rel, "//visibility:public")}})
+			filegroup.SetAttr("visibility", []string{checkInternalVisibility(pkg.Rel, "//visibility:public")})
 		}
-		return "", []bf.Expr{rule.NewRuleAST("filegroup", attrs)}
+		return "", []*rule.Rule{filegroup}
 	}
 
 	if !pkg.Proto.HasProto() {
-		return "", []bf.Expr{
-			rule.EmptyRuleAST("filegroup", filegroupName),
-			rule.EmptyRuleAST("proto_library", protoName),
-			rule.EmptyRuleAST("go_proto_library", goProtoName),
+		return "", []*rule.Rule{
+			rule.NewRule("filegroup", filegroupName),
+			rule.NewRule("proto_library", protoName),
+			rule.NewRule("go_proto_library", goProtoName),
 		}
 	}
 
-	var rules []bf.Expr
 	visibility := []string{checkInternalVisibility(pkg.Rel, "//visibility:public")}
-	protoAttrs := []rule.KeyValue{
-		{"name", protoName},
-		{"srcs", pkg.Proto.Sources},
-	}
+	protoLibrary := rule.NewRule("proto_library", protoName)
+	protoLibrary.SetAttr("srcs", pkg.Proto.Sources)
 	if g.shouldSetVisibility {
-		protoAttrs = append(protoAttrs, rule.KeyValue{"visibility", visibility})
+		protoLibrary.SetAttr("visibility", visibility)
 	}
 	imports := pkg.Proto.Imports
 	if !imports.IsEmpty() {
-		protoAttrs = append(protoAttrs, rule.KeyValue{config.GazelleImportsKey, imports})
+		protoLibrary.SetAttr(config.GazelleImportsKey, imports)
 	}
-	rules = append(rules, rule.NewRuleAST("proto_library", protoAttrs))
 
-	goProtoAttrs := []rule.KeyValue{
-		{"name", goProtoName},
-		{"proto", ":" + protoName},
-	}
-	goProtoAttrs = append(goProtoAttrs, g.importAttrs(pkg)...)
+	goProtoLibrary := rule.NewRule("go_proto_library", goProtoName)
+	goProtoLibrary.SetAttr("proto", ":"+protoName)
+
+	g.setImportAttrs(goProtoLibrary, pkg)
 	if pkg.Proto.HasServices {
-		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{"compilers", []string{"@io_bazel_rules_go//proto:go_grpc"}})
+		goProtoLibrary.SetAttr("compilers", []string{"@io_bazel_rules_go//proto:go_grpc"})
 	}
 	if g.shouldSetVisibility {
-		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{"visibility", visibility})
+		goProtoLibrary.SetAttr("visibility", visibility)
 	}
 	if !imports.IsEmpty() {
-		goProtoAttrs = append(goProtoAttrs, rule.KeyValue{config.GazelleImportsKey, imports})
+		goProtoLibrary.SetAttr(config.GazelleImportsKey, imports)
 	}
-	rules = append(rules, rule.NewRuleAST("go_proto_library", goProtoAttrs))
 
-	return goProtoName, rules
+	return goProtoName, []*rule.Rule{protoLibrary, goProtoLibrary}
 }
 
-func (g *Generator) generateBin(pkg *packages.Package, library string) bf.Expr {
+func (g *Generator) generateBin(pkg *packages.Package, library string) *rule.Rule {
 	name := g.l.BinaryLabel(pkg.Rel).Name
+	goBinary := rule.NewRule("go_binary", name)
 	if !pkg.IsCommand() || pkg.Binary.Sources.IsEmpty() && library == "" {
-		return rule.EmptyRuleAST("go_binary", name)
+		return goBinary // empty
 	}
 	visibility := checkInternalVisibility(pkg.Rel, "//visibility:public")
-	attrs := g.commonAttrs(pkg.Rel, name, visibility, pkg.Binary)
+	g.setCommonAttrs(goBinary, pkg.Rel, visibility, pkg.Binary)
 	if library != "" {
-		attrs = append(attrs, rule.KeyValue{"embed", []string{":" + library}})
+		goBinary.SetAttr("embed", []string{":" + library})
 	}
-	return rule.NewRuleAST("go_binary", attrs)
+	return goBinary
 }
 
-func (g *Generator) generateLib(pkg *packages.Package, goProtoName string) (string, *bf.CallExpr) {
+func (g *Generator) generateLib(pkg *packages.Package, goProtoName string) (string, *rule.Rule) {
 	name := g.l.LibraryLabel(pkg.Rel).Name
+	goLibrary := rule.NewRule("go_library", name)
 	if !pkg.Library.HasGo() && goProtoName == "" {
-		return "", rule.EmptyRuleAST("go_library", name)
+		return "", goLibrary // empty
 	}
 	var visibility string
 	if pkg.IsCommand() {
@@ -162,26 +157,19 @@ func (g *Generator) generateLib(pkg *packages.Package, goProtoName string) (stri
 		visibility = checkInternalVisibility(pkg.Rel, "//visibility:public")
 	}
 
-	attrs := g.commonAttrs(pkg.Rel, name, visibility, pkg.Library)
-	attrs = append(attrs, g.importAttrs(pkg)...)
+	g.setCommonAttrs(goLibrary, pkg.Rel, visibility, pkg.Library)
+	g.setImportAttrs(goLibrary, pkg)
 	if goProtoName != "" {
-		attrs = append(attrs, rule.KeyValue{"embed", []string{":" + goProtoName}})
+		goLibrary.SetAttr("embed", []string{":" + goProtoName})
 	}
-
-	rule := rule.NewRuleAST("go_library", attrs)
-	return name, rule
+	return name, goLibrary
 }
 
 // hasDefaultVisibility returns whether oldFile contains a "package" rule with
 // a "default_visibility" attribute. Rules generated by Gazelle should not
 // have their own visibility attributes if this is the case.
-func hasDefaultVisibility(oldFile *bf.File) bool {
-	for _, s := range oldFile.Stmt {
-		c, ok := s.(*bf.CallExpr)
-		if !ok {
-			continue
-		}
-		r := bf.Rule{Call: c}
+func hasDefaultVisibility(oldFile *rule.File) bool {
+	for _, r := range oldFile.Rules {
 		if r.Kind() == "package" && r.Attr("default_visibility") != nil {
 			return true
 		}
@@ -200,56 +188,53 @@ func checkInternalVisibility(rel, visibility string) string {
 	return visibility
 }
 
-func (g *Generator) generateTest(pkg *packages.Package, library string) bf.Expr {
+func (g *Generator) generateTest(pkg *packages.Package, library string) *rule.Rule {
 	name := g.l.TestLabel(pkg.Rel).Name
+	goTest := rule.NewRule("go_test", name)
 	if !pkg.Test.HasGo() {
-		return rule.EmptyRuleAST("go_test", name)
+		return goTest // empty
 	}
-	attrs := g.commonAttrs(pkg.Rel, name, "", pkg.Test)
+	g.setCommonAttrs(goTest, pkg.Rel, "", pkg.Test)
 	if library != "" {
-		attrs = append(attrs, rule.KeyValue{"embed", []string{":" + library}})
+		goTest.SetAttr("embed", []string{":" + library})
 	}
 	if pkg.HasTestdata {
-		glob := rule.GlobValue{Patterns: []string{"testdata/**"}}
-		attrs = append(attrs, rule.KeyValue{"data", glob})
+		goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
 	}
-	return rule.NewRuleAST("go_test", attrs)
+	return goTest
 }
 
-func (g *Generator) commonAttrs(pkgRel, name, visibility string, target packages.GoTarget) []rule.KeyValue {
-	attrs := []rule.KeyValue{{"name", name}}
+func (g *Generator) setCommonAttrs(r *rule.Rule, pkgRel, visibility string, target packages.GoTarget) {
 	if !target.Sources.IsEmpty() {
-		attrs = append(attrs, rule.KeyValue{"srcs", target.Sources.Flat()})
+		r.SetAttr("srcs", target.Sources.Flat())
 	}
 	if target.Cgo {
-		attrs = append(attrs, rule.KeyValue{"cgo", true})
+		r.SetAttr("cgo", true)
 	}
 	if !target.CLinkOpts.IsEmpty() {
-		attrs = append(attrs, rule.KeyValue{"clinkopts", g.options(target.CLinkOpts, pkgRel)})
+		r.SetAttr("clinkopts", g.options(target.CLinkOpts, pkgRel))
 	}
 	if !target.COpts.IsEmpty() {
-		attrs = append(attrs, rule.KeyValue{"copts", g.options(target.COpts, pkgRel)})
+		r.SetAttr("copts", g.options(target.COpts, pkgRel))
 	}
 	if g.shouldSetVisibility && visibility != "" {
-		attrs = append(attrs, rule.KeyValue{"visibility", []string{visibility}})
+		r.SetAttr("visibility", []string{visibility})
 	}
 	imports := target.Imports
 	if !imports.IsEmpty() {
-		attrs = append(attrs, rule.KeyValue{config.GazelleImportsKey, imports})
+		r.SetAttr(config.GazelleImportsKey, imports)
 	}
-	return attrs
 }
 
-func (g *Generator) importAttrs(pkg *packages.Package) []rule.KeyValue {
-	attrs := []rule.KeyValue{{"importpath", pkg.ImportPath}}
+func (g *Generator) setImportAttrs(r *rule.Rule, pkg *packages.Package) {
+	r.SetAttr("importpath", pkg.ImportPath)
 	if g.c.GoImportMapPrefix != "" {
 		fromPrefixRel := pathtools.TrimPrefix(pkg.Rel, g.c.GoImportMapPrefixRel)
 		importMap := path.Join(g.c.GoImportMapPrefix, fromPrefixRel)
 		if importMap != pkg.ImportPath {
-			attrs = append(attrs, rule.KeyValue{"importmap", importMap})
+			r.SetAttr("importmap", importMap)
 		}
 	}
-	return attrs
 }
 
 var (
@@ -327,9 +312,4 @@ func escapeOption(opt string) string {
 		"\n", "\\\n",
 		"\r", "\\\r",
 	).Replace(opt)
-}
-
-func isEmpty(r bf.Expr) bool {
-	c, ok := r.(*bf.CallExpr)
-	return ok && len(c.List) == 1 // name
 }

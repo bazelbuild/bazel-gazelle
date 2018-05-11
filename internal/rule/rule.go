@@ -35,33 +35,6 @@ import (
 	bt "github.com/bazelbuild/buildtools/tables"
 )
 
-// EmptyRuleAST generates an empty rule with the given kind and name.
-// TODO(jayconrod): delete this as we migrate to Rule.
-func EmptyRuleAST(kind, name string) *bzl.CallExpr {
-	return NewRuleAST(kind, []KeyValue{{"name", name}})
-}
-
-// NewRuleAST generates a rule of the given kind with the given attributes.
-// TODO(jayconrod): delete this as we migrate to Rule.
-func NewRuleAST(kind string, kwargs []KeyValue) *bzl.CallExpr {
-	sort.Sort(byAttrName(kwargs))
-
-	var list []bzl.Expr
-	for _, arg := range kwargs {
-		expr := ExprFromValue(arg.Value)
-		list = append(list, &bzl.BinaryExpr{
-			X:  &bzl.LiteralExpr{Token: arg.Key},
-			Op: "=",
-			Y:  expr,
-		})
-	}
-
-	return &bzl.CallExpr{
-		X:    &bzl.LiteralExpr{Token: kind},
-		List: list,
-	}
-}
-
 // File provides editing functionality on top of a Skylark syntax tree. This
 // is the primary interface Gazelle uses for reading and updating build files.
 // To use, create a new file with EmptyFile or wrap a syntax tree with

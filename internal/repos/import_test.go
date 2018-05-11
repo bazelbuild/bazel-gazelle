@@ -22,7 +22,7 @@ import (
 	"strings"
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 func TestImportDep(t *testing.T) {
@@ -76,7 +76,11 @@ func TestImportDep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := strings.TrimSpace(string(bf.Format(&bf.File{Stmt: rules})))
+	f := rule.EmptyFile("test")
+	for _, r := range rules {
+		r.Insert(f)
+	}
+	got := strings.TrimSpace(string(f.Format()))
 	want := strings.TrimSpace(`
 go_repository(
     name = "com_github_armon_go_radix",

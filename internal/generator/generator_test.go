@@ -27,7 +27,8 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
-	bf "github.com/bazelbuild/buildtools/build"
+
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 func testConfig(repoRoot, goPrefix string) *config.Config {
@@ -42,10 +43,10 @@ func testConfig(repoRoot, goPrefix string) *config.Config {
 	return c
 }
 
-func packageFromDir(conf *config.Config, dir string) (*config.Config, *packages.Package, *bf.File) {
+func packageFromDir(conf *config.Config, dir string) (*config.Config, *packages.Package, *rule.File) {
 	var pkg *packages.Package
-	var oldFile *bf.File
-	packages.Walk(conf, dir, func(_, rel string, c *config.Config, p *packages.Package, f *bf.File, _ bool) {
+	var oldFile *rule.File
+	packages.Walk(conf, dir, func(_, rel string, c *config.Config, p *packages.Package, f *rule.File, _ bool) {
 		if p != nil && p.Dir == dir {
 			conf = c
 			pkg = p
@@ -80,14 +81,14 @@ func TestGenerator(t *testing.T) {
 		t.Run(rel, func(t *testing.T) {
 			c, pkg, oldFile := packageFromDir(c, dir)
 			g := generator.NewGenerator(c, l, oldFile)
-			rs, _, err := g.GenerateRules(pkg)
-			if err != nil {
-				t.Fatal(err)
+			rs, _ := g.GenerateRules(pkg)
+			f := rule.EmptyFile("test")
+			for _, r := range rs {
+				r.Insert(f)
 			}
-			f := &bf.File{Stmt: rs}
-			rule.SortLabels(f)
 			merger.FixLoads(f)
-			got := string(bf.Format(f))
+			f.SyncIncludingHiddenAttrs()
+			got := string(bzl.Format(f.File))
 
 			wantPath := filepath.Join(pkg.Dir, "BUILD.want")
 			wantBytes, err := ioutil.ReadFile(wantPath)
@@ -121,15 +122,13 @@ go_binary(name = "repo")
 
 go_test(name = "go_default_test")
 `
-	_, empty, err := g.GenerateRules(&pkg)
-	if err != nil {
-		t.Fatal(err)
+	_, empty := g.GenerateRules(&pkg)
+	f := rule.EmptyFile("test")
+	for _, e := range empty {
+		e.Insert(f)
 	}
-	emptyStmt := make([]bf.Expr, len(empty))
-	for i, s := range empty {
-		emptyStmt[i] = s
-	}
-	got := string(bf.Format(&bf.File{Stmt: emptyStmt}))
+	f.Sync()
+	got := string(bzl.Format(f.File))
 	if got != want {
 		t.Errorf("got '%s' ;\nwant %s", got, want)
 	}
@@ -142,14 +141,9 @@ func TestGeneratorEmptyLegacyProto(t *testing.T) {
 	g := generator.NewGenerator(c, l, nil)
 
 	pkg := packages.Package{Name: "foo"}
-	_, empty, err := g.GenerateRules(&pkg)
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, empty := g.GenerateRules(&pkg)
 	for _, e := range empty {
-		rule := bf.Rule{Call: e.(*bf.CallExpr)}
-		kind := rule.Kind()
-		if kind == "proto_library" || kind == "go_proto_library" || kind == "go_grpc_library" {
+		if kind := e.Kind(); kind == "proto_library" || kind == "go_proto_library" || kind == "go_grpc_library" {
 			t.Errorf("deleted rule %s ; should not delete in legacy proto mode", kind)
 		}
 	}
