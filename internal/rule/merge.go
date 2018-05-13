@@ -270,7 +270,7 @@ type dictEntry struct {
 // dictionaries, but it doesn't sort elements after squashing. If squashing
 // fails because the expression is not understood, an error is returned,
 // and neither rule is modified.
-func SquashRules(src, dst *Rule, mergeable config.MergeableAttrs, filename string) error {
+func SquashRules(src, dst *Rule, filename string) error {
 	if ShouldKeep(dst.call) {
 		return nil
 	}
@@ -279,7 +279,7 @@ func SquashRules(src, dst *Rule, mergeable config.MergeableAttrs, filename strin
 		srcValue := srcAttr.Y
 		if dstAttr, ok := dst.attrs[key]; !ok {
 			dst.SetAttr(key, srcValue)
-		} else if mergeable[dst.Kind()][key] && !ShouldKeep(dstAttr) {
+		} else if !ShouldKeep(dstAttr) {
 			dstValue := dstAttr.Y
 			if squashedValue, err := squashExprs(srcValue, dstValue); err != nil {
 				start, end := dstValue.Span()
@@ -289,6 +289,9 @@ func SquashRules(src, dst *Rule, mergeable config.MergeableAttrs, filename strin
 			}
 		}
 	}
+	dst.call.Comments.Before = append(dst.call.Comments.Before, src.call.Comments.Before...)
+	dst.call.Comments.Suffix = append(dst.call.Comments.Suffix, src.call.Comments.Suffix...)
+	dst.call.Comments.After = append(dst.call.Comments.After, src.call.Comments.After...)
 	return nil
 }
 

@@ -26,6 +26,7 @@ limitations under the License.
 package rule
 
 import (
+	"io/ioutil"
 	"sort"
 	"strings"
 
@@ -95,9 +96,34 @@ func EmptyFile(path string) *File {
 	}
 }
 
-// LoadFile creates a File wrapped around the given syntax tree. This tree
+// LoadFile loads a build file from disk, parses it, and scans for rules and
+// load statements. The syntax tree within the returned File will be modified
+// by editing methods.
+//
+// This function returns I/O and parse errors without modification. It's safe
+// to use os.IsNotExist and similar predicates.
+func LoadFile(path string) (*File, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return LoadData(path, data)
+}
+
+// LoadData parses a build file from a byte slice and scans it for rules and
+// load statements. The syntax tree within the returned File will be modified
+// by editing methods.
+func LoadData(path string, data []byte) (*File, error) {
+	ast, err := bzl.Parse(path, data)
+	if err != nil {
+		return nil, err
+	}
+	return ScanAST(ast), nil
+}
+
+// ScanAST creates a File wrapped around the given syntax tree. This tree
 // will be modified by editing methods.
-func LoadFile(bzlFile *bzl.File) *File {
+func ScanAST(bzlFile *bzl.File) *File {
 	f := &File{
 		File: bzlFile,
 		Path: bzlFile.Path,
@@ -128,25 +154,50 @@ func LoadFile(bzlFile *bzl.File) *File {
 // Sync writes all changes back to the wrapped syntax tree. This should be
 // called after editing operations, before reading the syntax tree again.
 func (f *File) Sync() {
+	f.sync(false)
+}
+
+// SyncIncludingHiddenAttrs writes changes back to the wrapped syntax tree,
+// including hidden attributes (those starting with "_") on rules. This should
+// only be used for testing since hidden attributes should never be written to a
+// build file.
+func (f *File) SyncIncludingHiddenAttrs() {
+	f.sync(true)
+}
+
+func (f *File) sync(includeHidden bool) {
 	var inserts, deletes []stmt
-	collect := func(s stmt) {
-		if s.shouldSync() {
-			s.sync()
-		}
-		if s.shouldDelete() {
+	var r, w int
+	for r, w = 0, 0; r < len(f.Loads); r++ {
+		s := f.Loads[r]
+		s.sync()
+		if s.deleted {
 			deletes = append(deletes, s)
+			continue
 		}
-		if s.shouldInsert() {
-			s.sync()
+		if s.inserted {
 			inserts = append(inserts, s)
+			s.inserted = false
 		}
+		f.Loads[w] = s
+		w++
 	}
-	for _, s := range f.Loads {
-		collect(s)
+	f.Loads = f.Loads[:w]
+	for r, w = 0, 0; r < len(f.Rules); r++ {
+		s := f.Rules[r]
+		s.sync(includeHidden)
+		if s.deleted {
+			deletes = append(deletes, s)
+			continue
+		}
+		if s.inserted {
+			inserts = append(inserts, s)
+			s.inserted = false
+		}
+		f.Rules[w] = s
+		w++
 	}
-	for _, s := range f.Rules {
-		collect(s)
-	}
+	f.Rules = f.Rules[:w]
 	sort.Stable(byIndex(deletes))
 	sort.Stable(byIndex(inserts))
 
@@ -170,12 +221,23 @@ func (f *File) Sync() {
 	}
 }
 
+// Format formats the build file in a form that can be written to disk.
+// This method calls Sync internally.
+func (f *File) Format() []byte {
+	f.Sync()
+	return bzl.Format(f.File)
+}
+
+// Save writes the build file to disk at the same path it was loaded from.
+// This method calls Sync internally.
+func (f *File) Save() error {
+	f.Sync()
+	data := bzl.Format(f.File)
+	return ioutil.WriteFile(f.Path, data, 0666)
+}
+
 type stmt interface {
 	Index() int
-	shouldDelete() bool
-	shouldInsert() bool
-	shouldSync() bool
-	sync()
 	expr() bzl.Expr
 }
 
@@ -209,10 +271,7 @@ func (s *baseStmt) Index() int { return s.index }
 // syntax tree when File.Sync is called.
 func (s *baseStmt) Delete() { s.deleted = true }
 
-func (s *baseStmt) shouldDelete() bool { return s.deleted }
-func (s *baseStmt) shouldInsert() bool { return s.inserted }
-func (s *baseStmt) shouldSync() bool   { return s.updated }
-func (s *baseStmt) expr() bzl.Expr     { return s.call }
+func (s *baseStmt) expr() bzl.Expr { return s.call }
 
 // Load represents a load statement within a build file.
 type Load struct {
@@ -318,6 +377,11 @@ func (l *Load) Insert(f *File, index int) {
 }
 
 func (l *Load) sync() {
+	if !l.updated {
+		return
+	}
+	l.updated = false
+
 	args := make([]*bzl.StringExpr, 0, len(l.symbols))
 	kwargs := make([]*bzl.BinaryExpr, 0, len(l.symbols))
 	for _, e := range l.symbols {
@@ -394,13 +458,6 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 		} else {
 			args = append(args, arg)
 		}
-	}
-	nameAttr, ok := attrs["name"]
-	if !ok {
-		return nil
-	}
-	if _, ok := nameAttr.Y.(*bzl.StringExpr); !ok {
-		return nil
 	}
 	return &Rule{
 		baseStmt: baseStmt{
@@ -549,10 +606,11 @@ func (r *Rule) IsEmpty(attrs config.MergeableAttrs) bool {
 	return true
 }
 
-func (r *Rule) sync() {
-	if !r.updated {
+func (r *Rule) sync(includeHidden bool) {
+	if !r.updated && !includeHidden {
 		return
 	}
+	r.updated = false
 
 	for _, k := range []string{"srcs", "deps"} {
 		if attr, ok := r.attrs[k]; ok {
@@ -566,7 +624,7 @@ func (r *Rule) sync() {
 	list := make([]bzl.Expr, 0, len(r.args)+len(r.attrs))
 	list = append(list, r.args...)
 	for k, attr := range r.attrs {
-		if !isHiddenKey(k) {
+		if !isHiddenKey(k) || includeHidden {
 			list = append(list, attr)
 		}
 	}

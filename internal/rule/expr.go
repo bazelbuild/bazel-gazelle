@@ -111,6 +111,64 @@ func MapExprStrings(e bzl.Expr, f func(string) string) bzl.Expr {
 	}
 }
 
+// FlattenExpr takes an expression that may have been generated from
+// PlatformStrings and returns its values in a flat, sorted, de-duplicated
+// list. Comments are accumulated and de-duplicated across duplicate
+// expressions. If the expression could not have been generted by
+// PlatformStrings, the expression will be returned unmodified.
+func FlattenExpr(e bzl.Expr) bzl.Expr {
+	ps, err := extractPlatformStringsExprs(e)
+	if err != nil {
+		return e
+	}
+
+	ls := makeListSquasher()
+	addElem := func(e bzl.Expr) bool {
+		s, ok := e.(*bzl.StringExpr)
+		if !ok {
+			return false
+		}
+		ls.add(s)
+		return true
+	}
+	addList := func(e bzl.Expr) bool {
+		l, ok := e.(*bzl.ListExpr)
+		if !ok {
+			return false
+		}
+		for _, elem := range l.List {
+			if !addElem(elem) {
+				return false
+			}
+		}
+		return true
+	}
+	addDict := func(d *bzl.DictExpr) bool {
+		for _, kv := range d.List {
+			if !addList(kv.(*bzl.KeyValueExpr).Value) {
+				return false
+			}
+		}
+		return true
+	}
+
+	if ps.generic != nil {
+		if !addList(ps.generic) {
+			return e
+		}
+	}
+	for _, d := range []*bzl.DictExpr{ps.os, ps.arch, ps.platform} {
+		if d == nil {
+			continue
+		}
+		if !addDict(d) {
+			return e
+		}
+	}
+
+	return ls.list()
+}
+
 func isScalar(e bzl.Expr) bool {
 	switch e.(type) {
 	case *bzl.StringExpr, *bzl.LiteralExpr:

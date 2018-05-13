@@ -50,6 +50,10 @@ type GlobValue struct {
 //
 // Converting unsupported types will cause a panic.
 func ExprFromValue(val interface{}) bzl.Expr {
+	if e, ok := val.(bzl.Expr); ok {
+		return e
+	}
+
 	rv := reflect.ValueOf(val)
 	switch rv.Kind() {
 	case reflect.Bool:

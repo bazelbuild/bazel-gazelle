@@ -37,11 +37,10 @@ load("b.bzl", y_library = "y")
 
 y_library(name = "bar")
 `)
-	oldBzl, err := bzl.Parse("old", old)
+	f, err := LoadData("old", old)
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := LoadFile(oldBzl)
 
 	loadA := f.Loads[0]
 	loadA.Delete()
@@ -60,8 +59,7 @@ y_library(name = "bar")
 	baz := NewRule("z_library", "baz")
 	baz.Insert(f)
 
-	f.Sync()
-	got := strings.TrimSpace(string(bzl.Format(oldBzl)))
+	got := strings.TrimSpace(string(f.Format()))
 	want := strings.TrimSpace(`
 load("b.bzl", "x_library")
 load("c.bzl", "y_library", "z_library")
@@ -79,11 +77,10 @@ z_library(name = "baz")
 }
 
 func TestSymbolsReturnsKeys(t *testing.T) {
-	loadAst, err := bzl.Parse("load", []byte(`load("a.bzl", "y", z = "a")`))
+	f, err := LoadData("load", []byte(`load("a.bzl", "y", z = "a")`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := LoadFile(loadAst)
 	got := f.Loads[0].Symbols()
 	want := []string{"y", "z"}
 	if !reflect.DeepEqual(got, want) {
@@ -135,11 +132,10 @@ x_library(name = "x")
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			ast, err := bzl.Parse(tc.desc, []byte(tc.src))
+			f, err := LoadData(tc.desc, []byte(tc.src))
 			if err != nil {
 				t.Fatal(err)
 			}
-			f := LoadFile(ast)
 			if got := f.Rules[0].ShouldKeep(); got != tc.want {
 				t.Errorf("got %v; want %v", got, tc.want)
 			}
@@ -227,8 +223,7 @@ func TestRuleHiddenAttrsNotSynced(t *testing.T) {
 	r.SetAttr("srcs", []string{"x.go"})
 	r.SetAttr("_hidden", []string{"x.go"})
 	r.Insert(f)
-	f.Sync()
-	got := strings.TrimSpace(string(bzl.Format(f.File)))
+	got := strings.TrimSpace(string(f.Format()))
 	want := strings.TrimSpace(`
 go_library(
     name = "go_default_library",
