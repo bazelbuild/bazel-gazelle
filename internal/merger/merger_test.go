@@ -18,7 +18,7 @@ package merger
 import (
 	"testing"
 
-	bf "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 // should fix
@@ -142,12 +142,12 @@ go_library(
     name = "go_default_library",
     srcs = select({
         "darwin_amd64": [
-            "foo_darwin_amd64.go",  # keep
             "baz_darwin_amd64.go",
+            "foo_darwin_amd64.go",  # keep
         ],
         "linux_arm": [
-            "foo_linux_arm.go",  # keep
             "baz_linux_arm.go",
+            "foo_linux_arm.go",  # keep
         ],
         "//conditions:default": [],
     }),
@@ -188,8 +188,8 @@ go_library(
         "baz.go",
     ] + select({
         "linux_arm": [
-            "foo_linux_arm.go",  # keep
             "bar_linux_arm.go",  # keep
+            "foo_linux_arm.go",  # keep
         ],
     }),
 )
@@ -230,12 +230,12 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
-        "foo.go",  # keep
         "bar.go",  # keep
+        "foo.go",  # keep
     ] + select({
         "linux_arm": [
-            "foo_linux_arm.go",
             "bar_linux_arm.go",
+            "foo_linux_arm.go",
         ],
         "darwin_amd64": [
             "bar_darwin_amd64.go",
@@ -280,13 +280,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = [
-        "foo.go",  # keep
         "baz.go",
+        "foo.go",  # keep
     ] + select({
         "darwin_amd64": ["foo_darwin_amd64.go"],
         "linux_arm": [
-            "foo_linux_arm.go",  # keep
             "bar_linux_arm.go",
+            "foo_linux_arm.go",  # keep
         ],
         "//conditions:default": [],
     }),
@@ -553,14 +553,14 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "cgo_default_library",
+    cgo = True,
+    clinkopts = [
+        "-lpng",
+    ],
     copts = [
         "-g",  # keep
         "-O2",
     ],
-    clinkopts = [
-        "-lpng",
-    ],
-    cgo = True,
 )
 `,
 	}, {
@@ -844,15 +844,15 @@ load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
 go_binary(
     name = "custom_bin",
-    embed = [":custom_library"],
     srcs = ["bin.go"],
+    embed = [":custom_library"],
 )
 
 go_library(
     name = "custom_library",
+    srcs = ["lib.go"],
     embed = [":custom_proto_library"],
     importpath = "example.com/repo/foo",
-    srcs = ["lib.go"],
 )
 
 go_proto_library(
@@ -867,19 +867,19 @@ go_proto_library(
 func TestMergeFile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			genFile, err := bf.Parse("current", []byte(tc.current))
+			genFile, err := rule.LoadData("current", []byte(tc.current))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			f, err := bf.Parse("previous", []byte(tc.previous))
+			f, err := rule.LoadData("previous", []byte(tc.previous))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			emptyFile, err := bf.Parse("empty", []byte(tc.empty))
+			emptyFile, err := rule.LoadData("empty", []byte(tc.empty))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			MergeFile(genFile.Stmt, emptyFile.Stmt, f, PreResolveAttrs)
+			MergeFile(f, emptyFile.Rules, genFile.Rules, PreResolveAttrs)
 			FixLoads(f)
 
 			want := tc.expected
@@ -887,7 +887,7 @@ func TestMergeFile(t *testing.T) {
 				want = want[1:]
 			}
 
-			if got := string(bf.Format(f)); got != want {
+			if got := string(f.Format()); got != want {
 				t.Fatalf("%s: got %s; want %s", tc.desc, got, want)
 			}
 		})
@@ -951,22 +951,24 @@ go_binary(name = "z")
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			genFile, err := bf.Parse("gen", []byte(tc.gen))
+			genFile, err := rule.LoadData("gen", []byte(tc.gen))
 			if err != nil {
 				t.Fatal(err)
 			}
-			oldFile, err := bf.Parse("old", []byte(tc.old))
+			oldFile, err := rule.LoadData("old", []byte(tc.old))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, gotIndex, gotErr := match(oldFile.Stmt, genFile.Stmt[0].(*bf.CallExpr)); gotErr != nil {
+			if got, gotErr := match(oldFile.Rules, genFile.Rules[0]); gotErr != nil {
 				if !tc.wantError {
-					t.Fatalf("unexpected error: %v", gotErr)
+					t.Errorf("unexpected error: %v", gotErr)
 				}
 			} else if tc.wantError {
-				t.Fatal("unexpected success")
-			} else if gotIndex != tc.wantIndex {
-				t.Fatalf("got index %d ; want %d", gotIndex, tc.wantIndex)
+				t.Error("unexpected success")
+			} else if got == nil && tc.wantIndex >= 0 {
+				t.Error("got nil; want index %d", tc.wantIndex)
+			} else if got != nil && got.Index() != tc.wantIndex {
+				t.Fatalf("got index %d ; want %d", got.Index(), tc.wantIndex)
 			}
 		})
 	}

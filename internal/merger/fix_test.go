@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	bf "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 type fixTestCase struct {
@@ -86,10 +86,10 @@ proto_library(
 
 go_proto_library(
     name = "foo_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
     importpath = "example.com/repo",
     proto = ":foo_proto",
     visibility = ["//visibility:public"],
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
 )
 `,
 		},
@@ -204,17 +204,17 @@ cgo_library(
 # before comment
 go_library(
     name = "go_default_library",
-    visibility = ["//visibility:private"],
-    cgo = True,
-    cdeps = ["cdeps"],
-    clinkopts = ["clinkopts"],
-    copts = ["copts"],
-    data = ["data"],
-    deps = ["deps"],
-    gc_goopts = ["gc_goopts"],
     srcs = [
         "foo.go",  # keep
     ],
+    cdeps = ["cdeps"],
+    cgo = True,
+    clinkopts = ["clinkopts"],
+    copts = ["copts"],
+    data = ["data"],
+    gc_goopts = ["gc_goopts"],
+    visibility = ["//visibility:private"],
+    deps = ["deps"],
 )
 # after comment
 `,
@@ -256,10 +256,9 @@ go_library(
         "cgo.go",
         "pure.go",
     ],
-    deps = [
-        "cgo_deps",
-        "pure_deps",
-    ],
+    cdeps = ["cdeps"],
+    cgo = True,
+    copts = ["copts"],
     data = [
         "cgo_data",
         "pure_data",
@@ -268,9 +267,10 @@ go_library(
         "cgo_gc_goopts",
         "pure_gc_goopts",
     ],
-    cgo = True,
-    cdeps = ["cdeps"],
-    copts = ["copts"],
+    deps = [
+        "cgo_deps",
+        "pure_deps",
+    ],
 )
 # after go_library
 # after cgo_library
@@ -324,12 +324,12 @@ go_test(
         "i_test.go",
         "x_test.go",
     ],
+    visibility = ["//visibility:public"],
     deps = [
         ":i_dep",
         ":shared_dep",
         ":x_dep",
     ],
-    visibility = ["//visibility:public"],
 )
 `,
 		},
@@ -377,7 +377,7 @@ go_proto_library(name = "foo_proto")
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			testFix(t, tc, func(f *bf.File) {
+			testFix(t, tc, func(f *rule.File) {
 				c := &config.Config{ShouldFix: true}
 				FixFile(c, f)
 			})
@@ -598,8 +598,8 @@ go_repository(name = "foo")
 	}
 }
 
-func testFix(t *testing.T, tc fixTestCase, fix func(*bf.File)) {
-	f, err := bf.Parse("old", []byte(tc.old))
+func testFix(t *testing.T, tc fixTestCase, fix func(*rule.File)) {
+	f, err := rule.LoadData("old", []byte(tc.old))
 	if err != nil {
 		t.Fatalf("%s: parse error: %v", tc.desc, err)
 	}
@@ -609,7 +609,7 @@ func testFix(t *testing.T, tc fixTestCase, fix func(*bf.File)) {
 		// Strip leading newline, added for readability
 		want = want[1:]
 	}
-	if got := string(bf.Format(f)); got != want {
+	if got := string(f.Format()); got != want {
 		t.Fatalf("%s: got %s; want %s", tc.desc, got, want)
 	}
 }

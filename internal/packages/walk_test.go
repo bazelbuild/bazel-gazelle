@@ -27,7 +27,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
-	bf "github.com/bazelbuild/buildtools/build"
 )
 
 func tempDir() (string, error) {
@@ -90,7 +89,7 @@ func createFiles(files []fileSpec) (string, error) {
 
 func walkPackages(c *config.Config) []*packages.Package {
 	var pkgs []*packages.Package
-	packages.Walk(c, c.RepoRoot, func(_, _ string, _ *config.Config, pkg *packages.Package, _ *bf.File, _ bool) {
+	packages.Walk(c, c.RepoRoot, func(_, _ string, _ *config.Config, pkg *packages.Package, _ *rule.File, _ bool) {
 		if pkg != nil {
 			pkgs = append(pkgs, pkg)
 		}
@@ -327,7 +326,7 @@ func TestVendorResetsPrefix(t *testing.T) {
 		ValidBuildFileNames: config.DefaultValidBuildFileNames,
 		GoPrefix:            basePrefix,
 	}
-	packages.Walk(c, c.RepoRoot, func(_, rel string, c *config.Config, _ *packages.Package, _ *bf.File, _ bool) {
+	packages.Walk(c, c.RepoRoot, func(_, rel string, c *config.Config, _ *packages.Package, _ *rule.File, _ bool) {
 		if path.Base(rel) != "vendor" {
 			return
 		}

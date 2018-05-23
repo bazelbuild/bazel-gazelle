@@ -22,40 +22,6 @@ import (
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
-var (
-	goRuleKinds = map[string]bool{
-		"cgo_library": true,
-		"go_binary":   true,
-		"go_library":  true,
-		"go_test":     true,
-	}
-	sortedAttrs = []string{"srcs", "deps"}
-)
-
-// SortLabels sorts lists of strings in "srcs" and "deps" attributes of
-// Go rules using the same order as buildifier. Buildifier also sorts string
-// lists, but not those involved with "select" expressions.
-// TODO(jayconrod): remove this when bazelbuild/buildtools#122 is fixed.
-func SortLabels(f *bzl.File) {
-	for _, s := range f.Stmt {
-		c, ok := s.(*bzl.CallExpr)
-		if !ok {
-			continue
-		}
-		r := bzl.Rule{Call: c}
-		if !goRuleKinds[r.Kind()] {
-			continue
-		}
-		for _, key := range []string{"srcs", "deps"} {
-			attr := r.AttrDefn(key)
-			if attr == nil {
-				continue
-			}
-			bzl.Walk(attr.Y, sortExprLabels)
-		}
-	}
-}
-
 // sortExprLabels sorts lists of strings using the same order as buildifier.
 // Buildifier also sorts string lists, but not those involved with "select"
 // expressions. This function is intended to be used with bzl.Walk.

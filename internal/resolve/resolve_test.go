@@ -24,7 +24,8 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
-	bf "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 func TestResolveGoIndex(t *testing.T) {
@@ -201,7 +202,7 @@ go_library(
 		t.Run(tc.desc, func(t *testing.T) {
 			ix := NewRuleIndex()
 			for _, fs := range tc.buildFiles {
-				f, err := bf.Parse(path.Join(fs.rel, "BUILD.bazel"), []byte(fs.content))
+				f, err := rule.LoadData(path.Join(fs.rel, "BUILD.bazel"), []byte(fs.content))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -256,7 +257,7 @@ go_library(
     importpath = "example.com/foo",
 )
 `)
-	f, err := bf.Parse(filepath.Join("sub", "BUILD.bazel"), buildContent)
+	f, err := rule.LoadData(filepath.Join("sub", "BUILD.bazel"), buildContent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -500,7 +501,7 @@ func TestResolveGoSkipEmbeds(t *testing.T) {
 	ix := NewRuleIndex()
 	r := NewResolver(c, l, ix, nil)
 
-	f, err := bf.Parse("(test)", []byte(`
+	f, err := rule.LoadData("(test)", []byte(`
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
@@ -522,11 +523,10 @@ go_test(
 	}
 	ix.AddRulesFromFile(c, f)
 	ix.Finish()
-	test := f.Stmt[len(f.Stmt)-1]
-	test = r.ResolveRule(test, "")
-	testRule := bf.Rule{Call: test.(*bf.CallExpr)}
+	testRule := f.Rules[len(f.Rules)-1]
+	r.ResolveRule(testRule, "")
 	testDeps := testRule.Attr("deps")
 	if testDeps != nil {
-		t.Errorf("got deps = %s; want nil", bf.FormatString(testDeps))
+		t.Errorf("got deps = %s; want nil", bzl.FormatString(testDeps))
 	}
 }

@@ -1220,7 +1220,7 @@ http_archive(
     sha256 = "6228d9618ab9536892aa69082c063207c91e777e51bd3c5544c9c060cafe1bd8",
 )
 
-load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
@@ -1232,8 +1232,8 @@ gazelle_dependencies()
 
 go_repository(
     name = "org_golang_x_net",
-    importpath = "golang.org/x/net",
     commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
+    importpath = "golang.org/x/net",
 )
 
 # keep

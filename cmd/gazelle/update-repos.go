@@ -19,18 +19,17 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
-	bf "github.com/bazelbuild/buildtools/build"
 )
 
-type updateReposFn func(c *updateReposConfiguration, oldFile *bf.File) error
+type updateReposFn func(c *updateReposConfiguration, oldFile *rule.File) error
 
 type updateReposConfiguration struct {
 	fn           updateReposFn
@@ -46,13 +45,9 @@ func updateRepos(args []string) error {
 	}
 
 	workspacePath := filepath.Join(c.repoRoot, "WORKSPACE")
-	content, err := ioutil.ReadFile(workspacePath)
+	f, err := rule.LoadFile(workspacePath)
 	if err != nil {
-		return fmt.Errorf("error reading %q: %v", workspacePath, err)
-	}
-	f, err := bf.Parse(workspacePath, content)
-	if err != nil {
-		return fmt.Errorf("error parsing %q: %v", workspacePath, err)
+		return fmt.Errorf("error loading %q: %v", workspacePath, err)
 	}
 	merger.FixWorkspace(f)
 
@@ -63,7 +58,7 @@ func updateRepos(args []string) error {
 	if err := merger.CheckGazelleLoaded(f); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(f.Path, bf.Format(f), 0666); err != nil {
+	if err := f.Save(); err != nil {
 		return fmt.Errorf("error writing %q: %v", f.Path, err)
 	}
 	return nil
@@ -136,11 +131,11 @@ FLAGS:
 `)
 }
 
-func updateImportPaths(c *updateReposConfiguration, f *bf.File) error {
+func updateImportPaths(c *updateReposConfiguration, f *rule.File) error {
 	rs := repos.ListRepositories(f)
 	rc := repos.NewRemoteCache(rs)
 
-	genRules := make([]bf.Expr, len(c.importPaths))
+	genRules := make([]*rule.Rule, len(c.importPaths))
 	errs := make([]error, len(c.importPaths))
 	var wg sync.WaitGroup
 	wg.Add(len(c.importPaths))
@@ -165,16 +160,16 @@ func updateImportPaths(c *updateReposConfiguration, f *bf.File) error {
 			return err
 		}
 	}
-	merger.MergeFile(genRules, nil, f, merger.RepoAttrs)
+	merger.MergeFile(f, nil, genRules, merger.RepoAttrs)
 	return nil
 }
 
-func importFromLockFile(c *updateReposConfiguration, f *bf.File) error {
+func importFromLockFile(c *updateReposConfiguration, f *rule.File) error {
 	genRules, err := repos.ImportRepoRules(c.lockFilename)
 	if err != nil {
 		return err
 	}
 
-	merger.MergeFile(genRules, nil, f, merger.RepoAttrs)
+	merger.MergeFile(f, nil, genRules, merger.RepoAttrs)
 	return nil
 }

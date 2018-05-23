@@ -21,7 +21,7 @@ import (
 	"regexp"
 	"strings"
 
-	bf "github.com/bazelbuild/buildtools/build"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 // Directive is a key-value pair extracted from a top-level comment in
@@ -54,9 +54,9 @@ var knownTopLevelDirectives = map[string]bool{
 // ParseDirectives scans f for Gazelle directives. The full list of directives
 // is returned. Errors are reported for unrecognized directives and directives
 // out of place (after the first statement).
-func ParseDirectives(f *bf.File) []Directive {
+func ParseDirectives(f *bzl.File) []Directive {
 	var directives []Directive
-	parseComment := func(com bf.Comment) {
+	parseComment := func(com bzl.Comment) {
 		match := directiveRe.FindStringSubmatch(com.Token)
 		if match == nil {
 			return
@@ -144,7 +144,7 @@ func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
 // TODO(jayconrod): this is operating at the wrong level of abstraction, but
 // it can't depend on rule, since rule depends on config. Move to another
 // package after the Language abstraction lands.
-func InferProtoMode(c *Config, rel string, f *bf.File, directives []Directive) *Config {
+func InferProtoMode(c *Config, rel string, f *bzl.File, directives []Directive) *Config {
 	if c.ProtoMode != DefaultProtoMode || c.ProtoModeExplicit {
 		return c
 	}
@@ -173,15 +173,15 @@ func InferProtoMode(c *Config, rel string, f *bf.File, directives []Directive) *
 	}
 	mode := DefaultProtoMode
 	for _, stmt := range f.Stmt {
-		c, ok := stmt.(*bf.CallExpr)
+		c, ok := stmt.(*bzl.CallExpr)
 		if !ok {
 			continue
 		}
-		x, ok := c.X.(*bf.LiteralExpr)
+		x, ok := c.X.(*bzl.LiteralExpr)
 		if !ok || x.Token != "load" || len(c.List) == 0 {
 			continue
 		}
-		name, ok := c.List[0].(*bf.StringExpr)
+		name, ok := c.List[0].(*bzl.StringExpr)
 		if !ok {
 			continue
 		}
@@ -193,15 +193,15 @@ func InferProtoMode(c *Config, rel string, f *bf.File, directives []Directive) *
 			break
 		}
 		for _, arg := range c.List[1:] {
-			if sym, ok := arg.(*bf.StringExpr); ok && sym.Value == "go_proto_library" {
+			if sym, ok := arg.(*bzl.StringExpr); ok && sym.Value == "go_proto_library" {
 				mode = DisableProtoMode
 				break
 			}
-			kwarg, ok := arg.(*bf.BinaryExpr)
+			kwarg, ok := arg.(*bzl.BinaryExpr)
 			if !ok || kwarg.Op != "=" {
 				continue
 			}
-			if key, ok := kwarg.X.(*bf.LiteralExpr); ok && key.Token == "go_proto_library" {
+			if key, ok := kwarg.X.(*bzl.LiteralExpr); ok && key.Token == "go_proto_library" {
 				mode = DisableProtoMode
 				break
 			}

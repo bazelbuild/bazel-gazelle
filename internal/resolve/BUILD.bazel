@@ -16,6 +16,7 @@ go_library(
         "//internal/label:go_default_library",
         "//internal/pathtools:go_default_library",
         "//internal/repos:go_default_library",
+        "//internal/rule:go_default_library",
         "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
     ],
 )
