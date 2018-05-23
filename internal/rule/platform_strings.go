@@ -23,7 +23,7 @@ import (
 )
 
 // PlatformStrings contains a set of strings associated with a buildable
-// Go target in a package. This is used to store source file names,
+// target in a package. This is used to store source file names,
 // import paths, and flags.
 //
 // Strings are stored in four sets: generic strings, OS-specific strings,
@@ -48,6 +48,7 @@ type PlatformStrings struct {
 	Platform map[config.Platform][]string
 }
 
+// HasExt returns whether this set contains a file with the given extension.
 func (ps *PlatformStrings) HasExt(ext string) bool {
 	return ps.firstExtFile(ext) != ""
 }
@@ -56,6 +57,7 @@ func (ps *PlatformStrings) IsEmpty() bool {
 	return len(ps.Generic) == 0 && len(ps.OS) == 0 && len(ps.Arch) == 0 && len(ps.Platform) == 0
 }
 
+// Flat returns all the strings in the set, sorted and de-duplicated.
 func (ps *PlatformStrings) Flat() []string {
 	unique := make(map[string]struct{})
 	for _, s := range ps.Generic {

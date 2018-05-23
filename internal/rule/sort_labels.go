@@ -56,6 +56,9 @@ func SortLabels(f *bzl.File) {
 	}
 }
 
+// sortExprLabels sorts lists of strings using the same order as buildifier.
+// Buildifier also sorts string lists, but not those involved with "select"
+// expressions. This function is intended to be used with bzl.Walk.
 func sortExprLabels(e bzl.Expr, _ []bzl.Expr) {
 	list, ok := e.(*bzl.ListExpr)
 	if !ok || len(list.List) == 0 {

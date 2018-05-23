@@ -141,6 +141,9 @@ func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
 // legacy go_proto_library.bzl is loaded, or if this is the Well Known Types
 // repository, legacy mode is used. If go_proto_library is loaded from another
 // file, proto rule generation is disabled.
+// TODO(jayconrod): this is operating at the wrong level of abstraction, but
+// it can't depend on rule, since rule depends on config. Move to another
+// package after the Language abstraction lands.
 func InferProtoMode(c *Config, rel string, f *bf.File, directives []Directive) *Config {
 	if c.ProtoMode != DefaultProtoMode || c.ProtoModeExplicit {
 		return c

@@ -114,7 +114,7 @@ func GenerateRule(repo Repo) bf.Expr {
 	if repo.VCS != "" {
 		attrs = append(attrs, rule.KeyValue{Key: "vcs", Value: repo.VCS})
 	}
-	return rule.NewRule("go_repository", attrs)
+	return rule.NewRuleAST("go_repository", attrs)
 }
 
 // FindExternalRepo attempts to locate the directory where Bazel has fetched
