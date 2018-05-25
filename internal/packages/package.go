@@ -207,16 +207,19 @@ func (pb *packageBuilder) inferImportPath(c *config.Config) error {
 	if pb.importPath != "" {
 		log.Panic("importPath already set")
 	}
-	if pb.rel == c.GoPrefixRel {
-		if c.GoPrefix == "" {
-			return fmt.Errorf("in directory %q, prefix is empty, so importpath would be empty for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line.", pb.dir)
-		}
-		pb.importPath = c.GoPrefix
-	} else {
-		fromPrefixRel := strings.TrimPrefix(pb.rel, c.GoPrefixRel+"/")
-		pb.importPath = path.Join(c.GoPrefix, fromPrefixRel)
+	pb.importPath = inferImportPath(c, pb.rel)
+	if pb.importPath == "" {
+		return fmt.Errorf("in directory %q, prefix is empty, so importpath would be empty for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line.", pb.dir)
 	}
 	return nil
+}
+
+func inferImportPath(c *config.Config, rel string) string {
+	if rel == c.GoPrefixRel {
+		return c.GoPrefix
+	}
+	fromPrefixRel := strings.TrimPrefix(rel, c.GoPrefixRel+"/")
+	return path.Join(c.GoPrefix, fromPrefixRel)
 }
 
 func (pb *packageBuilder) build() *Package {

@@ -127,10 +127,12 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		// set an empty prefix.
 		if path.Base(rel) == "vendor" {
 			cCopy := *c
+			if cCopy.GoImportMapPrefix == "" {
+				cCopy.GoImportMapPrefix = inferImportPath(c, rel)
+				cCopy.GoImportMapPrefixRel = rel
+			}
 			cCopy.GoPrefix = ""
 			cCopy.GoPrefixRel = rel
-			cCopy.GoImportMapPrefix = path.Join(c.RepoName, rel)
-			cCopy.GoImportMapPrefixRel = rel
 			c = &cCopy
 		}
 		var directives []config.Directive
