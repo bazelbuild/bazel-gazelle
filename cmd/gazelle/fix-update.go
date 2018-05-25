@@ -234,7 +234,12 @@ func newFixUpdateConfiguration(cmd command, args []string) (*updateConfig, error
 		return nil, fmt.Errorf("failed to evaluate symlinks for repo root: %v", err)
 	}
 
-	for _, dir := range uc.c.Dirs {
+	for i, dir := range uc.c.Dirs {
+		dir, err = filepath.EvalSymlinks(dir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to evaluate symlinks for dir: %v", err)
+		}
+		uc.c.Dirs[i] = dir
 		if !isDescendingDir(dir, uc.c.RepoRoot) {
 			return nil, fmt.Errorf("dir %q is not a subdirectory of repo root %q", dir, uc.c.RepoRoot)
 		}
