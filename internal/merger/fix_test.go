@@ -57,6 +57,35 @@ go_test(
     embed = [":go_default_library"],
 )
 `,
+		}, {
+			// verifies #211
+			desc: "other library not migrated",
+			old: `
+gomock(
+    name = "stripe_mock",
+    out = "stripe_mock_test.go",
+    library = ":go_default_library",
+    interfaces = [
+        "stSubscriptions",
+        "stCustomers",
+    ],
+    package = "main",
+    source = "stripe.go",
+)
+`,
+			want: `
+gomock(
+    name = "stripe_mock",
+    out = "stripe_mock_test.go",
+    library = ":go_default_library",
+    interfaces = [
+        "stSubscriptions",
+        "stCustomers",
+    ],
+    package = "main",
+    source = "stripe.go",
+)
+`,
 		},
 		// migrateGrpcCompilers tests
 		{
