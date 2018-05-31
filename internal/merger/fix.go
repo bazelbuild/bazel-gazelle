@@ -55,6 +55,9 @@ func FixFile(c *config.Config, f *rule.File) {
 // no keep comment on "library" and no existing "embed" attribute.
 func migrateLibraryEmbed(c *config.Config, f *rule.File) {
 	for _, r := range f.Rules {
+		if !isGoRule(r.Kind()) {
+			continue
+		}
 		libExpr := r.Attr("library")
 		if libExpr == nil || rule.ShouldKeep(libExpr) || r.Attr("embed") != nil {
 			continue
