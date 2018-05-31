@@ -198,7 +198,7 @@ func init() {
 // rules in empty with matching rules in f and deletes rules that
 // are empty after merging. attrs is the set of attributes to merge. Attributes
 // not in this set will be left alone if they already exist.
-func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs config.MergeableAttrs) (mergedRules []*rule.Rule) {
+func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs config.MergeableAttrs) {
 	// Merge empty rules into the file and delete any rules which become empty.
 	for _, emptyRule := range emptyRules {
 		if oldRule, _ := match(oldFile.Rules, emptyRule); oldRule != nil {
@@ -245,14 +245,10 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs conf
 		}
 		if matchRules[i] == nil {
 			genRule.Insert(oldFile)
-			mergedRules = append(mergedRules, genRule)
 		} else {
 			rule.MergeRules(genRule, matchRules[i], attrs, oldFile.Path)
-			mergedRules = append(mergedRules, matchRules[i])
 		}
 	}
-
-	return mergedRules
 }
 
 // substituteAttrs contains a list of attributes for each kind that should be

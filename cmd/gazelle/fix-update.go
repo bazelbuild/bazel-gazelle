@@ -127,7 +127,7 @@ func runFixUpdate(cmd command, args []string) error {
 					r.Insert(file)
 				}
 			} else {
-				rules = merger.MergeFile(file, empty, rules, merger.PreResolveAttrs)
+				merger.MergeFile(file, empty, rules, merger.PreResolveAttrs)
 			}
 			visits = append(visits, visitRecord{
 				pkgRel: rel,

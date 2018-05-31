@@ -1331,6 +1331,52 @@ go_repository(
 	}
 }
 
+// TestKeepDeps checks rules with keep comments on the rule or on the deps
+// attribute will not be modified during dependency resolution. Verifies #212.
+func TestKeepDeps(t *testing.T) {
+	files := []fileSpec{
+		{
+			path: "WORKSPACE",
+		}, {
+			path: "BUILD.bazel",
+			content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+# gazelle:prefix example.com/repo
+
+# keep
+go_library(
+    name = "go_default_library",
+    srcs = ["lib.go"],
+    importpath = "example.com/repo",
+    deps = [":dont_remove"],
+)
+
+go_test(
+    name = "go_default_test",
+    # keep
+    srcs = ["lib_test.go"],
+    # keep
+    embed = [":go_default_library"],
+    # keep
+    deps = [":dont_remove"],
+)
+`,
+		},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	if err := runGazelle(dir, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	checkFiles(t, dir, files)
+}
+
 // TODO(jayconrod): more tests
 //   run in fix mode in testdata directories to create new files
 //   run in diff mode in testdata directories to update existing files (no change)
