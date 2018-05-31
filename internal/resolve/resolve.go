@@ -24,6 +24,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/labeler"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
@@ -33,7 +34,7 @@ import (
 // import statements in protos) into Bazel labels.
 type Resolver struct {
 	c        *config.Config
-	l        *label.Labeler
+	l        *labeler.Labeler
 	ix       *RuleIndex
 	external nonlocalResolver
 }
@@ -45,7 +46,7 @@ type nonlocalResolver interface {
 	resolve(imp string) (label.Label, error)
 }
 
-func NewResolver(c *config.Config, l *label.Labeler, ix *RuleIndex, rc *repos.RemoteCache) *Resolver {
+func NewResolver(c *config.Config, l *labeler.Labeler, ix *RuleIndex, rc *repos.RemoteCache) *Resolver {
 	var e nonlocalResolver
 	switch c.DepMode {
 	case config.ExternalMode:

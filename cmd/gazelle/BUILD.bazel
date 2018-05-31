@@ -18,6 +18,7 @@ go_library(
         "//internal/config:go_default_library",
         "//internal/generator:go_default_library",
         "//internal/label:go_default_library",
+        "//internal/labeler:go_default_library",
         "//internal/merger:go_default_library",
         "//internal/packages:go_default_library",
         "//internal/repos:go_default_library",

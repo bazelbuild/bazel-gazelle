@@ -52,8 +52,8 @@ func TestAddPlatformStrings(t *testing.T) {
 			desc:     "os and arch",
 			filename: "foo_linux_amd64.go",
 			want: rule.PlatformStrings{
-				Platform: map[config.Platform][]string{
-					config.Platform{OS: "linux", Arch: "amd64"}: []string{"foo_linux_amd64.go"},
+				Platform: map[rule.Platform][]string{
+					rule.Platform{OS: "linux", Arch: "amd64"}: []string{"foo_linux_amd64.go"},
 				},
 			},
 		}, {
@@ -61,8 +61,8 @@ func TestAddPlatformStrings(t *testing.T) {
 			filename: "foo.go",
 			tags:     []tagLine{{{"solaris", "!arm"}}},
 			want: rule.PlatformStrings{
-				Platform: map[config.Platform][]string{
-					config.Platform{OS: "solaris", Arch: "amd64"}: []string{"foo.go"},
+				Platform: map[rule.Platform][]string{
+					rule.Platform{OS: "solaris", Arch: "amd64"}: []string{"foo.go"},
 				},
 			},
 		},
@@ -112,21 +112,21 @@ func TestDuplicatePlatformStrings(t *testing.T) {
 				sb.addArchString("a", []string{"mips"})
 			},
 			want: rule.PlatformStrings{
-				Platform: map[config.Platform][]string{
-					config.Platform{OS: "solaris", Arch: "amd64"}: {"a"},
-					config.Platform{OS: "linux", Arch: "mips"}:    {"a"},
+				Platform: map[rule.Platform][]string{
+					rule.Platform{OS: "solaris", Arch: "amd64"}: {"a"},
+					rule.Platform{OS: "linux", Arch: "mips"}:    {"a"},
 				},
 			},
 		}, {
 			desc: "platform os",
 			add: func(sb *platformStringsBuilder) {
-				sb.addPlatformString("a", []config.Platform{{OS: "linux", Arch: "mips"}})
+				sb.addPlatformString("a", []rule.Platform{{OS: "linux", Arch: "mips"}})
 				sb.addOSString("a", []string{"solaris"})
 			},
 			want: rule.PlatformStrings{
-				Platform: map[config.Platform][]string{
-					config.Platform{OS: "solaris", Arch: "amd64"}: {"a"},
-					config.Platform{OS: "linux", Arch: "mips"}:    {"a"},
+				Platform: map[rule.Platform][]string{
+					rule.Platform{OS: "solaris", Arch: "amd64"}: {"a"},
+					rule.Platform{OS: "linux", Arch: "mips"}:    {"a"},
 				},
 			},
 		},

@@ -48,12 +48,7 @@ func checkFiles(t *testing.T, files []fileSpec, goPrefix string, want []*package
 		p.Dir = filepath.Join(dir, filepath.FromSlash(p.Rel))
 	}
 
-	c := &config.Config{
-		RepoRoot:            dir,
-		GoPrefix:            goPrefix,
-		Dirs:                []string{dir},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-	}
+	c := testConfig(dir, goPrefix)
 	got := walkPackages(c)
 	checkPackages(t, got, want)
 }
@@ -89,7 +84,7 @@ func createFiles(files []fileSpec) (string, error) {
 
 func walkPackages(c *config.Config) []*packages.Package {
 	var pkgs []*packages.Package
-	packages.Walk(c, c.RepoRoot, func(_, _ string, _ *config.Config, pkg *packages.Package, _ *rule.File, _ bool) {
+	packages.Walk(c, nil, func(_, _ string, _ *config.Config, pkg *packages.Package, _ *rule.File, _ bool) {
 		if pkg != nil {
 			pkgs = append(pkgs, pkg)
 		}
@@ -115,6 +110,14 @@ func checkPackage(t *testing.T, got, want *packages.Package) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("for package %q, got %#v; want %#v", want.Name, got, want)
 	}
+}
+
+func testConfig(repoRoot string, goPrefix string) *config.Config {
+	c := config.New()
+	c.RepoRoot = repoRoot
+	c.Dirs = []string{repoRoot}
+	c.GoPrefix = goPrefix
+	return c
 }
 
 func TestWalkEmpty(t *testing.T) {
@@ -234,11 +237,7 @@ func TestMultiplePackagesWithoutDefault(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	c := &config.Config{
-		RepoRoot:            dir,
-		Dirs:                []string{dir},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-	}
+	c := testConfig(dir, "example.com/repo")
 	got := walkPackages(c)
 	if len(got) > 0 {
 		t.Errorf("got %v; want empty slice", got)
@@ -297,11 +296,7 @@ func TestRootWithoutPrefix(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	c := &config.Config{
-		RepoRoot:            dir,
-		Dirs:                []string{dir},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-	}
+	c := testConfig(dir, "example.com/repo")
 	got := walkPackages(c)
 	if len(got) > 0 {
 		t.Errorf("got %v; want empty slice", got)
@@ -320,13 +315,8 @@ func TestVendorResetsPrefix(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	basePrefix := "example.com/repo"
-	c := &config.Config{
-		RepoRoot:            dir,
-		Dirs:                []string{dir},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-		GoPrefix:            basePrefix,
-	}
-	packages.Walk(c, c.RepoRoot, func(_, rel string, c *config.Config, _ *packages.Package, _ *rule.File, _ bool) {
+	c := testConfig(dir, basePrefix)
+	packages.Walk(c, nil, func(_, rel string, c *config.Config, _ *packages.Package, _ *rule.File, _ bool) {
 		if path.Base(rel) != "vendor" {
 			return
 		}
@@ -816,12 +806,7 @@ func TestSymlinksBasic(t *testing.T) {
 			},
 		},
 	}
-	c := &config.Config{
-		RepoRoot:            dir + "/root",
-		GoPrefix:            "example.com/repo",
-		Dirs:                []string{dir + "/root"},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-	}
+	c := testConfig(dir+"/root", "example.com/repo")
 	got := walkPackages(c)
 	checkPackages(t, got, want)
 }
@@ -840,12 +825,7 @@ func TestSymlinksIgnore(t *testing.T) {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
 	want := []*packages.Package{}
-	c := &config.Config{
-		RepoRoot:            dir + "/root",
-		GoPrefix:            "example.com/repo",
-		Dirs:                []string{dir + "/root"},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-	}
+	c := testConfig(dir+"/root", "example.com/repo")
 	got := walkPackages(c)
 	checkPackages(t, got, want)
 }
@@ -877,12 +857,7 @@ func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
 			},
 		},
 	}
-	c := &config.Config{
-		RepoRoot:            dir + "/root",
-		GoPrefix:            "example.com/repo",
-		Dirs:                []string{dir + "/root"},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-	}
+	c := testConfig(dir+"/root", "example.com/repo")
 	got := walkPackages(c)
 	checkPackages(t, got, want)
 }
@@ -911,12 +886,7 @@ func TestSymlinksChained(t *testing.T) {
 			},
 		},
 	}
-	c := &config.Config{
-		RepoRoot:            dir + "/root",
-		GoPrefix:            "example.com/repo",
-		Dirs:                []string{dir + "/root"},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-	}
+	c := testConfig(dir+"/root", "example.com/repo")
 	got := walkPackages(c)
 	checkPackages(t, got, want)
 }
@@ -930,12 +900,7 @@ func TestSymlinksDangling(t *testing.T) {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
 	want := []*packages.Package{}
-	c := &config.Config{
-		RepoRoot:            dir + "/root",
-		GoPrefix:            "example.com/repo",
-		Dirs:                []string{dir + "/root"},
-		ValidBuildFileNames: config.DefaultValidBuildFileNames,
-	}
+	c := testConfig(dir+"/root", "example.com/repo")
 	got := walkPackages(c)
 	checkPackages(t, got, want)
 }

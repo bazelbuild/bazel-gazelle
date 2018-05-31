@@ -17,6 +17,7 @@ package resolve
 
 import (
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/labeler"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 )
@@ -28,13 +29,13 @@ import (
 // guidelines in http://bazel.io/docs/be/functions.html#workspace. The remaining
 // portion of the import path is treated as the package name.
 type externalResolver struct {
-	l  *label.Labeler
+	l  *labeler.Labeler
 	rc *repos.RemoteCache
 }
 
 var _ nonlocalResolver = (*externalResolver)(nil)
 
-func newExternalResolver(l *label.Labeler, rc *repos.RemoteCache) *externalResolver {
+func newExternalResolver(l *labeler.Labeler, rc *repos.RemoteCache) *externalResolver {
 	return &externalResolver{l: l, rc: rc}
 }
 

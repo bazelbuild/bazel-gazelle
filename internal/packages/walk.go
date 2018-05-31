@@ -16,6 +16,7 @@ limitations under the License.
 package packages
 
 import (
+	"flag"
 	"go/build"
 	"io/ioutil"
 	"log"
@@ -50,17 +51,21 @@ import (
 // isUpdateDir is true for directories that Gazelle was asked to update.
 type WalkFunc func(dir, rel string, c *config.Config, pkg *Package, oldFile *rule.File, isUpdateDir bool)
 
-// Walk traverses a directory tree. In each directory, Walk parses existing
-// build files. In directories that Gazelle was asked to update (c.Dirs), Walk
-// also parses source files and infers build information.
+// Walk traverses a directory tree rooted at c.RepoRoot. In each directory, Walk
+// parses existing build files. In directories that Gazelle was asked to update
+// (c.Dirs), Walk also parses source files and infers build information.
 //
-// c is the base configuration for the repository. c may be copied and modified
-// by directives found in build files.
+// c is the base configuration for the repository. This may be modified by
+// configuration extensions in the root directory.
 //
-// root is an absolute file path to the directory to traverse.
+// cexts is a list of configuration extensions. In each subdirectory, c will
+// be copied, and directives will be applied to the copies by calling the
+// Configure method.
 //
 // f is a function that will be called for each visited directory.
-func Walk(c *config.Config, root string, f WalkFunc) {
+func Walk(c *config.Config, cexts []config.Configurer, f WalkFunc) {
+	cexts = append(cexts, &walkConfigurer{})
+
 	// Determine relative paths for the directories to be updated.
 	var updateRels []string
 	for _, dir := range c.Dirs {
@@ -75,22 +80,15 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		}
 		updateRels = append(updateRels, rel)
 	}
-	rootRel, err := filepath.Rel(c.RepoRoot, root)
-	if err != nil {
-		log.Panicf("%s: not a subdirectory of repository root %q", root, c.RepoRoot)
-	}
-	if rootRel == "." || rootRel == "/" {
-		rootRel = ""
-	}
 
-	symlinks := symlinkResolver{root: root, visited: []string{root}}
+	symlinks := symlinkResolver{root: c.RepoRoot, visited: []string{c.RepoRoot}}
 
 	// visit walks the directory tree in post-order. It returns whether the
 	// given directory or any subdirectory contained a build file or buildable
 	// source code. This affects whether "testdata" directories are considered
 	// data dependencies.
-	var visit func(*config.Config, string, string, bool, []string) bool
-	visit = func(c *config.Config, dir, rel string, isUpdateDir bool, excluded []string) bool {
+	var visit func(*config.Config, string, string, bool) bool
+	visit = func(c *config.Config, dir, rel string, isUpdateDir bool) bool {
 		// Check if this directory should be updated.
 		if !isUpdateDir {
 			for _, updateRel := range updateRels {
@@ -125,6 +123,16 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 
 		// Process directives in the build file. If this is a vendor directory,
 		// set an empty prefix.
+		if rel != "" {
+			c = c.Clone()
+		}
+		for _, cext := range cexts {
+			cext.Configure(c, rel, oldFile)
+		}
+		wc := getWalkConfig(c)
+		// TODO(jayconrod): warn about unknown directives after deleting
+		// config.ApplyDirectives.
+		// TODO(jayconrod): move the logic below into configuration extensions.
 		if path.Base(rel) == "vendor" {
 			cCopy := *c
 			if cCopy.GoImportMapPrefix == "" {
@@ -135,23 +143,13 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 			cCopy.GoPrefixRel = rel
 			c = &cCopy
 		}
-		var directives []config.Directive
+		var directives []rule.Directive
 		if oldFile != nil {
 			directives = oldFile.Directives
 			c = config.ApplyDirectives(c, directives, rel)
 			c = config.InferProtoMode(c, rel, oldFile.File, directives)
 		} else {
 			c = config.InferProtoMode(c, rel, nil, directives)
-		}
-
-		var ignore bool
-		for _, d := range directives {
-			switch d.Key {
-			case "exclude":
-				excluded = append(excluded, d.Value)
-			case "ignore":
-				ignore = true
-			}
 		}
 
 		// List files and subdirectories.
@@ -161,14 +159,14 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 			return false
 		}
 		if c.ProtoMode == config.DefaultProtoMode {
-			excluded = append(excluded, findPbGoFiles(files, excluded)...)
+			wc.excluded = append(wc.excluded, findPbGoFiles(files, wc)...)
 		}
 
 		var pkgFiles, otherFiles, subdirs []string
 		for _, f := range files {
 			base := f.Name()
 			switch {
-			case base == "" || base[0] == '.' || base[0] == '_' || isExcluded(excluded, base):
+			case base == "" || base[0] == '.' || base[0] == '_' || wc.isExcluded(base):
 				continue
 
 			case f.IsDir():
@@ -189,8 +187,7 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		hasTestdata := false
 		subdirHasPackage := false
 		for _, sub := range subdirs {
-			subdirExcluded := excludedForSubdir(excluded, sub)
-			hasPackage := visit(c, filepath.Join(dir, sub), path.Join(rel, sub), isUpdateDir, subdirExcluded)
+			hasPackage := visit(c, filepath.Join(dir, sub), path.Join(rel, sub), isUpdateDir)
 			if sub == "testdata" && !hasPackage {
 				hasTestdata = true
 			}
@@ -198,7 +195,7 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		}
 
 		hasPackage := subdirHasPackage || oldFile != nil
-		if haveError || !isUpdateDir || ignore {
+		if haveError || !isUpdateDir || wc.ignore {
 			f(dir, rel, c, nil, oldFile, false)
 			return hasPackage
 		}
@@ -206,14 +203,14 @@ func Walk(c *config.Config, root string, f WalkFunc) {
 		// Build a package from files in this directory.
 		var genFiles []string
 		if oldFile != nil {
-			genFiles = findGenFiles(oldFile, excluded)
+			genFiles = findGenFiles(oldFile, wc)
 		}
 		pkg := buildPackage(c, dir, rel, pkgFiles, otherFiles, genFiles, hasTestdata)
 		f(dir, rel, c, pkg, oldFile, true)
 		return hasPackage || pkg != nil
 	}
 
-	visit(c, root, rootRel, false, nil)
+	visit(c, c.RepoRoot, "", false)
 }
 
 // buildPackage reads source files in a given directory and returns a Package
@@ -364,7 +361,7 @@ func defaultPackageName(c *config.Config, dir string) string {
 	return name
 }
 
-func findGenFiles(f *rule.File, excluded []string) []string {
+func findGenFiles(f *rule.File, wc *walkConfig) []string {
 	var strs []string
 	for _, r := range f.Rules {
 		for _, key := range []string{"out", "outs"} {
@@ -378,26 +375,49 @@ func findGenFiles(f *rule.File, excluded []string) []string {
 
 	var genFiles []string
 	for _, s := range strs {
-		if !isExcluded(excluded, s) {
+		if !wc.isExcluded(s) {
 			genFiles = append(genFiles, s)
 		}
 	}
 	return genFiles
 }
 
-func findPbGoFiles(files []os.FileInfo, excluded []string) []string {
+func findPbGoFiles(files []os.FileInfo, wc *walkConfig) []string {
 	var pbGoFiles []string
 	for _, f := range files {
 		name := f.Name()
-		if strings.HasSuffix(name, ".proto") && !isExcluded(excluded, name) {
+		if strings.HasSuffix(name, ".proto") && !wc.isExcluded(name) {
 			pbGoFiles = append(pbGoFiles, name[:len(name)-len(".proto")]+".pb.go")
 		}
 	}
 	return pbGoFiles
 }
 
-func isExcluded(excluded []string, base string) bool {
-	for _, e := range excluded {
+type walkConfig struct {
+	ignore   bool
+	excluded []string
+}
+
+const walkName = "_walk"
+
+func getWalkConfig(c *config.Config) *walkConfig {
+	return c.Exts[walkName].(*walkConfig)
+}
+
+func (wc *walkConfig) cloneForSubdir(subdir string) *walkConfig {
+	var excluded []string
+	for _, e := range wc.excluded {
+		i := strings.IndexByte(e, '/')
+		if i < 0 || i == len(e)-1 || e[:i] != subdir {
+			continue
+		}
+		excluded = append(excluded, e[i+1:])
+	}
+	return &walkConfig{excluded: excluded}
+}
+
+func (wc *walkConfig) isExcluded(base string) bool {
+	for _, e := range wc.excluded {
 		if base == e {
 			return true
 		}
@@ -405,16 +425,37 @@ func isExcluded(excluded []string, base string) bool {
 	return false
 }
 
-func excludedForSubdir(excluded []string, subdir string) []string {
-	var filtered []string
-	for _, e := range excluded {
-		i := strings.IndexByte(e, '/')
-		if i < 0 || i == len(e)-1 || e[:i] != subdir {
-			continue
-		}
-		filtered = append(filtered, e[i+1:])
+type walkConfigurer struct{}
+
+func (_ *walkConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
+}
+
+func (_ *walkConfigurer) CheckFlags(c *config.Config) error {
+	return nil
+}
+
+func (_ *walkConfigurer) KnownDirectives() []string {
+	return []string{"exclude", "ignore"}
+}
+
+func (_ *walkConfigurer) Configure(c *config.Config, rel string, f *rule.File) {
+	var wc *walkConfig
+	if raw, ok := c.Exts[walkName]; !ok {
+		wc = &walkConfig{}
+	} else {
+		wc = raw.(*walkConfig).cloneForSubdir(path.Base(rel))
 	}
-	return filtered
+	if f != nil {
+		for _, d := range f.Directives {
+			switch d.Key {
+			case "exclude":
+				wc.excluded = append(wc.excluded, d.Value)
+			case "ignore":
+				wc.ignore = true
+			}
+		}
+	}
+	c.Exts[walkName] = wc
 }
 
 type symlinkResolver struct {

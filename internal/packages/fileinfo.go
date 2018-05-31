@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 // fileInfo holds information used to decide how to build a file. This
@@ -111,12 +112,12 @@ func (g tagGroup) check(c *config.Config, os, arch string) bool {
 			continue
 		}
 		var match bool
-		if _, ok := config.KnownOSSet[t]; ok {
+		if _, ok := rule.KnownOSSet[t]; ok {
 			if os == "" {
 				return false
 			}
 			match = os == t
-		} else if _, ok := config.KnownArchSet[t]; ok {
+		} else if _, ok := rule.KnownArchSet[t]; ok {
 			if arch == "" {
 				return false
 			}
@@ -221,12 +222,12 @@ func fileNameInfo(dir, rel, name string) fileInfo {
 		l = l[:len(l)-1]
 	}
 	switch {
-	case len(l) >= 3 && config.KnownOSSet[l[len(l)-2]] && config.KnownArchSet[l[len(l)-1]]:
+	case len(l) >= 3 && rule.KnownOSSet[l[len(l)-2]] && rule.KnownArchSet[l[len(l)-1]]:
 		goos = l[len(l)-2]
 		goarch = l[len(l)-1]
-	case len(l) >= 2 && config.KnownOSSet[l[len(l)-1]]:
+	case len(l) >= 2 && rule.KnownOSSet[l[len(l)-1]]:
 		goos = l[len(l)-1]
-	case len(l) >= 2 && config.KnownArchSet[l[len(l)-1]]:
+	case len(l) >= 2 && rule.KnownArchSet[l[len(l)-1]]:
 		goarch = l[len(l)-1]
 	}
 
@@ -334,11 +335,11 @@ func isOSArchSpecific(info fileInfo, cgoTags tagLine) (osSpecific, archSpecific 
 				if strings.HasPrefix(tag, "!") {
 					tag = tag[1:]
 				}
-				_, osOk := config.KnownOSSet[tag]
+				_, osOk := rule.KnownOSSet[tag]
 				if osOk {
 					osSpecific = true
 				}
-				_, archOk := config.KnownArchSet[tag]
+				_, archOk := rule.KnownArchSet[tag]
 				if archOk {
 					archSpecific = true
 				}

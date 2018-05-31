@@ -30,7 +30,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	bzl "github.com/bazelbuild/buildtools/build"
 	bt "github.com/bazelbuild/buildtools/tables"
 )
@@ -50,7 +49,7 @@ type File struct {
 
 	// Directives is a list of configuration directives found in top-level
 	// comments in the file. This should not be modified after the file is read.
-	Directives []config.Directive
+	Directives []Directive
 
 	// Loads is a list of load statements within the file. This should not
 	// be modified directly; use Load methods instead.
@@ -120,7 +119,7 @@ func ScanAST(bzlFile *bzl.File) *File {
 			}
 		}
 	}
-	f.Directives = config.ParseDirectives(bzlFile)
+	f.Directives = ParseDirectives(bzlFile)
 	return f
 }
 
@@ -566,7 +565,7 @@ func (r *Rule) Insert(f *File) {
 // IsEmpty returns true when the rule contains none of the attributes in attrs
 // for its kind. attrs should contain attributes that make the rule buildable
 // like srcs or deps and not descriptive attributes like name or visibility.
-func (r *Rule) IsEmpty(attrs config.MergeableAttrs) bool {
+func (r *Rule) IsEmpty(attrs MergeableAttrs) bool {
 	nonEmptyAttrs := attrs[r.kind]
 	if nonEmptyAttrs == nil {
 		return false
