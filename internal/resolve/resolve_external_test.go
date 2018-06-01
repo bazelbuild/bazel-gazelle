@@ -23,6 +23,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/labeler"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 
 	"golang.org/x/tools/go/vcs"
@@ -68,7 +69,7 @@ func TestExternalResolver(t *testing.T) {
 }
 
 func newStubExternalResolver(knownRepos []repos.Repo) *externalResolver {
-	l := label.NewLabeler(&config.Config{})
+	l := labeler.NewLabeler(&config.Config{})
 	rc := newStubRemoteCache(knownRepos)
 	return newExternalResolver(l, rc)
 }

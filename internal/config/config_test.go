@@ -15,7 +15,13 @@ limitations under the License.
 
 package config
 
-import "testing"
+import (
+	"flag"
+	"reflect"
+	"testing"
+
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+)
 
 func TestPreprocessTags(t *testing.T) {
 	c := &Config{
@@ -33,5 +39,38 @@ func TestPreprocessTags(t *testing.T) {
 		if c.GenericTags[tag] {
 			t.Errorf("tag %q unexpectedly set", tag)
 		}
+	}
+}
+
+func TestCommonConfigurerFlags(t *testing.T) {
+	c := New()
+	cc := &CommonConfigurer{}
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	cc.RegisterFlags(fs, "test", c)
+	args := []string{"-build_file_name", "x,y"}
+	if err := fs.Parse(args); err != nil {
+		t.Fatal(err)
+	}
+	if err := cc.CheckFlags(c); err != nil {
+		t.Errorf("CheckFlags: %v", err)
+	}
+	want := []string{"x", "y"}
+	if !reflect.DeepEqual(c.ValidBuildFileNames, want) {
+		t.Errorf("for ValidBuildFileNames, got %#v, want %#v", c.ValidBuildFileNames, want)
+	}
+}
+
+func TestCommonConfigurerDirectives(t *testing.T) {
+	c := New()
+	cc := &CommonConfigurer{}
+	buildData := []byte(`# gazelle:build_file_name x,y`)
+	f, err := rule.LoadData("test", buildData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc.Configure(c, "", f)
+	want := []string{"x", "y"}
+	if !reflect.DeepEqual(c.ValidBuildFileNames, want) {
+		t.Errorf("for ValidBuildFileNames, got %#v, want %#v", c.ValidBuildFileNames, want)
 	}
 }

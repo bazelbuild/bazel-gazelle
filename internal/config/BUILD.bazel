@@ -6,12 +6,13 @@ go_library(
         "config.go",
         "constants.go",
         "directives.go",
-        "platform.go",
-        "types.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/config",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/github.com/bazelbuild/buildtools/build:go_default_library"],
+    deps = [
+        "//internal/rule:go_default_library",
+        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
+    ],
 )
 
 go_test(
@@ -22,5 +23,8 @@ go_test(
         "directives_test.go",
     ],
     embed = [":go_default_library"],
-    deps = ["//vendor/github.com/bazelbuild/buildtools/build:go_default_library"],
+    deps = [
+        "//internal/rule:go_default_library",
+        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
+    ],
 )

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package label
+package labeler
 
 import (
 	"testing"
@@ -23,21 +23,21 @@ import (
 
 func TestLabelerGo(t *testing.T) {
 	for _, tc := range []struct {
-		name, rel                             string
+		name, rel                  string
 		wantLib, wantBin, wantTest string
 	}{
 		{
-			name:      "root_hierarchical",
-			rel:       "",
-			wantLib:   "//:go_default_library",
-			wantBin:   "//:root",
-			wantTest:  "//:go_default_test",
+			name:     "root_hierarchical",
+			rel:      "",
+			wantLib:  "//:go_default_library",
+			wantBin:  "//:root",
+			wantTest: "//:go_default_test",
 		}, {
-			name:      "sub_hierarchical",
-			rel:       "sub",
-			wantLib:   "//sub:go_default_library",
-			wantBin:   "//sub",
-			wantTest:  "//sub:go_default_test",
+			name:     "sub_hierarchical",
+			rel:      "sub",
+			wantLib:  "//sub:go_default_library",
+			wantBin:  "//sub",
+			wantTest: "//sub:go_default_test",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

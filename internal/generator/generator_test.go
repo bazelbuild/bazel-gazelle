@@ -23,7 +23,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/generator"
-	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/labeler"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/packages"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
@@ -32,13 +32,12 @@ import (
 )
 
 func testConfig(repoRoot, goPrefix string) *config.Config {
-	c := &config.Config{
-		RepoRoot:            repoRoot,
-		Dirs:                []string{repoRoot},
-		GoPrefix:            goPrefix,
-		GenericTags:         config.BuildTags{},
-		ValidBuildFileNames: []string{"BUILD.old"},
-	}
+	c := config.New()
+	c.RepoRoot = repoRoot
+	c.Dirs = []string{repoRoot}
+	c.GoPrefix = goPrefix
+	c.GenericTags = config.BuildTags{}
+	c.ValidBuildFileNames = []string{"BUILD.old"}
 	c.PreprocessTags()
 	return c
 }
@@ -46,7 +45,7 @@ func testConfig(repoRoot, goPrefix string) *config.Config {
 func packageFromDir(conf *config.Config, dir string) (*config.Config, *packages.Package, *rule.File) {
 	var pkg *packages.Package
 	var oldFile *rule.File
-	packages.Walk(conf, dir, func(_, rel string, c *config.Config, p *packages.Package, f *rule.File, _ bool) {
+	packages.Walk(conf, nil, func(_, rel string, c *config.Config, p *packages.Package, f *rule.File, _ bool) {
 		if p != nil && p.Dir == dir {
 			conf = c
 			pkg = p
@@ -60,7 +59,7 @@ func TestGenerator(t *testing.T) {
 	repoRoot := filepath.FromSlash("testdata/repo")
 	goPrefix := "example.com/repo"
 	c := testConfig(repoRoot, goPrefix)
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 
 	var dirs []string
 	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, err error) error {
@@ -106,7 +105,7 @@ func TestGenerator(t *testing.T) {
 
 func TestGeneratorEmpty(t *testing.T) {
 	c := testConfig("", "example.com/repo")
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 	g := generator.NewGenerator(c, l, nil)
 
 	pkg := packages.Package{Name: "foo"}
@@ -137,7 +136,7 @@ go_test(name = "go_default_test")
 func TestGeneratorEmptyLegacyProto(t *testing.T) {
 	c := testConfig("", "example.com/repo")
 	c.ProtoMode = config.LegacyProtoMode
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 	g := generator.NewGenerator(c, l, nil)
 
 	pkg := packages.Package{Name: "foo"}

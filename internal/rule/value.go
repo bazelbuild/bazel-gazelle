@@ -21,7 +21,6 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
@@ -86,7 +85,7 @@ func ExprFromValue(val interface{}) bzl.Expr {
 		sort.Sort(byString(rkeys))
 		args := make([]bzl.Expr, len(rkeys))
 		for i, rk := range rkeys {
-			label := fmt.Sprintf("@%s//go/platform:%s", config.RulesGoRepoName, mapKeyString(rk))
+			label := fmt.Sprintf("@io_bazel_rules_go//go/platform:%s", mapKeyString(rk))
 			k := &bzl.StringExpr{Value: label}
 			v := ExprFromValue(rv.MapIndex(rk).Interface())
 			if l, ok := v.(*bzl.ListExpr); ok {
@@ -160,7 +159,7 @@ func mapKeyString(k reflect.Value) string {
 	switch s := k.Interface().(type) {
 	case string:
 		return s
-	case config.Platform:
+	case Platform:
 		return s.String()
 	default:
 		log.Panicf("unexpected map key: %v", k)

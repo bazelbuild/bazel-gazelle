@@ -21,7 +21,6 @@ import (
 	"log"
 	"sort"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
@@ -42,7 +41,7 @@ import (
 // marked with a "# keep" comment, values in the attribute not marked with
 // a "# keep" comment will be dropped. If the attribute is empty afterward,
 // it will be deleted.
-func MergeRules(src, dst *Rule, mergeable config.MergeableAttrs, filename string) {
+func MergeRules(src, dst *Rule, mergeable MergeableAttrs, filename string) {
 	if ShouldKeep(dst.call) {
 		return
 	}

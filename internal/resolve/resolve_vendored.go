@@ -17,16 +17,17 @@ package resolve
 
 import (
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/labeler"
 )
 
 // vendoredResolver resolves external packages as packages in vendor/.
 type vendoredResolver struct {
-	l *label.Labeler
+	l *labeler.Labeler
 }
 
 var _ nonlocalResolver = (*vendoredResolver)(nil)
 
-func newVendoredResolver(l *label.Labeler) *vendoredResolver {
+func newVendoredResolver(l *labeler.Labeler) *vendoredResolver {
 	return &vendoredResolver{l}
 }
 

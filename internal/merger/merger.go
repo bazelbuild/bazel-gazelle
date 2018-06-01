@@ -27,31 +27,31 @@ import (
 var (
 	// PreResolveAttrs is the set of attributes that should be merged before
 	// dependency resolution, i.e., everything except deps.
-	PreResolveAttrs config.MergeableAttrs
+	PreResolveAttrs rule.MergeableAttrs
 
 	// PostResolveAttrs is the set of attributes that should be merged after
 	// dependency resolution, i.e., deps.
-	PostResolveAttrs config.MergeableAttrs
+	PostResolveAttrs rule.MergeableAttrs
 
 	// BuildAttrs is the union of PreResolveAttrs and PostResolveAttrs.
-	BuildAttrs config.MergeableAttrs
+	BuildAttrs rule.MergeableAttrs
 
 	// RepoAttrs is the set of attributes that should be merged in repository
 	// rules in WORKSPACE.
-	RepoAttrs config.MergeableAttrs
+	RepoAttrs rule.MergeableAttrs
 
 	// NonEmptyAttrs is the set of attributes that disqualify a rule from being
 	// deleted after merge.
-	NonEmptyAttrs config.MergeableAttrs
+	NonEmptyAttrs rule.MergeableAttrs
 )
 
 func init() {
-	PreResolveAttrs = make(config.MergeableAttrs)
-	PostResolveAttrs = make(config.MergeableAttrs)
-	RepoAttrs = make(config.MergeableAttrs)
-	NonEmptyAttrs = make(config.MergeableAttrs)
+	PreResolveAttrs = make(rule.MergeableAttrs)
+	PostResolveAttrs = make(rule.MergeableAttrs)
+	RepoAttrs = make(rule.MergeableAttrs)
+	NonEmptyAttrs = make(rule.MergeableAttrs)
 	for _, set := range []struct {
-		mergeableAttrs config.MergeableAttrs
+		mergeableAttrs rule.MergeableAttrs
 		kinds, attrs   []string
 	}{
 		{
@@ -180,8 +180,8 @@ func init() {
 			}
 		}
 	}
-	BuildAttrs = make(config.MergeableAttrs)
-	for _, mattrs := range []config.MergeableAttrs{PreResolveAttrs, PostResolveAttrs} {
+	BuildAttrs = make(rule.MergeableAttrs)
+	for _, mattrs := range []rule.MergeableAttrs{PreResolveAttrs, PostResolveAttrs} {
 		for kind, attrs := range mattrs {
 			if BuildAttrs[kind] == nil {
 				BuildAttrs[kind] = make(map[string]bool)
@@ -198,7 +198,7 @@ func init() {
 // rules in empty with matching rules in f and deletes rules that
 // are empty after merging. attrs is the set of attributes to merge. Attributes
 // not in this set will be left alone if they already exist.
-func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs config.MergeableAttrs) {
+func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs rule.MergeableAttrs) {
 	// Merge empty rules into the file and delete any rules which become empty.
 	for _, emptyRule := range emptyRules {
 		if oldRule, _ := match(oldFile.Rules, emptyRule); oldRule != nil {

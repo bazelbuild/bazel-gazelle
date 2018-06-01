@@ -24,6 +24,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/labeler"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
@@ -33,7 +34,7 @@ func TestResolveGoIndex(t *testing.T) {
 		GoPrefix: "example.com/repo",
 		DepMode:  config.VendorMode,
 	}
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 
 	type fileSpec struct {
 		rel, content string
@@ -237,7 +238,7 @@ func TestResolveProtoIndex(t *testing.T) {
 		GoPrefix: "example.com/repo",
 		DepMode:  config.VendorMode,
 	}
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 
 	buildContent := []byte(`
 proto_library(
@@ -320,7 +321,7 @@ func TestResolveGoLocal(t *testing.T) {
 		},
 	} {
 		c := &config.Config{GoPrefix: "example.com/repo"}
-		l := label.NewLabeler(c)
+		l := labeler.NewLabeler(c)
 		ix := NewRuleIndex()
 		r := NewResolver(c, l, ix, nil)
 		label, err := r.resolveGo(spec.importpath, spec.from)
@@ -336,7 +337,7 @@ func TestResolveGoLocal(t *testing.T) {
 
 func TestResolveGoLocalError(t *testing.T) {
 	c := &config.Config{GoPrefix: "example.com/repo"}
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 	ix := NewRuleIndex()
 	rc := newStubRemoteCache(nil)
 	r := NewResolver(c, l, ix, rc)
@@ -359,7 +360,7 @@ func TestResolveGoLocalError(t *testing.T) {
 
 func TestResolveGoEmptyPrefix(t *testing.T) {
 	c := &config.Config{}
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 	ix := NewRuleIndex()
 	r := NewResolver(c, l, ix, nil)
 
@@ -431,7 +432,7 @@ func TestResolveProto(t *testing.T) {
 				GoPrefix: prefix,
 				DepMode:  tc.depMode,
 			}
-			l := label.NewLabeler(c)
+			l := labeler.NewLabeler(c)
 			ix := NewRuleIndex()
 			r := NewResolver(c, l, ix, nil)
 
@@ -460,7 +461,7 @@ func TestResolveProto(t *testing.T) {
 
 func TestResolveGoWKT(t *testing.T) {
 	c := &config.Config{}
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 	ix := NewRuleIndex()
 	r := NewResolver(c, l, ix, nil)
 
@@ -497,7 +498,7 @@ func TestResolveGoWKT(t *testing.T) {
 
 func TestResolveGoSkipEmbeds(t *testing.T) {
 	c := &config.Config{}
-	l := label.NewLabeler(c)
+	l := labeler.NewLabeler(c)
 	ix := NewRuleIndex()
 	r := NewResolver(c, l, ix, nil)
 

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package config
+package rule
 
 // MergableAttrs is the set of attribute names for each kind of rule that
 // may be merged. When an attribute is mergeable, a generated value may
