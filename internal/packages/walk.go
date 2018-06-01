@@ -430,7 +430,7 @@ type walkConfigurer struct{}
 func (_ *walkConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 }
 
-func (_ *walkConfigurer) CheckFlags(c *config.Config) error {
+func (_ *walkConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	return nil
 }
 
