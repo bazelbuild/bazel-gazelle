@@ -34,7 +34,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
-	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
@@ -55,15 +54,60 @@ var modeFromName = map[string]emitFunc{
 	"diff":  diffFile,
 }
 
-func newUpdateConfig() *updateConfig {
-	return &updateConfig{emit: printFile}
-}
-
 const updateName = "_update"
 
 func getUpdateConfig(c *config.Config) *updateConfig {
 	return c.Exts[updateName].(*updateConfig)
 }
+
+type updateConfigurer struct {
+	mode string
+}
+
+func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
+	uc := &updateConfig{}
+	c.Exts[updateName] = uc
+
+	c.ShouldFix = cmd == "fix"
+
+	fs.StringVar(&ucr.mode, "mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
+	fs.StringVar(&uc.outDir, "experimental_out_dir", "", "write build files to an alternate directory tree")
+	fs.StringVar(&uc.outSuffix, "experimental_out_suffix", "", "extra suffix appended to build file names. Only used if -experimental_out_dir is also set.")
+}
+
+func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
+	uc := getUpdateConfig(c)
+	var ok bool
+	uc.emit, ok = modeFromName[ucr.mode]
+	if !ok {
+		return fmt.Errorf("unrecognized emit mode: %q", ucr.mode)
+	}
+
+	c.Dirs = fs.Args()
+	if len(c.Dirs) == 0 {
+		c.Dirs = []string{"."}
+	}
+	for i := range c.Dirs {
+		dir, err := filepath.Abs(c.Dirs[i])
+		if err != nil {
+			return fmt.Errorf("%s: failed to find absolute path: %v", c.Dirs[i], err)
+		}
+		dir, err = filepath.EvalSymlinks(dir)
+		if err != nil {
+			return fmt.Errorf("%s: failed to resolve symlinks: %v", c.Dirs[i], err)
+		}
+		if !isDescendingDir(dir, c.RepoRoot) {
+			return fmt.Errorf("dir %q is not a subdirectory of repo root %q", dir, c.RepoRoot)
+		}
+		c.Dirs[i] = dir
+	}
+
+	return nil
+}
+
+func (ucr *updateConfigurer) KnownDirectives() []string { return nil }
+
+func (ucr *updateConfigurer) Configure(c *config.Config, rel string, f *rule.File) {}
 
 // visitRecord stores information about about a directory visited with
 // packages.Walk.
@@ -89,7 +133,7 @@ func (vs byPkgRel) Less(i, j int) bool { return vs[i].pkgRel < vs[j].pkgRel }
 func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
 
 func runFixUpdate(cmd command, args []string) error {
-	cexts := []config.Configurer{&config.CommonConfigurer{}}
+	cexts := []config.Configurer{&config.CommonConfigurer{}, &updateConfigurer{}}
 	c, err := newFixUpdateConfiguration(cmd, args, cexts)
 	if err != nil {
 		return err
@@ -189,8 +233,6 @@ func runFixUpdate(cmd command, args []string) error {
 func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Configurer) (*config.Config, error) {
 	var err error
 	c := config.New()
-	uc := newUpdateConfig()
-	c.Exts[updateName] = uc
 
 	fs := flag.NewFlagSet("gazelle", flag.ContinueOnError)
 	// Flag will call this on any parse error. Don't print usage unless
@@ -202,12 +244,7 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 	external := fs.String("external", "external", "external: resolve external packages with go_repository\n\tvendored: resolve external packages as packages in vendor/")
 	var goPrefix explicitFlag
 	fs.Var(&goPrefix, "go_prefix", "prefix of import paths in the current workspace")
-	var repoRoot string
-	fs.StringVar(&repoRoot, "repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
 	fs.Var(&knownImports, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
-	mode := fs.String("mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
-	outDir := fs.String("experimental_out_dir", "", "write build files to an alternate directory tree")
-	outSuffix := fs.String("experimental_out_suffix", "", "extra suffix appended to build file names. Only used if -experimental_out_dir is also set.")
 	var proto explicitFlag
 	fs.Var(&proto, "proto", "default: generates new proto rules\n\tdisable: does not touch proto rules\n\tlegacy (deprecated): generates old proto rules")
 
@@ -224,45 +261,8 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 		log.Fatal("Try -help for more information.")
 	}
 
-	c.Dirs = fs.Args()
-	if len(c.Dirs) == 0 {
-		c.Dirs = []string{"."}
-	}
-	if repoRoot == "" {
-		if len(c.Dirs) == 1 {
-			repoRoot, err = wspace.Find(c.Dirs[0])
-		} else {
-			repoRoot, err = wspace.Find(".")
-		}
-		if err != nil {
-			return nil, fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
-		}
-	}
-	c.RepoRoot, err = filepath.Abs(repoRoot)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to find absolute path of repo root: %v", repoRoot, err)
-	}
-	c.RepoRoot, err = filepath.EvalSymlinks(c.RepoRoot)
-	if err != nil {
-		return nil, fmt.Errorf("%s: failed to resolve symlinks: %v", repoRoot, err)
-	}
-	for i, dir := range c.Dirs {
-		dir, err = filepath.Abs(c.Dirs[i])
-		if err != nil {
-			return nil, fmt.Errorf("%s: failed to find absolute path: %v", c.Dirs[i], err)
-		}
-		dir, err = filepath.EvalSymlinks(dir)
-		if err != nil {
-			return nil, fmt.Errorf("%s: failed to resolve symlinks: %v", c.Dirs[i], err)
-		}
-		if !isDescendingDir(dir, c.RepoRoot) {
-			return nil, fmt.Errorf("dir %q is not a subdirectory of repo root %q", dir, c.RepoRoot)
-		}
-		c.Dirs[i] = dir
-	}
-
 	for _, cext := range cexts {
-		if err := cext.CheckFlags(c); err != nil {
+		if err := cext.CheckFlags(fs, c); err != nil {
 			return nil, err
 		}
 	}
@@ -282,8 +282,6 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 		return nil, err
 	}
 
-	c.ShouldFix = cmd == fixCmd
-
 	c.DepMode, err = config.DependencyModeFromString(*external)
 	if err != nil {
 		return nil, err
@@ -297,15 +295,7 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 		c.ProtoModeExplicit = true
 	}
 
-	emit, ok := modeFromName[*mode]
-	if !ok {
-		return nil, fmt.Errorf("unrecognized emit mode: %q", *mode)
-	}
-	uc.emit = emit
-
-	uc.outDir = *outDir
-	uc.outSuffix = *outSuffix
-
+	uc := getUpdateConfig(c)
 	workspacePath := filepath.Join(c.RepoRoot, "WORKSPACE")
 	if workspace, err := rule.LoadFile(workspacePath); err != nil {
 		if !os.IsNotExist(err) {

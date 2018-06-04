@@ -19,9 +19,11 @@ import (
 	"flag"
 	"fmt"
 	"go/build"
+	"path/filepath"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 )
 
 // Config holds information about how Gazelle should run. This is based on
@@ -174,7 +176,7 @@ type Configurer interface {
 	// CheckFlags validates the configuration after command line flags are parsed.
 	// This is called once with the root configuration when Gazelle starts.
 	// CheckFlags may set default values in flags or make implied changes.
-	CheckFlags(c *Config) error
+	CheckFlags(fs *flag.FlagSet, c *Config) error
 
 	// KnownDirectives returns a list of directive keys that this Configurer can
 	// interpret. Gazelle prints errors for directives that are not recoginized by
@@ -198,14 +200,30 @@ type Configurer interface {
 // CommonConfigurer handles language-agnostic command-line flags and directives,
 // i.e., those that apply to Config itself and not to Config.Exts.
 type CommonConfigurer struct {
-	buildFileNames string
+	repoRoot, buildFileNames string
 }
 
 func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Config) {
+	fs.StringVar(&cc.repoRoot, "repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
 	fs.StringVar(&cc.buildFileNames, "build_file_name", strings.Join(DefaultValidBuildFileNames, ","), "comma-separated list of valid build file names.\nThe first element of the list is the name of output build files to generate.")
 }
 
-func (cc *CommonConfigurer) CheckFlags(c *Config) error {
+func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
+	var err error
+	if cc.repoRoot == "" {
+		cc.repoRoot, err = wspace.Find(".")
+		if err != nil {
+			return fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
+		}
+	}
+	c.RepoRoot, err = filepath.Abs(cc.repoRoot)
+	if err != nil {
+		return fmt.Errorf("%s: failed to find absolute path of repo root: %v", cc.repoRoot, err)
+	}
+	c.RepoRoot, err = filepath.EvalSymlinks(c.RepoRoot)
+	if err != nil {
+		return fmt.Errorf("%s: failed to resolve symlinks: %v", cc.repoRoot, err)
+	}
 	c.ValidBuildFileNames = strings.Split(cc.buildFileNames, ",")
 	return nil
 }

@@ -17,6 +17,9 @@ package config
 
 import (
 	"flag"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -43,20 +46,38 @@ func TestPreprocessTags(t *testing.T) {
 }
 
 func TestCommonConfigurerFlags(t *testing.T) {
+	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "config_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	dir, err = filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(dir, "WORKSPACE"), nil, 0666); err != nil {
+		t.Fatal(err)
+	}
+
 	c := New()
 	cc := &CommonConfigurer{}
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	cc.RegisterFlags(fs, "test", c)
-	args := []string{"-build_file_name", "x,y"}
+	args := []string{"-repo_root", dir, "-build_file_name", "x,y"}
 	if err := fs.Parse(args); err != nil {
 		t.Fatal(err)
 	}
-	if err := cc.CheckFlags(c); err != nil {
+	if err := cc.CheckFlags(fs, c); err != nil {
 		t.Errorf("CheckFlags: %v", err)
 	}
-	want := []string{"x", "y"}
-	if !reflect.DeepEqual(c.ValidBuildFileNames, want) {
-		t.Errorf("for ValidBuildFileNames, got %#v, want %#v", c.ValidBuildFileNames, want)
+
+	if c.RepoRoot != dir {
+		t.Errorf("for RepoRoot, got %#v, want %#v", c.RepoRoot, dir)
+	}
+
+	wantBuildFileNames := []string{"x", "y"}
+	if !reflect.DeepEqual(c.ValidBuildFileNames, wantBuildFileNames) {
+		t.Errorf("for ValidBuildFileNames, got %#v, want %#v", c.ValidBuildFileNames, wantBuildFileNames)
 	}
 }
 
