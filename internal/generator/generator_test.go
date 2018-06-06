@@ -56,6 +56,17 @@ func packageFromDir(conf *config.Config, dir string) (*config.Config, *packages.
 	return conf, pkg, oldFile
 }
 
+// convertPrivateAttrs copies private attributes to regular attributes, which
+// will later be written out to build files. This allows tests to check the
+// values of private attributes with simple string comparison.
+func convertPrivateAttrs(f *rule.File) {
+	for _, r := range f.Rules {
+		for _, k := range r.PrivateAttrKeys() {
+			r.SetAttr(k, r.PrivateAttr(k))
+		}
+	}
+}
+
 func TestGenerator(t *testing.T) {
 	repoRoot := filepath.FromSlash("testdata/repo")
 	goPrefix := "example.com/repo"
@@ -87,7 +98,8 @@ func TestGenerator(t *testing.T) {
 				r.Insert(f)
 			}
 			merger.FixLoads(f)
-			f.SyncIncludingHiddenAttrs()
+			convertPrivateAttrs(f)
+			f.Sync()
 			got := string(bzl.Format(f.File))
 
 			wantPath := filepath.Join(pkg.Dir, "BUILD.want")

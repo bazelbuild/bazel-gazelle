@@ -109,7 +109,7 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []*rule.Rule) 
 	}
 	imports := pkg.Proto.Imports
 	if !imports.IsEmpty() {
-		protoLibrary.SetAttr(config.GazelleImportsKey, imports)
+		protoLibrary.SetPrivateAttr(config.GazelleImportsKey, imports)
 	}
 
 	goProtoLibrary := rule.NewRule("go_proto_library", goProtoName)
@@ -123,7 +123,7 @@ func (g *Generator) generateProto(pkg *packages.Package) (string, []*rule.Rule) 
 		goProtoLibrary.SetAttr("visibility", visibility)
 	}
 	if !imports.IsEmpty() {
-		goProtoLibrary.SetAttr(config.GazelleImportsKey, imports)
+		goProtoLibrary.SetPrivateAttr(config.GazelleImportsKey, imports)
 	}
 
 	return goProtoName, []*rule.Rule{protoLibrary, goProtoLibrary}
@@ -222,7 +222,7 @@ func (g *Generator) setCommonAttrs(r *rule.Rule, pkgRel, visibility string, targ
 	}
 	imports := target.Imports
 	if !imports.IsEmpty() {
-		r.SetAttr(config.GazelleImportsKey, imports)
+		r.SetPrivateAttr(config.GazelleImportsKey, imports)
 	}
 }
 
