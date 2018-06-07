@@ -28,6 +28,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 // Resolver resolves import strings in source files (import paths in Go,
@@ -86,9 +87,12 @@ func (rslv *Resolver) ResolveRule(r *rule.Rule, pkgRel string) {
 		return
 	}
 
-	imports := r.Attr(config.GazelleImportsKey)
-	r.DelAttr(config.GazelleImportsKey)
 	r.DelAttr("deps")
+	importsRaw := r.PrivateAttr(config.GazelleImportsKey)
+	var imports bzl.Expr
+	if importsRaw != nil {
+		imports = rule.ExprFromValue(importsRaw)
+	}
 	deps := rule.MapExprStrings(imports, func(imp string) string {
 		label, err := resolve(imp, from)
 		if err != nil {

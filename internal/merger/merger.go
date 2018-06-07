@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
@@ -110,7 +109,6 @@ func init() {
 			},
 			attrs: []string{
 				"deps",
-				config.GazelleImportsKey,
 			},
 		}, {
 			mergeableAttrs: RepoAttrs,

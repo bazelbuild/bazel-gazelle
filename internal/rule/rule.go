@@ -126,18 +126,10 @@ func ScanAST(bzlFile *bzl.File) *File {
 // Sync writes all changes back to the wrapped syntax tree. This should be
 // called after editing operations, before reading the syntax tree again.
 func (f *File) Sync() {
-	f.sync(false)
+	f.sync()
 }
 
-// SyncIncludingHiddenAttrs writes changes back to the wrapped syntax tree,
-// including hidden attributes (those starting with "_") on rules. This should
-// only be used for testing since hidden attributes should never be written to a
-// build file.
-func (f *File) SyncIncludingHiddenAttrs() {
-	f.sync(true)
-}
-
-func (f *File) sync(includeHidden bool) {
+func (f *File) sync() {
 	var inserts, deletes []stmt
 	var r, w int
 	for r, w = 0, 0; r < len(f.Loads); r++ {
@@ -157,7 +149,7 @@ func (f *File) sync(includeHidden bool) {
 	f.Loads = f.Loads[:w]
 	for r, w = 0, 0; r < len(f.Rules); r++ {
 		s := f.Rules[r]
-		s.sync(includeHidden)
+		s.sync()
 		if s.deleted {
 			deletes = append(deletes, s)
 			continue
@@ -385,9 +377,10 @@ func (l *Load) sync() {
 // Rule represents a rule statement within a build file.
 type Rule struct {
 	baseStmt
-	kind  string
-	args  []bzl.Expr
-	attrs map[string]*bzl.BinaryExpr
+	kind    string
+	args    []bzl.Expr
+	attrs   map[string]*bzl.BinaryExpr
+	private map[string]interface{}
 }
 
 // NewRule creates a new, empty rule with the given kind and name.
@@ -404,8 +397,9 @@ func NewRule(kind, name string) *Rule {
 				List: []bzl.Expr{nameAttr},
 			},
 		},
-		kind:  kind,
-		attrs: map[string]*bzl.BinaryExpr{"name": nameAttr},
+		kind:    kind,
+		attrs:   map[string]*bzl.BinaryExpr{"name": nameAttr},
+		private: map[string]interface{}{},
 	}
 	return r
 }
@@ -466,14 +460,11 @@ func (r *Rule) SetName(name string) {
 	r.SetAttr("name", name)
 }
 
-// AttrKeys returns a sorted list of attribute keys used in this rule. This
-// list will not include hidden keys (starting with "_").
+// AttrKeys returns a sorted list of attribute keys used in this rule.
 func (r *Rule) AttrKeys() []string {
 	keys := make([]string, 0, len(r.attrs))
 	for k := range r.attrs {
-		if !isHiddenKey(k) {
-			keys = append(keys, k)
-		}
+		keys = append(keys, k)
 	}
 	sort.SliceStable(keys, func(i, j int) bool {
 		if cmp := bt.NamePriority[keys[i]] - bt.NamePriority[keys[j]]; cmp != 0 {
@@ -536,8 +527,7 @@ func (r *Rule) DelAttr(key string) {
 }
 
 // SetAttr adds or replaces the named attribute with an expression produced
-// by ExprFromValue. Note that this may be used to set hidden attributes
-// (with keys starting with "_") which will not be written to the build file.
+// by ExprFromValue.
 func (r *Rule) SetAttr(key string, value interface{}) {
 	y := ExprFromValue(value)
 	if attr, ok := r.attrs[key]; ok {
@@ -550,6 +540,28 @@ func (r *Rule) SetAttr(key string, value interface{}) {
 		}
 	}
 	r.updated = true
+}
+
+// PrivateAttrKeys returns a sorted list of private attribute names.
+func (r *Rule) PrivateAttrKeys() []string {
+	keys := make([]string, 0, len(r.private))
+	for k := range r.private {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// PrivateAttr return the private value associated with a key.
+func (r *Rule) PrivateAttr(key string) interface{} {
+	return r.private[key]
+}
+
+// SetPrivateAttr associates a value with a key. Unlike SetAttr, this value
+// is not converted to a build syntax tree and will not be written to a build
+// file.
+func (r *Rule) SetPrivateAttr(key string, value interface{}) {
+	r.private[key] = value
 }
 
 // Insert marks this statement for insertion at the end of the file. Multiple
@@ -578,8 +590,8 @@ func (r *Rule) IsEmpty(attrs MergeableAttrs) bool {
 	return true
 }
 
-func (r *Rule) sync(includeHidden bool) {
-	if !r.updated && !includeHidden {
+func (r *Rule) sync() {
+	if !r.updated {
 		return
 	}
 	r.updated = false
@@ -595,10 +607,8 @@ func (r *Rule) sync(includeHidden bool) {
 
 	list := make([]bzl.Expr, 0, len(r.args)+len(r.attrs))
 	list = append(list, r.args...)
-	for k, attr := range r.attrs {
-		if !isHiddenKey(k) || includeHidden {
-			list = append(list, attr)
-		}
+	for _, attr := range r.attrs {
+		list = append(list, attr)
 	}
 	sortedAttrs := list[len(r.args):]
 	key := func(e bzl.Expr) string { return e.(*bzl.BinaryExpr).X.(*bzl.LiteralExpr).Token }
@@ -625,10 +635,6 @@ func ShouldKeep(e bzl.Expr) bool {
 		}
 	}
 	return false
-}
-
-func isHiddenKey(key string) bool {
-	return strings.HasPrefix(key, "_")
 }
 
 type byAttrName []KeyValue

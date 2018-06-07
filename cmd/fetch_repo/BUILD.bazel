@@ -5,7 +5,7 @@ go_library(
     srcs = ["fetch_repo.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/fetch_repo",
     visibility = ["//visibility:private"],
-    deps = ["@org_golang_x_tools//go/vcs:go_default_library"],
+    deps = ["//vendor/golang.org/x/tools/go/vcs:go_default_library"],
 )
 
 go_binary(
@@ -18,5 +18,5 @@ go_test(
     name = "go_default_test",
     srcs = ["fetch_repo_test.go"],
     embed = [":go_default_library"],
-    deps = ["@org_golang_x_tools//go/vcs:go_default_library"],
+    deps = ["//vendor/golang.org/x/tools/go/vcs:go_default_library"],
 )
