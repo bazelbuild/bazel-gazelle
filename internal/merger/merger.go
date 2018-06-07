@@ -110,7 +110,6 @@ func init() {
 			},
 			attrs: []string{
 				"deps",
-				config.GazelleImportsKey,
 			},
 		}, {
 			mergeableAttrs: RepoAttrs,

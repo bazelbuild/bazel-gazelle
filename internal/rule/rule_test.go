@@ -206,31 +206,3 @@ func TestShouldKeepExpr(t *testing.T) {
 		})
 	}
 }
-
-func TestRuleAttrKeysDoesNotReturnHiddenSymbols(t *testing.T) {
-	r := NewRule("go_library", "go_default_library")
-	r.SetAttr("_hidden", true)
-	got := r.AttrKeys()
-	want := []string{"name"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %#v; want %#v", got, want)
-	}
-}
-
-func TestRuleHiddenAttrsNotSynced(t *testing.T) {
-	f := EmptyFile("BUILD")
-	r := NewRule("go_library", "go_default_library")
-	r.SetAttr("srcs", []string{"x.go"})
-	r.SetAttr("_hidden", []string{"x.go"})
-	r.Insert(f)
-	got := strings.TrimSpace(string(f.Format()))
-	want := strings.TrimSpace(`
-go_library(
-    name = "go_default_library",
-    srcs = ["x.go"],
-)
-`)
-	if got != want {
-		t.Errorf("got:\n%s\nwant:\n%s", got, want)
-	}
-}
