@@ -14,6 +14,7 @@
 
 load("@bazel_skylib//:lib.bzl", "shell")
 load("//internal:go_repository.bzl", "go_repository")
+load("//internal:vendor_go_repository.bzl", "vendor_go_repository")
 load("//internal:overlay_repository.bzl", "git_repository", "http_archive")
 
 def _gazelle_runner_impl(ctx):

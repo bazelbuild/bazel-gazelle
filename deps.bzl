@@ -18,6 +18,10 @@ load(
     _go_repository_tools = "go_repository_tools",
 )
 load(
+    "@bazel_gazelle//internal:vendor_go_repository.bzl",
+    "vendor_go_repository",
+)
+load(
     "@bazel_gazelle//internal:overlay_repository.bzl",
     "git_repository",
     "http_archive",
