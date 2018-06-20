@@ -76,6 +76,32 @@ z_library(name = "baz")
 	}
 }
 
+func TestDeleteSyncDelete(t *testing.T) {
+	old := []byte(`
+x_library(name = "foo")
+
+# comment
+
+x_library(name = "bar")
+`)
+	f, err := LoadData("old", old)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	foo := f.Rules[0]
+	bar := f.Rules[1]
+	foo.Delete()
+	f.Sync()
+	bar.Delete()
+	f.Sync()
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`# comment`)
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
+	}
+}
+
 func TestSymbolsReturnsKeys(t *testing.T) {
 	f, err := LoadData("load", []byte(`load("a.bzl", "y", z = "a")`))
 	if err != nil {
