@@ -127,22 +127,20 @@ func ScanAST(bzlFile *bzl.File) *File {
 // Sync writes all changes back to the wrapped syntax tree. This should be
 // called after editing operations, before reading the syntax tree again.
 func (f *File) Sync() {
-	f.sync()
-}
-
-func (f *File) sync() {
-	var inserts, deletes []stmt
+	var inserts, deletes, stmts []*stmt
 	var r, w int
 	for r, w = 0, 0; r < len(f.Loads); r++ {
 		s := f.Loads[r]
 		s.sync()
 		if s.deleted {
-			deletes = append(deletes, s)
+			deletes = append(deletes, &s.stmt)
 			continue
 		}
 		if s.inserted {
-			inserts = append(inserts, s)
+			inserts = append(inserts, &s.stmt)
 			s.inserted = false
+		} else {
+			stmts = append(stmts, &s.stmt)
 		}
 		f.Loads[w] = s
 		w++
@@ -152,12 +150,14 @@ func (f *File) sync() {
 		s := f.Rules[r]
 		s.sync()
 		if s.deleted {
-			deletes = append(deletes, s)
+			deletes = append(deletes, &s.stmt)
 			continue
 		}
 		if s.inserted {
-			inserts = append(inserts, s)
+			inserts = append(inserts, &s.stmt)
 			s.inserted = false
+		} else {
+			stmts = append(stmts, &s.stmt)
 		}
 		f.Rules[w] = s
 		w++
@@ -165,23 +165,30 @@ func (f *File) sync() {
 	f.Rules = f.Rules[:w]
 	sort.Stable(byIndex(deletes))
 	sort.Stable(byIndex(inserts))
+	sort.Stable(byIndex(stmts))
 
 	oldStmt := f.File.Stmt
 	f.File.Stmt = make([]bzl.Expr, 0, len(oldStmt)-len(deletes)+len(inserts))
-	var ii, di int
+	var ii, di, si int
 	for i, stmt := range oldStmt {
-		for ii < len(inserts) && inserts[ii].Index() == i {
-			f.File.Stmt = append(f.File.Stmt, inserts[ii].expr())
+		for ii < len(inserts) && inserts[ii].index == i {
+			inserts[ii].index = len(f.File.Stmt)
+			f.File.Stmt = append(f.File.Stmt, inserts[ii].call)
 			ii++
 		}
-		if di < len(deletes) && deletes[di].Index() == i {
+		if di < len(deletes) && deletes[di].index == i {
 			di++
 			continue
+		}
+		if si < len(stmts) && stmts[si].call == stmt {
+			stmts[si].index = len(f.File.Stmt)
+			si++
 		}
 		f.File.Stmt = append(f.File.Stmt, stmt)
 	}
 	for ii < len(inserts) {
-		f.File.Stmt = append(f.File.Stmt, inserts[ii].expr())
+		inserts[ii].index = len(f.File.Stmt)
+		f.File.Stmt = append(f.File.Stmt, inserts[ii].call)
 		ii++
 	}
 }
@@ -201,26 +208,7 @@ func (f *File) Save() error {
 	return ioutil.WriteFile(f.Path, data, 0666)
 }
 
-type stmt interface {
-	Index() int
-	expr() bzl.Expr
-}
-
-type byIndex []stmt
-
-func (s byIndex) Len() int {
-	return len(s)
-}
-
-func (s byIndex) Less(i, j int) bool {
-	return s[i].Index() < s[j].Index()
-}
-
-func (s byIndex) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-type baseStmt struct {
+type stmt struct {
 	index                      int
 	deleted, inserted, updated bool
 	call                       *bzl.CallExpr
@@ -230,17 +218,29 @@ type baseStmt struct {
 // inserted rules, this is where the rule will be inserted (rules with the
 // same index will be inserted in the order Insert was called). For existing
 // rules, this is the index of the original statement.
-func (s *baseStmt) Index() int { return s.index }
+func (s *stmt) Index() int { return s.index }
 
 // Delete marks this statement for deletion. It will be removed from the
 // syntax tree when File.Sync is called.
-func (s *baseStmt) Delete() { s.deleted = true }
+func (s *stmt) Delete() { s.deleted = true }
 
-func (s *baseStmt) expr() bzl.Expr { return s.call }
+type byIndex []*stmt
+
+func (s byIndex) Len() int {
+	return len(s)
+}
+
+func (s byIndex) Less(i, j int) bool {
+	return s[i].index < s[j].index
+}
+
+func (s byIndex) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
 
 // Load represents a load statement within a build file.
 type Load struct {
-	baseStmt
+	stmt
 	name    string
 	symbols map[string]bzl.Expr
 }
@@ -248,7 +248,7 @@ type Load struct {
 // NewLoad creates a new, empty load statement for the given file name.
 func NewLoad(name string) *Load {
 	return &Load{
-		baseStmt: baseStmt{
+		stmt: stmt{
 			call: &bzl.CallExpr{
 				X:            &bzl.LiteralExpr{Token: "load"},
 				List:         []bzl.Expr{&bzl.StringExpr{Value: name}},
@@ -262,8 +262,8 @@ func NewLoad(name string) *Load {
 
 func loadFromExpr(index int, call *bzl.CallExpr) *Load {
 	l := &Load{
-		baseStmt: baseStmt{index: index, call: call},
-		symbols:  make(map[string]bzl.Expr),
+		stmt:    stmt{index: index, call: call},
+		symbols: make(map[string]bzl.Expr),
 	}
 	if len(call.List) == 0 {
 		return nil
@@ -377,7 +377,7 @@ func (l *Load) sync() {
 
 // Rule represents a rule statement within a build file.
 type Rule struct {
-	baseStmt
+	stmt
 	kind    string
 	args    []bzl.Expr
 	attrs   map[string]*bzl.BinaryExpr
@@ -392,7 +392,7 @@ func NewRule(kind, name string) *Rule {
 		Op: "=",
 	}
 	r := &Rule{
-		baseStmt: baseStmt{
+		stmt: stmt{
 			call: &bzl.CallExpr{
 				X:    &bzl.LiteralExpr{Token: kind},
 				List: []bzl.Expr{nameAttr},
@@ -427,7 +427,7 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 		}
 	}
 	return &Rule{
-		baseStmt: baseStmt{
+		stmt: stmt{
 			index: index,
 			call:  call,
 		},
