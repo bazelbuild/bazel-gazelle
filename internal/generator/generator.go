@@ -60,7 +60,7 @@ func (g *Generator) GenerateRules(pkg *packages.Package) (gen, empty []*rule.Rul
 	for _, r := range rs {
 		// TODO(jayconrod): don't depend on merger package. Get NonEmptyAttrs from
 		// the Language interface when that's introduced.
-		if r.IsEmpty(merger.NonEmptyAttrs) {
+		if r.IsEmptyOld(merger.NonEmptyAttrs[r.Kind()]) {
 			empty = append(empty, r)
 		} else {
 			gen = append(gen, r)

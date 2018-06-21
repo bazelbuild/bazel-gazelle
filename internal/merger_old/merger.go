@@ -200,8 +200,8 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs rule
 	// Merge empty rules into the file and delete any rules which become empty.
 	for _, emptyRule := range emptyRules {
 		if oldRule, _ := match(oldFile.Rules, emptyRule); oldRule != nil {
-			rule.MergeRules(emptyRule, oldRule, attrs, oldFile.Path)
-			if oldRule.IsEmpty(NonEmptyAttrs) {
+			rule.MergeRules(emptyRule, oldRule, attrs[oldRule.Kind()], oldFile.Path)
+			if oldRule.IsEmptyOld(NonEmptyAttrs[oldRule.Kind()]) {
 				oldRule.Delete()
 			}
 		}
@@ -244,7 +244,7 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs rule
 		if matchRules[i] == nil {
 			genRule.Insert(oldFile)
 		} else {
-			rule.MergeRules(genRule, matchRules[i], attrs, oldFile.Path)
+			rule.MergeRules(genRule, matchRules[i], attrs[matchRules[i].Kind()], oldFile.Path)
 		}
 	}
 }

@@ -114,6 +114,26 @@ func (ps *PlatformStrings) firstExtFile(ext string) string {
 	return ""
 }
 
+// Map applies a function that processes individual strings to the strings
+// in "ps" and returns a new PlatformStrings with the result. Empty strings
+// returned by the function are dropped.
+func (ps *PlatformStrings) Map(f func(s string) (string, error)) (PlatformStrings, []error) {
+	var errors []error
+	mapSlice := func(ss []string) ([]string, error) {
+		rs := make([]string, 0, len(ss))
+		for _, s := range ss {
+			if r, err := f(s); err != nil {
+				errors = append(errors, err)
+			} else if r != "" {
+				rs = append(rs, r)
+			}
+		}
+		return rs, nil
+	}
+	result, _ := ps.MapSlice(mapSlice)
+	return result, errors
+}
+
 // MapSlice applies a function that processes slices of strings to the strings
 // in "ps" and returns a new PlatformStrings with the results.
 func (ps *PlatformStrings) MapSlice(f func([]string) ([]string, error)) (PlatformStrings, []error) {

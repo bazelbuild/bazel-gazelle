@@ -32,23 +32,23 @@ import (
 //
 // If src has an attribute that is not in dst, it will be copied into dst.
 //
-// If src and dst have the same attribute and the attribute is mergeable
-// (see MergeableAttrs) and the attribute in dst is not marked with a
-// "# keep" comment, values in the dst attribute not marked with a "# keep"
-// comment will be dropped, and values from src will be copied in.
+// If src and dst have the same attribute and the attribute is mergeable and the
+// attribute in dst is not marked with a "# keep" comment, values in the dst
+// attribute not marked with a "# keep" comment will be dropped, and values from
+// src will be copied in.
 //
 // If dst has an attribute not in src, and the attribute is mergeable and not
 // marked with a "# keep" comment, values in the attribute not marked with
 // a "# keep" comment will be dropped. If the attribute is empty afterward,
 // it will be deleted.
-func MergeRules(src, dst *Rule, mergeable MergeableAttrs, filename string) {
+func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 	if ShouldKeep(dst.call) {
 		return
 	}
 
 	// Process attributes that are in dst but not in src.
 	for key, dstAttr := range dst.attrs {
-		if _, ok := src.attrs[key]; ok || !mergeable[dst.Kind()][key] || ShouldKeep(dstAttr) {
+		if _, ok := src.attrs[key]; ok || !mergeable[key] || ShouldKeep(dstAttr) {
 			continue
 		}
 		dstValue := dstAttr.Y
@@ -67,7 +67,7 @@ func MergeRules(src, dst *Rule, mergeable MergeableAttrs, filename string) {
 		srcValue := srcAttr.Y
 		if dstAttr, ok := dst.attrs[key]; !ok {
 			dst.SetAttr(key, srcValue)
-		} else if mergeable[dst.Kind()][key] && !ShouldKeep(dstAttr) {
+		} else if mergeable[key] && !ShouldKeep(dstAttr) {
 			dstValue := dstAttr.Y
 			if mergedValue, err := mergeExprs(srcValue, dstValue); err != nil {
 				start, end := dstValue.Span()
