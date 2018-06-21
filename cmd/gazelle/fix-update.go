@@ -16,24 +16,21 @@ limitations under the License.
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/generator"
+	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
-	"github.com/bazelbuild/bazel-gazelle/internal/labeler"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
-	"github.com/bazelbuild/bazel-gazelle/internal/packages"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/internal/walk"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
@@ -133,11 +130,26 @@ func (vs byPkgRel) Less(i, j int) bool { return vs[i].pkgRel < vs[j].pkgRel }
 func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
 
 func runFixUpdate(cmd command, args []string) error {
-	cexts := []config.Configurer{&config.CommonConfigurer{}, &updateConfigurer{}}
-	c, err := newFixUpdateConfiguration(cmd, args, cexts)
+	cexts := make([]config.Configurer, 0, len(languages)+2)
+	cexts = append(cexts, &config.CommonConfigurer{}, &updateConfigurer{})
+	kindToResolver := make(map[string]resolve.Resolver)
+	kinds := make(map[string]rule.KindInfo)
+	loads := []rule.LoadInfo{}
+	for _, lang := range languages {
+		cexts = append(cexts, lang)
+		for kind, info := range lang.Kinds() {
+			kindToResolver[kind] = lang
+			kinds[kind] = info
+		}
+		loads = append(loads, lang.Loads()...)
+	}
+	ruleIndex := resolve.NewRuleIndex(kindToResolver)
+
+	c, err := newFixUpdateConfiguration(cmd, args, cexts, loads)
 	if err != nil {
 		return err
 	}
+
 	if cmd == fixCmd {
 		// Only check the version when "fix" is run. Generated build files
 		// frequently work with older version of rules_go, and we don't want to
@@ -145,76 +157,78 @@ func runFixUpdate(cmd command, args []string) error {
 		checkRulesGoVersion(c.RepoRoot)
 	}
 
-	l := labeler.NewLabeler(c)
-	ruleIndex := resolve.NewRuleIndex()
-
-	var visits []visitRecord
-
 	// Visit all directories in the repository.
-	packages.Walk(c, cexts, func(dir, rel string, c *config.Config, pkg *packages.Package, file *rule.File, isUpdateDir bool) {
+	var visits []visitRecord
+	walk.Walk(c, cexts, func(dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string) {
 		// If this file is ignored or if Gazelle was not asked to update this
 		// directory, just index the build file and move on.
-		if !isUpdateDir {
-			if file != nil {
-				ruleIndex.AddRulesFromFile(c, file)
+		if !update {
+			if f != nil {
+				for _, r := range f.Rules {
+					ruleIndex.AddRule(c, r, f)
+				}
 			}
 			return
 		}
 
 		// Fix any problems in the file.
-		if file != nil {
-			merger.FixFile(c, file)
-		}
-
-		// If the file exists, but no Go code is present, create an empty package.
-		// This lets us delete existing rules.
-		if pkg == nil && file != nil {
-			pkg = packages.EmptyPackage(c, dir, rel)
-		}
-
-		// Generate new rules and merge them into the existing file (if present).
-		if pkg != nil {
-			g := generator.NewGenerator(c, l, file)
-			rules, empty := g.GenerateRules(pkg)
-			if file == nil {
-				file = rule.EmptyFile(filepath.Join(c.RepoRoot, filepath.FromSlash(rel), c.DefaultBuildFileName()))
-				for _, r := range rules {
-					r.Insert(file)
-				}
-			} else {
-				merger.MergeFile(file, empty, rules, merger.PreResolveAttrs)
+		if f != nil {
+			for _, l := range languages {
+				l.Fix(c, f)
 			}
-			visits = append(visits, visitRecord{
-				pkgRel: rel,
-				rules:  rules,
-				empty:  empty,
-				file:   file,
-			})
 		}
+
+		// Generate rules.
+		var empty, gen []*rule.Rule
+		for _, l := range languages {
+			lempty, lgen := l.GenerateRules(c, dir, rel, f, subdirs, regularFiles, genFiles, gen)
+			empty = append(empty, lempty...)
+			gen = append(gen, lgen...)
+		}
+		if f == nil && len(gen) == 0 {
+			return
+		}
+
+		// Insert or merge rules into the build file.
+		if f == nil {
+			f = rule.EmptyFile(filepath.Join(dir, c.DefaultBuildFileName()))
+			for _, r := range gen {
+				r.Insert(f)
+			}
+		} else {
+			merger.MergeFile(f, empty, gen, merger.PreResolve, kinds)
+		}
+		visits = append(visits, visitRecord{
+			pkgRel: rel,
+			rules:  gen,
+			empty:  empty,
+			file:   f,
+		})
 
 		// Add library rules to the dependency resolution table.
-		if file != nil {
-			ruleIndex.AddRulesFromFile(c, file)
+		for _, r := range f.Rules {
+			ruleIndex.AddRule(c, r, f)
 		}
 	})
+
+	uc := getUpdateConfig(c)
 
 	// Finish building the index for dependency resolution.
 	ruleIndex.Finish()
 
 	// Resolve dependencies.
-	uc := getUpdateConfig(c)
 	rc := repos.NewRemoteCache(uc.repos)
-	resolver := resolve.NewResolver(c, l, ruleIndex, rc)
 	for _, v := range visits {
 		for _, r := range v.rules {
-			resolver.ResolveRule(r, v.pkgRel)
+			from := label.New("", v.pkgRel, r.Name())
+			kindToResolver[r.Kind()].Resolve(c, ruleIndex, rc, r, from)
 		}
-		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolveAttrs)
+		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve, kinds)
 	}
 
 	// Emit merged files.
 	for _, v := range visits {
-		merger.FixLoads(v.file)
+		merger.FixLoads(v.file, loads)
 		v.file.Sync()
 		bzl.Rewrite(v.file.File, nil) // have buildifier 'format' our rules.
 
@@ -230,8 +244,7 @@ func runFixUpdate(cmd command, args []string) error {
 	return nil
 }
 
-func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Configurer) (*config.Config, error) {
-	var err error
+func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Configurer, loads []rule.LoadInfo) (*config.Config, error) {
 	c := config.New()
 
 	fs := flag.NewFlagSet("gazelle", flag.ContinueOnError)
@@ -239,14 +252,8 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 	// -h or -help were passed explicitly.
 	fs.Usage = func() {}
 
-	knownImports := multiFlag{}
-	buildTags := fs.String("build_tags", "", "comma-separated list of build tags. If not specified, Gazelle will not\n\tfilter sources with build constraints.")
-	external := fs.String("external", "external", "external: resolve external packages with go_repository\n\tvendored: resolve external packages as packages in vendor/")
-	var goPrefix explicitFlag
-	fs.Var(&goPrefix, "go_prefix", "prefix of import paths in the current workspace")
-	fs.Var(&knownImports, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
-	var proto explicitFlag
-	fs.Var(&proto, "proto", "default: generates new proto rules\n\tdisable: does not touch proto rules\n\tlegacy (deprecated): generates old proto rules")
+	var knownImports []string
+	fs.Var(&gzflag.MultiFlag{Values: &knownImports}, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
 
 	for _, cext := range cexts {
 		cext.RegisterFlags(fs, cmd.String(), c)
@@ -267,34 +274,6 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 		}
 	}
 
-	c.SetBuildTags(*buildTags)
-	c.PreprocessTags()
-
-	if goPrefix.set {
-		c.GoPrefix = goPrefix.value
-	} else {
-		c.GoPrefix, err = loadGoPrefix(c)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if err := config.CheckPrefix(c.GoPrefix); err != nil {
-		return nil, err
-	}
-
-	c.DepMode, err = config.DependencyModeFromString(*external)
-	if err != nil {
-		return nil, err
-	}
-
-	if proto.set {
-		c.ProtoMode, err = config.ProtoModeFromString(proto.value)
-		if err != nil {
-			return nil, err
-		}
-		c.ProtoModeExplicit = true
-	}
-
 	uc := getUpdateConfig(c)
 	workspacePath := filepath.Join(c.RepoRoot, "WORKSPACE")
 	if workspace, err := rule.LoadFile(workspacePath); err != nil {
@@ -302,7 +281,7 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 			return nil, err
 		}
 	} else {
-		if err := fixWorkspace(c, workspace); err != nil {
+		if err := fixWorkspace(c, workspace, loads); err != nil {
 			return nil, err
 		}
 		c.RepoName = findWorkspaceName(workspace)
@@ -355,68 +334,7 @@ FLAGS:
 	fs.PrintDefaults()
 }
 
-func loadBuildFile(c *config.Config, dir string) (*bzl.File, error) {
-	var buildPath string
-	for _, base := range c.ValidBuildFileNames {
-		p := filepath.Join(dir, base)
-		fi, err := os.Stat(p)
-		if err == nil {
-			if fi.Mode().IsRegular() {
-				buildPath = p
-				break
-			}
-			continue
-		}
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-	}
-	if buildPath == "" {
-		return nil, os.ErrNotExist
-	}
-
-	data, err := ioutil.ReadFile(buildPath)
-	if err != nil {
-		return nil, err
-	}
-	return bzl.Parse(buildPath, data)
-}
-
-func loadGoPrefix(c *config.Config) (string, error) {
-	f, err := loadBuildFile(c, c.RepoRoot)
-	if err != nil {
-		return "", errors.New("-go_prefix not set")
-	}
-	for _, d := range rule.ParseDirectives(f) {
-		if d.Key == "prefix" {
-			return d.Value, nil
-		}
-	}
-	for _, s := range f.Stmt {
-		c, ok := s.(*bzl.CallExpr)
-		if !ok {
-			continue
-		}
-		l, ok := c.X.(*bzl.LiteralExpr)
-		if !ok {
-			continue
-		}
-		if l.Token != "go_prefix" {
-			continue
-		}
-		if len(c.List) != 1 {
-			return "", fmt.Errorf("-go_prefix not set, and %s has go_prefix(%v) with too many args", f.Path, c.List)
-		}
-		v, ok := c.List[0].(*bzl.StringExpr)
-		if !ok {
-			return "", fmt.Errorf("-go_prefix not set, and %s has go_prefix(%v) which is not a string", f.Path, bzl.FormatString(c.List[0]))
-		}
-		return v.Value, nil
-	}
-	return "", fmt.Errorf("-go_prefix not set, and no # gazelle:prefix directive found in %s", f.Path)
-}
-
-func fixWorkspace(c *config.Config, workspace *rule.File) error {
+func fixWorkspace(c *config.Config, workspace *rule.File, loads []rule.LoadInfo) error {
 	uc := getUpdateConfig(c)
 	if !c.ShouldFix {
 		return nil
@@ -432,7 +350,7 @@ func fixWorkspace(c *config.Config, workspace *rule.File) error {
 	}
 
 	merger.FixWorkspace(workspace)
-	merger.FixLoads(workspace)
+	merger.FixLoads(workspace, loads)
 	if err := merger.CheckGazelleLoaded(workspace); err != nil {
 		return err
 	}

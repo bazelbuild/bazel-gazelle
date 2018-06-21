@@ -29,7 +29,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
-type updateReposFn func(c *updateReposConfig, oldFile *rule.File) error
+type updateReposFn func(c *updateReposConfig, oldFile *rule.File, kinds map[string]rule.KindInfo) error
 
 type updateReposConfig struct {
 	fn           updateReposFn
@@ -75,7 +75,17 @@ func (_ *updateReposConfigurer) KnownDirectives() []string { return nil }
 func (_ *updateReposConfigurer) Configure(c *config.Config, rel string, f *rule.File) {}
 
 func updateRepos(args []string) error {
-	cexts := []config.Configurer{&config.CommonConfigurer{}, &updateReposConfigurer{}}
+	cexts := make([]config.Configurer, 0, len(languages)+2)
+	cexts = append(cexts, &config.CommonConfigurer{}, &updateReposConfigurer{})
+	kinds := make(map[string]rule.KindInfo)
+	loads := []rule.LoadInfo{}
+	for _, lang := range languages {
+		cexts = append(cexts, lang)
+		loads = append(loads, lang.Loads()...)
+		for kind, info := range lang.Kinds() {
+			kinds[kind] = info
+		}
+	}
 	c, err := newUpdateReposConfiguration(args, cexts)
 	if err != nil {
 		return err
@@ -89,10 +99,10 @@ func updateRepos(args []string) error {
 	}
 	merger.FixWorkspace(f)
 
-	if err := uc.fn(uc, f); err != nil {
+	if err := uc.fn(uc, f, kinds); err != nil {
 		return err
 	}
-	merger.FixLoads(f)
+	merger.FixLoads(f, loads)
 	if err := merger.CheckGazelleLoaded(f); err != nil {
 		return err
 	}
@@ -146,7 +156,7 @@ FLAGS:
 `)
 }
 
-func updateImportPaths(c *updateReposConfig, f *rule.File) error {
+func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
 	rs := repos.ListRepositories(f)
 	rc := repos.NewRemoteCache(rs)
 
@@ -175,16 +185,16 @@ func updateImportPaths(c *updateReposConfig, f *rule.File) error {
 			return err
 		}
 	}
-	merger.MergeFile(f, nil, genRules, merger.RepoAttrs)
+	merger.MergeFile(f, nil, genRules, merger.PreResolve, kinds)
 	return nil
 }
 
-func importFromLockFile(c *updateReposConfig, f *rule.File) error {
+func importFromLockFile(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
 	genRules, err := repos.ImportRepoRules(c.lockFilename)
 	if err != nil {
 		return err
 	}
 
-	merger.MergeFile(f, nil, genRules, merger.RepoAttrs)
+	merger.MergeFile(f, nil, genRules, merger.PreResolve, kinds)
 	return nil
 }
