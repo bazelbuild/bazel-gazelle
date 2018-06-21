@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "hello_proto",
+    srcs = ["hello.proto"],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "hello_go_proto",
+    _gazelle_imports = [],
+    importmap = "never/gonna/give/you/up",
+    importpath = "example.com/repo/importmap",
+    proto = ":hello_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["extra.go"],
+    _gazelle_imports = [],
+    embed = [":hello_go_proto"],
+    importmap = "never/gonna/give/you/up",
+    importpath = "example.com/repo/importmap",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["extra_test.go"],
+    _gazelle_imports = [],
+    embed = [":go_default_library"],
+)

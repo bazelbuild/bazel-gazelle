@@ -1,0 +1,73 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+# gazelle:exclude testdata
+
+# TODO(jayconrod): don't hard code a reference to @go_sdk here. We should
+# get the package list from the toolchain as soon as it's stored there.
+# TODO(jayconrod): test that the checked-in static file matches the generated
+# file. The generated code is checked in so that Gazelle can still be built
+# with "go get".
+genrule(
+    name = "std_package_list",
+    srcs = ["@go_sdk//:packages.txt"],
+    outs = ["std_package_list.go"],
+    cmd = "$(location //internal/language/go/gen_std_package_list) $< $@",
+    tools = ["//internal/language/go/gen_std_package_list"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "config.go",
+        "constants.go",
+        "fileinfo.go",
+        "fix.go",
+        "generate.go",
+        "kinds.go",
+        "lang.go",
+        "package.go",
+        "resolve.go",
+        "std_package_list.go",
+    ],
+    importpath = "github.com/bazelbuild/bazel-gazelle/internal/language/go",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal/config:go_default_library",
+        "//internal/flag:go_default_library",
+        "//internal/label:go_default_library",
+        "//internal/language:go_default_library",
+        "//internal/language/proto:go_default_library",
+        "//internal/pathtools:go_default_library",
+        "//internal/repos:go_default_library",
+        "//internal/resolve:go_default_library",
+        "//internal/rule:go_default_library",
+        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "config_test.go",
+        "fileinfo_go_test.go",
+        "fileinfo_test.go",
+        "fix_test.go",
+        "generate_test.go",
+        "resolve_test.go",
+    ],
+    data = glob(["testdata/**"]),
+    embed = [":go_default_library"],
+    deps = [
+        "//internal/config:go_default_library",
+        "//internal/label:go_default_library",
+        "//internal/language:go_default_library",
+        "//internal/language/proto:go_default_library",
+        "//internal/merger:go_default_library",
+        "//internal/repos:go_default_library",
+        "//internal/resolve:go_default_library",
+        "//internal/rule:go_default_library",
+        "//internal/walk:go_default_library",
+        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
+        "//vendor/golang.org/x/tools/go/vcs:go_default_library",
+    ],
+)

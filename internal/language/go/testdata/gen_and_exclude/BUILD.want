@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "gen.go",
+        "gen_linux.go",
+        "gen_static_darwin.go",
+        "static.go",
+    ],
+    _gazelle_imports = select({
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "github.com/jr_hacker/darwin",
+        ],
+        "//conditions:default": [],
+    }),
+    importpath = "example.com/repo/gen_and_exclude",
+    visibility = ["//visibility:public"],
+)
