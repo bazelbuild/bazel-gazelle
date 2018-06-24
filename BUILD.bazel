@@ -1,4 +1,5 @@
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle
+# gazelle:exclude testing
 
 load("//:def.bzl", "gazelle")
 

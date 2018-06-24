@@ -1,0 +1,15 @@
+load(":defs.bzl", "gazelle_test")
+
+# Used by defs.bzl to actually run the tests.
+exports_files(["test.sh"])
+
+gazelle_test(
+    # Test name must not match directory name or your runtiles can't be created
+    # due to a name conflict.
+    name = "go_demo",
+    srcs = glob(["go/**"]),
+    path = "testing/go",
+    args = [
+      "-go_prefix=foo.bar",
+    ],
+)
