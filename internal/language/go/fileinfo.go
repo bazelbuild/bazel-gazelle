@@ -621,7 +621,7 @@ func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, f
 // Gazelle won't consider whether an ignored tag is satisfied when evaluating
 // build constraints for a file.
 func isIgnoredTag(tag string) bool {
-	if tag == "cgo" {
+	if tag == "cgo" || tag == "race" || tag == "msan" {
 		return true
 	}
 	if len(tag) < 5 || !strings.HasPrefix(tag, "go") {

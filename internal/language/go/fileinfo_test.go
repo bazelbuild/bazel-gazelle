@@ -487,6 +487,14 @@ import "C"
 			desc:    "cgo tag negated",
 			content: "// +build !cgo",
 			want:    true,
+		}, {
+			desc:    "race msan tags",
+			content: "// +build msan race",
+			want:    true,
+		}, {
+			desc:    "race msan tags negated",
+			content: "//+ build !msan,!race",
+			want:    true,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
