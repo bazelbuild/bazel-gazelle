@@ -196,8 +196,8 @@ def _go_repository_tools_impl(ctx):
         ctx.symlink(ctx.path(root_file).dirname, "src/" + prefix)
 
     env = {
-        "GOROOT": go_root,
-        "GOPATH": ctx.path("."),
+        "GOROOT": str(go_root),
+        "GOPATH": str(ctx.path(".")),
         # workaround: to find gcc for go link tool on Arm platform
         "PATH": ctx.os.environ["PATH"],
     }
