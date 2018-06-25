@@ -18,6 +18,9 @@ package merger
 import (
 	"testing"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/language"
+	"github.com/bazelbuild/bazel-gazelle/internal/language/go"
+	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
@@ -879,8 +882,8 @@ func TestMergeFile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			MergeFile(f, emptyFile.Rules, genFile.Rules, PreResolveAttrs)
-			FixLoads(f)
+			MergeFile(f, emptyFile.Rules, genFile.Rules, PreResolve, testKinds)
+			FixLoads(f, testLoads)
 
 			want := tc.expected
 			if len(want) > 0 && want[0] == '\n' {
@@ -891,6 +894,22 @@ func TestMergeFile(t *testing.T) {
 				t.Fatalf("%s: got %s; want %s", tc.desc, got, want)
 			}
 		})
+	}
+}
+
+var (
+	testKinds map[string]rule.KindInfo
+	testLoads []rule.LoadInfo
+)
+
+func init() {
+	testKinds = make(map[string]rule.KindInfo)
+	langs := []language.Language{proto.New(), golang.New()}
+	for _, lang := range langs {
+		for kind, info := range lang.Kinds() {
+			testKinds[kind] = info
+		}
+		testLoads = append(testLoads, lang.Loads()...)
 	}
 }
 
@@ -959,7 +978,9 @@ go_binary(name = "z")
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got, gotErr := match(oldFile.Rules, genFile.Rules[0]); gotErr != nil {
+			r := genFile.Rules[0]
+			info := testKinds[r.Kind()]
+			if got, gotErr := match(oldFile.Rules, r, info); gotErr != nil {
 				if !tc.wantError {
 					t.Errorf("unexpected error: %v", gotErr)
 				}

@@ -8,23 +8,18 @@ go_library(
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/merger",
     visibility = ["//visibility:public"],
-    deps = [
-        "//internal/config:go_default_library",
-        "//internal/rule:go_default_library",
-        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
-    ],
+    deps = ["//internal/rule:go_default_library"],
 )
 
 go_test(
     name = "go_default_test",
     size = "small",
-    srcs = [
-        "fix_test.go",
-        "merger_test.go",
-    ],
+    srcs = ["merger_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//internal/config:go_default_library",
+        "//internal/language:go_default_library",
+        "//internal/language/go:go_default_library",
+        "//internal/language/proto:go_default_library",
         "//internal/rule:go_default_library",
     ],
 )

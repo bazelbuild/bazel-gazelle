@@ -15,7 +15,16 @@ limitations under the License.
 
 package config
 
-import "testing"
+import (
+	"flag"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+)
 
 func TestPreprocessTags(t *testing.T) {
 	c := &Config{
@@ -33,5 +42,56 @@ func TestPreprocessTags(t *testing.T) {
 		if c.GenericTags[tag] {
 			t.Errorf("tag %q unexpectedly set", tag)
 		}
+	}
+}
+
+func TestCommonConfigurerFlags(t *testing.T) {
+	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "config_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	dir, err = filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(dir, "WORKSPACE"), nil, 0666); err != nil {
+		t.Fatal(err)
+	}
+
+	c := New()
+	cc := &CommonConfigurer{}
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	cc.RegisterFlags(fs, "test", c)
+	args := []string{"-repo_root", dir, "-build_file_name", "x,y"}
+	if err := fs.Parse(args); err != nil {
+		t.Fatal(err)
+	}
+	if err := cc.CheckFlags(fs, c); err != nil {
+		t.Errorf("CheckFlags: %v", err)
+	}
+
+	if c.RepoRoot != dir {
+		t.Errorf("for RepoRoot, got %#v, want %#v", c.RepoRoot, dir)
+	}
+
+	wantBuildFileNames := []string{"x", "y"}
+	if !reflect.DeepEqual(c.ValidBuildFileNames, wantBuildFileNames) {
+		t.Errorf("for ValidBuildFileNames, got %#v, want %#v", c.ValidBuildFileNames, wantBuildFileNames)
+	}
+}
+
+func TestCommonConfigurerDirectives(t *testing.T) {
+	c := New()
+	cc := &CommonConfigurer{}
+	buildData := []byte(`# gazelle:build_file_name x,y`)
+	f, err := rule.LoadData("test", buildData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cc.Configure(c, "", f)
+	want := []string{"x", "y"}
+	if !reflect.DeepEqual(c.ValidBuildFileNames, want) {
+		t.Errorf("for ValidBuildFileNames, got %#v, want %#v", c.ValidBuildFileNames, want)
 	}
 }

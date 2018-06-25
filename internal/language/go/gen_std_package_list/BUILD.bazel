@@ -1,0 +1,14 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_binary(
+    name = "gen_std_package_list",
+    embed = [":go_default_library"],
+    visibility = ["//internal/language/go:__subpackages__"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["gen_std_package_list.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/internal/language/go/gen_std_package_list",
+    visibility = ["//visibility:private"],
+)

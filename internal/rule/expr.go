@@ -20,7 +20,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
@@ -273,16 +272,16 @@ func extractPlatformStringsExprs(expr bzl.Expr) (platformStringsExprs, error) {
 				if err != nil {
 					return platformStringsExprs{}, fmt.Errorf("expression could not be matched: dict key is not label: %q", k.Value)
 				}
-				if config.KnownOSSet[key.Name] {
+				if KnownOSSet[key.Name] {
 					dict = &ps.os
 					break
 				}
-				if config.KnownArchSet[key.Name] {
+				if KnownArchSet[key.Name] {
 					dict = &ps.arch
 					break
 				}
 				osArch := strings.Split(key.Name, "_")
-				if len(osArch) != 2 || !config.KnownOSSet[osArch[0]] || !config.KnownArchSet[osArch[1]] {
+				if len(osArch) != 2 || !KnownOSSet[osArch[0]] || !KnownArchSet[osArch[1]] {
 					return platformStringsExprs{}, fmt.Errorf("expression could not be matched: dict key contains unknown platform: %q", k.Value)
 				}
 				dict = &ps.platform

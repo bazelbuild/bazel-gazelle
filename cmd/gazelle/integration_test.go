@@ -20,7 +20,9 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -130,15 +132,20 @@ func TestNoRepoRootOrWorkspace(t *testing.T) {
 func TestNoGoPrefixArgOrRule(t *testing.T) {
 	dir, err := createFiles([]fileSpec{
 		{path: "WORKSPACE", content: ""},
+		{path: "hello.go", content: "package hello"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "-go_prefix not set"
-	if err := runGazelle(dir, nil); err == nil {
-		t.Fatalf("got success; want %q", want)
-	} else if !strings.Contains(err.Error(), want) {
-		t.Fatalf("got %q; want %q", err, want)
+	buf := new(bytes.Buffer)
+	log.SetOutput(buf)
+	defer log.SetOutput(os.Stderr)
+	if err := runGazelle(dir, nil); err != nil {
+		t.Fatalf("got %#v; want success", err)
+	}
+	want := "go prefix is not set"
+	if !strings.Contains(buf.String(), want) {
+		t.Errorf("log does not contain %q\n--begin--\n%s--end--\n", want, buf.String())
 	}
 }
 
@@ -1375,6 +1382,28 @@ go_test(
 	}
 
 	checkFiles(t, dir, files)
+}
+
+func TestDontCreateBuildFileInEmptyDir(t *testing.T) {
+	files := []fileSpec{
+		{path: "WORKSPACE"},
+		{path: "sub/"},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+	if err := runGazelle(dir, nil); err != nil {
+		t.Error(err)
+	}
+	for _, f := range []string{"BUILD.bazel", "sub/BUILD.bazel"} {
+		path := filepath.Join(dir, filepath.FromSlash(f))
+		_, err := os.Stat(path)
+		if err == nil {
+			t.Errorf("%s: build file was created", f)
+		}
+	}
 }
 
 // TODO(jayconrod): more tests

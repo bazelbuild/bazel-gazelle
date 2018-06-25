@@ -20,189 +20,44 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
-var (
-	// PreResolveAttrs is the set of attributes that should be merged before
-	// dependency resolution, i.e., everything except deps.
-	PreResolveAttrs config.MergeableAttrs
+// Phase indicates which attributes should be merged in matching rules.
+//
+// The pre-resolve merge is performed before rules are indexed for dependency
+// resolution. All attributes not related to dependencies are merged. This
+// merge must be performed indexing because attributes related to indexing
+// (e.g., srcs, importpath) will be affected.
+//
+// The post-resolve merge is performed after rules are indexed. All attributes
+// related to dependencies are merged.
+type Phase int
 
-	// PostResolveAttrs is the set of attributes that should be merged after
-	// dependency resolution, i.e., deps.
-	PostResolveAttrs config.MergeableAttrs
-
-	// BuildAttrs is the union of PreResolveAttrs and PostResolveAttrs.
-	BuildAttrs config.MergeableAttrs
-
-	// RepoAttrs is the set of attributes that should be merged in repository
-	// rules in WORKSPACE.
-	RepoAttrs config.MergeableAttrs
-
-	// NonEmptyAttrs is the set of attributes that disqualify a rule from being
-	// deleted after merge.
-	NonEmptyAttrs config.MergeableAttrs
+const (
+	PreResolve Phase = iota
+	PostResolve
 )
-
-func init() {
-	PreResolveAttrs = make(config.MergeableAttrs)
-	PostResolveAttrs = make(config.MergeableAttrs)
-	RepoAttrs = make(config.MergeableAttrs)
-	NonEmptyAttrs = make(config.MergeableAttrs)
-	for _, set := range []struct {
-		mergeableAttrs config.MergeableAttrs
-		kinds, attrs   []string
-	}{
-		{
-			mergeableAttrs: PreResolveAttrs,
-			kinds: []string{
-				"go_library",
-				"go_binary",
-				"go_test",
-				"go_proto_library",
-				"proto_library",
-				"filegroup",
-			},
-			attrs: []string{
-				"srcs",
-			},
-		}, {
-			mergeableAttrs: PreResolveAttrs,
-			kinds: []string{
-				"go_library",
-				"go_proto_library",
-			},
-			attrs: []string{
-				"importpath",
-				"importmap",
-			},
-		}, {
-			mergeableAttrs: PreResolveAttrs,
-			kinds: []string{
-				"go_library",
-				"go_binary",
-				"go_test",
-				"go_proto_library",
-			},
-			attrs: []string{
-				"cgo",
-				"clinkopts",
-				"copts",
-				"embed",
-			},
-		}, {
-			mergeableAttrs: PreResolveAttrs,
-			kinds: []string{
-				"go_proto_library",
-			},
-			attrs: []string{
-				"proto",
-			},
-		}, {
-			mergeableAttrs: PostResolveAttrs,
-			kinds: []string{
-				"go_library",
-				"go_binary",
-				"go_test",
-				"go_proto_library",
-				"proto_library",
-			},
-			attrs: []string{
-				"deps",
-			},
-		}, {
-			mergeableAttrs: RepoAttrs,
-			kinds: []string{
-				"go_repository",
-			},
-			attrs: []string{
-				"commit",
-				"importpath",
-				"remote",
-				"sha256",
-				"strip_prefix",
-				"tag",
-				"type",
-				"urls",
-				"vcs",
-			},
-		}, {
-			mergeableAttrs: NonEmptyAttrs,
-			kinds: []string{
-				"go_binary",
-				"go_library",
-				"go_test",
-				"proto_library",
-				"filegroup",
-			},
-			attrs: []string{
-				"srcs",
-			},
-		}, {
-			mergeableAttrs: NonEmptyAttrs,
-			kinds: []string{
-				"go_binary",
-				"go_library",
-				"go_test",
-				"proto_library",
-			},
-			attrs: []string{
-				"deps",
-			},
-		}, {
-			mergeableAttrs: NonEmptyAttrs,
-			kinds: []string{
-				"go_binary",
-				"go_library",
-				"go_test",
-			},
-			attrs: []string{
-				"embed",
-			},
-		}, {
-			mergeableAttrs: NonEmptyAttrs,
-			kinds: []string{
-				"go_proto_library",
-			},
-			attrs: []string{
-				"proto",
-			},
-		},
-	} {
-		for _, kind := range set.kinds {
-			if set.mergeableAttrs[kind] == nil {
-				set.mergeableAttrs[kind] = make(map[string]bool)
-			}
-			for _, attr := range set.attrs {
-				set.mergeableAttrs[kind][attr] = true
-			}
-		}
-	}
-	BuildAttrs = make(config.MergeableAttrs)
-	for _, mattrs := range []config.MergeableAttrs{PreResolveAttrs, PostResolveAttrs} {
-		for kind, attrs := range mattrs {
-			if BuildAttrs[kind] == nil {
-				BuildAttrs[kind] = make(map[string]bool)
-			}
-			for attr := range attrs {
-				BuildAttrs[kind][attr] = true
-			}
-		}
-	}
-}
 
 // MergeFile merges the rules in genRules with matching rules in f and
 // adds unmatched rules to the end of the merged file. MergeFile also merges
 // rules in empty with matching rules in f and deletes rules that
 // are empty after merging. attrs is the set of attributes to merge. Attributes
 // not in this set will be left alone if they already exist.
-func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs config.MergeableAttrs) {
+func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, phase Phase, kinds map[string]rule.KindInfo) {
+	getMergeAttrs := func(r *rule.Rule) map[string]bool {
+		if phase == PreResolve {
+			return kinds[r.Kind()].MergeableAttrs
+		} else {
+			return kinds[r.Kind()].ResolveAttrs
+		}
+	}
+
 	// Merge empty rules into the file and delete any rules which become empty.
 	for _, emptyRule := range emptyRules {
-		if oldRule, _ := match(oldFile.Rules, emptyRule); oldRule != nil {
-			rule.MergeRules(emptyRule, oldRule, attrs, oldFile.Path)
-			if oldRule.IsEmpty(NonEmptyAttrs) {
+		if oldRule, _ := match(oldFile.Rules, emptyRule, kinds[emptyRule.Kind()]); oldRule != nil {
+			rule.MergeRules(emptyRule, oldRule, getMergeAttrs(emptyRule), oldFile.Path)
+			if oldRule.IsEmpty(kinds[oldRule.Kind()]) {
 				oldRule.Delete()
 			}
 		}
@@ -215,7 +70,7 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs conf
 	matchErrors := make([]error, len(genRules))
 	substitutions := make(map[string]string)
 	for i, genRule := range genRules {
-		oldRule, err := match(oldFile.Rules, genRule)
+		oldRule, err := match(oldFile.Rules, genRule, kinds[genRule.Kind()])
 		if err != nil {
 			// TODO(jayconrod): add a verbose mode and log errors. They are too chatty
 			// to print by default.
@@ -233,7 +88,7 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs conf
 	// Rename labels in generated rules that refer to other generated rules.
 	if len(substitutions) > 0 {
 		for _, genRule := range genRules {
-			substituteRule(genRule, substitutions)
+			substituteRule(genRule, substitutions, kinds[genRule.Kind()])
 		}
 	}
 
@@ -245,19 +100,9 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, attrs conf
 		if matchRules[i] == nil {
 			genRule.Insert(oldFile)
 		} else {
-			rule.MergeRules(genRule, matchRules[i], attrs, oldFile.Path)
+			rule.MergeRules(genRule, matchRules[i], getMergeAttrs(genRule), oldFile.Path)
 		}
 	}
-}
-
-// substituteAttrs contains a list of attributes for each kind that should be
-// processed by substituteRule and substituteExpr. Note that "name" does not
-// need to be substituted since it's not mergeable.
-var substituteAttrs = map[string][]string{
-	"go_binary":        {"embed"},
-	"go_library":       {"embed"},
-	"go_test":          {"embed"},
-	"go_proto_library": {"proto"},
 }
 
 // substituteRule replaces local labels (those beginning with ":", referring to
@@ -265,8 +110,8 @@ var substituteAttrs = map[string][]string{
 // to update generated rules before merging when the corresponding existing
 // rules have different names. If substituteRule replaces a string, it returns
 // a new expression; it will not modify the original expression.
-func substituteRule(r *rule.Rule, substitutions map[string]string) {
-	for _, attr := range substituteAttrs[r.Kind()] {
+func substituteRule(r *rule.Rule, substitutions map[string]string, info rule.KindInfo) {
+	for attr := range info.SubstituteAttrs {
 		if expr := r.Attr(attr); expr != nil {
 			expr = rule.MapExprStrings(expr, func(s string) string {
 				if rename, ok := substitutions[strings.TrimPrefix(s, ":")]; ok {
@@ -279,20 +124,6 @@ func substituteRule(r *rule.Rule, substitutions map[string]string) {
 		}
 	}
 }
-
-// matchAttrs contains lists of attributes for each kind that are used in
-// matching. For example, importpath attributes can be used to match go_library
-// rules, even when the names are different.
-var matchAttrs = map[string][]string{
-	"go_library":       {"importpath"},
-	"go_proto_library": {"importpath"},
-	"go_repository":    {"importpath"},
-}
-
-// matchAny is a set of kinds which may be matched regardless of attributes.
-// For example, if there is only one go_binary in a package, any go_binary
-// rule will match.
-var matchAny = map[string]bool{"go_binary": true}
 
 // match searches for a rule that can be merged with x in rules.
 //
@@ -310,7 +141,7 @@ var matchAny = map[string]bool{"go_binary": true}
 // the quality of the match (name match is best, then attribute match in the
 // order that attributes are listed). If disambiguation is successful,
 // the rule and nil are returned. Otherwise, nil and an error are returned.
-func match(rules []*rule.Rule, x *rule.Rule) (*rule.Rule, error) {
+func match(rules []*rule.Rule, x *rule.Rule, info rule.KindInfo) (*rule.Rule, error) {
 	xname := x.Name()
 	xkind := x.Kind()
 	var nameMatches []*rule.Rule
@@ -335,8 +166,7 @@ func match(rules []*rule.Rule, x *rule.Rule) (*rule.Rule, error) {
 		return nil, fmt.Errorf("could not merge %s(%s): multiple rules have the same name", xkind, xname)
 	}
 
-	attrs := matchAttrs[xkind]
-	for _, key := range attrs {
+	for _, key := range info.MatchAttrs {
 		var attrMatches []*rule.Rule
 		xvalue := x.AttrString(key)
 		if xvalue == "" {
@@ -354,7 +184,7 @@ func match(rules []*rule.Rule, x *rule.Rule) (*rule.Rule, error) {
 		}
 	}
 
-	if matchAny[xkind] {
+	if info.MatchAny {
 		if len(kindMatches) == 1 {
 			return kindMatches[0], nil
 		} else if len(kindMatches) > 1 {

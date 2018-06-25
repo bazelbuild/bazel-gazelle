@@ -1,0 +1,53 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "cgo_generic.c",
+        "cgo_generic.go",
+        "cgo_linux.c",
+        "cgo_linux.go",
+        "generic.go",
+        "no_cgo.go",
+        "release.go",
+        "suffix_amd64.go",
+        "suffix_arm.go",
+        "suffix_darwin.go",
+        "suffix_linux.go",
+        "tag_a.go",
+        "tag_d.go",
+        "tag_l.go",
+    ],
+    _gazelle_imports = [
+        "example.com/repo/platforms/generic",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "example.com/repo/platforms/darwin",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "example.com/repo/platforms/linux",
+        ],
+        "//conditions:default": [],
+    }),
+    cgo = True,
+    copts = [
+        "-DGENERIC",
+    ] + select({
+        "@io_bazel_rules_go//go/platform:linux": [
+            "-DLINUX",
+        ],
+        "//conditions:default": [],
+    }),
+    importpath = "example.com/repo/platforms",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "generic_test.go",
+        "suffix_linux_test.go",
+    ],
+    _gazelle_imports = [],
+    embed = [":go_default_library"],
+)

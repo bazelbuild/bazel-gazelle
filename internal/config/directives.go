@@ -18,82 +18,21 @@ package config
 import (
 	"log"
 	"path"
-	"regexp"
-	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
-
-// Directive is a key-value pair extracted from a top-level comment in
-// a build file. Directives have the following format:
-//
-//     # gazelle:key value
-//
-// Keys may not contain spaces. Values may be empty and may contain spaces,
-// but surrounding space is trimmed.
-type Directive struct {
-	Key, Value string
-}
-
-// Top-level directives apply to the whole package or build file. They must
-// appear before the first statement.
-var knownTopLevelDirectives = map[string]bool{
-	"build_file_name":  true,
-	"build_tags":       true,
-	"exclude":          true,
-	"ignore":           true,
-	"importmap_prefix": true,
-	"repo":             true,
-	"prefix":           true,
-	"proto":            true,
-}
-
-// TODO(jayconrod): annotation directives will apply to an individual rule.
-// They must appear in the block of comments above that rule.
-
-// ParseDirectives scans f for Gazelle directives. The full list of directives
-// is returned. Errors are reported for unrecognized directives and directives
-// out of place (after the first statement).
-func ParseDirectives(f *bzl.File) []Directive {
-	var directives []Directive
-	parseComment := func(com bzl.Comment) {
-		match := directiveRe.FindStringSubmatch(com.Token)
-		if match == nil {
-			return
-		}
-		key, value := match[1], match[2]
-		if _, ok := knownTopLevelDirectives[key]; !ok {
-			log.Printf("%s:%d: unknown directive: %s", f.Path, com.Start.Line, com.Token)
-			return
-		}
-		directives = append(directives, Directive{key, value})
-	}
-
-	for _, s := range f.Stmt {
-		coms := s.Comment()
-		for _, com := range coms.Before {
-			parseComment(com)
-		}
-		for _, com := range coms.After {
-			parseComment(com)
-		}
-	}
-	return directives
-}
-
-var directiveRe = regexp.MustCompile(`^#\s*gazelle:(\w+)\s*(.*?)\s*$`)
 
 // ApplyDirectives applies directives that modify the configuration to a copy of
 // c, which is returned. If there are no configuration directives, c is returned
 // unmodified.
-func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
+// TODO(jayconrod): delete this function and move all directive handling
+// into configuration extensions.
+func ApplyDirectives(c *Config, directives []rule.Directive, rel string) *Config {
 	modified := *c
 	didModify := false
 	for _, d := range directives {
 		switch d.Key {
-		case "build_file_name":
-			modified.ValidBuildFileNames = strings.Split(d.Value, ",")
-			didModify = true
 		case "build_tags":
 			if err := modified.SetBuildTags(d.Value); err != nil {
 				log.Print(err)
@@ -144,7 +83,7 @@ func ApplyDirectives(c *Config, directives []Directive, rel string) *Config {
 // TODO(jayconrod): this is operating at the wrong level of abstraction, but
 // it can't depend on rule, since rule depends on config. Move to another
 // package after the Language abstraction lands.
-func InferProtoMode(c *Config, rel string, f *bzl.File, directives []Directive) *Config {
+func InferProtoMode(c *Config, rel string, f *bzl.File, directives []rule.Directive) *Config {
 	if c.ProtoMode != DefaultProtoMode || c.ProtoModeExplicit {
 		return c
 	}

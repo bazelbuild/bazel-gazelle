@@ -19,76 +19,33 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
-
-func TestParseDirectives(t *testing.T) {
-	for _, tc := range []struct {
-		desc, content string
-		want          []Directive
-	}{
-		{
-			desc: "empty file",
-		}, {
-			desc: "locations",
-			content: `# gazelle:ignore top
-
-#gazelle:ignore before
-foo(
-   "foo",  # gazelle:ignore inside
-) # gazelle:ignore suffix
-#gazelle:ignore after
-
-# gazelle:ignore bottom`,
-			want: []Directive{
-				{"ignore", "top"},
-				{"ignore", "before"},
-				{"ignore", "after"},
-				{"ignore", "bottom"},
-			},
-		},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			f, err := bzl.Parse("test.bazel", []byte(tc.content))
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			got := ParseDirectives(f)
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("got %#v ; want %#v", got, tc.want)
-			}
-		})
-	}
-}
 
 func TestApplyDirectives(t *testing.T) {
 	for _, tc := range []struct {
 		desc       string
-		directives []Directive
+		directives []rule.Directive
 		rel        string
 		want       Config
 	}{
 		{
 			desc:       "empty build_tags",
-			directives: []Directive{{"build_tags", ""}},
+			directives: []rule.Directive{{"build_tags", ""}},
 			want:       Config{},
 		}, {
 			desc:       "build_tags",
-			directives: []Directive{{"build_tags", "foo,bar"}},
+			directives: []rule.Directive{{"build_tags", "foo,bar"}},
 			want:       Config{GenericTags: BuildTags{"foo": true, "bar": true}},
 		}, {
-			desc:       "build_file_name",
-			directives: []Directive{{"build_file_name", "foo,bar"}},
-			want:       Config{ValidBuildFileNames: []string{"foo", "bar"}},
-		}, {
 			desc:       "prefix",
-			directives: []Directive{{"prefix", "example.com/repo"}},
+			directives: []rule.Directive{{"prefix", "example.com/repo"}},
 			rel:        "sub",
 			want:       Config{GoPrefix: "example.com/repo", GoPrefixRel: "sub"},
 		}, {
 			desc:       "importmap_prefix",
-			directives: []Directive{{"importmap_prefix", "example.com/repo"}},
+			directives: []rule.Directive{{"importmap_prefix", "example.com/repo"}},
 			rel:        "sub",
 			want:       Config{GoImportMapPrefix: "example.com/repo", GoImportMapPrefixRel: "sub"},
 		},
@@ -162,14 +119,14 @@ load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			var f *bzl.File
-			var directives []Directive
+			var directives []rule.Directive
 			if tc.content != "" {
 				var err error
 				f, err = bzl.Parse("BUILD.bazel", []byte(tc.content))
 				if err != nil {
 					t.Fatalf("error parsing build file: %v", err)
 				}
-				directives = ParseDirectives(f)
+				directives = rule.ParseDirectives(f)
 			}
 
 			got := InferProtoMode(&tc.c, tc.rel, f, directives)

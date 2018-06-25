@@ -18,8 +18,6 @@ package rule
 import (
 	"sort"
 	"strings"
-
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
 )
 
 // PlatformStrings contains a set of strings associated with a buildable
@@ -36,16 +34,16 @@ type PlatformStrings struct {
 	// Generic is a list of strings not specific to any platform.
 	Generic []string
 
-	// OS is a map from OS name (anything in config.KnownOSs) to
+	// OS is a map from OS name (anything in KnownOSs) to
 	// OS-specific strings.
 	OS map[string][]string
 
-	// Arch is a map from architecture name (anything in config.KnownArchs) to
+	// Arch is a map from architecture name (anything in KnownArchs) to
 	// architecture-specific strings.
 	Arch map[string][]string
 
 	// Platform is a map from platforms to OS and architecture-specific strings.
-	Platform map[config.Platform][]string
+	Platform map[Platform][]string
 }
 
 // HasExt returns whether this set contains a file with the given extension.
@@ -116,6 +114,26 @@ func (ps *PlatformStrings) firstExtFile(ext string) string {
 	return ""
 }
 
+// Map applies a function that processes individual strings to the strings
+// in "ps" and returns a new PlatformStrings with the result. Empty strings
+// returned by the function are dropped.
+func (ps *PlatformStrings) Map(f func(s string) (string, error)) (PlatformStrings, []error) {
+	var errors []error
+	mapSlice := func(ss []string) ([]string, error) {
+		rs := make([]string, 0, len(ss))
+		for _, s := range ss {
+			if r, err := f(s); err != nil {
+				errors = append(errors, err)
+			} else if r != "" {
+				rs = append(rs, r)
+			}
+		}
+		return rs, nil
+	}
+	result, _ := ps.MapSlice(mapSlice)
+	return result, errors
+}
+
 // MapSlice applies a function that processes slices of strings to the strings
 // in "ps" and returns a new PlatformStrings with the results.
 func (ps *PlatformStrings) MapSlice(f func([]string) ([]string, error)) (PlatformStrings, []error) {
@@ -147,11 +165,11 @@ func (ps *PlatformStrings) MapSlice(f func([]string) ([]string, error)) (Platfor
 		return rm
 	}
 
-	mapPlatformMap := func(m map[config.Platform][]string) map[config.Platform][]string {
+	mapPlatformMap := func(m map[Platform][]string) map[Platform][]string {
 		if m == nil {
 			return nil
 		}
-		rm := make(map[config.Platform][]string)
+		rm := make(map[Platform][]string)
 		for k, ss := range m {
 			ss = mapSlice(ss)
 			if len(ss) > 0 {
