@@ -198,6 +198,8 @@ def _go_repository_tools_impl(ctx):
     env = {
         "GOROOT": go_root,
         "GOPATH": ctx.path("."),
+        # workaround: to find gcc for go link tool on Arm platform
+        "PATH": ctx.os.environ["PATH"],
     }
 
     for tool in ("fetch_repo", "gazelle"):
