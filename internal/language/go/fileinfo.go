@@ -197,7 +197,7 @@ const (
 // fileNameInfo returns information that can be inferred from the name of
 // a file. It does not read data from the file.
 func fileNameInfo(path_ string) fileInfo {
-	name := path.Base(path_)
+	name := path.Base(filepath.ToSlash(path_))
 	var ext ext
 	switch path.Ext(name) {
 	case ".go":
