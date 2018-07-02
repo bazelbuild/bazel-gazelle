@@ -1,0 +1,43 @@
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "bar_proto",
+    srcs = [
+        "bar1.proto",
+        "bar2.proto",
+    ],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "foo_proto",
+    srcs = [
+        "foo1.proto",
+        "foo2.proto",
+    ],
+    _gazelle_imports = [
+        "google/protobuf/any.proto",
+        "proto_package_mode/bar1.proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "bar_go_proto",
+    _gazelle_imports = [],
+    importpath = "example.com/repo/proto_package_mode/bar",
+    proto = ":bar_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "foo_go_proto",
+    _gazelle_imports = [
+        "google/protobuf/any.proto",
+        "proto_package_mode/bar1.proto",
+    ],
+    importpath = "example.com/repo/proto_package_mode",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+)

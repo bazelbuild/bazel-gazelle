@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+package bar;
+
+option go_package = "example.com/repo/proto_package_mode/bar";

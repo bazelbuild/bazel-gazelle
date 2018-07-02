@@ -1,0 +1,3 @@
+syntax = "proto3";
+
+option x_package = "111@foo";

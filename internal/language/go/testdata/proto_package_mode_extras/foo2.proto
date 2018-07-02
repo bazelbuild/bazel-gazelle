@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+package foo;
+
+import "proto_package_mode_extras/bar1.proto";

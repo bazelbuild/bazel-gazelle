@@ -1,0 +1,3 @@
+# gazelle:proto package
+
+package(default_visibility = ["//visibility:public"])

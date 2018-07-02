@@ -365,13 +365,16 @@ import "C"
 	c.RepoRoot = repo
 	gc := getGoConfig(c)
 	gc.prefix = "example.com/repo"
-	got := buildPackage(c, sub, "sub", []string{"sub.go"}, nil, nil, false, "", nil)
+	pkgs, _ := buildPackages(c, sub, "sub", []string{"sub.go"}, false)
+	got, ok := pkgs["sub"]
+	if !ok {
+		t.Fatal("did not build package 'sub'")
+	}
 	want := &goPackage{
-		name:       "sub",
-		dir:        sub,
-		rel:        "sub",
-		importPath: "example.com/repo/sub",
-		library:    goTarget{cgo: true},
+		name:    "sub",
+		dir:     sub,
+		rel:     "sub",
+		library: goTarget{cgo: true},
 	}
 	want.library.sources.addGenericString("sub.go")
 	want.library.copts.addGenericString("-Isub/..")

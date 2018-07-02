@@ -164,6 +164,7 @@ go_repository = repository_rule(
             values = [
                 "",
                 "default",
+                "package",
                 "disable",
                 "legacy",
             ],

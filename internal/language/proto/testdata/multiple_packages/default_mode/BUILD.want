@@ -1,0 +1,5 @@
+proto_library(
+    name = "multiple_packages_default_mode_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)

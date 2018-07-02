@@ -22,13 +22,12 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
 func (_ *protoLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, otherEmpty, otherGen []*rule.Rule) (empty, gen []*rule.Rule) {
 	pc := GetProtoConfig(c)
-	if pc.Mode != DefaultMode {
+	if pc.Mode == DisableMode || pc.Mode == LegacyMode {
 		// Don't create or delete proto rules in this mode. Any existing rules
 		// are likely hand-written.
 		return nil, nil
@@ -46,50 +45,42 @@ func (_ *protoLang) GenerateRules(c *config.Config, dir, rel string, f *rule.Fil
 			genProtoFiles = append(genFiles, name)
 		}
 	}
-	pkg := buildPackage(dir, rel, regularProtoFiles, genProtoFiles)
-
-	if pkg == nil {
-		empty = append(empty, rule.NewRule("proto_library", RuleName("", rel, pc.GoPrefix)))
-		return empty, gen
+	pkgs := buildPackages(pc, dir, rel, regularProtoFiles, genProtoFiles)
+	shouldSetVisibility := !hasDefaultVisibility(f)
+	for _, pkg := range pkgs {
+		r := generateProto(pc, rel, pkg, shouldSetVisibility)
+		if r.IsEmpty(protoKinds[r.Kind()]) {
+			empty = append(empty, r)
+		} else {
+			gen = append(gen, r)
+		}
 	}
-
-	name := RuleName(goPackageName(pkg), rel, pc.GoPrefix)
-	r := rule.NewRule("proto_library", name)
-	srcs := make([]string, 0, len(pkg.files))
-	for f := range pkg.files {
-		srcs = append(srcs, f)
-	}
-	sort.Strings(srcs)
-	r.SetAttr("srcs", srcs)
-	info := make([]FileInfo, len(srcs))
-	for i, src := range srcs {
-		info[i] = pkg.files[src]
-	}
-	r.SetPrivateAttr(FileInfoKey, info)
-	imports := make([]string, 0, len(pkg.imports))
-	for i := range pkg.imports {
-		imports = append(imports, i)
-	}
-	sort.Strings(imports)
-	r.SetPrivateAttr(config.GazelleImportsKey, imports)
-	for k, v := range pkg.options {
-		r.SetPrivateAttr(k, v)
-	}
-	if !hasDefaultVisibility(f) {
-		vis := checkInternalVisibility(rel, "//visibility:public")
-		r.SetAttr("visibility", []string{vis})
-	}
-	gen = append(gen, r)
+	sort.SliceStable(gen, func(i, j int) bool {
+		return gen[i].Name() < gen[j].Name()
+	})
+	empty = append(empty, generateEmpty(f, regularProtoFiles, genProtoFiles)...)
 	return empty, gen
 }
 
-// RuleName returns a name for the proto_library in the given directory.
-// TODO(jayconrod): remove Go-specific functionality. This is here temporarily
-// for compatibility.
-func RuleName(goPkgName, rel, goPrefix string) string {
-	base := goPkgName
-	if base == "" {
-		base = pathtools.RelBaseName(rel, goPrefix, "")
+// RuleName returns a name for a proto_library derived from the given strings.
+// For each string, RuleName will look for a non-empty suffix of identifier
+// characters and then append "_proto" to that.
+func RuleName(names ...string) string {
+	base := "root"
+	for _, name := range names {
+		notIdent := func(c rune) bool {
+			return !('A' <= c && c <= 'Z' ||
+				'a' <= c && c <= 'z' ||
+				'0' <= c && c <= '9' ||
+				c == '_')
+		}
+		if i := strings.LastIndexFunc(name, notIdent); i >= 0 {
+			name = name[i+1:]
+		}
+		if name != "" {
+			base = name
+			break
+		}
 	}
 	return base + "_proto"
 }
@@ -97,31 +88,53 @@ func RuleName(goPkgName, rel, goPrefix string) string {
 // buildPackage extracts metadata from the .proto files in a directory and
 // constructs possibly several packages, then selects a package to generate
 // a proto_library rule for.
-func buildPackage(dir, rel string, protoFiles, genFiles []string) *protoPackage {
-	packageMap := make(map[string]*protoPackage)
+func buildPackages(pc *ProtoConfig, dir, rel string, protoFiles, genFiles []string) []*Package {
+	packageMap := make(map[string]*Package)
 	for _, name := range protoFiles {
 		info := protoFileInfo(dir, name)
-		if packageMap[info.PackageName] == nil {
-			packageMap[info.PackageName] = newProtoPackage(info.PackageName)
+		key := info.PackageName
+		if pc.groupOption != "" {
+			for _, opt := range info.Options {
+				if opt.Key == pc.groupOption {
+					key = opt.Value
+					break
+				}
+			}
 		}
-		packageMap[info.PackageName].addFile(info)
+		if packageMap[key] == nil {
+			packageMap[key] = newPackage(info.PackageName)
+		}
+		packageMap[key].addFile(info)
 	}
 
-	pkg, err := selectPackage(dir, rel, packageMap)
-	if err != nil {
-		log.Print(err)
-		return nil
-	}
-	if pkg != nil {
+	switch pc.Mode {
+	case DefaultMode:
+		pkg, err := selectPackage(dir, rel, packageMap)
+		if err != nil {
+			log.Print(err)
+		}
+		if pkg == nil {
+			return nil // empty rule created in generateEmpty
+		}
 		for _, name := range genFiles {
 			pkg.addGenFile(dir, name)
 		}
+		return []*Package{pkg}
+
+	case PackageMode:
+		pkgs := make([]*Package, 0, len(packageMap))
+		for _, pkg := range packageMap {
+			pkgs = append(pkgs, pkg)
+		}
+		return pkgs
+
+	default:
+		return nil
 	}
-	return pkg
 }
 
 // selectPackage chooses a package to generate rules for.
-func selectPackage(dir, rel string, packageMap map[string]*protoPackage) (*protoPackage, error) {
+func selectPackage(dir, rel string, packageMap map[string]*Package) (*Package, error) {
 	if len(packageMap) == 0 {
 		return nil, nil
 	}
@@ -130,7 +143,7 @@ func selectPackage(dir, rel string, packageMap map[string]*protoPackage) (*proto
 			return pkg, nil
 		}
 	}
-	defaultPackageName := strings.Replace(rel, "/", ".", -1)
+	defaultPackageName := strings.Replace(rel, "/", "_", -1)
 	for _, pkg := range packageMap {
 		if pkgName := goPackageName(pkg); pkgName != "" && pkgName == defaultPackageName {
 			return pkg, nil
@@ -145,8 +158,8 @@ func selectPackage(dir, rel string, packageMap map[string]*protoPackage) (*proto
 //
 // TODO(jayconrod): remove all Go-specific functionality. This is here
 // temporarily for compatibility.
-func goPackageName(pkg *protoPackage) string {
-	if opt, ok := pkg.options["go_package"]; ok {
+func goPackageName(pkg *Package) string {
+	if opt, ok := pkg.Options["go_package"]; ok {
 		if i := strings.IndexByte(opt, ';'); i >= 0 {
 			return opt[i+1:]
 		} else if i := strings.LastIndexByte(opt, '/'); i >= 0 {
@@ -155,15 +168,85 @@ func goPackageName(pkg *protoPackage) string {
 			return opt
 		}
 	}
-	if pkg.name != "" {
-		return strings.Replace(pkg.name, ".", "_", -1)
+	if pkg.Name != "" {
+		return strings.Replace(pkg.Name, ".", "_", -1)
 	}
-	if len(pkg.files) == 1 {
-		for s := range pkg.files {
+	if len(pkg.Files) == 1 {
+		for s := range pkg.Files {
 			return strings.TrimSuffix(s, ".proto")
 		}
 	}
 	return ""
+}
+
+// generateProto creates a new proto_library rule for a package. The rule may
+// be empty if there are no sources.
+func generateProto(pc *ProtoConfig, rel string, pkg *Package, shouldSetVisibility bool) *rule.Rule {
+	var name string
+	if pc.Mode == DefaultMode {
+		name = RuleName(goPackageName(pkg), pc.GoPrefix, rel)
+	} else {
+		name = RuleName(pkg.Options[pc.groupOption], pkg.Name, rel)
+	}
+	r := rule.NewRule("proto_library", name)
+	srcs := make([]string, 0, len(pkg.Files))
+	for f := range pkg.Files {
+		srcs = append(srcs, f)
+	}
+	sort.Strings(srcs)
+	if len(srcs) > 0 {
+		r.SetAttr("srcs", srcs)
+	}
+	r.SetPrivateAttr(PackageKey, *pkg)
+	imports := make([]string, 0, len(pkg.Imports))
+	for i := range pkg.Imports {
+		imports = append(imports, i)
+	}
+	sort.Strings(imports)
+	r.SetPrivateAttr(config.GazelleImportsKey, imports)
+	for k, v := range pkg.Options {
+		r.SetPrivateAttr(k, v)
+	}
+	if shouldSetVisibility {
+		vis := checkInternalVisibility(rel, "//visibility:public")
+		r.SetAttr("visibility", []string{vis})
+	}
+	return r
+}
+
+// generateEmpty generates a list of proto_library rules that may be deleted.
+// This is generated from existing proto_library rules with srcs lists that
+// don't match any static or generated files.
+func generateEmpty(f *rule.File, regularFiles, genFiles []string) []*rule.Rule {
+	if f == nil {
+		return nil
+	}
+	knownFiles := make(map[string]bool)
+	for _, f := range regularFiles {
+		knownFiles[f] = true
+	}
+	for _, f := range genFiles {
+		knownFiles[f] = true
+	}
+	var empty []*rule.Rule
+outer:
+	for _, r := range f.Rules {
+		if r.Kind() != "proto_library" {
+			continue
+		}
+		srcs := r.AttrStrings("srcs")
+		if len(srcs) == 0 && r.Attr("srcs") != nil {
+			// srcs is not a string list; leave it alone
+			continue
+		}
+		for _, src := range r.AttrStrings("srcs") {
+			if knownFiles[src] {
+				continue outer
+			}
+		}
+		empty = append(empty, rule.NewRule("proto_library", r.Name()))
+	}
+	return empty
 }
 
 // hasDefaultVisibility returns whether oldFile contains a "package" rule with

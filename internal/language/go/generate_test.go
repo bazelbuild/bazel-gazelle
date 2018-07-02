@@ -36,6 +36,7 @@ func TestGenerateRules(t *testing.T) {
 	c.ValidBuildFileNames = []string{"BUILD.old"}
 	gc := getGoConfig(c)
 	gc.prefix = "example.com/repo"
+	gc.prefixSet = true
 
 	cexts := make([]config.Configurer, len(langs))
 	var loads []rule.LoadInfo
@@ -124,6 +125,51 @@ func TestGenerateRulesEmptyLegacyProto(t *testing.T) {
 		if kind := e.Kind(); kind == "proto_library" || kind == "go_proto_library" || kind == "go_grpc_library" {
 			t.Errorf("deleted rule %s ; should not delete in legacy proto mode", kind)
 		}
+	}
+}
+
+func TestGenerateRulesEmptyPackageProto(t *testing.T) {
+	c, _, langs := testConfig()
+	pc := proto.GetProtoConfig(c)
+	pc.Mode = proto.PackageMode
+	oldContent := []byte(`
+proto_library(
+    name = "dead_proto",
+    srcs = ["dead.proto"],
+)
+`)
+	old, err := rule.LoadData("BUILD.bazel", oldContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var empty []*rule.Rule
+	for _, lang := range langs {
+		es, _ := lang.GenerateRules(c, "./foo", "foo", old, nil, nil, nil, empty, nil)
+		empty = append(empty, es...)
+	}
+	f := rule.EmptyFile("test")
+	for _, r := range empty {
+		r.Insert(f)
+	}
+	f.Sync()
+	got := strings.TrimSpace(string(bzl.Format(f.File)))
+	want := strings.TrimSpace(`
+proto_library(name = "dead_proto")
+
+go_proto_library(name = "dead_go_proto")
+
+filegroup(name = "go_default_library_protos")
+
+go_proto_library(name = "foo_go_proto")
+
+go_library(name = "go_default_library")
+
+go_binary(name = "foo")
+
+go_test(name = "go_default_test")
+`)
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
 }
 

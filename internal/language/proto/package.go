@@ -17,36 +17,38 @@ package proto
 
 import "path/filepath"
 
-// protoPackage contains metadata for a set of .proto files that have the
+// Package contains metadata for a set of .proto files that have the
 // same package name. This translates to a proto_library rule.
-type protoPackage struct {
-	name    string
-	files   map[string]FileInfo
-	imports map[string]bool
-	options map[string]string
+type Package struct {
+	Name        string
+	Files       map[string]FileInfo
+	Imports     map[string]bool
+	Options     map[string]string
+	HasServices bool
 }
 
-func newProtoPackage(name string) *protoPackage {
-	return &protoPackage{
-		name:    name,
-		files:   map[string]FileInfo{},
-		imports: map[string]bool{},
-		options: map[string]string{},
+func newPackage(name string) *Package {
+	return &Package{
+		Name:    name,
+		Files:   map[string]FileInfo{},
+		Imports: map[string]bool{},
+		Options: map[string]string{},
 	}
 }
 
-func (p *protoPackage) addFile(info FileInfo) {
-	p.files[info.Name] = info
+func (p *Package) addFile(info FileInfo) {
+	p.Files[info.Name] = info
 	for _, imp := range info.Imports {
-		p.imports[imp] = true
+		p.Imports[imp] = true
 	}
 	for _, opt := range info.Options {
-		p.options[opt.Key] = opt.Value
+		p.Options[opt.Key] = opt.Value
 	}
+	p.HasServices = p.HasServices || info.HasServices
 }
 
-func (p *protoPackage) addGenFile(dir, name string) {
-	p.files[name] = FileInfo{
+func (p *Package) addGenFile(dir, name string) {
+	p.Files[name] = FileInfo{
 		Name: name,
 		Path: filepath.Join(dir, filepath.FromSlash(name)),
 	}

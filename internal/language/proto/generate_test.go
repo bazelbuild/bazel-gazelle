@@ -76,7 +76,30 @@ func TestGenerateRulesEmpty(t *testing.T) {
 	c := config.New()
 	c.Exts[protoName] = &ProtoConfig{}
 
-	empty, gen := lang.GenerateRules(c, "", "foo", nil, nil, nil, nil, nil, nil)
+	oldContent := []byte(`
+proto_library(
+    name = "dead_proto",
+    srcs = ["foo.proto"],
+)
+
+proto_library(
+    name = "live_proto",
+    srcs = ["bar.proto"],
+)
+
+COMPLICATED_SRCS = ["baz.proto"]
+
+proto_library(
+    name = "complicated_proto",
+    srcs = COMPLICATED_SRCS,
+)
+`)
+	old, err := rule.LoadData("BUILD.bazel", oldContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	genFiles := []string{"bar.proto"}
+	empty, gen := lang.GenerateRules(c, "", "foo", old, nil, nil, genFiles, nil, nil)
 	if len(gen) > 0 {
 		t.Errorf("got %d generated rules; want 0", len(gen))
 	}
@@ -86,32 +109,45 @@ func TestGenerateRulesEmpty(t *testing.T) {
 	}
 	f.Sync()
 	got := strings.TrimSpace(string(bzl.Format(f.File)))
-	want := `proto_library(name = "foo_proto")`
+	want := `proto_library(name = "dead_proto")`
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
 }
 
-func TestGenerateFileInfo(t *testing.T) {
+func TestGeneratePackage(t *testing.T) {
 	lang := New()
 	c := testConfig()
 	dir := filepath.FromSlash("testdata/protos")
 	_, gen := lang.GenerateRules(c, dir, "protos", nil, nil, []string{"foo.proto"}, nil, nil, nil)
 	r := gen[0]
-	got := r.PrivateAttr(FileInfoKey).([]FileInfo)
-	want := []FileInfo{{
-		Path:        filepath.Join(dir, "foo.proto"),
-		Name:        "foo.proto",
-		PackageName: "bar.foo",
-		Options:     []Option{{Key: "go_package", Value: "example.com/repo/protos"}},
-		Imports: []string{
-			"google/protobuf/any.proto",
-			"protos/sub/sub.proto",
+	got := r.PrivateAttr(PackageKey).(Package)
+	want := Package{
+		Name: "bar.foo",
+		Files: map[string]FileInfo{
+			"foo.proto": {
+				Path:        filepath.Join(dir, "foo.proto"),
+				Name:        "foo.proto",
+				PackageName: "bar.foo",
+				Options:     []Option{{Key: "go_package", Value: "example.com/repo/protos"}},
+				Imports: []string{
+					"google/protobuf/any.proto",
+					"protos/sub/sub.proto",
+				},
+				HasServices: true,
+			},
+		},
+		Imports: map[string]bool{
+			"google/protobuf/any.proto": true,
+			"protos/sub/sub.proto":      true,
+		},
+		Options: map[string]string{
+			"go_package": "example.com/repo/protos",
 		},
 		HasServices: true,
-	}}
+	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %v; want %v", got, want)
+		t.Errorf("got %#v; want %#v", got, want)
 	}
 }
 
