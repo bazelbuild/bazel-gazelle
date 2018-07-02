@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
-	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 func TestApplyDirectives(t *testing.T) {
@@ -57,81 +56,6 @@ func TestApplyDirectives(t *testing.T) {
 			tc.want.PreprocessTags()
 			if !reflect.DeepEqual(*got, tc.want) {
 				t.Errorf("got %#v ; want %#v", *got, tc.want)
-			}
-		})
-	}
-}
-
-func TestInferProtoMode(t *testing.T) {
-	for _, tc := range []struct {
-		desc, content string
-		c             Config
-		rel           string
-		want          ProtoMode
-	}{
-		{
-			desc: "default",
-		}, {
-			desc: "previous",
-			c:    Config{ProtoMode: LegacyProtoMode},
-			want: LegacyProtoMode,
-		}, {
-			desc: "explicit",
-			content: `# gazelle:proto default
-
-load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
-`,
-			want: DefaultProtoMode,
-		}, {
-			desc:    "explicit_no_override",
-			content: `load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")`,
-			c: Config{
-				ProtoMode:         DefaultProtoMode,
-				ProtoModeExplicit: true,
-			},
-			want: DefaultProtoMode,
-		}, {
-			desc: "vendor",
-			rel:  "vendor",
-			want: DisableProtoMode,
-		}, {
-			desc:    "legacy",
-			content: `load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")`,
-			want:    LegacyProtoMode,
-		}, {
-			desc:    "disable",
-			content: `load("@com_example_repo//proto:go_proto_library.bzl", go_proto_library = "x")`,
-			want:    DisableProtoMode,
-		}, {
-			desc:    "fix legacy",
-			content: `load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")`,
-			c:       Config{ShouldFix: true},
-		}, {
-			desc:    "fix disabled",
-			content: `load("@com_example_repo//proto:go_proto_library.bzl", go_proto_library = "x")`,
-			c:       Config{ShouldFix: true},
-			want:    DisableProtoMode,
-		}, {
-			desc: "well known types",
-			c:    Config{GoPrefix: "github.com/golang/protobuf"},
-			want: LegacyProtoMode,
-		},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			var f *bzl.File
-			var directives []rule.Directive
-			if tc.content != "" {
-				var err error
-				f, err = bzl.Parse("BUILD.bazel", []byte(tc.content))
-				if err != nil {
-					t.Fatalf("error parsing build file: %v", err)
-				}
-				directives = rule.ParseDirectives(f)
-			}
-
-			got := InferProtoMode(&tc.c, tc.rel, f, directives)
-			if got.ProtoMode != tc.want {
-				t.Errorf("got proto mode %v ; want %v", got.ProtoMode, tc.want)
 			}
 		})
 	}

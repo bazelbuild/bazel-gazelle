@@ -128,10 +128,13 @@ func (l Label) Abs(repo, pkg string) Label {
 }
 
 func (l Label) Rel(repo, pkg string) Label {
-	if !l.Relative && l.Repo == repo && l.Pkg == pkg {
+	if l.Relative || l.Repo != repo {
+		return l
+	}
+	if l.Pkg == pkg {
 		return Label{Name: l.Name, Relative: true}
 	}
-	return l
+	return Label{Pkg: l.Pkg, Name: l.Name}
 }
 
 func (l Label) Equal(other Label) bool {
