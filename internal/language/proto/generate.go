@@ -27,7 +27,7 @@ import (
 
 func (_ *protoLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, otherEmpty, otherGen []*rule.Rule) (empty, gen []*rule.Rule) {
 	pc := GetProtoConfig(c)
-	if pc.Mode == DisableMode || pc.Mode == LegacyMode {
+	if !pc.Mode.ShouldGenerateRules() {
 		// Don't create or delete proto rules in this mode. Any existing rules
 		// are likely hand-written.
 		return nil, nil

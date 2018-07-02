@@ -36,25 +36,21 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 	// files and generate go_proto_library rules.
 	gc := getGoConfig(c)
 	pc := proto.GetProtoConfig(c)
-	var protoPackages map[string]proto.Package
-	var protoFileInfo map[string]proto.FileInfo
 	var protoRuleNames []string
-	if pc.Mode != proto.DisableMode {
-		protoPackages = make(map[string]proto.Package)
-		protoFileInfo = make(map[string]proto.FileInfo)
-		for _, r := range otherGen {
-			if r.Kind() != "proto_library" {
-				continue
-			}
-			pkg := r.PrivateAttr(proto.PackageKey).(proto.Package)
-			protoPackages[r.Name()] = pkg
-			for name, info := range pkg.Files {
-				protoFileInfo[name] = info
-			}
-			protoRuleNames = append(protoRuleNames, r.Name())
+	protoPackages := make(map[string]proto.Package)
+	protoFileInfo := make(map[string]proto.FileInfo)
+	for _, r := range otherGen {
+		if r.Kind() != "proto_library" {
+			continue
 		}
-		sort.Strings(protoRuleNames)
+		pkg := r.PrivateAttr(proto.PackageKey).(proto.Package)
+		protoPackages[r.Name()] = pkg
+		for name, info := range pkg.Files {
+			protoFileInfo[name] = info
+		}
+		protoRuleNames = append(protoRuleNames, r.Name())
 	}
+	sort.Strings(protoRuleNames)
 	var emptyProtoRuleNames []string
 	for _, r := range otherEmpty {
 		if r.Kind() == "proto_library" {
@@ -64,7 +60,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 
 	// If proto rule generation is enabled, exclude .pb.go files that correspond
 	// to any .proto files present.
-	if pc.Mode != proto.DisableMode && pc.Mode != proto.LegacyMode {
+	if !pc.Mode.ShouldIncludePregeneratedFiles() {
 		keep := func(f string) bool {
 			if strings.HasSuffix(f, ".pb.go") {
 				_, ok := protoFileInfo[strings.TrimSuffix(f, ".pb.go")+".proto"]
@@ -369,7 +365,7 @@ func newGenerator(c *config.Config, f *rule.File, rel string) *generator {
 }
 
 func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPath string) (string, []*rule.Rule) {
-	if mode == proto.DisableMode {
+	if !mode.ShouldGenerateRules() {
 		// Don't create or delete proto rules in this mode. Any existing rules
 		// are likely hand-written.
 		return "", nil

@@ -44,6 +44,7 @@ func (_ *protoLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 }
 
 func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *rule.Rule, from label.Label) {
+	pc := GetProtoConfig(c)
 	importsRaw := r.PrivateAttr(config.GazelleImportsKey)
 	if importsRaw == nil {
 		// may not be set in tests.
@@ -53,7 +54,7 @@ func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repos.R
 	r.DelAttr("deps")
 	deps := make([]string, 0, len(imports))
 	for _, imp := range imports {
-		l, err := resolveProto(ix, r, imp, from)
+		l, err := resolveProto(pc, ix, r, imp, from)
 		if err == skipImportError {
 			continue
 		} else if err != nil {
@@ -73,12 +74,12 @@ var (
 	notFoundError   = errors.New("not found")
 )
 
-func resolveProto(ix *resolve.RuleIndex, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
+func resolveProto(pc *ProtoConfig, ix *resolve.RuleIndex, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
 	if !strings.HasSuffix(imp, ".proto") {
 		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
 
-	if l, ok := knownImports[imp]; ok {
+	if l, ok := knownImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
 		if l.Equal(from) {
 			return label.NoLabel, skipImportError
 		} else {
