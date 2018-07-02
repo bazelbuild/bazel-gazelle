@@ -181,7 +181,7 @@ func runFixUpdate(cmd command, args []string) error {
 		// Generate rules.
 		var empty, gen []*rule.Rule
 		for _, l := range languages {
-			lempty, lgen := l.GenerateRules(c, dir, rel, f, subdirs, regularFiles, genFiles, gen)
+			lempty, lgen := l.GenerateRules(c, dir, rel, f, subdirs, regularFiles, genFiles, empty, gen)
 			empty = append(empty, lempty...)
 			gen = append(gen, lgen...)
 		}
@@ -220,7 +220,7 @@ func runFixUpdate(cmd command, args []string) error {
 	rc := repos.NewRemoteCache(uc.repos)
 	for _, v := range visits {
 		for _, r := range v.rules {
-			from := label.New("", v.pkgRel, r.Name())
+			from := label.New(c.RepoName, v.pkgRel, r.Name())
 			kindToResolver[r.Kind()].Resolve(c, ruleIndex, rc, r, from)
 		}
 		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve, kinds)

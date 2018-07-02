@@ -30,7 +30,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
-func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, other []*rule.Rule) (empty, gen []*rule.Rule) {
+func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, otherEmpty, otherGen []*rule.Rule) (empty, gen []*rule.Rule) {
 	// Extract information about proto files. We need this to exclude .pb.go
 	// files and generate go_proto_library rules.
 	pc := proto.GetProtoConfig(c)
@@ -38,7 +38,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 	var protoFileInfo map[string]proto.FileInfo
 	if pc.Mode != proto.DisableMode {
 		protoFileInfo = make(map[string]proto.FileInfo)
-		for _, r := range other {
+		for _, r := range otherGen {
 			if r.Kind() != "proto_library" {
 				continue
 			}

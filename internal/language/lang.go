@@ -79,15 +79,15 @@ type Language interface {
 	// subdirs is a list of subdirectory names.
 	// regularFiles is a list of normal files in the directory.
 	// genFiles is a list of generated files, found in outputs of rules.
-	// other is a list of rules generated for languages that were processed
-	// before this language.
+	// otherEmpty and otherGen are lists of empty and generated rules created
+	// by other languages processed before this language.
 	//
 	// empty is a list of empty rules that may be deleted after merge.
 	// gen is a list of generated rules that may be updated or added.
 	//
 	// Any non-fatal errors this function encounters should be logged using
 	// log.Print.
-	GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, other []*rule.Rule) (empty, gen []*rule.Rule)
+	GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, otherEmpty, otherGen []*rule.Rule) (empty, gen []*rule.Rule)
 
 	// Fix repairs deprecated usage of language-specific rules in f. This is
 	// called before the file is indexed. Unless c.ShouldFix is true, fixes

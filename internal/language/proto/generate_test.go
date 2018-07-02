@@ -46,7 +46,7 @@ func TestGenerateRules(t *testing.T) {
 			return
 		}
 		t.Run(rel, func(t *testing.T) {
-			empty, gen := lang.GenerateRules(c, dir, rel, oldFile, subdirs, regularFiles, genFiles, nil)
+			empty, gen := lang.GenerateRules(c, dir, rel, oldFile, subdirs, regularFiles, genFiles, nil, nil)
 			if len(empty) > 0 {
 				t.Errorf("got %d empty rules; want 0", len(empty))
 			}
@@ -76,7 +76,7 @@ func TestGenerateRulesEmpty(t *testing.T) {
 	c := config.New()
 	c.Exts[protoName] = &ProtoConfig{}
 
-	empty, gen := lang.GenerateRules(c, "", "foo", nil, nil, nil, nil, nil)
+	empty, gen := lang.GenerateRules(c, "", "foo", nil, nil, nil, nil, nil, nil)
 	if len(gen) > 0 {
 		t.Errorf("got %d generated rules; want 0", len(gen))
 	}
@@ -96,7 +96,7 @@ func TestGenerateFileInfo(t *testing.T) {
 	lang := New()
 	c := testConfig()
 	dir := filepath.FromSlash("testdata/protos")
-	_, gen := lang.GenerateRules(c, dir, "protos", nil, nil, []string{"foo.proto"}, nil, nil)
+	_, gen := lang.GenerateRules(c, dir, "protos", nil, nil, []string{"foo.proto"}, nil, nil, nil)
 	r := gen[0]
 	got := r.PrivateAttr(FileInfoKey).([]FileInfo)
 	want := []FileInfo{{
