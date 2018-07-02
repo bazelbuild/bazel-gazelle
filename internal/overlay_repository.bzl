@@ -49,7 +49,7 @@ def _git_repository_impl(ctx):
   revision = ctx.attr.commit if ctx.attr.commit else ctx.attr.tag
   _check_execute(ctx, ["git", "clone", "-n", ctx.attr.remote, "."], "failed to clone %s" % ctx.attr.remote)
   _check_execute(ctx, ["git", "checkout", revision], "failed to checkout revision %s in remote %s" % (revision, ctx.attr.remote))
-  
+
   _apply_overlay(ctx, overlay)
 
 git_repository = repository_rule(
@@ -78,7 +78,7 @@ def _apply_overlay(ctx, overlay):
   """
   # TODO(jayconrod): sanitize destination paths.
   for src_path, dst_rel in overlay:
-    _check_execute(ctx, ["cp", src_path, dst_rel], "failed to copy file from %s" % src_path)
+    ctx.template(dst_rel, src_path)
 
 def _check_execute(ctx, arguments, message):
   res = ctx.execute(arguments)
