@@ -59,11 +59,13 @@ import "github.com/bazelbuild/bazel-gazelle/internal/language"
 const goName = "go"
 
 type goLang struct {
-	testdataPkgs map[string]bool
+	// goPkgDirs is a set of relative paths to directories containing buildable
+	// Go code, including in subdirectories.
+	goPkgRels map[string]bool
 }
 
 func (_ *goLang) Name() string { return goName }
 
 func New() language.Language {
-	return &goLang{testdataPkgs: make(map[string]bool)}
+	return &goLang{goPkgRels: make(map[string]bool)}
 }
