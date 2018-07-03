@@ -166,6 +166,7 @@ go_repository = repository_rule(
                 "default",
                 "package",
                 "disable",
+                "disable_global",
                 "legacy",
             ],
         ),
