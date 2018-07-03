@@ -1,0 +1,3 @@
+syntax = "proto3";
+
+package multiple_packages.default_mode;

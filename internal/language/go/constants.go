@@ -19,4 +19,9 @@ const (
 	// legacyProtoFilegroupName is the anme of a filegroup created in legacy
 	// mode for libraries that contained .pb.go files and .proto files.
 	legacyProtoFilegroupName = "go_default_library_protos"
+	// wellKnownTypesGoPrefix is the import path for the Go repository containing
+	// pre-generated code for the Well Known Types.
+	wellKnownTypesGoPrefix = "github.com/golang/protobuf"
+	// wellKnownTypesPkg is the package name for the predefined WKTs in rules_go.
+	wellKnownTypesPkg = "proto/wkt"
 )

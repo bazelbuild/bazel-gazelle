@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
@@ -91,7 +92,12 @@ func (pkg *goPackage) addFile(c *config.Config, info fileInfo, cgo bool) error {
 	case info.ext == unknownExt || !cgo && (info.ext == cExt || info.ext == csExt):
 		return nil
 	case info.ext == protoExt:
-		pkg.proto.addFile(c, info)
+		if proto.GetProtoConfig(c).Mode == proto.LegacyMode {
+			// Only add files in legacy mode. This is used to generate a filegroup
+			// that contains all protos. In order modes, we get the .proto files
+			// from information emitted by the proto language extension.
+			pkg.proto.addFile(c, info)
+		}
 	case info.isTest:
 		if info.isCgo {
 			return fmt.Errorf("%s: use of cgo in test not supported", info.path)
@@ -136,15 +142,19 @@ func (pkg *goPackage) firstGoFile() string {
 	return ""
 }
 
+func (pkg *goPackage) haveCgo() bool {
+	return pkg.library.cgo || pkg.binary.cgo || pkg.test.cgo
+}
+
 func (pkg *goPackage) inferImportPath(c *config.Config) error {
 	if pkg.importPath != "" {
 		log.Panic("importPath already set")
 	}
 	gc := getGoConfig(c)
-	pkg.importPath = inferImportPath(gc, pkg.rel)
-	if pkg.importPath == "" {
+	if !gc.prefixSet {
 		return fmt.Errorf("%s: go prefix is not set, so importpath can't be determined for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line.", pkg.dir)
 	}
+	pkg.importPath = inferImportPath(gc, pkg.rel)
 	return nil
 
 	if pkg.rel == gc.prefixRel {
@@ -163,6 +173,34 @@ func inferImportPath(gc *goConfig, rel string) string {
 		fromPrefixRel := strings.TrimPrefix(rel, gc.prefixRel+"/")
 		return path.Join(gc.prefix, fromPrefixRel)
 	}
+}
+
+func goProtoPackageName(pkg proto.Package) string {
+	if value, ok := pkg.Options["go_package"]; ok {
+		if strings.LastIndexByte(value, '/') == -1 {
+			return value
+		} else {
+			if i := strings.LastIndexByte(value, ';'); i != -1 {
+				return value[i+1:]
+			} else {
+				return path.Base(value)
+			}
+		}
+	}
+	return strings.Replace(pkg.Name, ".", "_", -1)
+}
+
+func goProtoImportPath(gc *goConfig, pkg proto.Package, rel string) string {
+	if value, ok := pkg.Options["go_package"]; ok {
+		if strings.LastIndexByte(value, '/') == -1 {
+			return inferImportPath(gc, rel)
+		} else if i := strings.LastIndexByte(value, ';'); i != -1 {
+			return value[:i]
+		} else {
+			return value
+		}
+	}
+	return inferImportPath(gc, rel)
 }
 
 func (t *goTarget) addFile(c *config.Config, info fileInfo) {
@@ -184,6 +222,18 @@ func (t *goTarget) addFile(c *config.Config, info fileInfo) {
 		}
 		optAdd(&t.clinkopts, clinkopts.opts)
 	}
+}
+
+func protoTargetFromProtoPackage(name string, pkg proto.Package) protoTarget {
+	target := protoTarget{name: name}
+	for f := range pkg.Files {
+		target.sources.addGenericString(f)
+	}
+	for i := range pkg.Imports {
+		target.imports.addGenericString(i)
+	}
+	target.hasServices = pkg.HasServices
+	return target
 }
 
 func (t *protoTarget) addFile(c *config.Config, info fileInfo) {
