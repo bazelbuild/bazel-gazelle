@@ -15,6 +15,22 @@ genrule(
     tools = ["//internal/language/go/gen_std_package_list"],
 )
 
+genrule(
+    name = "known_proto_imports",
+    srcs = ["//internal/language/proto:proto.csv"],
+    outs = ["known_proto_imports.go"],
+    cmd = "$(location //internal/language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package golang -var knownProtoImports -key 0 -value 3",
+    tools = ["//internal/language/proto/gen:gen_known_imports"],
+)
+
+genrule(
+    name = "known_go_imports",
+    srcs = ["//internal/language/proto:proto.csv"],
+    outs = ["known_go_imports.go"],
+    cmd = "$(location //internal/language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package golang -var knownGoProtoImports -key 2 -value 3",
+    tools = ["//internal/language/proto/gen:gen_known_imports"],
+)
+
 go_library(
     name = "go_default_library",
     srcs = [
@@ -24,6 +40,8 @@ go_library(
         "fix.go",
         "generate.go",
         "kinds.go",
+        "known_go_imports.go",
+        "known_proto_imports.go",
         "lang.go",
         "package.go",
         "resolve.go",

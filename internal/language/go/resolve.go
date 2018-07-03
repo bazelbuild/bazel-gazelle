@@ -113,7 +113,7 @@ func resolveGo(gc *goConfig, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *ru
 		return label.NoLabel, skipImportError
 	}
 
-	if l := resolveWellKnownGo(imp); !l.Equal(label.NoLabel) {
+	if l, ok := knownGoProtoImports[imp]; ok {
 		return l, nil
 	}
 
@@ -138,42 +138,6 @@ func resolveGo(gc *goConfig, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *ru
 // isStandard returns whether a package is in the standard library.
 func isStandard(imp string) bool {
 	return stdPackages[imp]
-}
-
-func resolveWellKnownGo(imp string) label.Label {
-	// keep in sync with @io_bazel_rules_go//proto/wkt:well_known_types.bzl
-	// TODO(jayconrod): in well_known_types.bzl, write the import paths and
-	// targets in a public dict. Import it here, and use it to generate this code.
-	switch imp {
-	case "github.com/golang/protobuf/ptypes/any",
-		"github.com/golang/protobuf/ptypes/api",
-		"github.com/golang/protobuf/protoc-gen-go/descriptor",
-		"github.com/golang/protobuf/ptypes/duration",
-		"github.com/golang/protobuf/ptypes/empty",
-		"google.golang.org/genproto/protobuf/field_mask",
-		"google.golang.org/genproto/protobuf/source_context",
-		"github.com/golang/protobuf/ptypes/struct",
-		"github.com/golang/protobuf/ptypes/timestamp",
-		"github.com/golang/protobuf/ptypes/wrappers":
-		return label.Label{
-			Repo: config.RulesGoRepoName,
-			Pkg:  config.WellKnownTypesPkg,
-			Name: path.Base(imp) + "_go_proto",
-		}
-	case "github.com/golang/protobuf/protoc-gen-go/plugin":
-		return label.Label{
-			Repo: config.RulesGoRepoName,
-			Pkg:  config.WellKnownTypesPkg,
-			Name: "compiler_plugin_go_proto",
-		}
-	case "google.golang.org/genproto/protobuf/ptype":
-		return label.Label{
-			Repo: config.RulesGoRepoName,
-			Pkg:  config.WellKnownTypesPkg,
-			Name: "type_go_proto",
-		}
-	}
-	return label.NoLabel
 }
 
 func resolveWithIndexGo(ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
@@ -248,13 +212,16 @@ func resolveVendored(rc *repos.RemoteCache, imp string) (label.Label, error) {
 }
 
 func resolveProto(gc *goConfig, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
-	if !strings.HasSuffix(imp, ".proto") {
-		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
-	}
-	stem := imp[:len(imp)-len(".proto")]
-
-	if isWellKnownProto(stem) {
+	if wellKnownProtos[imp] {
 		return label.NoLabel, skipImportError
+	}
+
+	if l, ok := knownProtoImports[imp]; ok {
+		if l.Equal(from) {
+			return label.NoLabel, skipImportError
+		} else {
+			return l, nil
+		}
 	}
 
 	if l, err := resolveWithIndexProto(ix, imp, from); err == nil || err == skipImportError {
@@ -282,22 +249,18 @@ func resolveProto(gc *goConfig, ix *resolve.RuleIndex, rc *repos.RemoteCache, r 
 // TODO(jayconrod): generate from
 // @io_bazel_rules_go//proto/wkt:WELL_KNOWN_TYPE_PACKAGES
 var wellKnownProtos = map[string]bool{
-	"google/protobuf/any":             true,
-	"google/protobuf/api":             true,
-	"google/protobuf/compiler_plugin": true,
-	"google/protobuf/descriptor":      true,
-	"google/protobuf/duration":        true,
-	"google/protobuf/empty":           true,
-	"google/protobuf/field_mask":      true,
-	"google/protobuf/source_context":  true,
-	"google/protobuf/struct":          true,
-	"google/protobuf/timestamp":       true,
-	"google/protobuf/type":            true,
-	"google/protobuf/wrappers":        true,
-}
-
-func isWellKnownProto(stem string) bool {
-	return wellKnownProtos[stem]
+	"google/protobuf/any.proto":             true,
+	"google/protobuf/api.proto":             true,
+	"google/protobuf/compiler_plugin.proto": true,
+	"google/protobuf/descriptor.proto":      true,
+	"google/protobuf/duration.proto":        true,
+	"google/protobuf/empty.proto":           true,
+	"google/protobuf/field_mask.proto":      true,
+	"google/protobuf/source_context.proto":  true,
+	"google/protobuf/struct.proto":          true,
+	"google/protobuf/timestamp.proto":       true,
+	"google/protobuf/type.proto":            true,
+	"google/protobuf/wrappers.proto":        true,
 }
 
 func resolveWithIndexProto(ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
@@ -308,10 +271,10 @@ func resolveWithIndexProto(ix *resolve.RuleIndex, imp string, from label.Label) 
 	if len(matches) > 1 {
 		return label.NoLabel, fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", matches[0].Label, matches[1].Label, imp, from)
 	}
-	// If some go_library embeds the go_proto_library we found, use that instead.
-	importpath := matches[0].Rule.AttrString("importpath")
-	if l, err := resolveWithIndexGo(ix, importpath, from); err == nil {
-		return l, nil
+	// TODO(#247): this check is not sufficient. We should check whether the
+	// match embeds this library (possibly transitively).
+	if from.Equal(matches[0].Label) {
+		return label.NoLabel, skipImportError
 	}
 	return matches[0].Label, nil
 }

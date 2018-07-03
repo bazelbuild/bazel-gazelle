@@ -24,7 +24,6 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
-	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
@@ -78,9 +77,13 @@ func resolveProto(ix *resolve.RuleIndex, r *rule.Rule, imp string, from label.La
 	if !strings.HasSuffix(imp, ".proto") {
 		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
 	}
-	if isWellKnownProto(imp) {
-		name := path.Base(imp[:len(imp)-len(".proto")]) + "_proto"
-		return label.New(config.WellKnownTypesProtoRepo, "", name), nil
+
+	if l, ok := knownImports[imp]; ok {
+		if l.Equal(from) {
+			return label.NoLabel, skipImportError
+		} else {
+			return l, nil
+		}
 	}
 
 	if l, err := resolveWithIndex(ix, imp, from); err == nil || err == skipImportError {
@@ -93,12 +96,8 @@ func resolveProto(ix *resolve.RuleIndex, r *rule.Rule, imp string, from label.La
 	if rel == "." {
 		rel = ""
 	}
-	name := RuleName("", rel, "")
+	name := RuleName(rel)
 	return label.New("", rel, name), nil
-}
-
-func isWellKnownProto(imp string) bool {
-	return pathtools.HasPrefix(imp, config.WellKnownTypesProtoPrefix) && pathtools.TrimPrefix(imp, config.WellKnownTypesProtoPrefix) == path.Base(imp)
 }
 
 func resolveWithIndex(ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {

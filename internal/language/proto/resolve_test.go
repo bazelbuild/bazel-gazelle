@@ -52,13 +52,23 @@ proto_library(
 			old: `
 proto_library(
     name = "dep_proto",
-    _imports = ["google/protobuf/any.proto"],
+    _imports = [
+        "google/api/http.proto",
+        "google/protobuf/any.proto",
+        "google/rpc/status.proto",
+        "google/type/latlng.proto",
+    ],
 )
 `,
 			want: `
 proto_library(
     name = "dep_proto",
-    deps = ["@com_google_protobuf//:any_proto"],
+    deps = [
+        "@com_google_protobuf//:any_proto",
+        "@go_googleapis//google/api:annotations_proto",
+        "@go_googleapis//google/rpc:status_proto",
+        "@go_googleapis//google/type:latlng_proto",
+    ],
 )
 `,
 		}, {
