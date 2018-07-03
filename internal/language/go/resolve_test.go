@@ -23,6 +23,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
@@ -705,6 +706,85 @@ go_proto_library(
 				t.Errorf("got:\n%s\nwant:\n%s", got, want)
 			}
 		})
+	}
+}
+
+func TestResolveDisableGlobal(t *testing.T) {
+	c, _, langs := testConfig()
+	gc := getGoConfig(c)
+	gc.prefix = "example.com/repo"
+	gc.prefixSet = true
+	proto.GetProtoConfig(c).Mode = proto.DisableGlobalMode
+	ix := resolve.NewRuleIndex(nil)
+	ix.Finish()
+	rc := testRemoteCache([]repos.Repo{
+		{
+			Name:     "com_github_golang_protobuf",
+			GoPrefix: "github.com/golang/protobuf",
+		}, {
+			Name:     "org_golang_google_genproto",
+			GoPrefix: "golang.org/google/genproto",
+		},
+	})
+	gl := langs[1].(*goLang)
+	oldContent := []byte(`
+go_library(
+    name = "go_default_library",
+    importpath = "foo",
+    _imports = [
+        "github.com/golang/protobuf/ptypes/any",
+        "google.golang.org/genproto/protobuf/api",
+        "github.com/golang/protobuf/protoc-gen-go/descriptor",
+        "github.com/golang/protobuf/ptypes/duration",
+        "github.com/golang/protobuf/ptypes/empty",
+        "google.golang.org/genproto/protobuf/field_mask",
+        "google.golang.org/genproto/protobuf/source_context",
+        "github.com/golang/protobuf/ptypes/struct",
+        "github.com/golang/protobuf/ptypes/timestamp",
+        "github.com/golang/protobuf/ptypes/wrappers",
+        "github.com/golang/protobuf/protoc-gen-go/plugin",
+        "google.golang.org/genproto/protobuf/ptype",
+        "google.golang.org/genproto/googleapis/api/annotations",
+        "google.golang.org/genproto/googleapis/rpc/status",
+        "google.golang.org/genproto/googleapis/type/latlng",
+    ],
+)
+`)
+	f, err := rule.LoadData("BUILD.bazel", oldContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range f.Rules {
+		convertImportsAttr(r)
+		gl.Resolve(c, ix, rc, r, label.New("", "", r.Name()))
+	}
+	f.Sync()
+	got := strings.TrimSpace(string(bzl.Format(f.File)))
+	want := strings.TrimSpace(`
+go_library(
+    name = "go_default_library",
+    importpath = "foo",
+    deps = [
+        "@com_github_golang_protobuf//protoc-gen-go/descriptor:go_default_library",
+        "@com_github_golang_protobuf//protoc-gen-go/plugin:go_default_library",
+        "@com_github_golang_protobuf//ptypes/any:go_default_library",
+        "@com_github_golang_protobuf//ptypes/duration:go_default_library",
+        "@com_github_golang_protobuf//ptypes/empty:go_default_library",
+        "@com_github_golang_protobuf//ptypes/struct:go_default_library",
+        "@com_github_golang_protobuf//ptypes/timestamp:go_default_library",
+        "@com_github_golang_protobuf//ptypes/wrappers:go_default_library",
+        "@org_golang_google_genproto//googleapis/api/annotations:go_default_library",
+        "@org_golang_google_genproto//googleapis/rpc/status:go_default_library",
+        "@org_golang_google_genproto//googleapis/type/latlng:go_default_library",
+        "@org_golang_google_genproto//protobuf/api:go_default_library",
+        "@org_golang_google_genproto//protobuf/field_mask:go_default_library",
+        "@org_golang_google_genproto//protobuf/ptype:go_default_library",
+        "@org_golang_google_genproto//protobuf/source_context:go_default_library",
+    ],
+)
+`)
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
 	}
 }
 

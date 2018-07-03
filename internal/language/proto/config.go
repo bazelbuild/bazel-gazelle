@@ -67,6 +67,11 @@ const (
 	// normal sources.
 	DisableMode
 
+	// DisableGlobalMode is similar to DisableMode, but it also prevents
+	// the use of special cases in dependency resolution for well known types
+	// and Google APIs.
+	DisableGlobalMode
+
 	// LegacyMode generates filegroups for .proto files if .pb.go files are
 	// present in the same directory.
 	LegacyMode
@@ -82,6 +87,8 @@ func ModeFromString(s string) (Mode, error) {
 		return DefaultMode, nil
 	case "disable":
 		return DisableMode, nil
+	case "disable_global":
+		return DisableGlobalMode, nil
 	case "legacy":
 		return LegacyMode, nil
 	case "package":
@@ -97,6 +104,8 @@ func (m Mode) String() string {
 		return "default"
 	case DisableMode:
 		return "disable"
+	case DisableGlobalMode:
+		return "disable_global"
 	case LegacyMode:
 		return "legacy"
 	case PackageMode:
@@ -105,6 +114,28 @@ func (m Mode) String() string {
 		log.Panicf("unknown mode %d", m)
 		return ""
 	}
+}
+
+func (m Mode) ShouldGenerateRules() bool {
+	switch m {
+	case DisableMode, DisableGlobalMode, LegacyMode:
+		return false
+	default:
+		return true
+	}
+}
+
+func (m Mode) ShouldIncludePregeneratedFiles() bool {
+	switch m {
+	case DisableMode, DisableGlobalMode, LegacyMode:
+		return true
+	default:
+		return false
+	}
+}
+
+func (m Mode) ShouldUseKnownImports() bool {
+	return m != DisableGlobalMode
 }
 
 type modeFlag struct {
@@ -135,7 +166,7 @@ func (_ *protoLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config
 	// Note: the -proto flag does not set the ModeExplicit flag. We want to
 	// be able to switch to DisableMode in vendor directories, even when
 	// this is set for compatibility with older versions.
-	fs.Var(&modeFlag{&pc.Mode}, "proto", "default: generates a proto_library rule for one package\n\tpackage: generates a proto_library rule for for each package\n\tdisable: does not touch proto rules\n\t")
+	fs.Var(&modeFlag{&pc.Mode}, "proto", "default: generates a proto_library rule for one package\n\tpackage: generates a proto_library rule for for each package\n\tdisable: does not touch proto rules\n\tdisable_global: does not touch proto rules and does not use special cases for protos in dependency resolution")
 	fs.StringVar(&pc.groupOption, "proto_group", "", "option name used to group .proto files into proto_library rules")
 }
 

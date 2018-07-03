@@ -25,6 +25,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
@@ -71,9 +72,8 @@ func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repos.Rem
 	if r.Kind() == "go_proto_library" {
 		resolve = resolveProto
 	}
-	gc := getGoConfig(c)
 	deps, errs := imports.Map(func(imp string) (string, error) {
-		l, err := resolve(gc, ix, rc, r, imp, from)
+		l, err := resolve(c, ix, rc, r, imp, from)
 		if err == skipImportError {
 			return "", nil
 		} else if err != nil {
@@ -100,7 +100,9 @@ var (
 	notFoundError   = errors.New("rule not found")
 )
 
-func resolveGo(gc *goConfig, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
+func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
+	gc := getGoConfig(c)
+	pc := proto.GetProtoConfig(c)
 	if build.IsLocalImport(imp) {
 		cleanRel := path.Clean(path.Join(from.Pkg, imp))
 		if build.IsLocalImport(cleanRel) {
@@ -113,7 +115,7 @@ func resolveGo(gc *goConfig, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *ru
 		return label.NoLabel, skipImportError
 	}
 
-	if l, ok := knownGoProtoImports[imp]; ok {
+	if l, ok := knownGoProtoImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
 		return l, nil
 	}
 
@@ -211,12 +213,14 @@ func resolveVendored(rc *repos.RemoteCache, imp string) (label.Label, error) {
 	return label.New("", path.Join("vendor", imp), config.DefaultLibName), nil
 }
 
-func resolveProto(gc *goConfig, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
+func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
+	pc := proto.GetProtoConfig(c)
+
 	if wellKnownProtos[imp] {
 		return label.NoLabel, skipImportError
 	}
 
-	if l, ok := knownProtoImports[imp]; ok {
+	if l, ok := knownProtoImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
 		if l.Equal(from) {
 			return label.NoLabel, skipImportError
 		} else {
