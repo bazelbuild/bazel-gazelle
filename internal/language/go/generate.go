@@ -88,8 +88,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 	var hasTestdata bool
 	for _, sub := range subdirs {
 		if sub == "testdata" {
-			isPkg, ok := gl.testdataPkgs[path.Join(rel, sub)]
-			hasTestdata = !ok || !isPkg
+			hasTestdata = !gl.goPkgRels[path.Join(rel, "testdata")]
 			break
 		}
 	}
@@ -227,8 +226,15 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 		}
 	}
 
-	if path.Base(rel) == "testdata" && (f != nil || len(gen) > 0) {
-		gl.testdataPkgs[rel] = true
+	if f != nil || len(gen) > 0 {
+		gl.goPkgRels[rel] = true
+	} else {
+		for _, sub := range subdirs {
+			if gl.goPkgRels[path.Join(rel, sub)] {
+				gl.goPkgRels[rel] = true
+				break
+			}
+		}
 	}
 
 	return empty, gen

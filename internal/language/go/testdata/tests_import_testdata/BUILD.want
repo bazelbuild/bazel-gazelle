@@ -7,7 +7,7 @@ go_test(
         "internal_test.go",
     ],
     _gazelle_imports = [
-        "example.com/repo/tests_import_testdata/testdata",
+        "example.com/repo/tests_import_testdata/testdata/sub",
         "testing",
     ],
 )
