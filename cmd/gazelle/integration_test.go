@@ -114,6 +114,23 @@ func runGazelle(wd string, args []string) error {
 	return run(args)
 }
 
+// TestHelp checks that help commands do not panic due to nil flag values.
+// Verifies #256.
+func TestHelp(t *testing.T) {
+	for _, args := range [][]string{
+		{"help"},
+		{"fix", "-h"},
+		{"update", "-h"},
+		{"update-repos", "-h"},
+	} {
+		t.Run(args[0], func(t *testing.T) {
+			if err := runGazelle(".", args); err != nil {
+				t.Error(err)
+			}
+		})
+	}
+}
+
 func TestNoRepoRootOrWorkspace(t *testing.T) {
 	dir, err := createFiles(nil)
 	if err != nil {
