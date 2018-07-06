@@ -21,6 +21,6 @@ import (
 
 func TestCall(t *testing.T) {
 	if got, want := call(), 42; got != want {
-		t.Errorf("call() = %d; want %d", got, want)
+		t.Errorf("call() = %s; want %d", got, want)
 	}
 }

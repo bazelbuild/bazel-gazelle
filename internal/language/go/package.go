@@ -132,7 +132,7 @@ func (pkg *goPackage) firstGoFile() string {
 	}
 	for _, sb := range goSrcs {
 		if sb.strs != nil {
-			for s, _ := range sb.strs {
+			for s := range sb.strs {
 				if strings.HasSuffix(s, ".go") {
 					return s
 				}
@@ -152,10 +152,9 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 	}
 	gc := getGoConfig(c)
 	if !gc.prefixSet {
-		return fmt.Errorf("%s: go prefix is not set, so importpath can't be determined for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line.", pkg.dir)
+		return fmt.Errorf("%s: go prefix is not set, so importpath can't be determined for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line", pkg.dir)
 	}
 	pkg.importPath = inferImportPath(gc, pkg.rel)
-	return nil
 
 	if pkg.rel == gc.prefixRel {
 		pkg.importPath = gc.prefix
@@ -414,21 +413,21 @@ func (sb *platformStringsBuilder) build() rule.PlatformStrings {
 			if ps.OS == nil {
 				ps.OS = make(map[string][]string)
 			}
-			for os, _ := range si.oss {
+			for os := range si.oss {
 				ps.OS[os] = append(ps.OS[os], s)
 			}
 		case archSet:
 			if ps.Arch == nil {
 				ps.Arch = make(map[string][]string)
 			}
-			for arch, _ := range si.archs {
+			for arch := range si.archs {
 				ps.Arch[arch] = append(ps.Arch[arch], s)
 			}
 		case platformSet:
 			if ps.Platform == nil {
 				ps.Platform = make(map[rule.Platform][]string)
 			}
-			for p, _ := range si.platforms {
+			for p := range si.platforms {
 				ps.Platform[p] = append(ps.Platform[p], s)
 			}
 		}
@@ -470,7 +469,7 @@ func (si *platformStringInfo) convertToPlatforms() {
 	case osSet:
 		si.set = platformSet
 		si.platforms = make(map[rule.Platform]bool)
-		for os, _ := range si.oss {
+		for os := range si.oss {
 			for _, arch := range rule.KnownOSArchs[os] {
 				si.platforms[rule.Platform{OS: os, Arch: arch}] = true
 			}
@@ -479,7 +478,7 @@ func (si *platformStringInfo) convertToPlatforms() {
 	case archSet:
 		si.set = platformSet
 		si.platforms = make(map[rule.Platform]bool)
-		for arch, _ := range si.archs {
+		for arch := range si.archs {
 			for _, os := range rule.KnownArchOSs[arch] {
 				si.platforms[rule.Platform{OS: os, Arch: arch}] = true
 			}

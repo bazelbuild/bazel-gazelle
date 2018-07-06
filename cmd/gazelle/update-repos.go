@@ -165,7 +165,7 @@ func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule
 	var wg sync.WaitGroup
 	wg.Add(len(c.importPaths))
 	for i, imp := range c.importPaths {
-		go func(i int) {
+		go func(i int, imp string) {
 			defer wg.Done()
 			repo, err := repos.UpdateRepo(rc, imp)
 			if err != nil {
@@ -176,7 +176,7 @@ func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule
 			repo.VCS = ""
 			rule := repos.GenerateRule(repo)
 			genRules[i] = rule
-		}(i)
+		}(i, imp)
 	}
 	wg.Wait()
 
