@@ -153,7 +153,7 @@ func (f *modeFlag) Set(value string) error {
 
 func (f *modeFlag) String() string {
 	var mode Mode
-	if f != nil {
+	if f != nil && f.mode != nil {
 		mode = *f.mode
 	}
 	return mode.String()

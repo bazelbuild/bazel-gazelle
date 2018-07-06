@@ -32,7 +32,7 @@ func (m *MultiFlag) Set(v string) error {
 }
 
 func (m *MultiFlag) String() string {
-	if m == nil {
+	if m == nil || m.Values == nil {
 		return ""
 	}
 	return strings.Join(*m.Values, ",")
@@ -53,7 +53,7 @@ func (f *ExplicitFlag) Set(value string) error {
 }
 
 func (f *ExplicitFlag) String() string {
-	if f == nil {
+	if f == nil || f.Value == nil {
 		return ""
 	}
 	return *f.Value

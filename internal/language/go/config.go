@@ -144,7 +144,7 @@ func (f *externalFlag) Set(value string) error {
 }
 
 func (f *externalFlag) String() string {
-	if f == nil {
+	if f == nil || f.depMode == nil {
 		return "external"
 	}
 	return f.depMode.String()
