@@ -205,7 +205,7 @@ func resolveWithIndexGo(ix *resolve.RuleIndex, imp string, from label.Label) (la
 	if bestMatch.Label.Equal(label.NoLabel) {
 		return label.NoLabel, notFoundError
 	}
-	if bestMatch.Label.Equal(from) {
+	if bestMatch.IsSelfImport(from) {
 		return label.NoLabel, skipImportError
 	}
 	return bestMatch.Label, nil
@@ -291,9 +291,7 @@ func resolveWithIndexProto(ix *resolve.RuleIndex, imp string, from label.Label) 
 	if len(matches) > 1 {
 		return label.NoLabel, fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", matches[0].Label, matches[1].Label, imp, from)
 	}
-	// TODO(#247): this check is not sufficient. We should check whether the
-	// match embeds this library (possibly transitively).
-	if from.Equal(matches[0].Label) {
+	if matches[0].IsSelfImport(from) {
 		return label.NoLabel, skipImportError
 	}
 	return matches[0].Label, nil

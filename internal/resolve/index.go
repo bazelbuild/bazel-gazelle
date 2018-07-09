@@ -72,11 +72,24 @@ type RuleIndex struct {
 
 // ruleRecord contains information about a rule relevant to import indexing.
 type ruleRecord struct {
-	rule             *rule.Rule
-	label            label.Label
-	importedAs       []ImportSpec
-	embedded         bool
-	haveEmbedImports bool
+	rule  *rule.Rule
+	label label.Label
+
+	// importedAs is a list of ImportSpecs by which this rule may be imported.
+	// Used to build a map from ImportSpecs to ruleRecords.
+	importedAs []ImportSpec
+
+	// embeds is the transitive closure of labels for rules that this rule embeds
+	// (as determined by the Embeds method). This only includes rules in the same
+	// language (i.e., it includes a go_library embedding a go_proto_library, but
+	// not a go_proto_library embedding a proto_library).
+	embeds []label.Label
+
+	// embedded indicates whether another rule of the same language embeds this
+	// rule. Embedded rules should not be indexed.
+	embedded bool
+
+	didCollectEmbeds bool
 }
 
 // NewRuleIndex creates a new index.
@@ -128,26 +141,28 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 // FindRulesByImport calls.
 func (ix *RuleIndex) Finish() {
 	for _, r := range ix.rules {
-		ix.collectEmbedImports(r)
+		ix.collectEmbeds(r)
 	}
 	ix.buildImportIndex()
 }
 
-func (ix *RuleIndex) collectEmbedImports(r *ruleRecord) {
-	if r.haveEmbedImports {
+func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
+	if r.didCollectEmbeds {
 		return
 	}
-	r.haveEmbedImports = true
+	r.didCollectEmbeds = true
 	embedLabels := ix.kindToResolver[r.rule.Kind()].Embeds(r.rule, r.label)
+	r.embeds = embedLabels
 	for _, e := range embedLabels {
 		er, ok := ix.findRuleByLabel(e, r.label)
 		if !ok {
 			continue
 		}
+		ix.collectEmbeds(er)
 		if ix.kindToResolver[r.rule.Kind()] == ix.kindToResolver[er.rule.Kind()] {
 			er.embedded = true
+			r.embeds = append(r.embeds, er.embeds...)
 		}
-		ix.collectEmbedImports(er)
 		r.importedAs = append(r.importedAs, er.importedAs...)
 	}
 }
@@ -177,8 +192,16 @@ func (ix *RuleIndex) findRuleByLabel(label label.Label, from label.Label) (*rule
 }
 
 type FindResult struct {
+	// Label is the absolute label (including repository and package name) for
+	// a matched rule.
 	Label label.Label
-	Rule  *rule.Rule
+
+	Rule *rule.Rule
+
+	// Embeds is the transitive closure of labels for rules that the matched
+	// rule embeds. It may contains duplicates and does not include the label
+	// for the rule itself.
+	Embeds []label.Label
 }
 
 // FindRulesByImport attempts to resolve an import string to a rule record.
@@ -198,7 +221,27 @@ func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult
 		if ix.kindToResolver[m.rule.Kind()].Name() != lang {
 			continue
 		}
-		results = append(results, FindResult{Label: m.label, Rule: m.rule})
+		results = append(results, FindResult{
+			Label:  m.label,
+			Rule:   m.rule,
+			Embeds: m.embeds,
+		})
 	}
 	return results
+}
+
+// IsSelfImport returns true if the result's label matches the given label
+// or the result's rule transitively embeds the rule with the given label.
+// Self imports cause cyclic dependencies, so the caller may want to omit
+// the dependency or report an error.
+func (r FindResult) IsSelfImport(from label.Label) bool {
+	if from.Equal(r.Label) {
+		return true
+	}
+	for _, e := range r.Embeds {
+		if from.Equal(e) {
+			return true
+		}
+	}
+	return false
 }
