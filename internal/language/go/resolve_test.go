@@ -628,6 +628,28 @@ go_library(
 )
 `,
 		}, {
+			desc: "proto_ptypes",
+			old: buildFile{content: `
+go_library(
+    name = "go_default_library",
+    _imports = [
+        "github.com/golang/protobuf/jsonpb",
+        "github.com/golang/protobuf/descriptor",
+        "github.com/golang/protobuf/ptypes",
+    ],
+)
+`},
+			want: `
+go_library(
+    name = "go_default_library",
+    deps = [
+        "@com_github_golang_protobuf//descriptor:go_default_library_gen",
+        "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
+        "@com_github_golang_protobuf//ptypes:go_default_library_gen",
+    ],
+)
+`,
+		}, {
 			desc: "proto_self_import",
 			old: buildFile{content: `
 proto_library(
@@ -747,6 +769,9 @@ go_library(
         "google.golang.org/genproto/googleapis/api/annotations",
         "google.golang.org/genproto/googleapis/rpc/status",
         "google.golang.org/genproto/googleapis/type/latlng",
+        "github.com/golang/protobuf/jsonpb",
+        "github.com/golang/protobuf/descriptor",
+        "github.com/golang/protobuf/ptypes",
     ],
 )
 `)
@@ -765,8 +790,11 @@ go_library(
     name = "go_default_library",
     importpath = "foo",
     deps = [
+        "@com_github_golang_protobuf//descriptor:go_default_library",
+        "@com_github_golang_protobuf//jsonpb:go_default_library",
         "@com_github_golang_protobuf//protoc-gen-go/descriptor:go_default_library",
         "@com_github_golang_protobuf//protoc-gen-go/plugin:go_default_library",
+        "@com_github_golang_protobuf//ptypes:go_default_library",
         "@com_github_golang_protobuf//ptypes/any:go_default_library",
         "@com_github_golang_protobuf//ptypes/duration:go_default_library",
         "@com_github_golang_protobuf//ptypes/empty:go_default_library",

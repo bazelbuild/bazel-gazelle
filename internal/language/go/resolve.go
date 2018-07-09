@@ -115,8 +115,24 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r
 		return label.NoLabel, skipImportError
 	}
 
-	if l, ok := knownGoProtoImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
-		return l, nil
+	if pc.Mode.ShouldUseKnownImports() {
+		// These are commonly used libraries that depend on Well Known Types.
+		// They depend on the generated versions of these protos to avoid conflicts.
+		// However, since protoc-gen-go depends on these libraries, we generate
+		// its rules in disable_global mode (to avoid cyclic dependency), so the
+		// "go_default_library" versions of these libraries depend on the
+		// pre-generated versions of the proto libraries.
+		switch imp {
+		case "github.com/golang/protobuf/jsonpb":
+			return label.New("com_github_golang_protobuf", "jsonpb", "go_default_library_gen"), nil
+		case "github.com/golang/protobuf/descriptor":
+			return label.New("com_github_golang_protobuf", "descriptor", "go_default_library_gen"), nil
+		case "github.com/golang/protobuf/ptypes":
+			return label.New("com_github_golang_protobuf", "ptypes", "go_default_library_gen"), nil
+		}
+		if l, ok := knownGoProtoImports[imp]; ok {
+			return l, nil
+		}
 	}
 
 	if l, err := resolveWithIndexGo(ix, imp, from); err == nil || err == skipImportError {

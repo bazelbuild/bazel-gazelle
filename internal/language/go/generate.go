@@ -371,7 +371,7 @@ func newGenerator(c *config.Config, f *rule.File, rel string) *generator {
 }
 
 func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPath string) (string, []*rule.Rule) {
-	if !mode.ShouldGenerateRules() {
+	if !mode.ShouldGenerateRules() && mode != proto.LegacyMode {
 		// Don't create or delete proto rules in this mode. Any existing rules
 		// are likely hand-written.
 		return "", nil
