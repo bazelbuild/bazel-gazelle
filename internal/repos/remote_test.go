@@ -17,7 +17,6 @@ package repos
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -75,7 +74,6 @@ func TestRootSpecialCases(t *testing.T) {
 		},
 	} {
 		t.Run(tc.in, func(t *testing.T) {
-			fmt.Fprintf(os.Stderr, "testing %s\n", tc.in)
 			rc := newStubRemoteCache(tc.repos)
 			if gotRoot, gotName, err := rc.Root(tc.in); err != nil {
 				if !tc.wantError {

@@ -109,7 +109,7 @@ func resolveWithIndex(ix *resolve.RuleIndex, imp string, from label.Label) (labe
 	if len(matches) > 1 {
 		return label.NoLabel, fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", matches[0].Label, matches[1].Label, imp, from)
 	}
-	if from.Equal(matches[0].Label) {
+	if matches[0].IsSelfImport(from) {
 		return label.NoLabel, skipImportError
 	}
 	return matches[0].Label, nil

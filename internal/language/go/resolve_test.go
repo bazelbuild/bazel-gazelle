@@ -78,6 +78,33 @@ go_library(
 )
 `,
 		}, {
+			desc: "self_import_embed",
+			old: buildFile{content: `
+go_library(
+    name = "a",
+    embeds = [":b"],
+    importpath = "x",
+)
+
+go_library(
+    name = "b",
+    importpath = "x",
+    _imports = ["x"],
+)
+`},
+			want: `
+go_library(
+    name = "a",
+    embeds = [":b"],
+    importpath = "x",
+)
+
+go_library(
+    name = "b",
+    importpath = "x",
+)
+`,
+		}, {
 			desc: "same_package",
 			old: buildFile{content: `
 go_library(
@@ -666,6 +693,12 @@ go_proto_library(
     proto = ":foo_proto",
     _imports = ["a.proto"],
 )
+
+go_library(
+    name = "go_default_library",
+    embed = [":foo_go_proto"],
+    importpath = "foo",
+)
 `},
 			want: `
 proto_library(
@@ -680,6 +713,12 @@ go_proto_library(
     name = "foo_go_proto",
     importpath = "foo",
     proto = ":foo_proto",
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":foo_go_proto"],
+    importpath = "foo",
 )
 `,
 		},
