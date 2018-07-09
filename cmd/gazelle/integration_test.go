@@ -1355,6 +1355,49 @@ go_repository(
 	}
 }
 
+// TestFixGazelle checks that loads of the gazelle macro from the old location
+// in rules_go are replaced with the new location in @bazel_gazelle.
+func TestFixGazelle(t *testing.T) {
+	files := []fileSpec{
+		{
+			path: "WORKSPACE",
+		}, {
+			path: "BUILD.bazel",
+			content: `
+load("@io_bazel_rules_go//go:def.bzl", "gazelle", "go_library")
+
+gazelle(name = "gazelle")
+
+# keep
+go_library(name = "go_default_library")
+`,
+		},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	if err := runGazelle(dir, nil); err != nil {
+		t.Fatal(err)
+	}
+	checkFiles(t, dir, []fileSpec{
+		{
+			path: "BUILD.bazel",
+			content: `
+load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+gazelle(name = "gazelle")
+
+# keep
+go_library(name = "go_default_library")
+`,
+		},
+	})
+}
+
 // TestKeepDeps checks rules with keep comments on the rule or on the deps
 // attribute will not be modified during dependency resolution. Verifies #212.
 func TestKeepDeps(t *testing.T) {

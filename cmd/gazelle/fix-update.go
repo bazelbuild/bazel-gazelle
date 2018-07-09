@@ -129,12 +129,19 @@ func (vs byPkgRel) Len() int           { return len(vs) }
 func (vs byPkgRel) Less(i, j int) bool { return vs[i].pkgRel < vs[j].pkgRel }
 func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
 
+var genericLoads = []rule.LoadInfo{
+	{
+		Name:    "@bazel_gazelle//:def.bzl",
+		Symbols: []string{"gazelle"},
+	},
+}
+
 func runFixUpdate(cmd command, args []string) error {
 	cexts := make([]config.Configurer, 0, len(languages)+2)
 	cexts = append(cexts, &config.CommonConfigurer{}, &updateConfigurer{})
 	kindToResolver := make(map[string]resolve.Resolver)
 	kinds := make(map[string]rule.KindInfo)
-	loads := []rule.LoadInfo{}
+	loads := genericLoads
 	for _, lang := range languages {
 		cexts = append(cexts, lang)
 		for kind, info := range lang.Kinds() {

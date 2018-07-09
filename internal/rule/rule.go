@@ -323,6 +323,12 @@ func (l *Load) Symbols() []string {
 	return syms
 }
 
+// Has returns true if sym is loaded by this statement.
+func (l *Load) Has(sym string) bool {
+	_, ok := l.symbols[sym]
+	return ok
+}
+
 // Add inserts a new symbol into the load statement. This has no effect if
 // the symbol is already loaded. Symbols will be sorted, so the order
 // doesn't matter.

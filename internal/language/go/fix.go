@@ -31,6 +31,7 @@ func (_ *goLang) Fix(c *config.Config, f *rule.File) {
 	squashCgoLibrary(c, f)
 	squashXtest(c, f)
 	removeLegacyProto(c, f)
+	removeLegacyGazelle(c, f)
 }
 
 // migrateLibraryEmbed converts "library" attributes to "embed" attributes,
@@ -226,6 +227,20 @@ func removeLegacyProto(c *config.Config, f *rule.File) {
 	if len(protoLoads) > 0 {
 		for _, r := range protoRules {
 			r.Delete()
+		}
+	}
+}
+
+// removeLegacyGazelle removes loads of the "gazelle" macro from
+// @io_bazel_rules_go//go:def.bzl. The definition has moved to
+// @bazel_gazelle//:def.bzl, and the old one will be deleted soon.
+func removeLegacyGazelle(c *config.Config, f *rule.File) {
+	for _, l := range f.Loads {
+		if l.Name() == "@io_bazel_rules_go//go:def.bzl" && l.Has("gazelle") {
+			l.Remove("gazelle")
+			if l.IsEmpty() {
+				l.Delete()
+			}
 		}
 	}
 }
