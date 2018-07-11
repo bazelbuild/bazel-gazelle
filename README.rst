@@ -478,7 +478,7 @@ The following directives are recognized:
 | ``prefix`` to the empty string. This automatically gives vendored libraries  |
 | an intuitive ``importpath``.                                                 |
 +------------------------------------------+-----------------------------------+
-| :direc:`proto`                           | :value:`default`                  |
+| :direc:`# gazelle:proto mode`            | :value:`default`                  |
 +------------------------------------------+-----------------------------------+
 | Tells Gazelle how to generate rules for .proto files. Valid values are:      |
 |                                                                              |
@@ -507,7 +507,7 @@ The following directives are recognized:
 | ``@io_bazel_rules_go//proto:go_proto_library.bzl`` is loaded, Gazelle        |
 | will run in ``legacy`` mode.                                                 |
 +------------------------------------------+-----------------------------------+
-| :direc:`proto_group`                     | :value:`""`                       |
+| :direc:`# gazelle:proto_group option`    | :value:`""`                       |
 +------------------------------------------+-----------------------------------+
 | Specifies an option that Gazelle can use to group .proto files into rules    |
 | when in ``package`` mode. For example, when set to ``go_package``, .proto    |
@@ -600,3 +600,8 @@ This transformation is only applied in the default proto mode. Since Gazelle
 will run in legacy proto mode if ``go_proto_library.bzl`` is loaded, this
 transformation is not usually applied. You can set the proto mode explicitly
 using the directive ``# gazelle:proto default``.
+
+**Update loads of gazelle rule (fix and update)**: Gazelle will remove loads
+of ``gazelle`` from ``@io_bazel_rules_go//go:def.bzl``. It will automatically
+add a load from ``@bazel_gazelle//:def.bzl`` if ``gazelle`` is not loaded
+from another location.
