@@ -219,3 +219,47 @@ func TestPreprocessTags(t *testing.T) {
 		}
 	}
 }
+
+func TestPrefixFallback(t *testing.T) {
+	c, _, langs := testConfig()
+	for _, tc := range []struct {
+		desc, content, want string
+	}{
+		{
+			desc: "go_prefix",
+			content: `
+go_prefix("example.com/repo")
+`,
+			want: "example.com/repo",
+		}, {
+			desc: "gazelle",
+			content: `
+gazelle(
+    name = "gazelle",
+    prefix = "example.com/repo",
+)
+`,
+			want: "example.com/repo",
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			f, err := rule.LoadData("BUILD.bazel", []byte(tc.content))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, lang := range langs {
+				lang.Configure(c, "x", f)
+			}
+			gc := getGoConfig(c)
+			if !gc.prefixSet {
+				t.Fatalf("prefix not set")
+			}
+			if gc.prefix != tc.want {
+				t.Errorf("prefix: want %q; got %q", gc.prefix, tc.want)
+			}
+			if gc.prefixRel != "x" {
+				t.Errorf("rel: got %q; want %q", gc.prefixRel, "x")
+			}
+		})
+	}
+}

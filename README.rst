@@ -71,17 +71,15 @@ It should look like this:
     gazelle_dependencies()
       
 Add the code below to the BUILD or BUILD.bazel file in the root directory
-of your repository. Replace the string in ``prefix`` with the portion of
+of your repository. Replace the string after ``prefix`` with the portion of
 your import path that corresponds to your repository.
 
 .. code:: bzl
   
   load("@bazel_gazelle//:def.bzl", "gazelle")
 
-  gazelle(
-      name = "gazelle",
-      prefix = "github.com/example/project",
-  )
+  # gazelle:prefix github.com/example/project
+  gazelle(name = "gazelle")
 
 After adding this code, you can run Gazelle with Bazel.
 
@@ -95,7 +93,7 @@ files or options.
 
 You can pass additional arguments to Gazelle after a ``--`` argument. This
 can be used to run alternate commands like ``update-repos`` that the ``gazelle``
-rule does not support directly.
+rule cannot run directly.
 
 .. code::
 
@@ -121,9 +119,6 @@ repository.
 .. code::
 
   gazelle -go_prefix github.com/my/project
-
-The prefix only needs to be specified the first time you run Gazelle. To update
-existing BUILD.bazel files, you can just run ``gazelle`` without arguments.
 
 Compatibility
 -------------
@@ -168,7 +163,7 @@ fix_
   Same as the ``update`` command, but it also fixes deprecated usage of rules.
 
 update-repos_
-  Updates repository rules in the WORKSPACE file.
+  Adds and updates repository rules in the WORKSPACE file.
 
 Bazel rule
 ~~~~~~~~~~
@@ -197,10 +192,13 @@ The following attributes are available on the ``gazelle`` rule.
 +----------------------+---------------------+--------------------------------------+
 | The last of Go build tags that Gazelle should consider to always be true.         |
 +----------------------+---------------------+--------------------------------------+
-| :param:`prefix`      | :type:`string`      | |mandatory|                          |
+| :param:`prefix`      | :type:`string`      | :value:`""`                          |
 +----------------------+---------------------+--------------------------------------+
 | The import path that corresponds to the repository root directory.                |
-| TODO(#26): this should be optional.                                               |
+|                                                                                   |
+| Note: It's usually better to write a directive like                               |
+| ``# gazelle:prefix example.com/repo`` in your build file instead of setting       |
+| this attribute.                                                                   |
 +----------------------+---------------------+--------------------------------------+
 | :param:`extra_args`  | :type:`string_list` | :value:`[]`                          |
 +----------------------+---------------------+--------------------------------------+
