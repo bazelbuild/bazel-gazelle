@@ -1,18 +1,14 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load(":def.bzl", "std_package_list")
 
 # gazelle:exclude testdata
 
-# TODO(jayconrod): don't hard code a reference to @go_sdk here. We should
-# get the package list from the toolchain as soon as it's stored there.
 # TODO(jayconrod): test that the checked-in static file matches the generated
 # file. The generated code is checked in so that Gazelle can still be built
 # with "go get".
-genrule(
+std_package_list(
     name = "std_package_list",
-    srcs = ["@go_sdk//:packages.txt"],
-    outs = ["std_package_list.go"],
-    cmd = "$(location //internal/language/go/gen_std_package_list) $< $@",
-    tools = ["//internal/language/go/gen_std_package_list"],
+    out = "std_package_list.go",
 )
 
 genrule(
