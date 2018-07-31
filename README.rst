@@ -587,7 +587,7 @@ rules_go required internal and external tests to be built separately, but
 this is no longer needed.
 
 **Remove legacy protos (fix only)**: Gazelle will remove usage of
-``go_proto_library``rules loaded from
+``go_proto_library`` rules loaded from
 ``@io_bazel_rules_go//proto:go_proto_library.bzl`` and ``filegroup`` rules named
 ``go_default_library_protos``. Newly generated proto rules will take their
 place. Since ``filegroup`` isn't needed anymore and ``go_proto_library`` has
