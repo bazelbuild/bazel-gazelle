@@ -507,9 +507,11 @@ The following directives are recognized:
 +------------------------------------------+-----------------------------------+
 | :direc:`# gazelle:proto_group option`    | :value:`""`                       |
 +------------------------------------------+-----------------------------------+
-| Specifies an option that Gazelle can use to group .proto files into rules    |
-| when in ``package`` mode. For example, when set to ``go_package``, .proto    |
-| files with the same ``option go_package`` will be grouped together.          |
+| *This directive is only effective in* ``package`` *mode (see above).*        |
+|                                                                              |
+| Specifies an option that Gazelle can use to group .proto files into rules.   |
+| For example, when set to ``go_package``, .proto files with the same          |
+| ``option go_package`` will be grouped together.                              |
 |                                                                              |
 | When this directive is set to the empty string, Gazelle will group packages  |
 | by their proto package statement.                                            |
