@@ -870,15 +870,15 @@ go_proto_library(
 func TestMergeFile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			genFile, err := rule.LoadData("current", []byte(tc.current))
+			genFile, err := rule.LoadData("current", "", []byte(tc.current))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			f, err := rule.LoadData("previous", []byte(tc.previous))
+			f, err := rule.LoadData("previous", "", []byte(tc.previous))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			emptyFile, err := rule.LoadData("empty", []byte(tc.empty))
+			emptyFile, err := rule.LoadData("empty", "", []byte(tc.empty))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
@@ -970,11 +970,11 @@ go_binary(name = "z")
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			genFile, err := rule.LoadData("gen", []byte(tc.gen))
+			genFile, err := rule.LoadData("gen", "", []byte(tc.gen))
 			if err != nil {
 				t.Fatal(err)
 			}
-			oldFile, err := rule.LoadData("old", []byte(tc.old))
+			oldFile, err := rule.LoadData("old", "", []byte(tc.old))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -987,7 +987,7 @@ go_binary(name = "z")
 			} else if tc.wantError {
 				t.Error("unexpected success")
 			} else if got == nil && tc.wantIndex >= 0 {
-				t.Error("got nil; want index %d", tc.wantIndex)
+				t.Errorf("got nil; want index %d", tc.wantIndex)
 			} else if got != nil && got.Index() != tc.wantIndex {
 				t.Fatalf("got index %d ; want %d", got.Index(), tc.wantIndex)
 			}

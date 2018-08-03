@@ -64,7 +64,7 @@ func TestGenerateRules(t *testing.T) {
 				// there's no test.
 				return
 			}
-			f := rule.EmptyFile("test")
+			f := rule.EmptyFile("test", "")
 			for _, r := range gen {
 				r.Insert(f)
 			}
@@ -93,7 +93,7 @@ func TestGenerateRulesEmpty(t *testing.T) {
 	if len(gen) > 0 {
 		t.Errorf("got %d generated rules; want 0", len(gen))
 	}
-	f := rule.EmptyFile("test")
+	f := rule.EmptyFile("test", "")
 	for _, r := range empty {
 		r.Insert(f)
 	}
@@ -138,7 +138,7 @@ proto_library(
     srcs = ["dead.proto"],
 )
 `)
-	old, err := rule.LoadData("BUILD.bazel", oldContent)
+	old, err := rule.LoadData("BUILD.bazel", "", oldContent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ proto_library(
 		es, _ := lang.GenerateRules(c, "./foo", "foo", old, nil, nil, nil, empty, nil)
 		empty = append(empty, es...)
 	}
-	f := rule.EmptyFile("test")
+	f := rule.EmptyFile("test", "")
 	for _, r := range empty {
 		r.Insert(f)
 	}

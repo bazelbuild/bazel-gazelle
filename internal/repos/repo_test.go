@@ -33,7 +33,7 @@ func TestGenerateRepoRules(t *testing.T) {
 		Commit:   "123456",
 	}
 	r := GenerateRule(repo)
-	f := rule.EmptyFile("test")
+	f := rule.EmptyFile("test", "")
 	r.Insert(f)
 	got := strings.TrimSpace(string(f.Format()))
 	want := `go_repository(
@@ -110,7 +110,7 @@ go_repository(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			workspace, err := rule.LoadData("WORKSPACE", []byte(tc.workspace))
+			workspace, err := rule.LoadData("WORKSPACE", "", []byte(tc.workspace))
 			if err != nil {
 				t.Fatal(err)
 			}

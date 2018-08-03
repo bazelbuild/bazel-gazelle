@@ -76,7 +76,7 @@ func TestImportDep(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := rule.EmptyFile("test")
+	f := rule.EmptyFile("test", "")
 	for _, r := range rules {
 		r.Insert(f)
 	}

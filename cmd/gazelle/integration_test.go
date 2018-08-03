@@ -21,6 +21,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -83,19 +84,15 @@ func checkFiles(t *testing.T, dir string, files []fileSpec) {
 				t.Errorf("not a directory: %s", f.path)
 			}
 		} else {
-			want := f.content
-			if len(want) > 0 && want[0] == '\n' {
-				// Strip leading newline, added for readability.
-				want = want[1:]
-			}
+			want := strings.TrimSpace(f.content)
 			gotBytes, err := ioutil.ReadFile(filepath.Join(dir, f.path))
 			if err != nil {
 				t.Errorf("could not read %s: %v", f.path, err)
 				continue
 			}
-			got := string(gotBytes)
+			got := strings.TrimSpace(string(gotBytes))
 			if got != want {
-				t.Errorf("%s: got %s ; want %s", f.path, got, f.content)
+				t.Errorf("%s: got:\n%s\nwant:\n %s", f.path, gotBytes, f.content)
 			}
 		}
 	}
@@ -124,8 +121,10 @@ func TestHelp(t *testing.T) {
 		{"update-repos", "-h"},
 	} {
 		t.Run(args[0], func(t *testing.T) {
-			if err := runGazelle(".", args); err != nil {
-				t.Error(err)
+			if err := runGazelle(".", args); err == nil {
+				t.Errorf("%s: got success, want flag.ErrHelp", args[0])
+			} else if err != flag.ErrHelp {
+				t.Errorf("%s: got %v, want flag.ErrHelp", args[0], err)
 			}
 		})
 	}

@@ -739,7 +739,7 @@ go_library(
 
 			for _, bf := range tc.index {
 				buildPath := filepath.Join(filepath.FromSlash(bf.rel), "BUILD.bazel")
-				f, err := rule.LoadData(buildPath, []byte(bf.content))
+				f, err := rule.LoadData(buildPath, bf.rel, []byte(bf.content))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -748,7 +748,7 @@ go_library(
 				}
 			}
 			buildPath := filepath.Join(filepath.FromSlash(tc.old.rel), "BUILD.bazel")
-			f, err := rule.LoadData(buildPath, []byte(tc.old.content))
+			f, err := rule.LoadData(buildPath, tc.old.rel, []byte(tc.old.content))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -814,7 +814,7 @@ go_library(
     ],
 )
 `)
-	f, err := rule.LoadData("BUILD.bazel", oldContent)
+	f, err := rule.LoadData("BUILD.bazel", "", oldContent)
 	if err != nil {
 		t.Fatal(err)
 	}

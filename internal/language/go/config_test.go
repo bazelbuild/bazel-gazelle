@@ -69,7 +69,7 @@ func TestDirectives(t *testing.T) {
 # gazelle:importmap_prefix x
 # gazelle:prefix y
 `)
-	f, err := rule.LoadData(filepath.FromSlash("test/BUILD.bazel"), content)
+	f, err := rule.LoadData(filepath.FromSlash("test/BUILD.bazel"), "test", content)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
 			var f *rule.File
 			if tc.content != "" {
 				var err error
-				f, err = rule.LoadData(path.Join(tc.rel, "BUILD.bazel"), []byte(tc.content))
+				f, err = rule.LoadData(path.Join(tc.rel, "BUILD.bazel"), tc.rel, []byte(tc.content))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -243,7 +243,7 @@ gazelle(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			f, err := rule.LoadData("BUILD.bazel", []byte(tc.content))
+			f, err := rule.LoadData("BUILD.bazel", "", []byte(tc.content))
 			if err != nil {
 				t.Fatal(err)
 			}
