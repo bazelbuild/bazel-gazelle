@@ -26,25 +26,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
-func TestPreprocessTags(t *testing.T) {
-	c := &Config{
-		GenericTags: map[string]bool{"a": true, "b": true},
-	}
-	c.PreprocessTags()
-	expectedTags := []string{"a", "b", "gc"}
-	for _, tag := range expectedTags {
-		if !c.GenericTags[tag] {
-			t.Errorf("tag %q not set", tag)
-		}
-	}
-	unexpectedTags := []string{"x", "cgo", "go1.8", "go1.7"}
-	for _, tag := range unexpectedTags {
-		if c.GenericTags[tag] {
-			t.Errorf("tag %q unexpectedly set", tag)
-		}
-	}
-}
-
 func TestCommonConfigurerFlags(t *testing.T) {
 	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "config_test")
 	if err != nil {

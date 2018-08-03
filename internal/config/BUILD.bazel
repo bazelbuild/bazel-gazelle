@@ -5,7 +5,6 @@ go_library(
     srcs = [
         "config.go",
         "constants.go",
-        "directives.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/config",
     visibility = ["//visibility:public"],
@@ -18,10 +17,7 @@ go_library(
 go_test(
     name = "go_default_test",
     size = "small",
-    srcs = [
-        "config_test.go",
-        "directives_test.go",
-    ],
+    srcs = ["config_test.go"],
     embed = [":go_default_library"],
     deps = ["//internal/rule:go_default_library"],
 )
