@@ -111,5 +111,5 @@ manifest = {
         "@bazel_gazelle//third_party:org_golang_x_tools/refactor/eg/BUILD.bazel.in": "refactor/eg/BUILD.bazel",
         "@bazel_gazelle//third_party:org_golang_x_tools/refactor/importgraph/BUILD.bazel.in": "refactor/importgraph/BUILD.bazel",
         "@bazel_gazelle//third_party:org_golang_x_tools/cover/BUILD.bazel.in": "cover/BUILD.bazel",
-    }
+    },
 }
