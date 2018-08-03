@@ -27,8 +27,11 @@ load(
     _manifest = "manifest",
 )
 
-def gazelle_dependencies():
-    _go_repository_tools(name = "bazel_gazelle_go_repository_tools")
+def gazelle_dependencies(go_sdk = "@go_sdk//:ROOT"):
+    _go_repository_tools(
+        name = "bazel_gazelle_go_repository_tools",
+        go_sdk = go_sdk,
+    )
 
     _maybe(
         git_repository,

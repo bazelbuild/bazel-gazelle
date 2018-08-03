@@ -191,8 +191,8 @@ filegroup(
 
 def _go_repository_tools_impl(ctx):
     extension = executable_extension(ctx)
-    go_root = ctx.path(Label("@go_sdk//:ROOT")).dirname
-    go_tool = ctx.path(Label("@go_sdk//:bin/go{}".format(extension)))
+    go_root = ctx.path(ctx.attr.go_sdk).dirname
+    go_tool = str(go_root) + "/bin/go" + extension
 
     for root_file, prefix in ctx.attr._deps.items():
         ctx.symlink(ctx.path(root_file).dirname, "src/" + prefix)
@@ -220,7 +220,7 @@ def _go_repository_tools_impl(ctx):
 go_repository_tools = repository_rule(
     _go_repository_tools_impl,
     attrs = {
-        "_go_sdk": attr.label(
+        "go_sdk": attr.label(
             default = "@go_sdk//:ROOT",
             allow_single_file = True,
         ),
