@@ -10,6 +10,7 @@ Gazelle build file generator
 .. _Gazelle in rules_go: https://github.com/bazelbuild/rules_go/tree/master/go/tools/gazelle
 .. _fix: #fix-and-update
 .. _update: #fix-and-update
+.. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -40,6 +41,8 @@ may change. Gazelle is not an official Google product.*
   * `go_repository`_
   * `git_repository`_
   * `http_archive`_
+
+* `Avoiding conflicts with proto rules`_
 
 Setup
 -----
