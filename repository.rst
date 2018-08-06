@@ -5,6 +5,7 @@ Repository rules
 .. _native git_repository rule: https://docs.bazel.build/versions/master/be/workspace.html#git_repository
 .. _native http_archive rule: https://docs.bazel.build/versions/master/be/workspace.html#http_archive
 .. _manifest.bzl: third_party/manifest.bzl
+.. _Directives: /README.rst#directives
 
 .. role:: param(kbd)
 .. role:: type(emphasis)
@@ -185,9 +186,11 @@ external Go projects.
 +--------------------------------+----------------------+-------------------------------------------------+
 | :param:`build_file_proto_mode` | :type:`string`       | :value:`""`                                     |
 +--------------------------------+----------------------+-------------------------------------------------+
-| One of ``"default"``, ``"legacy"``, ``"disable"``.                                                      |
+| One of ``"default"``, ``"legacy"``, ``"disable"``, ``"disable_global"`` or                              |
+| ``"package"``.                                                                                          |
 |                                                                                                         |
-| This sets Gazelle's ``-proto`` command line flag.                                                       |
+| This sets Gazelle's ``-proto`` command line flag. See Directives_ for more                              |
+| information on each mode.                                                                               |
 +--------------------------------+----------------------+-------------------------------------------------+
 | :param:`build_extra_args`      | :type:`string list`  | :value:`[]`                                     |
 +--------------------------------+----------------------+-------------------------------------------------+
