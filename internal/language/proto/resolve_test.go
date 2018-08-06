@@ -179,7 +179,7 @@ proto_library(
 			ix := resolve.NewRuleIndex(map[string]resolve.Resolver{"proto_library": lang})
 			rc := (*repos.RemoteCache)(nil)
 			for _, bf := range tc.index {
-				f, err := rule.LoadData(filepath.Join(bf.rel, "BUILD.bazel"), []byte(bf.content))
+				f, err := rule.LoadData(filepath.Join(bf.rel, "BUILD.bazel"), bf.rel, []byte(bf.content))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -187,7 +187,7 @@ proto_library(
 					ix.AddRule(c, r, f)
 				}
 			}
-			f, err := rule.LoadData("test/BUILD.bazel", []byte(tc.old))
+			f, err := rule.LoadData("test/BUILD.bazel", "test", []byte(tc.old))
 			if err != nil {
 				t.Fatal(err)
 			}

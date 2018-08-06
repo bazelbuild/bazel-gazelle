@@ -47,6 +47,14 @@ type Config struct {
 	// RepoName is the name of the repository.
 	RepoName string
 
+	// ReadBuildFilesDir is the absolute path to a directory where
+	// build files should be read from instead of RepoRoot.
+	ReadBuildFilesDir string
+
+	// WriteBuildFilesDir is the absolute path to a directory where
+	// build files should be written to instead of RepoRoot.
+	WriteBuildFilesDir string
+
 	// ValidBuildFileNames is a list of base names that are considered valid
 	// build files. Some repositories may have files named "BUILD" that are not
 	// used by Bazel and should be ignored. Must contain at least one string.
@@ -134,12 +142,14 @@ type Configurer interface {
 // CommonConfigurer handles language-agnostic command-line flags and directives,
 // i.e., those that apply to Config itself and not to Config.Exts.
 type CommonConfigurer struct {
-	repoRoot, buildFileNames string
+	repoRoot, buildFileNames, readBuildFilesDir, writeBuildFilesDir string
 }
 
 func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Config) {
 	fs.StringVar(&cc.repoRoot, "repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
 	fs.StringVar(&cc.buildFileNames, "build_file_name", strings.Join(DefaultValidBuildFileNames, ","), "comma-separated list of valid build file names.\nThe first element of the list is the name of output build files to generate.")
+	fs.StringVar(&cc.readBuildFilesDir, "experimental_read_build_files_dir", "", "path to a directory where build files should be read from (instead of -repo_root)")
+	fs.StringVar(&cc.writeBuildFilesDir, "experimental_write_build_files_dir", "", "path to a directory where build files should be written to (instead of -repo_root)")
 }
 
 func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
@@ -159,6 +169,19 @@ func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 		return fmt.Errorf("%s: failed to resolve symlinks: %v", cc.repoRoot, err)
 	}
 	c.ValidBuildFileNames = strings.Split(cc.buildFileNames, ",")
+	if cc.readBuildFilesDir != "" {
+		c.ReadBuildFilesDir, err = filepath.Abs(cc.readBuildFilesDir)
+		if err != nil {
+			return fmt.Errorf("%s: failed to find absolute path of -read_build_files_dir: %v", cc.readBuildFilesDir, err)
+		}
+	}
+	if cc.writeBuildFilesDir != "" {
+		c.WriteBuildFilesDir, err = filepath.Abs(cc.writeBuildFilesDir)
+		if err != nil {
+			return fmt.Errorf("%s: failed to find absolute path of -write_build_files_dir: %v", cc.writeBuildFilesDir, err)
+		}
+	}
+
 	return nil
 }
 

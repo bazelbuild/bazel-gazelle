@@ -632,7 +632,7 @@ go_repository(name = "foo")
 }
 
 func testFix(t *testing.T, tc fixTestCase, fix func(*rule.File)) {
-	f, err := rule.LoadData("old", []byte(tc.old))
+	f, err := rule.LoadData("old", "", []byte(tc.old))
 	if err != nil {
 		t.Fatalf("%s: parse error: %v", tc.desc, err)
 	}

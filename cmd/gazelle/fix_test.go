@@ -20,9 +20,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
@@ -63,9 +63,7 @@ func TestFixFile(t *testing.T) {
 			},
 		},
 	}
-	c := &config.Config{}
-
-	if err := fixFile(c, stubFile, stubFile.Path); err != nil {
+	if err := fixFile(stubFile.Path, bzl.Format(stubFile)); err != nil {
 		t.Errorf("fixFile(%#v) failed with %v; want success", stubFile, err)
 		return
 	}
@@ -132,5 +130,159 @@ func TestUpdateFile(t *testing.T) {
 
 	if _, err = os.Stat(filepath.Join(dir, "BUILD.bazel")); err == nil {
 		t.Errorf("BUILD.bazel should not exist")
+	}
+}
+
+func TestReadWriteDir(t *testing.T) {
+	buildInFile := fileSpec{
+		path: "in/BUILD.in",
+		content: `
+go_binary(
+    name = "hello",
+    pure = "on",
+)
+`,
+	}
+	buildSrcFile := fileSpec{
+		path:    "src/BUILD.bazel",
+		content: `# src build file`,
+	}
+	oldFiles := []fileSpec{
+		buildInFile,
+		buildSrcFile,
+		{
+			path: "src/hello.go",
+			content: `
+package main
+
+func main() {}
+`,
+		}, {
+			path:    "out/BUILD",
+			content: `this should get replaced`,
+		},
+	}
+
+	for _, tc := range []struct {
+		desc string
+		args []string
+		want []fileSpec
+	}{
+		{
+			desc: "read",
+			args: []string{
+				"-repo_root={{dir}}/src",
+				"-experimental_read_build_files_dir={{dir}}/in",
+				"-build_file_name=BUILD.bazel,BUILD,BUILD.in",
+				"-go_prefix=example.com/repo",
+				"{{dir}}/src",
+			},
+			want: []fileSpec{
+				buildInFile,
+				{
+					path: "src/BUILD.bazel",
+					content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_binary(
+    name = "hello",
+    embed = [":go_default_library"],
+    pure = "on",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["hello.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:private"],
+)
+`,
+				},
+			},
+		}, {
+			desc: "write",
+			args: []string{
+				"-repo_root={{dir}}/src",
+				"-experimental_write_build_files_dir={{dir}}/out",
+				"-build_file_name=BUILD.bazel,BUILD,BUILD.in",
+				"-go_prefix=example.com/repo",
+				"{{dir}}/src",
+			},
+			want: []fileSpec{
+				buildInFile,
+				buildSrcFile,
+				{
+					path: "out/BUILD",
+					content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+# src build file
+
+go_library(
+    name = "go_default_library",
+    srcs = ["hello.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "repo",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		}, {
+			desc: "read_and_write",
+			args: []string{
+				"-repo_root={{dir}}/src",
+				"-experimental_read_build_files_dir={{dir}}/in",
+				"-experimental_write_build_files_dir={{dir}}/out",
+				"-build_file_name=BUILD.bazel,BUILD,BUILD.in",
+				"-go_prefix=example.com/repo",
+				"{{dir}}/src",
+			},
+			want: []fileSpec{
+				buildInFile,
+				{
+					path: "out/BUILD",
+					content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_binary(
+    name = "hello",
+    embed = [":go_default_library"],
+    pure = "on",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["hello.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:private"],
+)
+`,
+				},
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			dir, err := createFiles(oldFiles)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(dir)
+			replacer := strings.NewReplacer("{{dir}}", dir, "/", string(os.PathSeparator))
+			for i := range tc.args {
+				tc.args[i] = replacer.Replace(tc.args[i])
+			}
+			if err := run(tc.args); err != nil {
+				t.Error(err)
+			}
+			checkFiles(t, dir, tc.want)
+		})
 	}
 }

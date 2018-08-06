@@ -50,7 +50,7 @@ func TestGenerateRules(t *testing.T) {
 			if len(empty) > 0 {
 				t.Errorf("got %d empty rules; want 0", len(empty))
 			}
-			f := rule.EmptyFile("test")
+			f := rule.EmptyFile("test", "")
 			for _, r := range gen {
 				r.Insert(f)
 			}
@@ -94,7 +94,7 @@ proto_library(
     srcs = COMPLICATED_SRCS,
 )
 `)
-	old, err := rule.LoadData("BUILD.bazel", oldContent)
+	old, err := rule.LoadData("BUILD.bazel", "", oldContent)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ proto_library(
 	if len(gen) > 0 {
 		t.Errorf("got %d generated rules; want 0", len(gen))
 	}
-	f := rule.EmptyFile("test")
+	f := rule.EmptyFile("test", "")
 	for _, r := range empty {
 		r.Insert(f)
 	}
