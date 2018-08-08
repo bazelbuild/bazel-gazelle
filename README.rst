@@ -59,13 +59,13 @@ It should look like this:
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
     http_archive(
         name = "io_bazel_rules_go",
-        urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.13.0/rules_go-0.13.0.tar.gz"],
-        sha256 = "ba79c532ac400cefd1859cbc8a9829346aa69e3b99482cd5a54432092cbc3933",
+        urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.14.0/rules_go-0.14.0.tar.gz"],
+        sha256 = "5756a4ad75b3703eb68249d50e23f5d64eaf1593e886b9aa931aa6e938c4e301",
     )
     http_archive(
         name = "bazel_gazelle",
-        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.13.0/bazel-gazelle-0.13.0.tar.gz"],
-        sha256 = "bc653d3e058964a5a26dcad02b6c72d7d63e6bb88d94704990b908a1445b8758",
+        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.14.0/bazel-gazelle-0.14.0.tar.gz"],
+        sha256 = "c0a5739d12c6d05b6c1ad56f2200cb0b57c5a70e03ebd2f7b87ce88cabf09c7b",
     )
     load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
     go_rules_dependencies()
@@ -143,6 +143,8 @@ to build. Check the table below to ensure that you're using compatible versions.
 | 0.12.0              | 0.11.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 | 0.13.0              | 0.13.0                       | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.14.0              | 0.13.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
