@@ -71,7 +71,7 @@ var lockFileParsers = map[lockFileFormat]func(string) ([]Repo, error){
 // a list of equivalent repository rules that can be merged into a WORKSPACE
 // file. The format of the file is inferred from its basename. Currently,
 // only Gopkg.lock is supported.
-func ImportRepoRules(filename string) ([]*rule.Rule, error) {
+func ImportRepoRules(filename string, remoteCache *RemoteCache) ([]*rule.Rule, error) {
 	format := getLockFileFormat(filename)
 	if format == unknownFormat {
 		return nil, fmt.Errorf(`%s: unrecognized lock file format. Expected "Gopkg.lock"`, filename)
@@ -85,6 +85,13 @@ func ImportRepoRules(filename string) ([]*rule.Rule, error) {
 
 	rules := make([]*rule.Rule, 0, len(repos))
 	for _, repo := range repos {
+		if repo.Remote != "" && repo.VCS == "" {
+			// here we need to resolve the GoPrefix to determine the VCS
+			repoRoot, err := remoteCache.RepoRootForImportPath(repo.GoPrefix, false)
+			if err == nil {
+				repo.VCS = repoRoot.VCS.Cmd
+			}
+		}
 		rules = append(rules, GenerateRule(repo))
 	}
 	return rules, nil

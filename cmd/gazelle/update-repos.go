@@ -190,7 +190,9 @@ func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule
 }
 
 func importFromLockFile(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
-	genRules, err := repos.ImportRepoRules(c.lockFilename)
+	rules := repos.ListRepositories(f)
+	cache := repos.NewRemoteCache(rules)
+	genRules, err := repos.ImportRepoRules(c.lockFilename, cache)
 	if err != nil {
 		return err
 	}

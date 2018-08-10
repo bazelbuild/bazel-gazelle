@@ -72,7 +72,8 @@ func TestImportDep(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rules, err := ImportRepoRules(lockFilename)
+	cache := NewRemoteCache(nil)
+	rules, err := ImportRepoRules(lockFilename, cache)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,6 +94,7 @@ go_repository(
     commit = "a93e51b5a57ef416dac8bb02d11407b6f55d8929",
     importpath = "github.com/Masterminds/semver",
     remote = "https://github.com/carolynvs/semver.git",
+    vcs = "git",
 )
 
 go_repository(
