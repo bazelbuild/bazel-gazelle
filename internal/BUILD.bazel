@@ -5,6 +5,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_too
 go_rules_dependencies()
 go_register_toolchains()
 
+# TODO(jayconrod): fix bazel_test so this isn't necessary
+register_toolchains(
+    "@go_sdk//:go_darwin_amd64",
+    "@go_sdk//:go_linux_amd64",
+    "@go_sdk//:go_windows_amd64",
+)
+
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 gazelle_dependencies()
 
