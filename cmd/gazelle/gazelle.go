@@ -56,7 +56,7 @@ func main() {
 	log.SetPrefix("gazelle: ")
 	log.SetFlags(0) // don't print timestamps
 
-	if err := run(os.Args[1:]); err != nil {
+	if err := run(os.Args[1:]); err != nil && err != flag.ErrHelp {
 		log.Fatal(err)
 	}
 }
