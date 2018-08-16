@@ -11,6 +11,7 @@ Gazelle build file generator
 .. _fix: #fix-and-update
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
+.. _gazelle rule: #bazel-rule
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -21,11 +22,12 @@ Gazelle build file generator
 .. |mandatory| replace:: **mandatory value**
 .. End of directives
 
-Gazelle is a build file generator for Go projects. It can create new
-BUILD.bazel files for a project that follows "go build" conventions, and it
-can update existing build files to include new files and options. Gazelle can
-be invoked directly in a project workspace, or it can be run on an external
-repository during the build as part of the `go_repository`_ rule.
+Gazelle is a build file generator for Go projects. It can create new BUILD.bazel
+files for a project that follows "go build" conventions, and it can update
+existing build files to include new sources, dependencies, and options. Gazelle
+may be run by Bazel using the `gazelle rule`_, or it can be run as a command
+line tool. Gazelle can also be run in an external repository as part of the
+`go_repository`_ rule.
 
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
@@ -51,8 +53,8 @@ Running Gazelle with Bazel
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To use Gazelle in a new project, add the ``bazel_gazelle`` repository and its
-dependencies to your WORKSPACE file before ``go_rules_dependencies`` is called.
-It should look like this:
+dependencies to your WORKSPACE file and call ``gazelle_dependencies``. It
+should look like this:
 
 .. code:: bzl
 
@@ -105,8 +107,7 @@ rule cannot run directly.
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-If you have a Go SDK installed, you can install Gazelle in your ``GOPATH`` with
-the command below:
+If you have a Go SDK installed, you can install Gazelle with the command below:
 
 .. code::
 
@@ -121,13 +122,23 @@ repository.
 
 .. code::
 
-  gazelle -go_prefix github.com/my/project
+  gazelle -go_prefix github.com/example/project
+
+Most of Gazelle's command-line arguments can be expressed as special comments
+in build files. See Directives_ below. You may want to copy this line into
+your root build files to avoid having to type ``-go_prefix`` every time.
+
+.. code:: bzl
+
+  # gazelle:prefix github.com/example/project
 
 Compatibility
 -------------
 
-Gazelle generates build files that require a minimum version of ``rules_go``
-to build. Check the table below to ensure that you're using compatible versions.
+Gazelle generates build files that use features in newer versions of
+``rules_go``. Newer versions of Gazelle *may* generate build files that work
+with older versions of ``rules_go``, but check the table below to ensure
+you're using a compatible version.
 
 +---------------------+------------------------------+------------------------------+
 | **Gazelle version** | **Minimum rules_go version** | **Maximum rules_go version** |
@@ -191,7 +202,7 @@ The following attributes are available on the ``gazelle`` rule.
 | :param:`external`    | :type:`string`      | :value:`external`                    |
 +----------------------+---------------------+--------------------------------------+
 | The method for resolving unknown imports to Bazel dependencies. May be            |
-| :value:`external` or :value:`vendored`.                                           |
+| :value:`external` or :value:`vendored`. See `Dependency resolution`_.             |
 +----------------------+---------------------+--------------------------------------+
 | :param:`build_tags`  | :type:`string_list` | :value:`[]`                          |
 +----------------------+---------------------+--------------------------------------+
@@ -219,8 +230,8 @@ The following attributes are available on the ``gazelle`` rule.
 ``fix`` and ``update``
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The ``update`` command is the most common way of running Gazelle. Gazelle will
-scan sources in directories throughout the repository, then create and update
+The ``update`` command is the most common way of running Gazelle. Gazelle 
+scans sources in directories throughout the repository, then creates and updates
 build files.
 
 The ``fix`` command does everything ``update`` does, but it also fixes
@@ -258,14 +269,9 @@ The following flags are accepted:
 +--------------------------------------------------------------+-----------------------------------+
 | :flag:`-external external|vendored`                          | :value:`external`                 |
 +--------------------------------------------------------------+-----------------------------------+
-| Determines how Gazelle resolves import paths. May be :value:`external` or                        |
-| :value:`vendored`. Gazelle translates Go import paths to Bazel labels when                       |
-| resolving library dependencies. Import paths that start with the                                 |
-| ``go_prefix`` are resolved to local labels, but other imports                                    |
-| are resolved based on this mode. In :value:`external` mode, paths are                            |
-| resolved using an external dependency in the WORKSPACE file (Gazelle does                        |
-| not create or maintain these dependencies yet). In :value:`vendored` mode,                       |
-| paths are resolved to a library in the vendor directory.                                         |
+| Determines how Gazelle resolves import paths that cannot be resolve in the                       |
+| current repository. May be :value:`external` or :value:`vendored`. See                           |
+| `Dependency resolution`_.                                                                        |
 +--------------------------------------------------------------+-----------------------------------+
 | :flag:`-go_prefix example.com/repo`                          |                                   |
 +--------------------------------------------------------------+-----------------------------------+
@@ -356,31 +362,6 @@ The following flags are accepted:
 |                                                                              |
 | Gazelle will not process packages outside this directory.                    |
 +------------------------------+-----------------------------------------------+
-
-Bazel rule
-~~~~~~~~~~
-
-When Gazelle is run by Bazel, most of the flags above can be encoded in the
-``gazelle`` rule. For example:
-
-.. code:: bzl
-
-  load("@bazel_gazelle//:def.bzl", "gazelle")
-
-  gazelle(
-      name = "gazelle",
-      command = "fix",
-      prefix = "github.com/example/project",
-      external = "vendored",
-      build_tags = [
-          "integration",
-          "debug",
-      ],
-      extra_args = [
-          "-build_file_name",
-          "BUILD,BUILD.bazel",
-      ],
-  )
 
 Directives
 ~~~~~~~~~~
@@ -559,6 +540,63 @@ know what imports to resolve, so you may need to add dependencies manually with
           "@com_github_example_gen//:go_default_library",  # keep
       ],
   )
+
+Dependency resolution
+---------------------
+
+One of Gazelle's most important jobs is resolving library import strings
+(like ``import "golang.org/x/sys/unix"``) to Bazel labels (like
+``@org_golang_x_sys//unix:go_default_library``). Gazelle follows the rules
+below to resolve dependencies:
+
+1. If the import to be resolved is part of a standard library, no explicit
+   dependency is written. For example, in Go, you don't need to declare
+   that you depend on ``"fmt"``.
+2. If proto rule generation is enabled, special rules will be used when
+   importing certain libraries. These rules may be disabled by adding
+   ``# gazelle:proto disable_global`` to a build file (this will affect
+   subdirectories, too) or by passing ``-proto disable_global`` on the
+   command line.
+
+   a) Imports of Well Known Types are mapped to rules in
+      ``@io_bazel_rules_go//proto/wkt``.
+   b) Imports of Google APIs are mapped to ``@go_googleapis``.
+   c) Imports of ``github.com/golang/protobuf/ptypes``, ``descriptor``, and
+      ``jsonpb`` are mapped to special rules in ``@com_github_golang_protobuf``.
+      See `Avoiding conflicts with proto rules`_.
+
+3. If the import to be resolved is provided by a library in the current
+   repository, the import will be resolved to that library. Gazelle builds
+   an index of library rules in the current repository before starting
+   dependency resolution, and this is how most dependencies are resolved.
+
+   a) For Go, the match is based on the ``importpath`` attribute.
+   b) For proto, the match is based on the ``srcs`` attribute.
+
+4. If a package is imported that has the current ``go_prefix`` as a prefix,
+   Gazelle generates a label following a convention. For example, if
+   the build file in ``//src`` set the prefix with
+   ``# gazelle:prefix example.com/repo/foo``, and you import the library
+   ``"example.com/repo/foo/bar``, the dependency will be
+   ``"//src/foo/bar:go_default_library"``.
+5. Otherwise, Gazelle will use the current ``external`` mode to resolve
+   the dependency.
+
+   a) In ``external`` mode (the default), Gazelle will transform the import
+      string into an external repository label. For example,
+      ``"golang.org/x/sys/unix"`` would be resolved to
+      ``"@org_golang_x_sys//unix:go_default_library"``. Gazelle does not confirm
+      whether the external repository is actually declared in WORKSPACE,
+      but if there *is* a ``go_repository`` in WORKSPACE with a matching
+      ``importpath``, Gazelle will use its name. Gazelle does not index
+      rules in external repositories, so it's possible the resolved dependency
+      does not exist.
+   b) In ``vendored`` mode, Gazelle will transform the import string into
+      a label in the vendor directory. For example, ``"golang.org/x/sys/unix"``
+      would be resolved to
+      ``"//vendor/golang.org/x/sys/unix:go_default_library"``. This mode is
+      usually not necessary, since vendored libraries will be indexed and
+      resolved using rule 3.
 
 Fix command transformations
 ---------------------------
