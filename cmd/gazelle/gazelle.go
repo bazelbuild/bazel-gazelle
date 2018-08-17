@@ -112,7 +112,7 @@ For example:
 
   gazelle update -h
 
-Gazelle is under active delevopment, and its interface may change
+Gazelle is under active development, and its interface may change
 without notice.
 
 `)
