@@ -32,7 +32,7 @@ def _vendor_go_repository_impl(ctx):
         "PATH": ctx.os.environ["PATH"],
     }
     for file in __join_path(ctx.path(Label("@//:WORKSPACE")).dirname, "vendor/"+ctx.attr.importpath).readdir():
-        result = env_execute(ctx, ["cp", "-r", file, ctx.path(file.basename)], environment = fetch_repo_env, timeout = _GO_REPOSITORY_TIMEOUT)
+        result = env_execute(ctx, ["cp", "-RP", file, ctx.path(file.basename)], environment = fetch_repo_env, timeout = _GO_REPOSITORY_TIMEOUT)
         if result.return_code:
             fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
     generate = ctx.attr.build_file_generation == "on"
