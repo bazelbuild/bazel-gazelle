@@ -61,8 +61,8 @@ should look like this:
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
     http_archive(
         name = "io_bazel_rules_go",
-        urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.15.2/rules_go-0.15.2.tar.gz"],
-        sha256 = "70d0204f1e834d14fa9eef1e9b97160917a48957cd1e3a39b5ef9acdbdde6972",
+        urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.15.3/rules_go-0.15.3.tar.gz"],
+        sha256 = "97cf62bdef33519412167fd1e4b0810a318a7c234f5f8dc4f53e2da86241c492",
     )
     http_archive(
         name = "bazel_gazelle",
