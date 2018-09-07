@@ -1,0 +1,45 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "autogazelle.go",
+        "client_unix.go",
+        "server_unix.go",
+    ],
+    importpath = "github.com/bazelbuild/bazel-gazelle/cmd/autogazelle",
+    visibility = ["//visibility:private"],
+    deps = select({
+        "@io_bazel_rules_go//go/platform:darwin": [
+            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:dragonfly": [
+            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:freebsd": [
+            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:nacl": [
+            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:netbsd": [
+            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:openbsd": [
+            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:solaris": [
+            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+go_binary(
+    name = "autogazelle",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
