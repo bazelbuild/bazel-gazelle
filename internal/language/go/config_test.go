@@ -16,38 +16,49 @@ limitations under the License.
 package golang
 
 import (
-	"flag"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/language"
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 )
 
-func testConfig() (*config.Config, *flag.FlagSet, []language.Language) {
-	c := config.New()
-	fs := flag.NewFlagSet("test", flag.ContinueOnError)
-	langs := []language.Language{proto.New(), New()}
-	for _, lang := range langs {
-		lang.RegisterFlags(fs, "update", c)
+func testConfig(t *testing.T, args ...string) (*config.Config, []language.Language, []config.Configurer) {
+	// Add a -repo_root argument if none is present. Without this,
+	// config.CommonConfigurer will try to auto-detect a WORKSPACE file,
+	// which will fail.
+	haveRoot := false
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-repo_root") {
+			haveRoot = true
+			break
+		}
 	}
-	return c, fs, langs
+	if !haveRoot {
+		args = append(args, "-repo_root=.")
+	}
+
+	cexts := []config.Configurer{&config.CommonConfigurer{}}
+	langs := []language.Language{proto.New(), New()}
+	c := testtools.NewTestConfig(t, cexts, langs, args)
+	for _, lang := range langs {
+		cexts = append(cexts, lang)
+	}
+	return c, langs, cexts
 }
 
 func TestCommandLine(t *testing.T) {
-	c, fs, langs := testConfig()
-	args := []string{"-build_tags", "foo,bar", "-go_prefix", "example.com/repo", "-external", "vendored"}
-	if err := fs.Parse(args); err != nil {
-		t.Fatal(err)
-	}
-	for _, lang := range langs {
-		if err := lang.CheckFlags(fs, c); err != nil {
-			t.Fatal(err)
-		}
-	}
+	c, _, _ := testConfig(
+		t,
+		"-build_tags=foo,bar",
+		"-go_prefix=example.com/repo",
+		"-external=vendored",
+		"-repo_root=testdata")
 	gc := getGoConfig(c)
 	for _, tag := range []string{"foo", "bar", "gc"} {
 		if !gc.genericTags[tag] {
@@ -63,7 +74,7 @@ func TestCommandLine(t *testing.T) {
 }
 
 func TestDirectives(t *testing.T) {
-	c, _, langs := testConfig()
+	c, _, cexts := testConfig(t)
 	content := []byte(`
 # gazelle:build_tags foo,bar
 # gazelle:importmap_prefix x
@@ -73,8 +84,8 @@ func TestDirectives(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, lang := range langs {
-		lang.Configure(c, "test", f)
+	for _, cext := range cexts {
+		cext.Configure(c, "test", f)
 	}
 	gc := getGoConfig(c)
 	for _, tag := range []string{"foo", "bar", "gc"} {
@@ -97,14 +108,14 @@ func TestDirectives(t *testing.T) {
 }
 
 func TestVendorConfig(t *testing.T) {
-	c, _, langs := testConfig()
+	c, _, cexts := testConfig(t)
 	gc := getGoConfig(c)
 	gc.prefix = "example.com/repo"
 	gc.prefixRel = ""
 	gc.importMapPrefix = "bad-importmap-prefix"
 	gc.importMapPrefixRel = ""
-	for _, lang := range langs {
-		lang.Configure(c, "x/vendor", nil)
+	for _, cext := range cexts {
+		cext.Configure(c, "x/vendor", nil)
 	}
 	gc = getGoConfig(c)
 	if gc.prefix != "" {
@@ -122,7 +133,7 @@ func TestVendorConfig(t *testing.T) {
 }
 
 func TestInferProtoMode(t *testing.T) {
-	c, _, langs := testConfig()
+	c, _, cexts := testConfig(t)
 	for _, tc := range []struct {
 		desc, rel, content string
 		old                proto.Mode
@@ -193,8 +204,8 @@ load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
 					t.Fatal(err)
 				}
 			}
-			for _, lang := range langs {
-				lang.Configure(c, tc.rel, f)
+			for _, cext := range cexts {
+				cext.Configure(c, tc.rel, f)
 			}
 			pc = proto.GetProtoConfig(c)
 			if pc.Mode != tc.want {
@@ -221,7 +232,7 @@ func TestPreprocessTags(t *testing.T) {
 }
 
 func TestPrefixFallback(t *testing.T) {
-	c, _, langs := testConfig()
+	c, _, cexts := testConfig(t)
 	for _, tc := range []struct {
 		desc, content, want string
 	}{
@@ -247,8 +258,8 @@ gazelle(
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, lang := range langs {
-				lang.Configure(c, "x", f)
+			for _, cext := range cexts {
+				cext.Configure(c, "x", f)
 			}
 			gc := getGoConfig(c)
 			if !gc.prefixSet {

@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	"github.com/bazelbuild/bazel-gazelle/internal/walk"
@@ -30,18 +29,14 @@ import (
 )
 
 func TestGenerateRules(t *testing.T) {
-	c, _, langs := testConfig()
-	c.RepoRoot = "testdata"
-	c.Dirs = []string{c.RepoRoot}
-	c.ValidBuildFileNames = []string{"BUILD.old"}
-	gc := getGoConfig(c)
-	gc.prefix = "example.com/repo"
-	gc.prefixSet = true
+	c, langs, cexts := testConfig(
+		t,
+		"-build_file_name=BUILD.old",
+		"-go_prefix=example.com/repo",
+		"-repo_root=testdata")
 
-	cexts := make([]config.Configurer, len(langs))
 	var loads []rule.LoadInfo
-	for i, lang := range langs {
-		cexts[i] = lang
+	for _, lang := range langs {
 		loads = append(loads, lang.Loads()...)
 	}
 	walk.Walk(c, cexts, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
@@ -87,7 +82,7 @@ func TestGenerateRules(t *testing.T) {
 }
 
 func TestGenerateRulesEmpty(t *testing.T) {
-	c, _, langs := testConfig()
+	c, langs, _ := testConfig(t)
 	goLang := langs[1].(*goLang)
 	empty, gen := goLang.GenerateRules(c, "./foo", "foo", nil, nil, nil, nil, nil, nil)
 	if len(gen) > 0 {
@@ -116,10 +111,8 @@ go_test(name = "go_default_test")
 }
 
 func TestGenerateRulesEmptyLegacyProto(t *testing.T) {
-	c, _, langs := testConfig()
-	goLang := langs[1].(*goLang)
-	pc := proto.GetProtoConfig(c)
-	pc.Mode = proto.LegacyMode
+	c, langs, _ := testConfig(t, "-proto=legacy")
+	goLang := langs[len(langs)-1].(*goLang)
 	empty, _ := goLang.GenerateRules(c, "./foo", "foo", nil, nil, nil, nil, nil, nil)
 	for _, e := range empty {
 		if kind := e.Kind(); kind == "proto_library" || kind == "go_proto_library" || kind == "go_grpc_library" {
@@ -129,9 +122,7 @@ func TestGenerateRulesEmptyLegacyProto(t *testing.T) {
 }
 
 func TestGenerateRulesEmptyPackageProto(t *testing.T) {
-	c, _, langs := testConfig()
-	pc := proto.GetProtoConfig(c)
-	pc.Mode = proto.PackageMode
+	c, langs, _ := testConfig(t, "-proto=package")
 	oldContent := []byte(`
 proto_library(
     name = "dead_proto",

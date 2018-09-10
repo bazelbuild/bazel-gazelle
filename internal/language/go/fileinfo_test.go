@@ -498,7 +498,7 @@ import "C"
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			c, _, _ := testConfig()
+			c, _, _ := testConfig(t)
 			gc := getGoConfig(c)
 			gc.genericTags = tc.genericTags
 			if gc.genericTags == nil {

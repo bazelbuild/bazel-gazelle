@@ -23,7 +23,6 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
-	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
@@ -724,10 +723,10 @@ go_library(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			c, _, langs := testConfig()
-			gc := getGoConfig(c)
-			gc.prefix = "example.com/repo/resolve"
-			gc.depMode = vendorMode
+			c, langs, _ := testConfig(
+				t,
+				"-go_prefix=example.com/repo/resolve",
+				"-external=vendored")
 			kindToResolver := make(map[string]resolve.Resolver)
 			for _, lang := range langs {
 				for kind := range lang.Kinds() {
@@ -771,11 +770,10 @@ go_library(
 }
 
 func TestResolveDisableGlobal(t *testing.T) {
-	c, _, langs := testConfig()
-	gc := getGoConfig(c)
-	gc.prefix = "example.com/repo"
-	gc.prefixSet = true
-	proto.GetProtoConfig(c).Mode = proto.DisableGlobalMode
+	c, langs, _ := testConfig(
+		t,
+		"-go_prefix=example.com/repo",
+		"-proto=disable_global")
 	ix := resolve.NewRuleIndex(nil)
 	ix.Finish()
 	rc := testRemoteCache([]repos.Repo{
@@ -856,9 +854,9 @@ go_library(
 }
 
 func TestResolveExternal(t *testing.T) {
-	c, _, langs := testConfig()
-	gc := getGoConfig(c)
-	gc.prefix = "example.com/local"
+	c, langs, _ := testConfig(
+		t,
+		"-go_prefix=example.com/local")
 	ix := resolve.NewRuleIndex(nil)
 	ix.Finish()
 	gl := langs[1].(*goLang)
