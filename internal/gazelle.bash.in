@@ -24,6 +24,7 @@ GAZELLE_SHORT_PATH=@@GAZELLE_SHORT_PATH@@
 GAZELLE_LABEL=@@GAZELLE_LABEL@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
+WORKSPACE=@@WORKSPACE@@
 
 # find_repo_root prints the absolute path to the repository root. This is
 # discovered by locating the WORKSPACE file in a parent directory, and
@@ -39,7 +40,7 @@ function find_repo_root {
     exit 1
   fi
   if [ "$is_bazel_run" = true ]; then
-    dirname $(readlink WORKSPACE)
+    readlink WORKSPACE
   else
     pwd
   fi
@@ -70,13 +71,19 @@ if [ $# -ne 0 ]; then
   ARGS=("$@")
 fi
 
+if [ ! -f "$WORKSPACE" ] || [ ! -L "$WORKSPACE" ]; then
+  WORKSPACE="$(find_repo_root)"
+else
+  WORKSPACE="$(readlink $WORKSPACE)"
+fi
+
 if [ "$is_bazel_run" = true ]; then
   # If the script was invoked by "bazel run", jump out of the execroot, into
   # the workspace before running Gazelle.
   # TODO(jayconrod): detect when a command can't be run this way.
   export GOROOT=$(cd "$(dirname "$GOTOOL")/.."; pwd)
   gazelle_short_path=$(readlink "$GAZELLE_SHORT_PATH")
-  cd $(find_repo_root)
+  cd $(dirname "$WORKSPACE")
   "$gazelle_short_path" "${ARGS[@]}"
 else
   # If the script was invoked directly, check whether the script is out of
