@@ -26,6 +26,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
+	"github.com/bazelbuild/bazel-gazelle/internal/walk"
 )
 
 func testConfig(t *testing.T, args ...string) (*config.Config, []language.Language, []config.Configurer) {
@@ -43,7 +44,7 @@ func testConfig(t *testing.T, args ...string) (*config.Config, []language.Langua
 		args = append(args, "-repo_root=.")
 	}
 
-	cexts := []config.Configurer{&config.CommonConfigurer{}}
+	cexts := []config.Configurer{&config.CommonConfigurer{}, &walk.Configurer{}}
 	langs := []language.Language{proto.New(), New()}
 	c := testtools.NewTestConfig(t, cexts, langs, args)
 	for _, lang := range langs {
