@@ -58,6 +58,8 @@ def _go_repository_impl(ctx):
             fetch_repo_env["HTTP_PROXY"] = ctx.os.environ["HTTP_PROXY"]
         if "HTTPS_PROXY" in ctx.os.environ:
             fetch_repo_env["HTTPS_PROXY"] = ctx.os.environ["HTTPS_PROXY"]
+        if "GIT_SSL_CAINFO" in ctx.os.environ:
+            fetch_repo_env["GIT_SSL_CAINFO"] = ctx.os.environ["GIT_SSL_CAINFO"]
 
         _fetch_repo = "@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx))
         args = [
