@@ -41,7 +41,7 @@ func TestConfigureCallbackOrder(t *testing.T) {
 	cexts = append(cexts, &testConfigurer{func(_ *config.Config, rel string, _ *rule.File) {
 		configureRels = append(configureRels, rel)
 	}})
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		callbackRels = append(callbackRels, rel)
 	})
 	if want := []string{"", "a", "a/b"}; !reflect.DeepEqual(configureRels, want) {
@@ -70,27 +70,67 @@ func TestUpdateDirs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	c, cexts := testConfig(t, dir)
-	c.Dirs = []string{filepath.Join(dir, "update")}
-	type updateSpec struct {
+
+	type visitSpec struct {
 		rel    string
 		update bool
 	}
-	var updates []updateSpec
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, update bool, _ *rule.File, _, _, _ []string) {
-		updates = append(updates, updateSpec{rel, update})
-	})
-	want := []updateSpec{
-		{"update/error/sub", true},
-		{"update/error", false},
-		{"update/ignore/sub", true},
-		{"update/ignore", false},
-		{"update/sub", true},
-		{"update", true},
-		{"", false},
-	}
-	if !reflect.DeepEqual(updates, want) {
-		t.Errorf("got %#v; want %#v", updates, want)
+	for _, tc := range []struct {
+		desc string
+		rels []string
+		mode Mode
+		want []visitSpec
+	}{
+		{
+			desc: "visit_all_update_subdirs",
+			rels: []string{"update"},
+			mode: VisitAllUpdateSubdirsMode,
+			want: []visitSpec{
+				{"update/error/sub", true},
+				{"update/error", false},
+				{"update/ignore/sub", true},
+				{"update/ignore", false},
+				{"update/sub", true},
+				{"update", true},
+				{"", false},
+			},
+		}, {
+			desc: "visit_all_update_dirs",
+			rels: []string{"update", "update/ignore/sub"},
+			mode: VisitAllUpdateDirsMode,
+			want: []visitSpec{
+				{"update/error/sub", false},
+				{"update/error", false},
+				{"update/ignore/sub", true},
+				{"update/ignore", false},
+				{"update/sub", false},
+				{"update", true},
+				{"", false},
+			},
+		}, {
+			desc: "update_dirs",
+			rels: []string{"update", "update/ignore/sub"},
+			mode: UpdateDirsMode,
+			want: []visitSpec{
+				{"update/ignore/sub", true},
+				{"update", true},
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			c, cexts := testConfig(t, dir)
+			dirs := make([]string, len(tc.rels))
+			for i, rel := range tc.rels {
+				dirs[i] = filepath.Join(dir, filepath.FromSlash(rel))
+			}
+			var visits []visitSpec
+			Walk(c, cexts, dirs, tc.mode, func(_ string, rel string, _ *config.Config, update bool, _ *rule.File, _, _, _ []string) {
+				visits = append(visits, visitSpec{rel, update})
+			})
+			if !reflect.DeepEqual(visits, tc.want) {
+				t.Errorf("got %#v; want %#v", visits, tc.want)
+			}
+		})
 	}
 }
 
@@ -113,7 +153,7 @@ func TestCustomBuildName(t *testing.T) {
 	defer os.RemoveAll(dir)
 	c, cexts := testConfig(t, dir)
 	var buildRels []string
-	Walk(c, cexts, func(_ string, _ string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, _ string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
 		rel, err := filepath.Rel(c.RepoRoot, f.Path)
 		if err != nil {
 			t.Error(err)
@@ -158,7 +198,7 @@ gen(
 	defer os.RemoveAll(dir)
 	c, cexts := testConfig(t, dir)
 	var files []string
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, regularFiles, genFiles []string) {
+	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, regularFiles, genFiles []string) {
 		for _, f := range regularFiles {
 			files = append(files, path.Join(rel, f))
 		}
@@ -200,7 +240,7 @@ unknown_rule(
 	defer os.RemoveAll(dir)
 	c, cexts := testConfig(t, dir)
 	var regularFiles, genFiles []string
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, reg, gen []string) {
+	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, reg, gen []string) {
 		for _, f := range reg {
 			regularFiles = append(regularFiles, path.Join(rel, f))
 		}
@@ -233,9 +273,10 @@ func TestSymlinksBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(t, filepath.Join(dir, "root"))
+	root := filepath.Join(dir, "root")
+	c, cexts := testConfig(t, root)
 	var rels []string
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{root}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
 	})
 	want := []string{"b/d", "b", "e", ""}
@@ -257,9 +298,10 @@ func TestSymlinksIgnore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(t, filepath.Join(dir, "root"))
+	root := filepath.Join(dir, "root")
+	c, cexts := testConfig(t, root)
 	var rels []string
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{root}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
 	})
 	want := []string{""}
@@ -282,9 +324,10 @@ func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(t, filepath.Join(dir, "root"))
+	root := filepath.Join(dir, "root")
+	c, cexts := testConfig(t, root)
 	var rels []string
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{root}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
 	})
 	want := []string{"b2", ""}
@@ -304,9 +347,10 @@ func TestSymlinksChained(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(t, filepath.Join(dir, "root"))
+	root := filepath.Join(dir, "root")
+	c, cexts := testConfig(t, root)
 	var rels []string
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{root}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
 	})
 	want := []string{"b", ""}
@@ -323,9 +367,10 @@ func TestSymlinksDangling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(t, filepath.Join(dir, "root"))
+	root := filepath.Join(dir, "root")
+	c, cexts := testConfig(t, root)
 	var rels []string
-	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{root}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
 	})
 	want := []string{""}
@@ -367,9 +412,10 @@ func createFiles(files []fileSpec) (string, error) {
 	return dir, nil
 }
 
-func testConfig(t *testing.T, repoRoot string) (*config.Config, []config.Configurer) {
+func testConfig(t *testing.T, dir string) (*config.Config, []config.Configurer) {
+	args := []string{"-repo_root", dir}
 	cexts := []config.Configurer{&config.CommonConfigurer{}, &Configurer{}}
-	c := testtools.NewTestConfig(t, cexts, nil, []string{"-repo_root=" + repoRoot})
+	c := testtools.NewTestConfig(t, cexts, nil, args)
 	return c, cexts
 }
 

@@ -36,7 +36,7 @@ func TestGenerateRules(t *testing.T) {
 	lang := New()
 	c := testConfig(t, "testdata")
 
-	walk.Walk(c, []config.Configurer{lang}, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
+	walk.Walk(c, []config.Configurer{lang}, []string{"testdata"}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
 		isTest := false
 		for _, name := range regularFiles {
 			if name == "BUILD.want" {

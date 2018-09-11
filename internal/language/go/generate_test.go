@@ -39,7 +39,7 @@ func TestGenerateRules(t *testing.T) {
 	for _, lang := range langs {
 		loads = append(loads, lang.Loads()...)
 	}
-	walk.Walk(c, cexts, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
+	walk.Walk(c, cexts, []string{"testdata"}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
 		t.Run(rel, func(t *testing.T) {
 			var empty, gen []*rule.Rule
 			for _, lang := range langs {

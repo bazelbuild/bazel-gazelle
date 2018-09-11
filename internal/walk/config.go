@@ -47,8 +47,7 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 type Configurer struct{}
 
 func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
-	wc := &walkConfig{}
-	c.Exts[walkName] = wc
+	c.Exts[walkName] = &walkConfig{}
 }
 
 func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
