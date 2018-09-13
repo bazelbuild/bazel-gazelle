@@ -23,8 +23,10 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/language"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/walk"
 
 	bzl "github.com/bazelbuild/buildtools/build"
@@ -32,7 +34,7 @@ import (
 
 func TestGenerateRules(t *testing.T) {
 	lang := New()
-	c := testConfig()
+	c := testConfig(t, "testdata")
 
 	walk.Walk(c, []config.Configurer{lang}, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
 		isTest := false
@@ -117,7 +119,7 @@ proto_library(
 
 func TestGeneratePackage(t *testing.T) {
 	lang := New()
-	c := testConfig()
+	c := testConfig(t, "testdata")
 	dir := filepath.FromSlash("testdata/protos")
 	_, gen := lang.GenerateRules(c, dir, "protos", nil, nil, []string{"foo.proto"}, nil, nil, nil)
 	r := gen[0]
@@ -151,11 +153,12 @@ func TestGeneratePackage(t *testing.T) {
 	}
 }
 
-func testConfig() *config.Config {
-	c := config.New()
-	c.RepoRoot = "testdata"
-	c.Dirs = []string{c.RepoRoot}
-	c.ValidBuildFileNames = []string{"BUILD.old"}
-	c.Exts[protoName] = &ProtoConfig{}
+func testConfig(t *testing.T, repoRoot string) *config.Config {
+	cexts := []config.Configurer{&config.CommonConfigurer{}}
+	langs := []language.Language{New()}
+	c := testtools.NewTestConfig(t, cexts, langs, []string{
+		"-build_file_name=BUILD.old",
+		"-repo_root=" + repoRoot,
+	})
 	return c
 }

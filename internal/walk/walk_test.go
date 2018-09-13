@@ -27,6 +27,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 )
 
 func TestConfigureCallbackOrder(t *testing.T) {
@@ -36,7 +37,7 @@ func TestConfigureCallbackOrder(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 	var configureRels, callbackRels []string
-	c, cexts := testConfig(dir)
+	c, cexts := testConfig(t, dir)
 	cexts = append(cexts, &testConfigurer{func(_ *config.Config, rel string, _ *rule.File) {
 		configureRels = append(configureRels, rel)
 	}})
@@ -69,7 +70,7 @@ func TestUpdateDirs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	c, cexts := testConfig(dir)
+	c, cexts := testConfig(t, dir)
 	c.Dirs = []string{filepath.Join(dir, "update")}
 	type updateSpec struct {
 		rel    string
@@ -110,7 +111,7 @@ func TestCustomBuildName(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	c, cexts := testConfig(dir)
+	c, cexts := testConfig(t, dir)
 	var buildRels []string
 	Walk(c, cexts, func(_ string, _ string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
 		rel, err := filepath.Rel(c.RepoRoot, f.Path)
@@ -155,7 +156,7 @@ gen(
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	c, cexts := testConfig(dir)
+	c, cexts := testConfig(t, dir)
 	var files []string
 	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, regularFiles, genFiles []string) {
 		for _, f := range regularFiles {
@@ -197,7 +198,7 @@ unknown_rule(
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
-	c, cexts := testConfig(dir)
+	c, cexts := testConfig(t, dir)
 	var regularFiles, genFiles []string
 	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, reg, gen []string) {
 		for _, f := range reg {
@@ -232,7 +233,7 @@ func TestSymlinksBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(filepath.Join(dir, "root"))
+	c, cexts := testConfig(t, filepath.Join(dir, "root"))
 	var rels []string
 	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
@@ -256,7 +257,7 @@ func TestSymlinksIgnore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(filepath.Join(dir, "root"))
+	c, cexts := testConfig(t, filepath.Join(dir, "root"))
 	var rels []string
 	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
@@ -281,7 +282,7 @@ func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(filepath.Join(dir, "root"))
+	c, cexts := testConfig(t, filepath.Join(dir, "root"))
 	var rels []string
 	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
@@ -303,7 +304,7 @@ func TestSymlinksChained(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(filepath.Join(dir, "root"))
+	c, cexts := testConfig(t, filepath.Join(dir, "root"))
 	var rels []string
 	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
@@ -322,7 +323,7 @@ func TestSymlinksDangling(t *testing.T) {
 	if err != nil {
 		t.Fatalf("createFiles() failed with %v; want success", err)
 	}
-	c, cexts := testConfig(filepath.Join(dir, "root"))
+	c, cexts := testConfig(t, filepath.Join(dir, "root"))
 	var rels []string
 	Walk(c, cexts, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
@@ -366,10 +367,9 @@ func createFiles(files []fileSpec) (string, error) {
 	return dir, nil
 }
 
-func testConfig(repoRoot string) (*config.Config, []config.Configurer) {
-	c := config.New()
-	c.RepoRoot = repoRoot
+func testConfig(t *testing.T, repoRoot string) (*config.Config, []config.Configurer) {
 	cexts := []config.Configurer{&config.CommonConfigurer{}}
+	c := testtools.NewTestConfig(t, cexts, nil, []string{"-repo_root=" + repoRoot})
 	return c, cexts
 }
 

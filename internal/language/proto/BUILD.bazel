@@ -48,10 +48,12 @@ go_test(
     deps = [
         "//internal/config:go_default_library",
         "//internal/label:go_default_library",
+        "//internal/language:go_default_library",
         "//internal/merger:go_default_library",
         "//internal/repos:go_default_library",
         "//internal/resolve:go_default_library",
         "//internal/rule:go_default_library",
+        "//internal/testtools:go_default_library",
         "//internal/walk:go_default_library",
         "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
     ],

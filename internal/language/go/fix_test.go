@@ -407,10 +407,11 @@ go_proto_library(name = "foo_proto")
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			testFix(t, tc, func(f *rule.File) {
-				c, _, _ := testConfig()
+				c, langs, _ := testConfig(t)
 				c.ShouldFix = true
-				lang := New()
-				lang.Fix(c, f)
+				for _, lang := range langs {
+					lang.Fix(c, f)
+				}
 			})
 		})
 	}

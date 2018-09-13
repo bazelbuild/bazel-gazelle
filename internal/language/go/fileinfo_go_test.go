@@ -361,10 +361,10 @@ import "C"
 	if err := ioutil.WriteFile(goFile, content, 0644); err != nil {
 		t.Fatal(err)
 	}
-	c, _, _ := testConfig()
-	c.RepoRoot = repo
-	gc := getGoConfig(c)
-	gc.prefix = "example.com/repo"
+	c, _, _ := testConfig(
+		t,
+		"-repo_root="+repo,
+		"-go_prefix=example.com/repo")
 	pkgs, _ := buildPackages(c, sub, "sub", []string{"sub.go"}, false)
 	got, ok := pkgs["sub"]
 	if !ok {
