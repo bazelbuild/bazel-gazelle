@@ -57,11 +57,10 @@ type WalkFunc func(dir, rel string, c *config.Config, update bool, f *rule.File,
 //
 // Walk calls the Configure method on each configuration extension in cexts
 // in each directory in pre-order, whether a build file is present in the
-// directory or not.
+// directory or not. cexts must contain a walk.Configurer.
 //
 // Walk calls the callback wf in post-order.
 func Walk(c *config.Config, cexts []config.Configurer, wf WalkFunc) {
-	cexts = append(cexts, &walkConfigurer{})
 	knownDirectives := make(map[string]bool)
 	for _, cext := range cexts {
 		for _, d := range cext.KnownDirectives() {
@@ -102,7 +101,7 @@ func Walk(c *config.Config, cexts []config.Configurer, wf WalkFunc) {
 		for _, fi := range files {
 			base := fi.Name()
 			switch {
-			case base == "" || base[0] == '.' || base[0] == '_' || wc.isExcluded(base):
+			case base == "" || base[0] == '.' || base[0] == '_' || wc.isExcluded(rel, base):
 				continue
 
 			case fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 && symlinks.follow(dir, base):
@@ -189,7 +188,7 @@ func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *co
 	return c
 }
 
-func findGenFiles(wc walkConfig, f *rule.File) []string {
+func findGenFiles(wc *walkConfig, f *rule.File) []string {
 	if f == nil {
 		return nil
 	}
@@ -206,7 +205,7 @@ func findGenFiles(wc walkConfig, f *rule.File) []string {
 
 	var genFiles []string
 	for _, s := range strs {
-		if !wc.isExcluded(s) {
+		if !wc.isExcluded(f.Pkg, s) {
 			genFiles = append(genFiles, s)
 		}
 	}

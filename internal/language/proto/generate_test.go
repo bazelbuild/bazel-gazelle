@@ -154,7 +154,7 @@ func TestGeneratePackage(t *testing.T) {
 }
 
 func testConfig(t *testing.T, repoRoot string) *config.Config {
-	cexts := []config.Configurer{&config.CommonConfigurer{}}
+	cexts := []config.Configurer{&config.CommonConfigurer{}, &walk.Configurer{}}
 	langs := []language.Language{New()}
 	c := testtools.NewTestConfig(t, cexts, langs, []string{
 		"-build_file_name=BUILD.old",

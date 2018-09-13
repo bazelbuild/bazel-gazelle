@@ -134,8 +134,8 @@ var genericLoads = []rule.LoadInfo{
 }
 
 func runFixUpdate(cmd command, args []string) error {
-	cexts := make([]config.Configurer, 0, len(languages)+2)
-	cexts = append(cexts, &config.CommonConfigurer{}, &updateConfigurer{})
+	cexts := make([]config.Configurer, 0, len(languages)+3)
+	cexts = append(cexts, &config.CommonConfigurer{}, &updateConfigurer{}, &walk.Configurer{})
 	kindToResolver := make(map[string]resolve.Resolver)
 	kinds := make(map[string]rule.KindInfo)
 	loads := genericLoads

@@ -368,7 +368,7 @@ func createFiles(files []fileSpec) (string, error) {
 }
 
 func testConfig(t *testing.T, repoRoot string) (*config.Config, []config.Configurer) {
-	cexts := []config.Configurer{&config.CommonConfigurer{}}
+	cexts := []config.Configurer{&config.CommonConfigurer{}, &Configurer{}}
 	c := testtools.NewTestConfig(t, cexts, nil, []string{"-repo_root=" + repoRoot})
 	return c, cexts
 }
