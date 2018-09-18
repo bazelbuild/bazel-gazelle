@@ -1465,6 +1465,81 @@ func TestDontCreateBuildFileInEmptyDir(t *testing.T) {
 	}
 }
 
+// TestNoIndexNoRecurse checks that gazelle behaves correctly with the flags
+// -r=false -index=false. Gazelle should not generate build files in
+// subdirectories and should not resolve dependencies to local libraries.
+func TestNoIndexNoRecurse(t *testing.T) {
+	barBuildFile := fileSpec{
+		path:    "foo/bar/BUILD.bazel",
+		content: "# this should not be updated because -r=false",
+	}
+	files := []fileSpec{
+		{path: "WORKSPACE"},
+		{
+			path: "foo/foo.go",
+			content: `package foo
+
+import (
+	_ "example.com/dep/baz"
+)
+`,
+		},
+		barBuildFile,
+		{
+			path:    "foo/bar/bar.go",
+			content: "package bar",
+		}, {
+			path: "third_party/baz/BUILD.bazel",
+			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# this should be ignored because -index=false
+go_library(
+    name = "go_default_library",
+    srcs = ["baz.go"],
+    importpath = "example.com/dep/baz",
+    visibility = ["//visibility:public"],
+)
+`,
+		}, {
+			path:    "third_party/baz/baz.go",
+			content: "package baz",
+		},
+	}
+	dir, err := createFiles(files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	args := []string{
+		"-go_prefix=example.com/repo",
+		"-external=vendored",
+		"-r=false",
+		"-index=false",
+		"foo",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	checkFiles(t, dir, []fileSpec{
+		{
+			path: "foo/BUILD.bazel",
+			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/repo/foo",
+    visibility = ["//visibility:public"],
+    deps = ["//vendor/example.com/dep/baz:go_default_library"],
+)
+`,
+		},
+		barBuildFile,
+	})
+}
+
 // TODO(jayconrod): more tests
 //   run in fix mode in testdata directories to create new files
 //   run in diff mode in testdata directories to update existing files (no change)
