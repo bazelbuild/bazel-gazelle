@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -38,14 +39,16 @@ import (
 // update commands. This includes everything in config.Config, but it also
 // includes some additional fields that aren't relevant to other packages.
 type updateConfig struct {
-	dirs     []string
-	emit     emitFunc
-	repos    []repos.Repo
-	useIndex bool
-	walkMode walk.Mode
+	dirs        []string
+	emit        emitFunc
+	repos       []repos.Repo
+	useIndex    bool
+	walkMode    walk.Mode
+	patchPath   string
+	patchBuffer bytes.Buffer
 }
 
-type emitFunc func(path string, data []byte) error
+type emitFunc func(c *config.Config, f *rule.File) error
 
 var modeFromName = map[string]emitFunc{
 	"print": printFile,
@@ -73,6 +76,7 @@ func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *conf
 	fs.StringVar(&ucr.mode, "mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
 	fs.BoolVar(&uc.useIndex, "index", true, "when true, gazelle will build an index of libraries in the workspace for dependency resolution")
 	fs.BoolVar(&ucr.recursive, "r", true, "when true, gazelle will update subdirectories recursively")
+	fs.StringVar(&uc.patchPath, "patch", "", "when set with -mode=diff, gazelle will write to a file instead of stdout")
 }
 
 func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -82,6 +86,9 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 	uc.emit, ok = modeFromName[ucr.mode]
 	if !ok {
 		return fmt.Errorf("unrecognized emit mode: %q", ucr.mode)
+	}
+	if uc.patchPath != "" && ucr.mode != "diff" {
+		return fmt.Errorf("-patch set but -mode is %s, not diff", ucr.mode)
 	}
 
 	dirs := fs.Args()
@@ -248,12 +255,16 @@ func runFixUpdate(cmd command, args []string) error {
 	// Emit merged files.
 	for _, v := range visits {
 		merger.FixLoads(v.file, loads)
-		content := v.file.Format()
-		outputPath := findOutputPath(c, v.file)
-		if err := uc.emit(outputPath, content); err != nil {
+		if err := uc.emit(c, v.file); err != nil {
 			log.Print(err)
 		}
 	}
+	if uc.patchPath != "" {
+		if err := ioutil.WriteFile(uc.patchPath, uc.patchBuffer.Bytes(), 0666); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -367,7 +378,7 @@ func fixWorkspace(c *config.Config, workspace *rule.File, loads []rule.LoadInfo)
 	if err := merger.CheckGazelleLoaded(workspace); err != nil {
 		return err
 	}
-	return uc.emit(workspace.Path, workspace.Format())
+	return uc.emit(c, workspace)
 }
 
 func findWorkspaceName(f *rule.File) string {
