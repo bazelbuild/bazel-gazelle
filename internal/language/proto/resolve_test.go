@@ -72,6 +72,59 @@ proto_library(
 )
 `,
 		}, {
+			desc: "known",
+			index: []buildFile{{
+				rel: "google/rpc",
+				content: `
+proto_library(
+    name = "bad_proto",
+    srcs = ["status.proto"],
+)
+`,
+			}},
+			old: `
+proto_library(
+    name = "dep_proto",
+    _imports = ["google/rpc/status.proto"],
+)
+`,
+			want: `
+proto_library(
+    name = "dep_proto",
+    deps = ["@go_googleapis//google/rpc:status_proto"],
+)
+`,
+		}, {
+			desc: "override",
+			index: []buildFile{
+				{
+					rel: "google/rpc",
+					content: `
+proto_library(
+    name = "bad_proto",
+    srcs = ["status.proto"],
+)
+`,
+				}, {
+					rel: "",
+					content: `
+# gazelle:resolve proto google/rpc/status.proto //:good_proto
+`,
+				},
+			},
+			old: `
+proto_library(
+    name = "dep_proto",
+    _imports = ["google/rpc/status.proto"],
+)
+`,
+			want: `
+proto_library(
+    name = "dep_proto",
+    deps = ["//:good_proto"],
+)
+`,
+		}, {
 			desc: "index",
 			index: []buildFile{{
 				rel: "foo",
@@ -173,15 +226,18 @@ proto_library(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			c := config.New()
-			c.Exts[protoName] = &ProtoConfig{}
-			lang := New()
+			c, lang, cexts := testConfig(t, "testdata")
 			ix := resolve.NewRuleIndex(map[string]resolve.Resolver{"proto_library": lang})
 			rc := (*repos.RemoteCache)(nil)
 			for _, bf := range tc.index {
 				f, err := rule.LoadData(filepath.Join(bf.rel, "BUILD.bazel"), bf.rel, []byte(bf.content))
 				if err != nil {
 					t.Fatal(err)
+				}
+				if bf.rel == "" {
+					for _, cext := range cexts {
+						cext.Configure(c, "", f)
+					}
 				}
 				for _, r := range f.Rules {
 					ix.AddRule(c, r, f)

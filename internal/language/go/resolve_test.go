@@ -104,6 +104,34 @@ go_library(
 )
 `,
 		}, {
+			desc: "override",
+			index: []buildFile{{
+				content: `
+# gazelle:resolve go go github.com/golang/protobuf/ptypes //:good
+go_library(
+    name = "bad",
+    importpath = "github.com/golang/protobuf/ptypes",
+)
+`,
+			}},
+			old: buildFile{
+				rel: "test",
+				content: `
+go_library(
+    name = "a",
+    importpath = "a",
+    _imports = ["github.com/golang/protobuf/ptypes"],
+)
+`,
+			},
+			want: `
+go_library(
+    name = "a",
+    importpath = "a",
+    deps = ["//:good"],
+)
+`,
+		}, {
 			desc: "same_package",
 			old: buildFile{content: `
 go_library(
@@ -483,6 +511,42 @@ go_binary(
     deps = ["//vendor/example.com/foo:go_default_library"],
 )`,
 		}, {
+			desc: "proto_override",
+			index: []buildFile{{
+				rel: "",
+				content: `
+# gazelle:resolve proto go google/rpc/status.proto :good
+
+proto_library(
+    name = "bad_proto",
+    srcs = ["google/rpc/status.proto"],
+)
+
+go_proto_library(
+    name = "bad_go_proto",
+    proto = ":bad_proto",
+    importpath = "bad",
+)
+`,
+			}},
+			old: buildFile{
+				rel: "test",
+				content: `
+go_proto_library(
+    name = "dep_go_proto",
+    importpath = "test",
+    _imports = ["google/rpc/status.proto"],
+)
+`,
+			},
+			want: `
+go_proto_library(
+    name = "dep_go_proto",
+    importpath = "test",
+    deps = ["//:good"],
+)
+`,
+		}, {
 			desc: "proto_index",
 			index: []buildFile{{
 				rel: "sub",
@@ -723,7 +787,7 @@ go_library(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			c, langs, _ := testConfig(
+			c, langs, cexts := testConfig(
 				t,
 				"-go_prefix=example.com/repo/resolve",
 				"-external=vendored")
@@ -741,6 +805,11 @@ go_library(
 				f, err := rule.LoadData(buildPath, bf.rel, []byte(bf.content))
 				if err != nil {
 					t.Fatal(err)
+				}
+				if bf.rel == "" {
+					for _, cext := range cexts {
+						cext.Configure(c, "", f)
+					}
 				}
 				for _, r := range f.Rules {
 					ix.AddRule(c, r, f)

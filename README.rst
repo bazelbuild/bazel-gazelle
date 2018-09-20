@@ -506,6 +506,30 @@ The following directives are recognized:
 | in the package name. For example, if the package is ``"foo/bar/baz"``, the   |
 | ``proto_library`` rule will be named ``baz_proto``.                          |
 +------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:resolve ...`           | n/a                               |
++------------------------------------------+-----------------------------------+
+| Specifies an explicit mapping from an import string to a label for           |
+| `Dependency resolution`_. The format for a resolve directive is:             |
+|                                                                              |
+| ``# gazelle:resolve source-lang import-lang import-string label``            |
+|                                                                              |
+| * ``source-lang`` is the language of the source code being imported.         |
+| * ``import-lang`` is the language importing the library. This is usually     |
+|   the same as ``source-lang`` but may differ with generated code. For        |
+|   example, when resolving dependencies for a ``go_proto_library``,           |
+|   ``source-lang`` would be ``"proto"`` and ``import-lang`` would be ``"go"``.|
+|   ``import-lang`` may be omitted if it is the same as ``source-lang``.       |
+| * ``import-string`` is the string used in source code to import a library.   |
+| * ``label`` is the Bazel label that Gazelle should write in ``deps``.        |
+|                                                                              |
+| For example:                                                                 |
+|                                                                              |
+| .. code:: bzl                                                                |
+|                                                                              |
+|   # gazelle:resolve go example.com/foo //foo:go_default_library              |
+|   # gazelle:resolve proto go foo/foo.proto //foo:foo_go_proto                |
+|                                                                              |
++------------------------------------------+-----------------------------------+
 
 Keep comments
 ~~~~~~~~~~~~~
@@ -552,7 +576,9 @@ below to resolve dependencies:
 1. If the import to be resolved is part of a standard library, no explicit
    dependency is written. For example, in Go, you don't need to declare
    that you depend on ``"fmt"``.
-2. If proto rule generation is enabled, special rules will be used when
+2. If a ``# gazelle:resolve`` directive matches the import to be resolved,
+   the label at the end of the directive will be used.
+3. If proto rule generation is enabled, special rules will be used when
    importing certain libraries. These rules may be disabled by adding
    ``# gazelle:proto disable_global`` to a build file (this will affect
    subdirectories, too) or by passing ``-proto disable_global`` on the
@@ -565,7 +591,7 @@ below to resolve dependencies:
       ``jsonpb`` are mapped to special rules in ``@com_github_golang_protobuf``.
       See `Avoiding conflicts with proto rules`_.
 
-3. If the import to be resolved is provided by a library in the current
+4. If the import to be resolved is provided by a library in the current
    repository, the import will be resolved to that library. Gazelle builds
    an index of library rules in the current repository before starting
    dependency resolution, and this is how most dependencies are resolved.
@@ -573,13 +599,13 @@ below to resolve dependencies:
    a) For Go, the match is based on the ``importpath`` attribute.
    b) For proto, the match is based on the ``srcs`` attribute.
 
-4. If a package is imported that has the current ``go_prefix`` as a prefix,
+5. If a package is imported that has the current ``go_prefix`` as a prefix,
    Gazelle generates a label following a convention. For example, if
    the build file in ``//src`` set the prefix with
    ``# gazelle:prefix example.com/repo/foo``, and you import the library
    ``"example.com/repo/foo/bar``, the dependency will be
    ``"//src/foo/bar:go_default_library"``.
-5. Otherwise, Gazelle will use the current ``external`` mode to resolve
+6. Otherwise, Gazelle will use the current ``external`` mode to resolve
    the dependency.
 
    a) In ``external`` mode (the default), Gazelle will transform the import
@@ -596,7 +622,7 @@ below to resolve dependencies:
       would be resolved to
       ``"//vendor/golang.org/x/sys/unix:go_default_library"``. This mode is
       usually not necessary, since vendored libraries will be indexed and
-      resolved using rule 3.
+      resolved using rule 4.
 
 Fix command transformations
 ---------------------------
