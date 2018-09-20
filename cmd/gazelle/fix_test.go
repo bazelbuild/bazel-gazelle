@@ -22,8 +22,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 func TestMain(m *testing.M) {
@@ -37,44 +35,6 @@ func defaultArgs(dir string) []string {
 		"-repo_root", dir,
 		"-go_prefix", "example.com/repo",
 		dir,
-	}
-}
-
-func TestFixFile(t *testing.T) {
-	tmpdir := os.Getenv("TEST_TMPDIR")
-	dir, err := ioutil.TempDir(tmpdir, "")
-	if err != nil {
-		t.Fatalf("ioutil.TempDir(%q, %q) failed with %v; want success", tmpdir, "", err)
-	}
-	defer os.RemoveAll(dir)
-
-	stubFile := &bzl.File{
-		Path: filepath.Join(dir, "BUILD.bazel"),
-		Stmt: []bzl.Expr{
-			&bzl.CallExpr{
-				X: &bzl.LiteralExpr{Token: "foo_rule"},
-				List: []bzl.Expr{
-					&bzl.BinaryExpr{
-						X:  &bzl.LiteralExpr{Token: "name"},
-						Op: "=",
-						Y:  &bzl.StringExpr{Value: "bar"},
-					},
-				},
-			},
-		},
-	}
-	if err := fixFile(stubFile.Path, bzl.Format(stubFile)); err != nil {
-		t.Errorf("fixFile(%#v) failed with %v; want success", stubFile, err)
-		return
-	}
-
-	buf, err := ioutil.ReadFile(stubFile.Path)
-	if err != nil {
-		t.Errorf("ioutil.ReadFile(%q) failed with %v; want success", stubFile.Path, err)
-		return
-	}
-	if got, want := string(buf), bzl.FormatString(stubFile); got != want {
-		t.Errorf("buf = %q; want %q", got, want)
 	}
 }
 
@@ -133,7 +93,7 @@ func TestUpdateFile(t *testing.T) {
 	}
 }
 
-func TestReadWriteDir(t *testing.T) {
+func TestFixReadWriteDir(t *testing.T) {
 	buildInFile := fileSpec{
 		path: "in/BUILD.in",
 		content: `

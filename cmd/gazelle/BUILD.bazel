@@ -27,6 +27,7 @@ go_library(
         "//internal/rule:go_default_library",
         "//internal/version:go_default_library",
         "//internal/walk:go_default_library",
+        "//vendor/github.com/pmezard/go-difflib/difflib:go_default_library",
     ],
 )
 
@@ -55,6 +56,7 @@ go_test(
     name = "go_default_test",
     size = "small",
     srcs = [
+        "diff_test.go",
         "fix_test.go",
         "integration_test.go",
     ],
@@ -62,6 +64,5 @@ go_test(
     deps = [
         "//internal/config:go_default_library",
         "//internal/wspace:go_default_library",
-        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
     ],
 )
