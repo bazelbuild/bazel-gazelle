@@ -17,37 +17,35 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 )
 
 func TestDiffExisting(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "BUILD.bazel",
-			content: `
+			Path: "BUILD.bazel",
+			Content: `
 # gazelle:prefix example.com/hello
 `,
 		}, {
-			path:    "hello.go",
-			content: `package hello`,
+			Path:    "hello.go",
+			Content: `package hello`,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	if err := runGazelle(dir, []string{"-mode=diff", "-patch=p"}); err != nil {
 		t.Fatal(err)
 	}
 
-	want := append(files, fileSpec{
-		path: "p",
-		content: `
+	want := append(files, testtools.FileSpec{
+		Path: "p",
+		Content: `
 --- BUILD.bazel	1970-01-01 00:00:00.000000000 +0000
 +++ BUILD.bazel	1970-01-01 00:00:00.000000000 +0000
 @@ -1,3 +1,11 @@
@@ -64,30 +62,27 @@ func TestDiffExisting(t *testing.T) {
 +
 `,
 	})
-	checkFiles(t, dir, want)
+	testtools.CheckFiles(t, dir, want)
 }
 
 func TestDiffNew(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path:    "hello.go",
-			content: `package hello`,
+			Path:    "hello.go",
+			Content: `package hello`,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	if err := runGazelle(dir, []string{"-go_prefix=example.com/hello", "-mode=diff", "-patch=p"}); err != nil {
 		t.Fatal(err)
 	}
 
-	want := append(files, fileSpec{
-		path: "p",
-		content: `
+	want := append(files, testtools.FileSpec{
+		Path: "p",
+		Content: `
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
 +++ BUILD.bazel	1970-01-01 00:00:00.000000000 +0000
 @@ -0,0 +1,9 @@
@@ -102,24 +97,21 @@ func TestDiffNew(t *testing.T) {
 +
 `,
 	})
-	checkFiles(t, dir, want)
+	testtools.CheckFiles(t, dir, want)
 }
 
 func TestDiffReadWriteDir(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path:    "repo/hello.go",
-			content: "package hello",
+			Path:    "repo/hello.go",
+			Content: "package hello",
 		}, {
-			path:    "read/BUILD.bazel",
-			content: "# gazelle:prefix example.com/hello",
+			Path:    "read/BUILD.bazel",
+			Content: "# gazelle:prefix example.com/hello",
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{
 		"-repo_root=repo",
@@ -151,6 +143,6 @@ func TestDiffReadWriteDir(t *testing.T) {
 `,
 		filepath.Join(dir, "read", "BUILD.bazel"),
 		filepath.Join(dir, "write", "BUILD.bazel"))
-	want := append(files, fileSpec{path: "p", content: wantPatch})
-	checkFiles(t, dir, want)
+	want := append(files, testtools.FileSpec{Path: "p", Content: wantPatch})
+	testtools.CheckFiles(t, dir, want)
 }

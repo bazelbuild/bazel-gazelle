@@ -22,6 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 )
 
 func TestMain(m *testing.M) {
@@ -94,39 +96,39 @@ func TestUpdateFile(t *testing.T) {
 }
 
 func TestFixReadWriteDir(t *testing.T) {
-	buildInFile := fileSpec{
-		path: "in/BUILD.in",
-		content: `
+	buildInFile := testtools.FileSpec{
+		Path: "in/BUILD.in",
+		Content: `
 go_binary(
     name = "hello",
     pure = "on",
 )
 `,
 	}
-	buildSrcFile := fileSpec{
-		path:    "src/BUILD.bazel",
-		content: `# src build file`,
+	buildSrcFile := testtools.FileSpec{
+		Path:    "src/BUILD.bazel",
+		Content: `# src build file`,
 	}
-	oldFiles := []fileSpec{
+	oldFiles := []testtools.FileSpec{
 		buildInFile,
 		buildSrcFile,
 		{
-			path: "src/hello.go",
-			content: `
+			Path: "src/hello.go",
+			Content: `
 package main
 
 func main() {}
 `,
 		}, {
-			path:    "out/BUILD",
-			content: `this should get replaced`,
+			Path:    "out/BUILD",
+			Content: `this should get replaced`,
 		},
 	}
 
 	for _, tc := range []struct {
 		desc string
 		args []string
-		want []fileSpec
+		want []testtools.FileSpec
 	}{
 		{
 			desc: "read",
@@ -137,11 +139,11 @@ func main() {}
 				"-go_prefix=example.com/repo",
 				"{{dir}}/src",
 			},
-			want: []fileSpec{
+			want: []testtools.FileSpec{
 				buildInFile,
 				{
-					path: "src/BUILD.bazel",
-					content: `
+					Path: "src/BUILD.bazel",
+					Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_binary(
@@ -169,12 +171,12 @@ go_library(
 				"-go_prefix=example.com/repo",
 				"{{dir}}/src",
 			},
-			want: []fileSpec{
+			want: []testtools.FileSpec{
 				buildInFile,
 				buildSrcFile,
 				{
-					path: "out/BUILD",
-					content: `
+					Path: "out/BUILD",
+					Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 # src build file
@@ -204,11 +206,11 @@ go_binary(
 				"-go_prefix=example.com/repo",
 				"{{dir}}/src",
 			},
-			want: []fileSpec{
+			want: []testtools.FileSpec{
 				buildInFile,
 				{
-					path: "out/BUILD",
-					content: `
+					Path: "out/BUILD",
+					Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_binary(
@@ -230,11 +232,8 @@ go_library(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			dir, err := createFiles(oldFiles)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir, cleanup := testtools.CreateFiles(t, oldFiles)
+			defer cleanup()
 			replacer := strings.NewReplacer("{{dir}}", dir, "/", string(os.PathSeparator))
 			for i := range tc.args {
 				tc.args[i] = replacer.Replace(tc.args[i])
@@ -242,7 +241,7 @@ go_library(
 			if err := run(tc.args); err != nil {
 				t.Error(err)
 			}
-			checkFiles(t, dir, tc.want)
+			testtools.CheckFiles(t, dir, tc.want)
 		})
 	}
 }

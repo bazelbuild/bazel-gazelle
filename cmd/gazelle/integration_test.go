@@ -30,39 +30,9 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 )
-
-type fileSpec struct {
-	path, content string
-}
-
-func createFiles(files []fileSpec) (string, error) {
-	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "integration_test")
-	if err != nil {
-		return "", err
-	}
-
-	for _, f := range files {
-		path := filepath.Join(dir, filepath.FromSlash(f.path))
-		if strings.HasSuffix(f.path, "/") {
-			if err := os.MkdirAll(path, 0700); err != nil {
-				os.RemoveAll(dir)
-				return "", err
-			}
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-			os.RemoveAll(dir)
-			return "", err
-		}
-		if err := ioutil.WriteFile(path, []byte(f.content), 0600); err != nil {
-			os.RemoveAll(dir)
-			return "", err
-		}
-	}
-	return dir, nil
-}
 
 // skipIfWorkspaceVisible skips the test if the WORKSPACE file for the
 // repository is visible. This happens in newer Bazel versions when tests
@@ -71,30 +41,6 @@ func createFiles(files []fileSpec) (string, error) {
 func skipIfWorkspaceVisible(t *testing.T, dir string) {
 	if parent, err := wspace.Find(dir); err == nil {
 		t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, dir)
-	}
-}
-
-func checkFiles(t *testing.T, dir string, files []fileSpec) {
-	for _, f := range files {
-		path := filepath.Join(dir, f.path)
-		if strings.HasSuffix(f.path, "/") {
-			if st, err := os.Stat(path); err != nil {
-				t.Errorf("could not stat %s: %v", f.path, err)
-			} else if !st.IsDir() {
-				t.Errorf("not a directory: %s", f.path)
-			}
-		} else {
-			want := strings.TrimSpace(f.content)
-			gotBytes, err := ioutil.ReadFile(filepath.Join(dir, f.path))
-			if err != nil {
-				t.Errorf("could not read %s: %v", f.path, err)
-				continue
-			}
-			got := strings.TrimSpace(string(gotBytes))
-			if got != want {
-				t.Errorf("%s: got:\n%s\nwant:\n %s", f.path, gotBytes, f.content)
-			}
-		}
 	}
 }
 
@@ -131,11 +77,8 @@ func TestHelp(t *testing.T) {
 }
 
 func TestNoRepoRootOrWorkspace(t *testing.T) {
-	dir, err := createFiles(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, nil)
+	defer cleanup()
 	skipIfWorkspaceVisible(t, dir)
 	want := "-repo_root not specified"
 	if err := runGazelle(dir, nil); err == nil {
@@ -146,13 +89,11 @@ func TestNoRepoRootOrWorkspace(t *testing.T) {
 }
 
 func TestNoGoPrefixArgOrRule(t *testing.T) {
-	dir, err := createFiles([]fileSpec{
-		{path: "WORKSPACE", content: ""},
-		{path: "hello.go", content: "package hello"},
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "WORKSPACE", Content: ""},
+		{Path: "hello.go", Content: "package hello"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer cleanup()
 	buf := new(bytes.Buffer)
 	log.SetOutput(buf)
 	defer log.SetOutput(os.Stderr)
@@ -171,11 +112,11 @@ func TestNoGoPrefixArgOrRule(t *testing.T) {
 // buildifier does not do this yet bazelbuild/buildtools#122, so we do this
 // in addition to calling build.Rewrite.
 func TestSelectLabelsSorted(t *testing.T) {
-	dir, err := createFiles([]fileSpec{
-		{path: "WORKSPACE"},
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "BUILD",
-			content: `
+			Path: "BUILD",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -194,8 +135,8 @@ go_library(
 `,
 		},
 		{
-			path: "foo.go",
-			content: `
+			Path: "foo.go",
+			Content: `
 // +build linux
 
 package foo
@@ -208,14 +149,14 @@ import (
 `,
 		},
 		{
-			path: "bar.go",
-			content: `// +build linux
+			Path: "bar.go",
+			Content: `// +build linux
 
 package foo
 `,
 		},
-		{path: "outer/outer.go", content: "package outer"},
-		{path: "outer/inner/inner.go", content: "package inner"},
+		{Path: "outer/outer.go", Content: "package outer"},
+		{Path: "outer/inner/inner.go", Content: "package inner"},
 	})
 	want := `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -239,9 +180,7 @@ go_library(
     }),
 )
 `
-	if err != nil {
-		t.Fatal(err)
-	}
+	defer cleanup()
 
 	if err := runGazelle(dir, []string{"-go_prefix", "example.com/foo"}); err != nil {
 		t.Fatal(err)
@@ -254,11 +193,11 @@ go_library(
 }
 
 func TestFixAndUpdateChanges(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "BUILD",
-			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_prefix")
+			Path: "BUILD",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_prefix")
 load("@io_bazel_rules_go//go:def.bzl", "cgo_library", "go_test")
 
 go_prefix("example.com/foo")
@@ -280,12 +219,12 @@ cgo_library(
 `,
 		},
 		{
-			path:    "pure.go",
-			content: "package foo",
+			Path:    "pure.go",
+			Content: "package foo",
 		},
 		{
-			path: "cgo.go",
-			content: `package foo
+			Path: "cgo.go",
+			Content: `package foo
 
 import "C"
 `,
@@ -339,10 +278,8 @@ go_library(
 
 	for _, c := range cases {
 		t.Run(c.cmd, func(t *testing.T) {
-			dir, err := createFiles(files)
-			if err != nil {
-				t.Fatal(err)
-			}
+			dir, cleanup := testtools.CreateFiles(t, files)
+			defer cleanup()
 
 			if err := runGazelle(dir, []string{c.cmd}); err != nil {
 				t.Fatal(err)
@@ -357,11 +294,11 @@ go_library(
 }
 
 func TestFixUnlinkedCgoLibrary(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "BUILD",
-			content: `load("@io_bazel_rules_go//go:def.bzl", "cgo_library", "go_library")
+			Path: "BUILD",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "cgo_library", "go_library")
 
 cgo_library(
     name = "cgo_default_library",
@@ -376,15 +313,13 @@ go_library(
 )
 `,
 		}, {
-			path:    "pure.go",
-			content: "package foo",
+			Path:    "pure.go",
+			Content: "package foo",
 		},
 	}
 
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	want := `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -408,11 +343,11 @@ go_library(
 // TestMultipleDirectories checks that all directories in a repository are
 // indexed but only directories listed on the command line are updated.
 func TestMultipleDirectories(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "a/BUILD.bazel",
-			content: `# This file shouldn't be modified.
+			Path: "a/BUILD.bazel",
+			Content: `# This file shouldn't be modified.
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -422,33 +357,30 @@ go_library(
 )
 `,
 		}, {
-			path:    "a/a.go",
-			content: "package a",
+			Path:    "a/a.go",
+			Content: "package a",
 		}, {
-			path: "b/b.go",
-			content: `
+			Path: "b/b.go",
+			Content: `
 package b
 
 import _ "example.com/foo/x"
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", "example.com/foo", "b"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		files[1], // should not change
 		{
-			path: "b/BUILD.bazel",
-			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+			Path: "b/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
@@ -463,15 +395,12 @@ go_library(
 }
 
 func TestErrorOutsideWorkspace(t *testing.T) {
-	files := []fileSpec{
-		{path: "a/"},
-		{path: "b/"},
+	files := []testtools.FileSpec{
+		{Path: "a/"},
+		{Path: "b/"},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 	skipIfWorkspaceVisible(t, dir)
 
 	cases := []struct {
@@ -502,22 +431,19 @@ func TestErrorOutsideWorkspace(t *testing.T) {
 }
 
 func TestBuildFileNameIgnoresBuild(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
-		{path: "BUILD/"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{Path: "BUILD/"},
 		{
-			path:    "a/BUILD",
-			content: "!!! parse error",
+			Path:    "a/BUILD",
+			Content: "!!! parse error",
 		}, {
-			path:    "a.go",
-			content: "package a",
+			Path:    "a.go",
+			Content: "package a",
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", "example.com/foo", "-build_file_name", "BUILD.bazel"}
 	if err := runGazelle(dir, args); err != nil {
@@ -529,42 +455,39 @@ func TestBuildFileNameIgnoresBuild(t *testing.T) {
 }
 
 func TestExternalVendor(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path:    "WORKSPACE",
-			content: `workspace(name = "banana")`,
+			Path:    "WORKSPACE",
+			Content: `workspace(name = "banana")`,
 		}, {
-			path: "a.go",
-			content: `package foo
+			Path: "a.go",
+			Content: `package foo
 
 import _ "golang.org/x/bar"
 `,
 		}, {
-			path: "vendor/golang.org/x/bar/bar.go",
-			content: `package bar
+			Path: "vendor/golang.org/x/bar/bar.go",
+			Content: `package bar
 
 import _ "golang.org/x/baz"
 `,
 		}, {
-			path:    "vendor/golang.org/x/baz/baz.go",
-			content: "package baz",
+			Path:    "vendor/golang.org/x/baz/baz.go",
+			Content: "package baz",
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", "example.com/foo", "-external", "vendored"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path: config.DefaultValidBuildFileNames[0],
-			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+			Path: config.DefaultValidBuildFileNames[0],
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
@@ -575,8 +498,8 @@ go_library(
 )
 `,
 		}, {
-			path: "vendor/golang.org/x/bar/" + config.DefaultValidBuildFileNames[0],
-			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+			Path: "vendor/golang.org/x/bar/" + config.DefaultValidBuildFileNames[0],
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
@@ -592,11 +515,11 @@ go_library(
 }
 
 func TestMigrateProtoRules(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: config.DefaultValidBuildFileNames[0],
-			content: `
+			Path: config.DefaultValidBuildFileNames[0],
+			Content: `
 load("@io_bazel_rules_go//proto:go_proto_library.bzl", "go_proto_library")
 
 filegroup(
@@ -611,14 +534,14 @@ go_proto_library(
 )
 `,
 		}, {
-			path: "foo.proto",
-			content: `syntax = "proto3";
+			Path: "foo.proto",
+			Content: `syntax = "proto3";
 
 option go_package = "example.com/repo";
 `,
 		}, {
-			path:    "foo.pb.go",
-			content: `package repo`,
+			Path:    "foo.pb.go",
+			Content: `package repo`,
 		},
 	}
 
@@ -671,30 +594,27 @@ go_library(
 		},
 	} {
 		t.Run(tc.args[0], func(t *testing.T) {
-			dir, err := createFiles(files)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir, cleanup := testtools.CreateFiles(t, files)
+			defer cleanup()
 
 			if err := runGazelle(dir, tc.args); err != nil {
 				t.Fatal(err)
 			}
 
-			checkFiles(t, dir, []fileSpec{{
-				path:    config.DefaultValidBuildFileNames[0],
-				content: tc.want,
+			testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+				Path:    config.DefaultValidBuildFileNames[0],
+				Content: tc.want,
 			}})
 		})
 	}
 }
 
 func TestRemoveProtoDeletesRules(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: config.DefaultValidBuildFileNames[0],
-			content: `
+			Path: config.DefaultValidBuildFileNames[0],
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -726,24 +646,21 @@ go_library(
 )
 `,
 		}, {
-			path:    "extra.go",
-			content: `package repo`,
+			Path:    "extra.go",
+			Content: `package repo`,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"fix", "-go_prefix", "example.com/repo"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{{
-		path: config.DefaultValidBuildFileNames[0],
-		content: `
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: config.DefaultValidBuildFileNames[0],
+		Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -757,11 +674,11 @@ go_library(
 }
 
 func TestAddServiceConvertsToGrpc(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: config.DefaultValidBuildFileNames[0],
-			content: `
+			Path: config.DefaultValidBuildFileNames[0],
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -786,8 +703,8 @@ go_library(
 )
 `,
 		}, {
-			path: "foo.proto",
-			content: `syntax = "proto3";
+			Path: "foo.proto",
+			Content: `syntax = "proto3";
 
 option go_package = "example.com/repo";
 
@@ -796,20 +713,17 @@ service {}
 		},
 	}
 
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", "example.com/repo"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{{
-		path: config.DefaultValidBuildFileNames[0],
-		content: `
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: config.DefaultValidBuildFileNames[0],
+		Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -838,14 +752,14 @@ go_library(
 }
 
 func TestEmptyGoPrefix(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path:    "foo/foo.go",
-			content: "package foo",
+			Path:    "foo/foo.go",
+			Content: "package foo",
 		}, {
-			path: "bar/bar.go",
-			content: `
+			Path: "bar/bar.go",
+			Content: `
 package bar
 
 import (
@@ -856,20 +770,17 @@ import (
 		},
 	}
 
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", ""}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{{
-		path: filepath.Join("bar", config.DefaultValidBuildFileNames[0]),
-		content: `
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: filepath.Join("bar", config.DefaultValidBuildFileNames[0]),
+		Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -887,18 +798,18 @@ go_library(
 // against a library with a '# keep' comment on its importpath attribute
 // when the importpath doesn't match what Gazelle would infer.
 func TestResolveKeptImportpath(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "foo/foo.go",
-			content: `
+			Path: "foo/foo.go",
+			Content: `
 package foo
 
 import _ "example.com/alt/baz"
 `,
 		}, {
-			path: "bar/BUILD.bazel",
-			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+			Path: "bar/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
@@ -908,26 +819,23 @@ go_library(
 )
 `,
 		}, {
-			path:    "bar/bar.go",
-			content: "package bar",
+			Path:    "bar/bar.go",
+			Content: "package bar",
 		},
 	}
 
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", "example.com/repo"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path: "foo/BUILD.bazel",
-			content: `
+			Path: "foo/BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -939,8 +847,8 @@ go_library(
 )
 `,
 		}, {
-			path: "bar/BUILD.bazel",
-			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+			Path: "bar/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
@@ -956,35 +864,32 @@ go_library(
 // TestResolveVendorSubdirectory checks that Gazelle can resolve libraries
 // in a vendor directory which is not at the repository root.
 func TestResolveVendorSubdirectory(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path:    "sub/vendor/example.com/foo/foo.go",
-			content: "package foo",
+			Path:    "sub/vendor/example.com/foo/foo.go",
+			Content: "package foo",
 		}, {
-			path: "sub/bar/bar.go",
-			content: `
+			Path: "sub/bar/bar.go",
+			Content: `
 package bar
 
 import _ "example.com/foo"
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", "example.com/repo"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path: "sub/vendor/example.com/foo/BUILD.bazel",
-			content: `
+			Path: "sub/vendor/example.com/foo/BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -996,8 +901,8 @@ go_library(
 )
 `,
 		}, {
-			path: "sub/bar/BUILD.bazel",
-			content: `
+			Path: "sub/bar/BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -1015,11 +920,11 @@ go_library(
 // TestDeleteProtoWithDeps checks that Gazelle will delete proto rules with
 // dependencies after the proto sources are removed.
 func TestDeleteProtoWithDeps(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "foo/BUILD.bazel",
-			content: `
+			Path: "foo/BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -1047,11 +952,11 @@ go_proto_library(
 )
 `,
 		}, {
-			path:    "foo/extra.go",
-			content: "package foo",
+			Path:    "foo/extra.go",
+			Content: "package foo",
 		}, {
-			path: "foo/bar/bar.proto",
-			content: `
+			Path: "foo/bar/bar.proto",
+			Content: `
 syntax = "proto3";
 
 option go_package = "example.com/repo/foo/bar";
@@ -1060,21 +965,18 @@ message Bar {};
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", "example.com/repo"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path: "foo/BUILD.bazel",
-			content: `
+			Path: "foo/BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -1089,10 +991,10 @@ go_library(
 }
 
 func TestCustomRepoNames(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path: "WORKSPACE",
-			content: `
+			Path: "WORKSPACE",
+			Content: `
 go_repository(
     name = "custom_repo",
     importpath = "example.com/bar",
@@ -1100,29 +1002,26 @@ go_repository(
 )
 `,
 		}, {
-			path: "foo.go",
-			content: `
+			Path: "foo.go",
+			Content: `
 package foo
 
 import _ "example.com/bar"
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix", "example.com/foo"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path: "BUILD.bazel",
-			content: `
+			Path: "BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
@@ -1138,10 +1037,10 @@ go_library(
 }
 
 func TestImportReposFromDep(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path: "WORKSPACE",
-			content: `
+			Path: "WORKSPACE",
+			Content: `
 http_archive(
     name = "io_bazel_rules_go",
     url = "https://github.com/bazelbuild/rules_go/releases/download/0.10.1/rules_go-0.10.1.tar.gz",
@@ -1179,8 +1078,8 @@ http_archive(
 )
 `,
 		}, {
-			path: "Gopkg.lock",
-			content: `# This file is autogenerated, do not edit; changes may be undone by the next 'dep ensure'.
+			Path: "Gopkg.lock",
+			Content: `# This file is autogenerated, do not edit; changes may be undone by the next 'dep ensure'.
 
 
 [[projects]]
@@ -1216,21 +1115,18 @@ http_archive(
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"update-repos", "-from_file", "Gopkg.lock"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path: "WORKSPACE",
-			content: `
+			Path: "WORKSPACE",
+			Content: `
 http_archive(
     name = "io_bazel_rules_go",
     url = "https://github.com/bazelbuild/rules_go/releases/download/0.10.1/rules_go-0.10.1.tar.gz",
@@ -1282,11 +1178,11 @@ go_repository(
 }
 
 func TestDeleteRulesInEmptyDir(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "BUILD.bazel",
-			content: `
+			Path: "BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_binary")
 
 go_library(
@@ -1307,30 +1203,27 @@ go_binary(
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{"-go_prefix=example.com/repo"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path:    "BUILD.bazel",
-			content: "",
+			Path:    "BUILD.bazel",
+			Content: "",
 		},
 	})
 }
 
 func TestFixWorkspaceWithoutGazelle(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path: "WORKSPACE",
-			content: `
+			Path: "WORKSPACE",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_repository")
 
 go_repository(
@@ -1341,11 +1234,8 @@ go_repository(
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	if err := runGazelle(dir, []string{"fix", "-go_prefix="}); err == nil {
 		t.Error("got success; want error")
@@ -1357,12 +1247,12 @@ go_repository(
 // TestFixGazelle checks that loads of the gazelle macro from the old location
 // in rules_go are replaced with the new location in @bazel_gazelle.
 func TestFixGazelle(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path: "WORKSPACE",
+			Path: "WORKSPACE",
 		}, {
-			path: "BUILD.bazel",
-			content: `
+			Path: "BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "gazelle", "go_library")
 
 gazelle(name = "gazelle")
@@ -1372,19 +1262,16 @@ go_library(name = "go_default_library")
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	if err := runGazelle(dir, nil); err != nil {
 		t.Fatal(err)
 	}
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path: "BUILD.bazel",
-			content: `
+			Path: "BUILD.bazel",
+			Content: `
 load("@bazel_gazelle//:def.bzl", "gazelle")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -1400,12 +1287,12 @@ go_library(name = "go_default_library")
 // TestKeepDeps checks rules with keep comments on the rule or on the deps
 // attribute will not be modified during dependency resolution. Verifies #212.
 func TestKeepDeps(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path: "WORKSPACE",
+			Path: "WORKSPACE",
 		}, {
-			path: "BUILD.bazel",
-			content: `
+			Path: "BUILD.bazel",
+			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 # gazelle:prefix example.com/repo
@@ -1430,29 +1317,24 @@ go_test(
 `,
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	if err := runGazelle(dir, nil); err != nil {
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, files)
+	testtools.CheckFiles(t, dir, files)
 }
 
 func TestDontCreateBuildFileInEmptyDir(t *testing.T) {
-	files := []fileSpec{
-		{path: "WORKSPACE"},
-		{path: "sub/"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{Path: "sub/"},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
 	if err := runGazelle(dir, nil); err != nil {
 		t.Error(err)
 	}
@@ -1469,15 +1351,15 @@ func TestDontCreateBuildFileInEmptyDir(t *testing.T) {
 // -r=false -index=false. Gazelle should not generate build files in
 // subdirectories and should not resolve dependencies to local libraries.
 func TestNoIndexNoRecurse(t *testing.T) {
-	barBuildFile := fileSpec{
-		path:    "foo/bar/BUILD.bazel",
-		content: "# this should not be updated because -r=false",
+	barBuildFile := testtools.FileSpec{
+		Path:    "foo/bar/BUILD.bazel",
+		Content: "# this should not be updated because -r=false",
 	}
-	files := []fileSpec{
-		{path: "WORKSPACE"},
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
 		{
-			path: "foo/foo.go",
-			content: `package foo
+			Path: "foo/foo.go",
+			Content: `package foo
 
 import (
 	_ "example.com/dep/baz"
@@ -1486,11 +1368,11 @@ import (
 		},
 		barBuildFile,
 		{
-			path:    "foo/bar/bar.go",
-			content: "package bar",
+			Path:    "foo/bar/bar.go",
+			Content: "package bar",
 		}, {
-			path: "third_party/baz/BUILD.bazel",
-			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+			Path: "third_party/baz/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 # this should be ignored because -index=false
 go_library(
@@ -1501,15 +1383,12 @@ go_library(
 )
 `,
 		}, {
-			path:    "third_party/baz/baz.go",
-			content: "package baz",
+			Path:    "third_party/baz/baz.go",
+			Content: "package baz",
 		},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
 
 	args := []string{
 		"-go_prefix=example.com/repo",
@@ -1522,10 +1401,10 @@ go_library(
 		t.Fatal(err)
 	}
 
-	checkFiles(t, dir, []fileSpec{
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
-			path: "foo/BUILD.bazel",
-			content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+			Path: "foo/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
