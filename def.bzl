@@ -56,7 +56,6 @@ def _gazelle_runner_impl(ctx):
     )
     runfiles = ctx.runfiles(files = [
         ctx.executable.gazelle,
-        ctx.file.workspace,
         go.go,
     ])
     return [DefaultInfo(
@@ -88,11 +87,6 @@ _gazelle_runner = _go_rule(
         "build_tags": attr.string_list(),
         "prefix": attr.string(),
         "extra_args": attr.string_list(),
-        "workspace": attr.label(
-            mandatory = True,
-            allow_single_file = True,
-            cfg = "data",
-        ),
         "_template": attr.label(
             default = "@bazel_gazelle//internal:gazelle.bash.in",
             allow_single_file = True,
@@ -109,10 +103,15 @@ def gazelle(name, **kwargs):
             fail("{}: both args and extra_args were provided".format(name))
         kwargs["extra_args"] = kwargs["args"]
         kwargs.pop("args")
+    runner_name = name + "-runner"
     _gazelle_runner(
-        name = name,
-        args = ["-bazel_run"],
-        workspace = "//:WORKSPACE",
+        name = runner_name,
         tags = ["manual"],
         **kwargs
+    )
+    native.sh_binary(
+        name = name,
+        srcs = [runner_name],
+        args = ["-bazel_run"],
+        tags = ["manual"],
     )
