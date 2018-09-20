@@ -56,6 +56,31 @@ function bazel_build_get_path {
   rm -f "$build_log"
 }
 
+# set_goroot attempts to set GOROOT to the SDK used by rules_go. gazelle
+# invokes tools inside the Go SDK for dependency management. It's good to
+# use the SDK used by the workspace in case the Go SDK is not installed
+# on the host system or is a different version.
+function set_goroot {
+  local gotool=
+  if [ -e "$GOTOOL" ]; then
+    # Normally, GOTOOL will be a symlinked runfile.
+    gotool=$GOTOOL
+  fi
+  if [ -z "$gotool" -a -e MANIFEST ]; then
+    # On Windows, runfiles aren't symlinked, but they're listed in MANIFEST.
+    gotool=$(grep bin/go MANIFEST | head -n 1 | cut -d' ' -f2)
+  fi
+  if [ -z "$gotool" ]; then
+    echo "$0: warning: could not locate GOROOT used by rules_go" >&2
+    return 1
+  fi
+  export GOROOT=$(cd "$(dirname "$gotool")/.."; pwd)
+  if type cygpath >/dev/null 2>&1; then
+    # On Windows, convert the path to something usable outside of bash.
+    GOROOT=$(cygpath -w "$GOROOT")
+  fi
+}
+
 # Check whether the script was executed by Bazel. The gazelle macro prepends
 # an argument that tells us this.
 is_bazel_run=false
@@ -74,7 +99,7 @@ if [ "$is_bazel_run" = true ]; then
   # If the script was invoked by "bazel run", jump out of the execroot, into
   # the workspace before running Gazelle.
   # TODO(jayconrod): detect when a command can't be run this way.
-  export GOROOT=$(cd "$(dirname "$GOTOOL")/.."; pwd)
+  set_goroot
   gazelle_short_path=$(readlink "$GAZELLE_SHORT_PATH")
   cd $(find_repo_root)
   "$gazelle_short_path" "${ARGS[@]}"
