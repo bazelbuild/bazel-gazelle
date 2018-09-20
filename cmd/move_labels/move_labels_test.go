@@ -16,29 +16,24 @@ limitations under the License.
 package main
 
 import (
-	"io/ioutil"
-	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-)
 
-type fileSpec struct {
-	path, content string
-}
+	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
+)
 
 func TestMoveLabels(t *testing.T) {
 	for _, tc := range []struct {
 		desc, from, to string
-		files, want    []fileSpec
+		files, want    []testtools.FileSpec
 	}{
 		{
 			desc: "move",
 			from: "old",
 			to:   "new",
-			files: []fileSpec{{
-				path: "new/a/BUILD",
-				content: `
+			files: []testtools.FileSpec{{
+				Path: "new/a/BUILD",
+				Content: `
 load("//old:def.bzl", "x_binary")
 
 x_binary(
@@ -55,9 +50,9 @@ x_binary(
 )
 `,
 			}},
-			want: []fileSpec{{
-				path: "new/a/BUILD",
-				content: `
+			want: []testtools.FileSpec{{
+				Path: "new/a/BUILD",
+				Content: `
 load("//new:def.bzl", "x_binary")
 
 x_binary(
@@ -78,10 +73,10 @@ x_binary(
 			desc: "vendor",
 			from: "",
 			to:   "vendor/github.com/bazelbuild/buildtools",
-			files: []fileSpec{
+			files: []testtools.FileSpec{
 				{
-					path: "vendor/github.com/bazelbuild/buildtools/BUILD.bazel",
-					content: `
+					Path: "vendor/github.com/bazelbuild/buildtools/BUILD.bazel",
+					Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_prefix")
 
 go_prefix("github.com/bazelbuild/buildtools")
@@ -108,8 +103,8 @@ test_suite(
 )
 `,
 				}, {
-					path: `vendor/github.com/bazelbuild/buildtools/edit/BUILD.bazel`,
-					content: `
+					Path: `vendor/github.com/bazelbuild/buildtools/edit/BUILD.bazel`,
+					Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
@@ -142,10 +137,10 @@ go_test(
 `,
 				},
 			},
-			want: []fileSpec{
+			want: []testtools.FileSpec{
 				{
-					path: "vendor/github.com/bazelbuild/buildtools/BUILD.bazel",
-					content: `
+					Path: "vendor/github.com/bazelbuild/buildtools/BUILD.bazel",
+					Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_prefix")
 
 go_prefix("github.com/bazelbuild/buildtools")
@@ -172,8 +167,8 @@ test_suite(
 )
 `,
 				}, {
-					path: `vendor/github.com/bazelbuild/buildtools/edit/BUILD.bazel`,
-					content: `
+					Path: `vendor/github.com/bazelbuild/buildtools/edit/BUILD.bazel`,
+					Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
@@ -209,73 +204,15 @@ go_test(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			dir, err := createFiles(tc.files)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir, cleanup := testtools.CreateFiles(t, tc.files)
+			defer cleanup()
 
 			args := []string{"-repo_root", dir, "-from", tc.from, "-to", filepath.Join(dir, filepath.FromSlash(tc.to))}
 			if err := run(args); err != nil {
 				t.Fatal(err)
 			}
 
-			checkFiles(t, dir, tc.want)
+			testtools.CheckFiles(t, dir, tc.want)
 		})
-	}
-}
-
-func createFiles(files []fileSpec) (string, error) {
-	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "integration_test")
-	if err != nil {
-		return "", err
-	}
-
-	for _, f := range files {
-		path := filepath.Join(dir, filepath.FromSlash(f.path))
-		if strings.HasSuffix(f.path, "/") {
-			if err := os.MkdirAll(path, 0700); err != nil {
-				os.RemoveAll(dir)
-				return "", err
-			}
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-			os.RemoveAll(dir)
-			return "", err
-		}
-		if err := ioutil.WriteFile(path, []byte(f.content), 0600); err != nil {
-			os.RemoveAll(dir)
-			return "", err
-		}
-	}
-	return dir, nil
-}
-
-func checkFiles(t *testing.T, dir string, files []fileSpec) {
-	for _, f := range files {
-		path := filepath.Join(dir, f.path)
-		if strings.HasSuffix(f.path, "/") {
-			if st, err := os.Stat(path); err != nil {
-				t.Errorf("could not stat %s: %v", f.path, err)
-			} else if !st.IsDir() {
-				t.Errorf("not a directory: %s", f.path)
-			}
-		} else {
-			want := f.content
-			if len(want) > 0 && want[0] == '\n' {
-				// Strip leading newline, added for readability.
-				want = want[1:]
-			}
-			gotBytes, err := ioutil.ReadFile(filepath.Join(dir, f.path))
-			if err != nil {
-				t.Errorf("could not read %s: %v", f.path, err)
-				continue
-			}
-			got := string(gotBytes)
-			if got != want {
-				t.Errorf("%s: got %s ; want %s", f.path, got, f.content)
-			}
-		}
 	}
 }

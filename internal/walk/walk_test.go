@@ -17,12 +17,9 @@ package walk
 
 import (
 	"flag"
-	"io/ioutil"
-	"os"
 	"path"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
@@ -31,11 +28,9 @@ import (
 )
 
 func TestConfigureCallbackOrder(t *testing.T) {
-	dir, err := createFiles([]fileSpec{{path: "a/b/"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{{Path: "a/b/"}})
+	defer cleanup()
+
 	var configureRels, callbackRels []string
 	c, cexts := testConfig(t, dir)
 	cexts = append(cexts, &testConfigurer{func(_ *config.Config, rel string, _ *rule.File) {
@@ -53,23 +48,20 @@ func TestConfigureCallbackOrder(t *testing.T) {
 }
 
 func TestUpdateDirs(t *testing.T) {
-	dir, err := createFiles([]fileSpec{
-		{path: "update/sub/"},
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "update/sub/"},
 		{
-			path:    "update/ignore/BUILD.bazel",
-			content: "# gazelle:ignore",
+			Path:    "update/ignore/BUILD.bazel",
+			Content: "# gazelle:ignore",
 		},
-		{path: "update/ignore/sub/"},
+		{Path: "update/ignore/sub/"},
 		{
-			path:    "update/error/BUILD.bazel",
-			content: "(",
+			Path:    "update/error/BUILD.bazel",
+			Content: "(",
 		},
-		{path: "update/error/sub/"},
+		{Path: "update/error/sub/"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	defer cleanup()
 
 	type visitSpec struct {
 		rel    string
@@ -135,22 +127,20 @@ func TestUpdateDirs(t *testing.T) {
 }
 
 func TestCustomBuildName(t *testing.T) {
-	dir, err := createFiles([]fileSpec{
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
 		{
-			path:    "BUILD.bazel",
-			content: "# gazelle:build_file_name BUILD.test",
+			Path:    "BUILD.bazel",
+			Content: "# gazelle:build_file_name BUILD.test",
 		}, {
-			path: "BUILD",
+			Path: "BUILD",
 		}, {
-			path: "sub/BUILD.test",
+			Path: "sub/BUILD.test",
 		}, {
-			path: "sub/BUILD.bazel",
+			Path: "sub/BUILD.bazel",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	defer cleanup()
+
 	c, cexts := testConfig(t, dir)
 	var buildRels []string
 	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, _ string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
@@ -171,10 +161,10 @@ func TestCustomBuildName(t *testing.T) {
 }
 
 func TestExcludeFiles(t *testing.T) {
-	dir, err := createFiles([]fileSpec{
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
 		{
-			path: "BUILD.bazel",
-			content: `
+			Path: "BUILD.bazel",
+			Content: `
 # gazelle:exclude a.go
 # gazelle:exclude sub/b.go
 # gazelle:exclude ign
@@ -186,16 +176,14 @@ gen(
 )
 `,
 		},
-		{path: "a.go"},
-		{path: ".dot"},
-		{path: "_blank"},
-		{path: "sub/b.go"},
-		{path: "ign/bad"},
+		{Path: "a.go"},
+		{Path: ".dot"},
+		{Path: "_blank"},
+		{Path: "sub/b.go"},
+		{Path: "ign/bad"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	defer cleanup()
+
 	c, cexts := testConfig(t, dir)
 	var files []string
 	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, regularFiles, genFiles []string) {
@@ -213,10 +201,10 @@ gen(
 }
 
 func TestGeneratedFiles(t *testing.T) {
-	dir, err := createFiles([]fileSpec{
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
 		{
-			path: "BUILD.bazel",
-			content: `
+			Path: "BUILD.bazel",
+			Content: `
 unknown_rule(
     name = "blah1",
     out = "gen1",
@@ -231,13 +219,11 @@ unknown_rule(
 )
 `,
 		},
-		{path: "gen-and-static"},
-		{path: "static"},
+		{Path: "gen-and-static"},
+		{Path: "static"},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	defer cleanup()
+
 	c, cexts := testConfig(t, dir)
 	var regularFiles, genFiles []string
 	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, reg, gen []string) {
@@ -257,22 +243,21 @@ unknown_rule(
 }
 
 func TestSymlinksBasic(t *testing.T) {
-	files := []fileSpec{
-		{path: "root/a.go", content: "package a"},
-		{path: "root/b", symlink: "../b"},   // symlink outside repo is followed
-		{path: "root/c", symlink: "c"},      // symlink inside repo is not followed.
-		{path: "root/d", symlink: "../b/d"}, // symlink under root/b not followed
-		{path: "root/e", symlink: "../e"},
-		{path: "c/c.go", symlink: "package c"},
-		{path: "b/b.go", content: "package b"},
-		{path: "b/d/d.go", content: "package d"},
-		{path: "e/loop", symlink: "loop2"}, // symlink loop
-		{path: "e/loop2", symlink: "loop"},
+	files := []testtools.FileSpec{
+		{Path: "root/a.go", Content: "package a"},
+		{Path: "root/b", Symlink: "../b"},   // symlink outside repo is followed
+		{Path: "root/c", Symlink: "c"},      // symlink inside repo is not followed.
+		{Path: "root/d", Symlink: "../b/d"}, // symlink under root/b not followed
+		{Path: "root/e", Symlink: "../e"},
+		{Path: "c/c.go", Symlink: "package c"},
+		{Path: "b/b.go", Content: "package b"},
+		{Path: "b/d/d.go", Content: "package d"},
+		{Path: "e/loop", Symlink: "loop2"}, // symlink loop
+		{Path: "e/loop2", Symlink: "loop"},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatalf("createFiles() failed with %v; want success", err)
-	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
 	root := filepath.Join(dir, "root")
 	c, cexts := testConfig(t, root)
 	var rels []string
@@ -286,18 +271,17 @@ func TestSymlinksBasic(t *testing.T) {
 }
 
 func TestSymlinksIgnore(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path:    "root/BUILD",
-			content: "# gazelle:exclude b",
+			Path:    "root/BUILD",
+			Content: "# gazelle:exclude b",
 		},
-		{path: "root/b", symlink: "../b"},
-		{path: "b/b.go", content: "package b"},
+		{Path: "root/b", Symlink: "../b"},
+		{Path: "b/b.go", Content: "package b"},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatalf("createFiles() failed with %v; want success", err)
-	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
 	root := filepath.Join(dir, "root")
 	c, cexts := testConfig(t, root)
 	var rels []string
@@ -311,19 +295,18 @@ func TestSymlinksIgnore(t *testing.T) {
 }
 
 func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
-	files := []fileSpec{
+	files := []testtools.FileSpec{
 		{
-			path:    "root/BUILD",
-			content: "# gazelle:exclude b",
+			Path:    "root/BUILD",
+			Content: "# gazelle:exclude b",
 		},
-		{path: "root/b", symlink: "../b"},  // ignored
-		{path: "root/b2", symlink: "../b"}, // not ignored
-		{path: "b/b.go", content: "package b"},
+		{Path: "root/b", Symlink: "../b"},  // ignored
+		{Path: "root/b2", Symlink: "../b"}, // not ignored
+		{Path: "b/b.go", Content: "package b"},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatalf("createFiles() failed with %v; want success", err)
-	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
 	root := filepath.Join(dir, "root")
 	c, cexts := testConfig(t, root)
 	var rels []string
@@ -337,16 +320,15 @@ func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
 }
 
 func TestSymlinksChained(t *testing.T) {
-	files := []fileSpec{
-		{path: "root/b", symlink: "../link0"},
-		{path: "link0", symlink: "b"},
-		{path: "root/b2", symlink: "../b"},
-		{path: "b/b.go", content: "package b"},
+	files := []testtools.FileSpec{
+		{Path: "root/b", Symlink: "../link0"},
+		{Path: "link0", Symlink: "b"},
+		{Path: "root/b2", Symlink: "../b"},
+		{Path: "b/b.go", Content: "package b"},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatalf("createFiles() failed with %v; want success", err)
-	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
 	root := filepath.Join(dir, "root")
 	c, cexts := testConfig(t, root)
 	var rels []string
@@ -360,13 +342,12 @@ func TestSymlinksChained(t *testing.T) {
 }
 
 func TestSymlinksDangling(t *testing.T) {
-	files := []fileSpec{
-		{path: "root/b", symlink: "../b"},
+	files := []testtools.FileSpec{
+		{Path: "root/b", Symlink: "../b"},
 	}
-	dir, err := createFiles(files)
-	if err != nil {
-		t.Fatalf("createFiles() failed with %v; want success", err)
-	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
 	root := filepath.Join(dir, "root")
 	c, cexts := testConfig(t, root)
 	var rels []string
@@ -377,44 +358,6 @@ func TestSymlinksDangling(t *testing.T) {
 	if !reflect.DeepEqual(rels, want) {
 		t.Errorf("got %#v; want %#v", rels, want)
 	}
-}
-
-type fileSpec struct {
-	path, content, symlink string
-}
-
-func createFiles(files []fileSpec) (string, error) {
-	dir, err := ioutil.TempDir(os.Getenv("TEST_TMPDIR"), "walk_test")
-	if err != nil {
-		return "", err
-	}
-	dir, err = filepath.EvalSymlinks(dir) // macOS has symlinks in temp dir.
-	if err != nil {
-		return "", err
-	}
-
-	for _, f := range files {
-		path := filepath.Join(dir, f.path)
-		if strings.HasSuffix(f.path, "/") {
-			if err := os.MkdirAll(path, 0700); err != nil {
-				return dir, err
-			}
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
-			return "", err
-		}
-		if f.symlink != "" {
-			if err := os.Symlink(f.symlink, path); err != nil {
-				return "", err
-			}
-			continue
-		}
-		if err := ioutil.WriteFile(path, []byte(f.content), 0600); err != nil {
-			return "", err
-		}
-	}
-	return dir, nil
 }
 
 func testConfig(t *testing.T, dir string) (*config.Config, []config.Configurer) {

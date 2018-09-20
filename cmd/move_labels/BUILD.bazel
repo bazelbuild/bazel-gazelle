@@ -22,4 +22,5 @@ go_test(
     name = "go_default_test",
     srcs = ["move_labels_test.go"],
     embed = [":go_default_library"],
+    deps = ["//internal/testtools:go_default_library"],
 )
