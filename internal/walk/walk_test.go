@@ -388,6 +388,11 @@ func createFiles(files []fileSpec) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	dir, err = filepath.EvalSymlinks(dir) // macOS has symlinks in temp dir.
+	if err != nil {
+		return "", err
+	}
+
 	for _, f := range files {
 		path := filepath.Join(dir, f.path)
 		if strings.HasSuffix(f.path, "/") {
