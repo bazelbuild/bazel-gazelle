@@ -25,25 +25,20 @@ GAZELLE_LABEL=@@GAZELLE_LABEL@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
 
-# find_repo_root prints the absolute path to the repository root. This is
-# discovered by locating the WORKSPACE file in a parent directory, and
-# deferencing symlinks. If no WORKSPACE file is found, this function prints
-# an error and exits.
-function find_repo_root {
-  pushd . &>/dev/null
-  while [ $(pwd) != / -a ! -f WORKSPACE ]; do
-    cd ..
-  done
-  if [ ! -f WORKSPACE ]; then
-    echo "error: could not find WORKSPACE file in any parent directory" >&2
-    exit 1
+# find_runfile prints the location of a runfile in the source workspace,
+# either by reading the symbolic link or reading the runfiles manifest.
+function find_runfile {
+  local runfile=$1
+  if [ -f "$runfile" ]; then
+    readlink "$runfile"
+    return
   fi
-  if [ "$is_bazel_run" = true ]; then
-    dirname $(readlink WORKSPACE)
-  else
-    pwd
+  runfile=$(echo "$runfile" | sed -e 's!^\(\.\./\|external/\)!!')
+  if grep -q "^$runfile" MANIFEST; then
+    grep "^$runfile" MANIFEST | head -n 1 | cut -d' ' -f2
+    return
   fi
-  popd &>/dev/null
+  # printing nothing indicates failure
 }
 
 # bazel_build_get_path builds a given target and prints the absolute path
@@ -61,18 +56,10 @@ function bazel_build_get_path {
 # use the SDK used by the workspace in case the Go SDK is not installed
 # on the host system or is a different version.
 function set_goroot {
-  local gotool=
-  if [ -e "$GOTOOL" ]; then
-    # Normally, GOTOOL will be a symlinked runfile.
-    gotool=$GOTOOL
-  fi
-  if [ -z "$gotool" -a -e MANIFEST ]; then
-    # On Windows, runfiles aren't symlinked, but they're listed in MANIFEST.
-    gotool=$(grep bin/go MANIFEST | head -n 1 | cut -d' ' -f2)
-  fi
+  local gotool=$(find_runfile "$GOTOOL")
   if [ -z "$gotool" ]; then
     echo "$0: warning: could not locate GOROOT used by rules_go" >&2
-    return 1
+    return
   fi
   export GOROOT=$(cd "$(dirname "$gotool")/.."; pwd)
   if type cygpath >/dev/null 2>&1; then
@@ -99,9 +86,16 @@ if [ "$is_bazel_run" = true ]; then
   # If the script was invoked by "bazel run", jump out of the execroot, into
   # the workspace before running Gazelle.
   # TODO(jayconrod): detect when a command can't be run this way.
-  set_goroot
-  gazelle_short_path=$(readlink "$GAZELLE_SHORT_PATH")
-  cd $(find_repo_root)
+  gazelle_short_path=$(find_runfile "$GAZELLE_SHORT_PATH")
+  if [ -z "$gazelle_short_path" ]; then
+    echo "error: could not locate gazelle binary" >&2
+    exit 1
+  fi
+  if [ -z "${BUILD_WORKSPACE_DIRECTORY-}" ]; then
+    echo "error: BUILD_WORKSPACE_DIRECOTRY not set" >&2
+    exit 1
+  fi
+  cd "$BUILD_WORKSPACE_DIRECTORY"
   "$gazelle_short_path" "${ARGS[@]}"
 else
   # If the script was invoked directly, check whether the script is out of
