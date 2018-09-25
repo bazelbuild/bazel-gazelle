@@ -25,6 +25,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/language"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
+	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/walk"
@@ -33,8 +34,7 @@ import (
 )
 
 func TestGenerateRules(t *testing.T) {
-	lang := New()
-	c := testConfig(t, "testdata")
+	c, lang, _ := testConfig(t, "testdata")
 
 	walk.Walk(c, []config.Configurer{lang}, []string{"testdata"}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
 		isTest := false
@@ -119,7 +119,7 @@ proto_library(
 
 func TestGeneratePackage(t *testing.T) {
 	lang := New()
-	c := testConfig(t, "testdata")
+	c, _, _ := testConfig(t, "testdata")
 	dir := filepath.FromSlash("testdata/protos")
 	_, gen := lang.GenerateRules(c, dir, "protos", nil, nil, []string{"foo.proto"}, nil, nil, nil)
 	r := gen[0]
@@ -153,12 +153,17 @@ func TestGeneratePackage(t *testing.T) {
 	}
 }
 
-func testConfig(t *testing.T, repoRoot string) *config.Config {
-	cexts := []config.Configurer{&config.CommonConfigurer{}, &walk.Configurer{}}
-	langs := []language.Language{New()}
-	c := testtools.NewTestConfig(t, cexts, langs, []string{
+func testConfig(t *testing.T, repoRoot string) (*config.Config, language.Language, []config.Configurer) {
+	cexts := []config.Configurer{
+		&config.CommonConfigurer{},
+		&walk.Configurer{},
+		&resolve.Configurer{},
+	}
+	lang := New()
+	c := testtools.NewTestConfig(t, cexts, []language.Language{lang}, []string{
 		"-build_file_name=BUILD.old",
 		"-repo_root=" + repoRoot,
 	})
-	return c
+	cexts = append(cexts, lang)
+	return c, lang, cexts
 }

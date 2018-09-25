@@ -115,6 +115,10 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r
 		return label.NoLabel, skipImportError
 	}
 
+	if l, ok := resolve.FindRuleWithOverride(c, resolve.ImportSpec{Lang: "go", Imp: imp}, "go"); ok {
+		return l, nil
+	}
+
 	if pc.Mode.ShouldUseKnownImports() {
 		// These are commonly used libraries that depend on Well Known Types.
 		// They depend on the generated versions of these protos to avoid conflicts.
@@ -234,6 +238,10 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache
 
 	if wellKnownProtos[imp] {
 		return label.NoLabel, skipImportError
+	}
+
+	if l, ok := resolve.FindRuleWithOverride(c, resolve.ImportSpec{Lang: "proto", Imp: imp}, "go"); ok {
+		return l, nil
 	}
 
 	if l, ok := knownProtoImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
