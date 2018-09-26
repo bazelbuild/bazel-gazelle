@@ -51,6 +51,7 @@ def _go_repository_impl(ctx):
 
         fetch_repo_env = {
             "PATH": ctx.os.environ["PATH"],  # to find git
+            "HOME": ctx.os.environ["HOME"],  # for $HOME/.gitconfig to take effect
         }
         if "SSH_AUTH_SOCK" in ctx.os.environ:
             fetch_repo_env["SSH_AUTH_SOCK"] = ctx.os.environ["SSH_AUTH_SOCK"]
