@@ -49,17 +49,15 @@ def _go_repository_impl(ctx):
         if ctx.attr.vcs and not ctx.attr.remote:
             fail("if vcs is specified, remote must also be")
 
-        fetch_repo_env = {
-            "PATH": ctx.os.environ["PATH"],  # to find git
-        }
-        if "SSH_AUTH_SOCK" in ctx.os.environ:
-            fetch_repo_env["SSH_AUTH_SOCK"] = ctx.os.environ["SSH_AUTH_SOCK"]
-        if "HTTP_PROXY" in ctx.os.environ:
-            fetch_repo_env["HTTP_PROXY"] = ctx.os.environ["HTTP_PROXY"]
-        if "HTTPS_PROXY" in ctx.os.environ:
-            fetch_repo_env["HTTPS_PROXY"] = ctx.os.environ["HTTPS_PROXY"]
-        if "GIT_SSL_CAINFO" in ctx.os.environ:
-            fetch_repo_env["GIT_SSL_CAINFO"] = ctx.os.environ["GIT_SSL_CAINFO"]
+        env_keys = [
+            "PATH",
+            "HOME",
+            "SSH_AUTH_SOCK",
+            "HTTP_PROXY",
+            "HTTPS_PROXY",
+            "GIT_SSL_CAINFO",
+        ]
+        fetch_repo_env = {k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ}
 
         _fetch_repo = "@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx))
         args = [
