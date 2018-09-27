@@ -1,0 +1,22 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 04cc59f..010b004 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -1,7 +1,7 @@
+ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+ 
+ go_library(
+-    name = "go_default_library",
++    name = "errors",
+     srcs = [
+         "errors.go",
+         "stack.go",
+@@ -11,7 +11,7 @@ go_library(
+ )
+ 
+ go_test(
+-    name = "go_default_test",
++    name = "errors_test",
+     srcs = [
+         "bench_test.go",
+         "errors_test.go",
