@@ -91,7 +91,14 @@ func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repos.Rem
 		log.Print(err)
 	}
 	if !deps.IsEmpty() {
-		r.SetAttr("deps", deps)
+		if r.Kind() == "go_proto_library" {
+			// protos may import the same library multiple times by different names,
+			// so we need to de-duplicate them. Protos are not platform-specific,
+			// so it's safe to just flatten them.
+			r.SetAttr("deps", deps.Flat())
+		} else {
+			r.SetAttr("deps", deps)
+		}
 	}
 }
 
