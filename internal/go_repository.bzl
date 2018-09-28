@@ -115,6 +115,9 @@ def _go_repository_impl(ctx):
                 result.stderr,
             ))
 
+    # Apply patches if necessary.
+    patch(ctx)
+
 go_repository = repository_rule(
     implementation = _go_repository_impl,
     attrs = {
@@ -171,9 +174,38 @@ go_repository = repository_rule(
             ],
         ),
         "build_extra_args": attr.string_list(),
+
+        # Patches to apply after running gazelle.
+        "patches": attr.label_list(),
+        "patch_tool": attr.string(default = "patch"),
+        "patch_args": attr.string_list(default = ["-p0"]),
+        "patch_cmds": attr.string_list(default = []),
     },
 )
 """See repository.rst#go-repository for full documentation."""
+
+# Copied from @bazel_tools//tools/build_defs/repo:utils.bzl
+def patch(ctx):
+    """Implementation of patching an already extracted repository"""
+    bash_exe = ctx.os.environ["BAZEL_SH"] if "BAZEL_SH" in ctx.os.environ else "bash"
+    for patchfile in ctx.attr.patches:
+        command = "{patchtool} {patch_args} < {patchfile}".format(
+            patchtool = ctx.attr.patch_tool,
+            patchfile = ctx.path(patchfile),
+            patch_args = " ".join([
+                "'%s'" % arg
+                for arg in ctx.attr.patch_args
+            ]),
+        )
+        st = ctx.execute([bash_exe, "-c", command])
+        if st.return_code:
+            fail("Error applying patch %s:\n%s%s" %
+                 (str(patchfile), st.stderr, st.stdout))
+    for cmd in ctx.attr.patch_cmds:
+        st = ctx.execute([bash_exe, "-c", cmd])
+        if st.return_code:
+            fail("Error applying patch command %s:\n%s%s" %
+                 (cmd, st.stdout, st.stderr))
 
 _GO_REPOSITORY_TOOLS_BUILD_FILE = """
 package(default_visibility = ["//visibility:public"])
