@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
@@ -51,7 +52,7 @@ func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repos.R
 	}
 	imports := importsRaw.([]string)
 	r.DelAttr("deps")
-	deps := make([]string, 0, len(imports))
+	depSet := make(map[string]bool)
 	for _, imp := range imports {
 		l, err := resolveProto(c, ix, r, imp, from)
 		if err == skipImportError {
@@ -60,10 +61,15 @@ func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repos.R
 			log.Print(err)
 		} else {
 			l = l.Rel(from.Repo, from.Pkg)
-			deps = append(deps, l.String())
+			depSet[l.String()] = true
 		}
 	}
-	if len(deps) > 0 {
+	if len(depSet) > 0 {
+		deps := make([]string, 0, len(depSet))
+		for dep := range depSet {
+			deps = append(deps, dep)
+		}
+		sort.Strings(deps)
 		r.SetAttr("deps", deps)
 	}
 }

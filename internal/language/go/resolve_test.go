@@ -642,6 +642,41 @@ go_proto_library(
 )
 `,
 		}, {
+			desc: "proto_dedup",
+			index: []buildFile{{
+				rel: "sub",
+				content: `
+proto_library(
+    name = "foo_proto",
+    srcs = [
+        "a.proto",
+        "b.proto",
+    ],
+)
+
+go_proto_library(
+    name = "foo_go_proto",
+    proto = ":foo_proto",
+    importpath = "sub",
+)
+`,
+			}},
+			old: buildFile{content: `
+go_proto_library(
+    name = "dep_proto",
+    _imports = [
+        "sub/a.proto",
+        "sub/b.proto",
+    ],
+)
+`},
+			want: `
+go_proto_library(
+    name = "dep_proto",
+    deps = ["//sub:foo_go_proto"],
+)
+`,
+		}, {
 			desc: "proto_wkt",
 			old: buildFile{content: `
 go_proto_library(

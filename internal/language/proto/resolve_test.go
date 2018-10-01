@@ -210,6 +210,37 @@ proto_library(
 )
 `,
 		}, {
+			desc: "index_dedup",
+			index: []buildFile{{
+				rel: "foo",
+				content: `
+proto_library(
+    name = "foo_proto",
+    srcs = [
+        "a.proto",
+        "b.proto",
+    ],
+)
+`,
+			}},
+			old: `
+proto_library(
+    name = "dep_proto",
+    srcs = ["dep.proto"],
+    _imports = [
+        "foo/a.proto",
+        "foo/b.proto",
+    ],
+)
+`,
+			want: `
+proto_library(
+    name = "dep_proto",
+    srcs = ["dep.proto"],
+    deps = ["//foo:foo_proto"],
+)
+`,
+		}, {
 			desc: "unknown",
 			old: `
 proto_library(
