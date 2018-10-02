@@ -140,6 +140,8 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r
 			return label.New("com_github_golang_protobuf", "descriptor", "go_default_library_gen"), nil
 		case "github.com/golang/protobuf/ptypes":
 			return label.New("com_github_golang_protobuf", "ptypes", "go_default_library_gen"), nil
+		case "google.golang.org/grpc":
+			return label.New("org_golang_google_grpc", "", "go_default_library"), nil
 		}
 		if l, ok := knownGoProtoImports[imp]; ok {
 			return l, nil
