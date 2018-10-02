@@ -753,7 +753,7 @@ go_library(
 )
 `,
 		}, {
-			desc: "proto_ptypes",
+			desc: "proto_special",
 			old: buildFile{content: `
 go_library(
     name = "go_default_library",
@@ -761,6 +761,7 @@ go_library(
         "github.com/golang/protobuf/jsonpb",
         "github.com/golang/protobuf/descriptor",
         "github.com/golang/protobuf/ptypes",
+        "google.golang.org/grpc",
     ],
 )
 `},
@@ -771,6 +772,7 @@ go_library(
         "@com_github_golang_protobuf//descriptor:go_default_library_gen",
         "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
+        "@org_golang_google_grpc//:go_default_library",
     ],
 )
 `,
