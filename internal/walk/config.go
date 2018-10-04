@@ -26,6 +26,7 @@ import (
 type walkConfig struct {
 	excludes []string
 	ignore   bool
+	follow   []string
 }
 
 const walkName = "_walk"
@@ -53,7 +54,7 @@ func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Confi
 func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
 
 func (_ *Configurer) KnownDirectives() []string {
-	return []string{"exclude", "ignore"}
+	return []string{"exclude", "follow", "ignore"}
 }
 
 func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
@@ -67,6 +68,8 @@ func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 			switch d.Key {
 			case "exclude":
 				wcCopy.excludes = append(wcCopy.excludes, path.Join(rel, d.Value))
+			case "follow":
+				wcCopy.follow = append(wcCopy.follow, path.Join(rel, d.Value))
 			case "ignore":
 				wcCopy.ignore = true
 			}

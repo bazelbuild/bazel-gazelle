@@ -88,7 +88,7 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		}
 	}
 
-	symlinks := symlinkResolver{root: c.RepoRoot, visited: []string{c.RepoRoot}}
+	symlinks := symlinkResolver{visited: []string{c.RepoRoot}}
 
 	updateRels := buildUpdateRelMap(c.RepoRoot, dirs)
 
@@ -121,7 +121,7 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 			case base == "" || base[0] == '.' || base[0] == '_' || wc.isExcluded(rel, base):
 				continue
 
-			case fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 && symlinks.follow(dir, base):
+			case fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 && symlinks.follow(c, dir, rel, base):
 				subdirs = append(subdirs, base)
 
 			default:
@@ -260,17 +260,26 @@ func findGenFiles(wc *walkConfig, f *rule.File) []string {
 }
 
 type symlinkResolver struct {
-	root    string
 	visited []string
 }
 
 // Decide if symlink dir/base should be followed.
-func (r *symlinkResolver) follow(dir, base string) bool {
-	if dir == r.root && strings.HasPrefix(base, "bazel-") {
+func (r *symlinkResolver) follow(c *config.Config, dir, rel, base string) bool {
+	if dir == c.RepoRoot && strings.HasPrefix(base, "bazel-") {
 		// Links such as bazel-<workspace>, bazel-out, bazel-genfiles are created by
 		// Bazel to point to internal build directories.
 		return false
 	}
+
+	// See if the user has explicitly directed us to follow the link.
+	wc := getWalkConfig(c)
+	linkRel := path.Join(rel, base)
+	for _, follow := range wc.follow {
+		if linkRel == follow {
+			return true
+		}
+	}
+
 	// See if the symlink points to a tree that has been already visited.
 	fullpath := filepath.Join(dir, base)
 	dest, err := filepath.EvalSymlinks(fullpath)

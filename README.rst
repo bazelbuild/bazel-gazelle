@@ -424,6 +424,16 @@ The following directives are recognized:
 | vendor tree. This directive may be repeated to exclude multiple paths, one   |
 | per line.                                                                    |
 +------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:follow path`           | n/a                               |
++------------------------------------------+-----------------------------------+
+| Instructs Gazelle to follow a symbolic link to a directory within the        |
+| repository. Normally, Gazelle does not follow symbolic links unless they     |
+| point outside of the repository root.                                        |
+|                                                                              |
+| Care must be taken to avoid visiting a directory more than once.             |
+| The ``# gazelle:exclude`` directive may be used to prevent Gazelle from      |
+| recursing into a directory.                                                  |
++------------------------------------------+-----------------------------------+
 | :direc:`# gazelle:ignore`                | n/a                               |
 +------------------------------------------+-----------------------------------+
 | Prevents Gazelle from modifying the build file. Gazelle will still read      |

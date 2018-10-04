@@ -360,6 +360,35 @@ func TestSymlinksDangling(t *testing.T) {
 	}
 }
 
+func TestSymlinksFollow(t *testing.T) {
+	files := []testtools.FileSpec{
+		{Path: "staging/src/k8s.io/api/"},
+		{Path: "staging/src/k8s.io/BUILD.bazel", Content: "# gazelle:exclude api"},
+		{Path: "vendor/k8s.io/api", Symlink: "../../staging/src/k8s.io/api"},
+		{Path: "vendor/BUILD.bazel", Content: "# gazelle:follow k8s.io/api"},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	c, cexts := testConfig(t, dir)
+	var rels []string
+	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+		rels = append(rels, rel)
+	})
+	want := []string{
+		"staging/src/k8s.io",
+		"staging/src",
+		"staging",
+		"vendor/k8s.io/api",
+		"vendor/k8s.io",
+		"vendor",
+		"",
+	}
+	if !reflect.DeepEqual(rels, want) {
+		t.Errorf("got %#v; want %#v", rels, want)
+	}
+}
+
 func testConfig(t *testing.T, dir string) (*config.Config, []config.Configurer) {
 	args := []string{"-repo_root", dir}
 	cexts := []config.Configurer{&config.CommonConfigurer{}, &Configurer{}}
