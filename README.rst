@@ -102,7 +102,7 @@ rule cannot run directly.
 
 .. code::
 
-  $ bazel run //:gazelle -- update-repos -from_file=Gopkg.lock
+  $ bazel run //:gazelle -- update-repos -from_file=go.mod
 
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -323,15 +323,16 @@ The following flags are accepted:
 
 The ``update-repos`` command updates repository rules in the WORKSPACE file.
 It can be used to add new repository rules or update existing rules to the 
-latest version. It can also import repository rules from a dep Gopkg.lock file.
+latest version. It can also import repository rules from a ``go.mod`` file or
+a ``Gopkg.lock`` file.
 
 .. code:: bash
 
   # Add or update a repository by import path
   $ gazelle update-repos example.com/new/repo
 
-  # Import repositories from Gopkg.lock
-  $ gazelle update-repos -from_file=Gopkg.lock
+  # Import repositories from go.mod
+  $ gazelle update-repos -from_file=go.mod
 
 :Note: ``update-repos`` is not directly supported by the ``gazelle`` rule.
   You can run it through the ``gazelle`` rule by passing extra arguments after
@@ -348,12 +349,11 @@ The following flags are accepted:
 +==============================+===============================================+
 | :flag:`-from_file lock-file` |                                               |
 +------------------------------+-----------------------------------------------+
-| Import repositories from a vendoring tool's lock file as `go_repository`_    |
-| rules. These rules will be added to the bottom of WORKSPACE or merged with   |
-| existing rules.                                                              |
+| Import repositories from a file as `go_repository`_ rules. These rules will  |
+| be added to the bottom of the WORKSPACE file or merged with existing rules.  |
 |                                                                              |
-| The lock file format is inferred from the file's base name. Currently, only  |
-| Gopkg.lock is supported.                                                     |
+| The lock file format is inferred from the file name. ``go.mod`` and          |
+| ``Gopkg.lock`` (the dep lock format) are both supported.                     |
 +------------------------------+-----------------------------------------------+
 | :flag:`-repo_root dir`       |                                               |
 +------------------------------+-----------------------------------------------+
