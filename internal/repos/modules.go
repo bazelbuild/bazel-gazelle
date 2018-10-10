@@ -18,12 +18,12 @@ package repos
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -33,6 +33,35 @@ import (
 type module struct {
 	Path, Version string
 	Main          bool
+}
+
+var regexMixedVersioning = regexp.MustCompile(`^(.*?)-([0-9]{14})-([a-fA-F0-9]{12})$`)
+
+func toRepoRule(mod module) Repo {
+	var tag, commit string
+	if strings.HasPrefix(mod.Version, "v0.0.0-") {
+		i := strings.LastIndex(mod.Version, "-")
+		commit = mod.Version[i+1:]
+	} else {
+		tag = mod.Version
+		if strings.HasSuffix(tag, "+incompatible") {
+			tag = strings.TrimSuffix(tag, "+incompatible")
+		}
+		if regexMixedVersioning.MatchString(tag) {
+			gr := regexMixedVersioning.FindStringSubmatch(tag)
+			if len(gr) > 3 {
+				tag = ""
+				commit = gr[3]
+			}
+		}
+	}
+
+	return Repo{
+		Name:     label.ImportPathToBazelRepoName(mod.Path),
+		GoPrefix: mod.Path,
+		Commit:   commit,
+		Tag:      tag,
+	}
 }
 
 func importRepoRulesModules(filename string) (repos []Repo, err error) {
@@ -57,22 +86,7 @@ func importRepoRulesModules(filename string) (repos []Repo, err error) {
 			continue
 		}
 
-		var tag, commit string
-		if strings.HasPrefix(mod.Version, "v0.0.0-") {
-			if i := strings.LastIndex(mod.Version, "-"); i < 0 {
-				return nil, fmt.Errorf("failed to parse version for %s: %q", mod.Path, mod.Version)
-			} else {
-				commit = mod.Version[i+1:]
-			}
-		} else {
-			tag = mod.Version
-		}
-		repos = append(repos, Repo{
-			Name:     label.ImportPathToBazelRepoName(mod.Path),
-			GoPrefix: mod.Path,
-			Commit:   commit,
-			Tag:      tag,
-		})
+		repos = append(repos, toRepoRule(mod))
 	}
 
 	return repos, nil
