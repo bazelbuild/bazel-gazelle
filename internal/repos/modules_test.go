@@ -22,13 +22,9 @@ func TestGoModuleSpecialCases(t *testing.T) {
 		in, wantCommit, wantTag string
 	}{
 		{in: "v0.30.0", wantTag: "v0.30.0"},
-		{in: "v1.2.3", wantTag: "v1.2.3"},
 		{in: "v0.0.0-20180718195005-e651d75abec6", wantCommit: "e651d75abec6"},
-		{in: "v0.0.0-20160503143440-6bb64b370b90", wantCommit: "6bb64b370b90"},
-		{in: "v2.0.0+incompatible", wantTag: "v2.0.0"},
 		{in: "v2.0.0+incompatible", wantTag: "v2.0.0"},
 		{in: "v1.0.0-20170511165959-379148ca0225", wantCommit: "379148ca0225"},
-		{in: "v1.0.0-20180628173108-788fd7840127", wantCommit: "788fd7840127"},
 	} {
 		t.Run(tc.in, func(t *testing.T) {
 			repo := toRepoRule(module{Version: tc.in})

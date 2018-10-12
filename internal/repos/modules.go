@@ -39,21 +39,11 @@ var regexMixedVersioning = regexp.MustCompile(`^(.*?)-([0-9]{14})-([a-fA-F0-9]{1
 
 func toRepoRule(mod module) Repo {
 	var tag, commit string
-	if strings.HasPrefix(mod.Version, "v0.0.0-") {
-		i := strings.LastIndex(mod.Version, "-")
-		commit = mod.Version[i+1:]
+
+	if gr := regexMixedVersioning.FindStringSubmatch(mod.Version); gr != nil {
+		commit = gr[3]
 	} else {
-		tag = mod.Version
-		if strings.HasSuffix(tag, "+incompatible") {
-			tag = strings.TrimSuffix(tag, "+incompatible")
-		}
-		if regexMixedVersioning.MatchString(tag) {
-			gr := regexMixedVersioning.FindStringSubmatch(tag)
-			if len(gr) > 3 {
-				tag = ""
-				commit = gr[3]
-			}
-		}
+		tag = strings.TrimSuffix(mod.Version, "+incompatible")
 	}
 
 	return Repo{
