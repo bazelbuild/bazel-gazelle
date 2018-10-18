@@ -55,6 +55,7 @@ def _go_repository_impl(ctx):
             "SSH_AUTH_SOCK",
             "HTTP_PROXY",
             "HTTPS_PROXY",
+            "NO_PROXY",
             "GIT_SSL_CAINFO",
         ]
         fetch_repo_env = {k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ}
