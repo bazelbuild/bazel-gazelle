@@ -267,6 +267,16 @@ The following flags are accepted:
 | Bazel may still filter sources with these tags. Use                                              |
 | ``bazel build --features gotags=foo,bar`` to set tags at build time.                             |
 +--------------------------------------------------------------+-----------------------------------+
+| :flag:`-exclude path`                                        |                                   |
++--------------------------------------------------------------+-----------------------------------+
+| Prevents Gazelle from processing a file or directory. If the path refers to                      |
+| a source file, Gazelle won't include it in any rules. If the path refers to                      |
+| a directory, Gazelle won't recurse into it.                                                      |
+|                                                                                                  |
+| This option may be repeated. Paths must be slash-separated, relative to the                      |
+| repository root. This is equivalent to the ``# gazelle:exclude path``                            |
+| directive.                                                                                       |
++--------------------------------------------------------------+-----------------------------------+
 | :flag:`-external external|vendored`                          | :value:`external`                 |
 +--------------------------------------------------------------+-----------------------------------+
 | Determines how Gazelle resolves import paths that cannot be resolve in the                       |

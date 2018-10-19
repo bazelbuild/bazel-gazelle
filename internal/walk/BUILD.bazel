@@ -10,6 +10,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//internal/config:go_default_library",
+        "//internal/flag:go_default_library",
         "//internal/pathtools:go_default_library",
         "//internal/rule:go_default_library",
     ],
