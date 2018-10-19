@@ -20,6 +20,7 @@ import (
 	"path"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 )
 
@@ -48,7 +49,9 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 type Configurer struct{}
 
 func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
-	c.Exts[walkName] = &walkConfig{}
+	wc := &walkConfig{}
+	c.Exts[walkName] = wc
+	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "Path to file or directory that should be ignored (may be repeated)")
 }
 
 func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
