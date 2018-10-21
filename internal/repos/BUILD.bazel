@@ -23,6 +23,7 @@ go_test(
     name = "go_default_test",
     srcs = [
         "import_test.go",
+        "modules_test.go",
         "remote_test.go",
         "repo_test.go",
     ],
@@ -30,5 +31,6 @@ go_test(
     deps = [
         "//internal/rule:go_default_library",
         "//vendor/golang.org/x/tools/go/vcs:go_default_library",
+        "@com_github_stretchr_testify//assert:go_default_library",
     ],
 )

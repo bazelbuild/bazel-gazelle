@@ -15,7 +15,11 @@ limitations under the License.
 
 package repos
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestGoModuleSpecialCases(t *testing.T) {
 	for _, tc := range []struct {
@@ -27,7 +31,10 @@ func TestGoModuleSpecialCases(t *testing.T) {
 		{in: "v1.0.0-20170511165959-379148ca0225", wantCommit: "379148ca0225"},
 	} {
 		t.Run(tc.in, func(t *testing.T) {
-			repo := toRepoRule(module{Version: tc.in})
+			repo, err := toRepoRule(module{Version: tc.in})
+			if err != nil {
+				t.Errorf("error for %q: got %q; want 'nil'", tc.in, err)
+			}
 			if repo.Commit != tc.wantCommit {
 				t.Errorf("commit for %q: got %q; want %q", tc.in, repo.Commit, tc.wantCommit)
 			} else if repo.Tag != tc.wantTag {
@@ -35,4 +42,23 @@ func TestGoModuleSpecialCases(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGoModuleReplacement(t *testing.T) {
+	mod := module{
+		Path:    "github.com/pelletier/go-toml",
+		Version: "v1.2.0",
+		Replace: &replace{
+			Path:    "github.com/joe-mann/go-toml",
+			Version: "v1.0.1",
+		},
+	}
+
+	repo, err := toRepoRule(mod)
+	assert.NoError(t, err)
+	assert.Equal(t, "com_github_pelletier_go_toml", repo.Name)
+	assert.Equal(t, "github.com/pelletier/go-toml", repo.GoPrefix)
+	assert.Equal(t, "v1.0.1", repo.Tag)
+	assert.Equal(t, "https://github.com/joe-mann/go-toml", repo.Remote)
+	assert.Equal(t, "git", repo.VCS)
 }

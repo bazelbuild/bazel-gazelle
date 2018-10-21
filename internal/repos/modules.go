@@ -18,6 +18,7 @@ package repos
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -28,30 +29,63 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"golang.org/x/tools/go/vcs"
 )
 
 type module struct {
 	Path, Version string
 	Main          bool
+	Replace       *replace
+}
+
+type replace struct {
+	Path, Version string
 }
 
 var regexMixedVersioning = regexp.MustCompile(`^(.*?)-([0-9]{14})-([a-fA-F0-9]{12})$`)
 
-func toRepoRule(mod module) Repo {
-	var tag, commit string
-
-	if gr := regexMixedVersioning.FindStringSubmatch(mod.Version); gr != nil {
-		commit = gr[3]
+func toRepoRule(mod module) (*Repo, error) {
+	var version string
+	if mod.Replace != nil {
+		version = mod.Replace.Version
 	} else {
-		tag = strings.TrimSuffix(mod.Version, "+incompatible")
+		version = mod.Version
 	}
 
-	return Repo{
+	var tag, commit string
+	if gr := regexMixedVersioning.FindStringSubmatch(version); gr != nil {
+		commit = gr[3]
+	} else {
+		tag = strings.TrimSuffix(version, "+incompatible")
+	}
+
+	var remote, vcs string
+	if mod.Replace != nil {
+		var err error
+		if remote, vcs, err = findRemote(mod.Replace.Path); err != nil {
+			return nil, fmt.Errorf("unable to determine remote for %s (replacement for %s): %s",
+				mod.Replace.Path, mod.Path, err.Error())
+		}
+	}
+
+	return &Repo{
 		Name:     label.ImportPathToBazelRepoName(mod.Path),
 		GoPrefix: mod.Path,
 		Commit:   commit,
 		Tag:      tag,
+		Remote:   remote,
+		VCS:      vcs,
+	}, nil
+}
+
+func findRemote(importpath string) (remote, vcsName string, err error) {
+	repo, err := vcs.RepoRootForImportPath(importpath, true)
+	if err != nil {
+		return "", "", err
+	} else if repo.VCS == nil {
+		return "", "", fmt.Errorf("unknown VCS")
 	}
+	return repo.Repo, repo.VCS.Cmd, nil
 }
 
 func importRepoRulesModules(filename string) (repos []Repo, err error) {
@@ -76,7 +110,11 @@ func importRepoRulesModules(filename string) (repos []Repo, err error) {
 			continue
 		}
 
-		repos = append(repos, toRepoRule(mod))
+		repo, err := toRepoRule(mod)
+		if err != nil {
+			return nil, err
+		}
+		repos = append(repos, *repo)
 	}
 
 	return repos, nil

@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() {
@@ -112,6 +113,8 @@ require (
 	golang.org/x/tools v0.0.0-20170824195420-5d2fd3ccab98
 	gopkg.in/yaml.v2 v2.2.1 // indirect
 )
+
+replace github.com/pelletier/go-toml => github.com/joe-mann/go-toml v1.0.1
 `,
 			want: `
 go_repository(
@@ -135,7 +138,9 @@ go_repository(
 go_repository(
     name = "com_github_pelletier_go_toml",
     importpath = "github.com/pelletier/go-toml",
+    remote = "https://github.com/joe-mann/go-toml",
     tag = "v1.0.1",
+    vcs = "git",
 )
 
 go_repository(
@@ -179,9 +184,7 @@ go_repository(
 			}
 			got := strings.TrimSpace(string(f.Format()))
 			want := strings.TrimSpace(tc.want)
-			if got != want {
-				t.Errorf("got:\n%s\n\nwant:\n%s\n", got, want)
-			}
+			assert.Equal(t, want, got)
 		})
 	}
 }
@@ -219,9 +222,16 @@ func goListModulesStub(dir string) ([]byte, error) {
 {
 	"Path": "github.com/pelletier/go-toml",
 	"Version": "v1.0.1",
+	"Replace": {
+		"Path": "github.com/joe-mann/go-toml",
+		"Version": "v1.0.1",
+		"Time": "2017-09-24T18:42:18Z",
+		"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/joe-mann/go-toml@v1.0.1",
+		"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/joe-mann/go-toml/@v/v1.0.1.mod"
+	},
 	"Time": "2017-09-24T18:42:18Z",
-	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/pelletier/go-toml@v1.0.1",
-	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/pelletier/go-toml/@v/v1.0.1.mod"
+	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/joe-mann/go-toml@v1.0.1",
+	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/joe-mann/go-toml/@v/v1.0.1.mod"
 }
 {
 	"Path": "golang.org/x/tools",
