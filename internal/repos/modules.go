@@ -44,6 +44,8 @@ type replace struct {
 
 var regexMixedVersioning = regexp.MustCompile(`^(.*?)-([0-9]{14})-([a-fA-F0-9]{12})$`)
 
+var findRemoteFn = findRemote
+
 func toRepoRule(mod module) (*Repo, error) {
 	var version string
 	if mod.Replace != nil {
@@ -62,7 +64,7 @@ func toRepoRule(mod module) (*Repo, error) {
 	var remote, vcs string
 	if mod.Replace != nil {
 		var err error
-		if remote, vcs, err = findRemote(mod.Replace.Path); err != nil {
+		if remote, vcs, err = findRemoteFn(mod.Replace.Path); err != nil {
 			return nil, fmt.Errorf("unable to determine remote for %s (replacement for %s): %s",
 				mod.Replace.Path, mod.Path, err.Error())
 		}

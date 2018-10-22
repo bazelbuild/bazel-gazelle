@@ -28,6 +28,7 @@ import (
 
 func init() {
 	goListModulesFn = goListModulesStub
+	findRemoteFn = findRemoteStub
 }
 
 func TestImports(t *testing.T) {
@@ -257,4 +258,11 @@ func goListModulesStub(dir string) ([]byte, error) {
 	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/gopkg.in/yaml.v2/@v/v2.2.1.mod"
 }
 `), nil
+}
+
+func findRemoteStub(importpath string) (remote, vcsName string, err error) {
+	if importpath == "github.com/joe-mann/go-toml" {
+		return "https://github.com/joe-mann/go-toml", "git", nil
+	}
+	return "", "", nil
 }
