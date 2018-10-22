@@ -85,6 +85,6 @@ go_repository(
 
 go_repository(
     name = "org_golang_x_tools",
-    commit = "5d2fd3ccab98",
+    commit = "3e7aa9e59977",
     importpath = "golang.org/x/tools",
 )

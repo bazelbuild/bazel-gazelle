@@ -9,6 +9,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/stretchr/testify v1.2.2
 	golang.org/x/sys v0.0.0-20181004145325-8469e314837c // indirect
-	golang.org/x/tools v0.0.0-20170824195420-5d2fd3ccab98
+	golang.org/x/tools v0.0.0-20181019201213-3e7aa9e59977
 	gopkg.in/yaml.v2 v2.2.1 // indirect
 )
