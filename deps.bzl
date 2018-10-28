@@ -40,6 +40,15 @@ def gazelle_dependencies(go_sdk = "@go_sdk//:ROOT"):
         commit = "f3dd8fd95a7d078cb10fd7fb475b22c3cdbcb307",  # 0.2.0 as of 2017-12-04
     )
 
+    _maybe(
+        go_repository,
+        name = "errors_go",
+        importpath = "github.com/pkg/errors",
+        commit = "30136e27e2ac8d167177e8a583aa4c3fea5be833",
+        patches = ["@bazel_gazelle//internal:repository_rules_test_errors.patch"],
+        patch_args = ["-p1"],
+    )
+
 def _maybe(repo_rule, name, **kwargs):
     if name not in native.existing_rules():
         repo_rule(name = name, **kwargs)
