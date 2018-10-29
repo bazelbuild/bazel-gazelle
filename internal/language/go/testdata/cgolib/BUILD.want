@@ -18,7 +18,7 @@ go_library(
     clinkopts = ["-lweird"],
     copts = [
         "-I cgolib/sub -iquote cgolib/sub",
-        "-I/weird/path -Icgolib/sub",
+        "-I/weird/path -Icgolib/sub -Icgolib/othersub",
     ],
     importpath = "example.com/repo/cgolib",
     visibility = ["//visibility:public"],
