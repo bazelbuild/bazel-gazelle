@@ -462,6 +462,9 @@ func expandSrcDir(str string, srcdir string) (string, bool) {
 	// so convert native paths with a different delimiter
 	// to "/" before starting (eg: on windows).
 	srcdir = filepath.ToSlash(srcdir)
+	if srcdir == "" {
+		srcdir = "."
+	}
 
 	// Spaces are tolerated in ${SRCDIR}, but not anywhere else.
 	chunks := strings.Split(str, "${SRCDIR}")
