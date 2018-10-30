@@ -22,8 +22,8 @@ import (
 	"regexp"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/version"
+	"github.com/bazelbuild/bazel-gazelle/repos"
 )
 
 var minimumRulesGoVersion = version.Version{0, 13, 0}

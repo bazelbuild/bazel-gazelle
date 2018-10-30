@@ -8,7 +8,7 @@ go_library(
         "remote.go",
         "repo.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/repos",
+    importpath = "github.com/bazelbuild/bazel-gazelle/repos",
     visibility = ["//visibility:public"],
     deps = [
         "//label:go_default_library",

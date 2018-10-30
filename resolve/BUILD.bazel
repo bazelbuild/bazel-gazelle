@@ -10,8 +10,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//config:go_default_library",
-        "//internal/repos:go_default_library",
         "//label:go_default_library",
+        "//repos:go_default_library",
         "//rule:go_default_library",
     ],
 )

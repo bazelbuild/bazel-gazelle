@@ -19,8 +19,8 @@ import (
 	"log"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/repos"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
