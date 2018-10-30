@@ -25,9 +25,9 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/language"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
-	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/walk"
+	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 
 	bzl "github.com/bazelbuild/buildtools/build"

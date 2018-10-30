@@ -6,7 +6,7 @@ go_library(
         "config.go",
         "index.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/resolve",
+    importpath = "github.com/bazelbuild/bazel-gazelle/resolve",
     visibility = ["//visibility:public"],
     deps = [
         "//config:go_default_library",

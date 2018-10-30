@@ -29,9 +29,9 @@ import (
 	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
-	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/walk"
 	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 

@@ -7,7 +7,7 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//config:go_default_library",
-        "//internal/resolve:go_default_library",
+        "//resolve:go_default_library",
         "//rule:go_default_library",
     ],
 )
