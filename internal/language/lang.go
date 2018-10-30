@@ -18,7 +18,7 @@ package language
 import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 // Language describes an extension for Gazelle that provides support for

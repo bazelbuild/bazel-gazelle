@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/pmezard/go-difflib/difflib"
 )
 

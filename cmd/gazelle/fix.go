@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 func fixFile(c *config.Config, f *rule.File) error {

@@ -25,9 +25,9 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/language"
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/walk"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 func testConfig(t *testing.T, args ...string) (*config.Config, []language.Language, []config.Configurer) {

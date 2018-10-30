@@ -24,7 +24,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 // goPackage contains metadata for a set of .go and .proto files that can be

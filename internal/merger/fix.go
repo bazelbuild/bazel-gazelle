@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 // FixLoads removes loads of unused go rules and adds loads of newly used rules.

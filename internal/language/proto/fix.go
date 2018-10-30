@@ -17,7 +17,7 @@ package proto
 
 import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 func (_ *protoLang) Fix(c *config.Config, f *rule.File) {

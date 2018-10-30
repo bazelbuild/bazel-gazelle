@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 type fixTestCase struct {

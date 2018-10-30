@@ -31,8 +31,8 @@ go_library(
         "//internal/language:go_default_library",
         "//internal/repos:go_default_library",
         "//internal/resolve:go_default_library",
-        "//internal/rule:go_default_library",
         "//label:go_default_library",
+        "//rule:go_default_library",
     ],
 )
 
@@ -51,10 +51,10 @@ go_test(
         "//internal/merger:go_default_library",
         "//internal/repos:go_default_library",
         "//internal/resolve:go_default_library",
-        "//internal/rule:go_default_library",
         "//internal/testtools:go_default_library",
         "//internal/walk:go_default_library",
         "//label:go_default_library",
+        "//rule:go_default_library",
         "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
     ],
 )

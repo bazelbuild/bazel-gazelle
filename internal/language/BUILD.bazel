@@ -8,6 +8,6 @@ go_library(
     deps = [
         "//internal/config:go_default_library",
         "//internal/resolve:go_default_library",
-        "//internal/rule:go_default_library",
+        "//rule:go_default_library",
     ],
 )

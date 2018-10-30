@@ -26,7 +26,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 

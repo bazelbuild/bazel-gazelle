@@ -15,7 +15,7 @@ limitations under the License.
 
 package golang
 
-import "github.com/bazelbuild/bazel-gazelle/internal/rule"
+import "github.com/bazelbuild/bazel-gazelle/rule"
 
 var goKinds = map[string]rule.KindInfo{
 	"filegroup": {

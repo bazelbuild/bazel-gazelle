@@ -15,7 +15,7 @@ limitations under the License.
 
 package proto
 
-import "github.com/bazelbuild/bazel-gazelle/internal/rule"
+import "github.com/bazelbuild/bazel-gazelle/rule"
 
 var protoKinds = map[string]rule.KindInfo{
 	"proto_library": {

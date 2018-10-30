@@ -11,8 +11,8 @@ go_library(
     deps = [
         "//internal/config:go_default_library",
         "//internal/flag:go_default_library",
-        "//internal/rule:go_default_library",
         "//pathtools:go_default_library",
+        "//rule:go_default_library",
     ],
 )
 
@@ -22,7 +22,7 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//internal/config:go_default_library",
-        "//internal/rule:go_default_library",
         "//internal/testtools:go_default_library",
+        "//rule:go_default_library",
     ],
 )

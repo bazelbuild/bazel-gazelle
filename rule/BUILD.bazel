@@ -13,8 +13,8 @@ go_library(
         "types.go",
         "value.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/rule",
-    visibility = ["//:__subpackages__"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/rule",
+    visibility = ["//visibility:public"],
     deps = [
         "//label:go_default_library",
         "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",

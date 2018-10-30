@@ -21,7 +21,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/language"
 	"github.com/bazelbuild/bazel-gazelle/internal/language/go"
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 // should fix

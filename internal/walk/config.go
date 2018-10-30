@@ -21,7 +21,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 type walkConfig struct {
