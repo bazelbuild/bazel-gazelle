@@ -26,7 +26,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
+	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/walk"
 	"github.com/bazelbuild/bazel-gazelle/label"
