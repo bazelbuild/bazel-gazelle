@@ -5,7 +5,7 @@ go_library(
     srcs = ["label.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/label",
     visibility = ["//:__subpackages__"],
-    deps = ["//internal/pathtools:go_default_library"],
+    deps = ["//pathtools:go_default_library"],
 )
 
 go_test(

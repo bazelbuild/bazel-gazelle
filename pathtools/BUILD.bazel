@@ -3,8 +3,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = ["path.go"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/pathtools",
-    visibility = ["//:__subpackages__"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/pathtools",
+    visibility = ["//visibility:public"],
 )
 
 go_test(

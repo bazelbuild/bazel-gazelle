@@ -11,8 +11,8 @@ go_library(
     deps = [
         "//internal/config:go_default_library",
         "//internal/flag:go_default_library",
-        "//internal/pathtools:go_default_library",
         "//internal/rule:go_default_library",
+        "//pathtools:go_default_library",
     ],
 )
 

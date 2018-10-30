@@ -27,8 +27,8 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
-	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 )
 
 func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, otherEmpty, otherGen []*rule.Rule) (empty, gen []*rule.Rule) {

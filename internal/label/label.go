@@ -22,7 +22,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 )
 
 // A Label represents a label of a build target in Bazel.

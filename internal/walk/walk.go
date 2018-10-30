@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 )
 
 // Mode determines which directories Walk visits and which directories

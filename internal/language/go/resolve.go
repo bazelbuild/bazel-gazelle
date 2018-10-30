@@ -26,10 +26,10 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
-	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 )
 
 func (_ *goLang) Imports(_ *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
