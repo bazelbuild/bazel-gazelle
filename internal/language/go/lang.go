@@ -54,7 +54,7 @@ limitations under the License.
 
 package golang
 
-import "github.com/bazelbuild/bazel-gazelle/internal/language"
+import "github.com/bazelbuild/bazel-gazelle/language"
 
 const goName = "go"
 

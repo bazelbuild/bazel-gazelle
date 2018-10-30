@@ -28,8 +28,8 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//config:go_default_library",
-        "//internal/language:go_default_library",
         "//label:go_default_library",
+        "//language:go_default_library",
         "//repos:go_default_library",
         "//resolve:go_default_library",
         "//rule:go_default_library",
@@ -47,11 +47,11 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//config:go_default_library",
-        "//internal/language:go_default_library",
         "//internal/merger:go_default_library",
         "//internal/testtools:go_default_library",
         "//internal/walk:go_default_library",
         "//label:go_default_library",
+        "//language:go_default_library",
         "//repos:go_default_library",
         "//resolve:go_default_library",
         "//rule:go_default_library",

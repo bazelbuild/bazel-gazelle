@@ -59,7 +59,7 @@ limitations under the License.
 // @com_google_protobuf.
 package proto
 
-import "github.com/bazelbuild/bazel-gazelle/internal/language"
+import "github.com/bazelbuild/bazel-gazelle/language"
 
 const protoName = "proto"
 
