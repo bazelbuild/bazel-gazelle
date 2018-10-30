@@ -6,7 +6,7 @@ go_library(
         "config.go",
         "constants.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/config",
+    importpath = "github.com/bazelbuild/bazel-gazelle/config",
     visibility = ["//visibility:public"],
     deps = [
         "//internal/wspace:go_default_library",
@@ -16,7 +16,6 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    size = "small",
     srcs = ["config_test.go"],
     embed = [":go_default_library"],
     deps = ["//rule:go_default_library"],

@@ -46,7 +46,7 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/language/go",
     visibility = ["//:__subpackages__"],
     deps = [
-        "//internal/config:go_default_library",
+        "//config:go_default_library",
         "//internal/flag:go_default_library",
         "//internal/language:go_default_library",
         "//internal/language/proto:go_default_library",
@@ -72,7 +72,7 @@ go_test(
     data = glob(["testdata/**"]),
     embed = [":go_default_library"],
     deps = [
-        "//internal/config:go_default_library",
+        "//config:go_default_library",
         "//internal/language:go_default_library",
         "//internal/language/proto:go_default_library",
         "//internal/merger:go_default_library",

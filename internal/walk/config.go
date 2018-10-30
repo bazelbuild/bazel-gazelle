@@ -19,7 +19,7 @@ import (
 	"flag"
 	"path"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )

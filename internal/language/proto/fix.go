@@ -16,7 +16,7 @@ limitations under the License.
 package proto
 
 import (
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 

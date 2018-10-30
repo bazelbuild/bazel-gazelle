@@ -10,7 +10,7 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/testtools",
     visibility = ["//:__subpackages__"],
     deps = [
-        "//internal/config:go_default_library",
+        "//config:go_default_library",
         "//internal/language:go_default_library",
     ],
 )
