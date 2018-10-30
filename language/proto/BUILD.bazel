@@ -6,8 +6,8 @@ genrule(
     name = "known_imports",
     srcs = ["proto.csv"],
     outs = ["known_imports.go"],
-    cmd = "$(location //internal/language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package proto -var knownImports -key 0 -value 1",
-    tools = ["//internal/language/proto/gen:gen_known_imports"],
+    cmd = "$(location //language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package proto -var knownImports -key 0 -value 1",
+    tools = ["//language/proto/gen:gen_known_imports"],
 )
 
 go_library(
@@ -24,7 +24,7 @@ go_library(
         "package.go",
         "resolve.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/language/proto",
+    importpath = "github.com/bazelbuild/bazel-gazelle/language/proto",
     visibility = ["//:__subpackages__"],
     deps = [
         "//config:go_default_library",

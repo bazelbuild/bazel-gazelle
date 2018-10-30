@@ -33,7 +33,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
+	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 

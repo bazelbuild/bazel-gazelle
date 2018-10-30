@@ -13,18 +13,18 @@ std_package_list(
 
 genrule(
     name = "known_proto_imports",
-    srcs = ["//internal/language/proto:proto.csv"],
+    srcs = ["//language/proto:proto.csv"],
     outs = ["known_proto_imports.go"],
-    cmd = "$(location //internal/language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package golang -var knownProtoImports -key 0 -value 3",
-    tools = ["//internal/language/proto/gen:gen_known_imports"],
+    cmd = "$(location //language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package golang -var knownProtoImports -key 0 -value 3",
+    tools = ["//language/proto/gen:gen_known_imports"],
 )
 
 genrule(
     name = "known_go_imports",
-    srcs = ["//internal/language/proto:proto.csv"],
+    srcs = ["//language/proto:proto.csv"],
     outs = ["known_go_imports.go"],
-    cmd = "$(location //internal/language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package golang -var knownGoProtoImports -key 2 -value 3",
-    tools = ["//internal/language/proto/gen:gen_known_imports"],
+    cmd = "$(location //language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package golang -var knownGoProtoImports -key 2 -value 3",
+    tools = ["//language/proto/gen:gen_known_imports"],
 )
 
 go_library(
@@ -48,9 +48,9 @@ go_library(
     deps = [
         "//config:go_default_library",
         "//internal/flag:go_default_library",
-        "//internal/language/proto:go_default_library",
         "//label:go_default_library",
         "//language:go_default_library",
+        "//language/proto:go_default_library",
         "//pathtools:go_default_library",
         "//repos:go_default_library",
         "//resolve:go_default_library",
@@ -73,12 +73,12 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//config:go_default_library",
-        "//internal/language/proto:go_default_library",
         "//internal/merger:go_default_library",
         "//internal/testtools:go_default_library",
         "//internal/walk:go_default_library",
         "//label:go_default_library",
         "//language:go_default_library",
+        "//language/proto:go_default_library",
         "//repos:go_default_library",
         "//resolve:go_default_library",
         "//rule:go_default_library",

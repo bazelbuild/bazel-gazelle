@@ -17,8 +17,8 @@ package main
 
 import (
 	"github.com/bazelbuild/bazel-gazelle/internal/language/go"
-	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/language/proto"
 )
 
 var languages = []language.Language{
