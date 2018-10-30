@@ -18,7 +18,7 @@ package golang
 import (
 	"testing"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/merger"
+	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 

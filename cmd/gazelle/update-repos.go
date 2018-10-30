@@ -24,7 +24,7 @@ import (
 	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/merger"
+	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/repos"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
