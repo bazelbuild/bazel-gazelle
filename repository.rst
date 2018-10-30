@@ -179,6 +179,11 @@ external Go projects.
 | One of ``"external"``, ``"vendored"``.                                                                  |
 |                                                                                                         |
 | This sets Gazelle's ``-external`` command line flag.                                                    |
+|                                                                                                         |
+| **NOTE:** This cannot be used to ignore the ``vendor`` directory in a                                   |
+| repository. The ``-external`` flag only controls how Gazelle resolves                                   |
+| imports which are not present in the repository. Use                                                    |
+| ``build_extra_args = ["-exclude=vendor"]`` instead.                                                     |
 +--------------------------------+----------------------+-------------------------------------------------+
 | :param:`build_tags`            | :type:`string list`  | :value:`[]`                                     |
 +--------------------------------+----------------------+-------------------------------------------------+
