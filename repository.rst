@@ -6,6 +6,8 @@ Repository rules
 .. _native http_archive rule: https://docs.bazel.build/versions/master/be/workspace.html#http_archive
 .. _manifest.bzl: third_party/manifest.bzl
 .. _Directives: /README.rst#directives
+.. _`@bazel_tools//tools/build_defs/repo:git.bzl`: https://github.com/bazelbuild/bazel/blob/master/tools/build_defs/repo/git.bzl
+.. _`@bazel_tools//tools/build_defs/repo:http.bzl`: https://github.com/bazelbuild/bazel/blob/master/tools/build_defs/repo/http.bzl
 
 .. role:: param(kbd)
 .. role:: type(emphasis)
@@ -27,6 +29,10 @@ The Gazelle repository provides three rules:
   pre-generated build files to a project that doesn't have them.
 * `http_archive`_ downloads a project via HTTP. It also lets you specify
   overlay files.
+
+**NOTE:** ``git_repository`` and ``http_archive`` are deprecated in favor of the
+rules of the same name in `@bazel_tools//tools/build_defs/repo:git.bzl`_ and
+`@bazel_tools//tools/build_defs/repo:http.bzl`_.
 
 Repository rules can be loaded and used in WORKSPACE like this:
 
@@ -222,6 +228,9 @@ external Go projects.
 git_repository
 --------------
 
+**NOTE:** ``git_repository`` is deprecated in favor of the rule of the same name
+in `@bazel_tools//tools/build_defs/repo:git.bzl`_.
+
 ``git_repository`` downloads a project with git. It has the same features as the
 `native git_repository rule`_, but it also allows you to copy a set of files
 into the repository after download. This is particularly useful for placing
@@ -280,6 +289,9 @@ pre-generated build files.
 
 http_archive
 ------------
+
+**NOTE:** ``http_archive`` is deprecated in favor of the rule of the same name
+in `@bazel_tools//tools/build_defs/repo:http.bzl`_.
 
 ``http_archive`` downloads a project over HTTP(S). It has the same features as
 the `native http_archive rule`_, but it also allows you to copy a set of files
