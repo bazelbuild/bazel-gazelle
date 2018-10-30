@@ -63,7 +63,7 @@ go_test(
     embed = [":go_default_library"],
     deps = [
         "//config:go_default_library",
-        "//internal/testtools:go_default_library",
         "//internal/wspace:go_default_library",
+        "//testtools:go_default_library",
     ],
 )

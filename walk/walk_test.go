@@ -23,8 +23,8 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
 
 func TestConfigureCallbackOrder(t *testing.T) {

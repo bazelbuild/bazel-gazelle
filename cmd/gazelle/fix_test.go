@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
+	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
 
 func TestMain(m *testing.M) {

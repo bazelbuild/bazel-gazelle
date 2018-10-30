@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
+	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
 
 func TestDiffExisting(t *testing.T) {
