@@ -18,7 +18,7 @@ std_package_list = go_rule(
     attrs = {
         "out": attr.output(mandatory = True),
         "_gen_std_package_list": attr.label(
-            default = "//internal/language/go/gen_std_package_list",
+            default = "//language/go/gen_std_package_list",
             cfg = "host",
             executable = True,
         ),

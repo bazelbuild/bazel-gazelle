@@ -17,8 +17,8 @@ go_test(
     srcs = ["merger_test.go"],
     embed = [":go_default_library"],
     deps = [
-        "//internal/language/go:go_default_library",
         "//language:go_default_library",
+        "//language/go:go_default_library",
         "//language/proto:go_default_library",
         "//rule:go_default_library",
     ],
