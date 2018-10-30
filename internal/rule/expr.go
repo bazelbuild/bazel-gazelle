@@ -20,7 +20,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/label"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 

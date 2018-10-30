@@ -31,7 +31,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/label"
 )
 
 var progName = filepath.Base(os.Args[0])
@@ -42,7 +42,7 @@ var knownImportsTpl = template.Must(template.New("known_imports.go").Parse(`
 
 package {{.Package}}
 
-import "github.com/bazelbuild/bazel-gazelle/internal/label"
+import "github.com/bazelbuild/bazel-gazelle/label"
 
 var {{.Var}} = map[string]label.Label{
 {{range .Bindings}}

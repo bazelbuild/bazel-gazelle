@@ -4,7 +4,7 @@
 
 package proto
 
-import "github.com/bazelbuild/bazel-gazelle/internal/label"
+import "github.com/bazelbuild/bazel-gazelle/label"
 
 var knownImports = map[string]label.Label{
 

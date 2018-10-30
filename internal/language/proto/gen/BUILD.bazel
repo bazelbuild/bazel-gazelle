@@ -5,7 +5,7 @@ go_library(
     srcs = ["gen_known_imports.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/language/proto/gen",
     visibility = ["//visibility:private"],
-    deps = ["//internal/label:go_default_library"],
+    deps = ["//label:go_default_library"],
 )
 
 go_binary(

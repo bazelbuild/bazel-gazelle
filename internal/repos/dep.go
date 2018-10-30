@@ -18,7 +18,7 @@ package repos
 import (
 	"io/ioutil"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/label"
 	toml "github.com/pelletier/go-toml"
 )
 

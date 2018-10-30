@@ -27,12 +27,12 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
-	"github.com/bazelbuild/bazel-gazelle/internal/label"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
 	"github.com/bazelbuild/bazel-gazelle/internal/walk"
+	"github.com/bazelbuild/bazel-gazelle/label"
 )
 
 // updateConfig holds configuration information needed to run the fix and
