@@ -19,7 +19,6 @@ go_library(
         "//flag:go_default_library",
         "//internal/merger:go_default_library",
         "//internal/version:go_default_library",
-        "//internal/walk:go_default_library",
         "//label:go_default_library",
         "//language:go_default_library",
         "//language/go:go_default_library",
@@ -28,6 +27,7 @@ go_library(
         "//resolve:go_default_library",
         "//rule:go_default_library",
         "//vendor/github.com/pmezard/go-difflib/difflib:go_default_library",
+        "//walk:go_default_library",
     ],
 )
 

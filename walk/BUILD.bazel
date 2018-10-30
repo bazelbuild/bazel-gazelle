@@ -6,7 +6,7 @@ go_library(
         "config.go",
         "walk.go",
     ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/walk",
+    importpath = "github.com/bazelbuild/bazel-gazelle/walk",
     visibility = ["//:__subpackages__"],
     deps = [
         "//config:go_default_library",
