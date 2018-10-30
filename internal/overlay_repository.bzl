@@ -13,6 +13,7 @@
 # limitations under the License.
 
 def _http_archive_impl(ctx):
+    print("http_archive is deprecated. Use http_archive from @bazel_tools//tools/build_defs/repo:http.bzl instead.")
     overlay = _resolve_overlay(ctx, ctx.attr.overlay)
     ctx.download_and_extract(
         url = ctx.attr.urls,
@@ -38,6 +39,7 @@ http_archive = repository_rule(
 # from the archive instead of on the archive itself.
 
 def _git_repository_impl(ctx):
+    print("git_repository is deprecated. Use git_repository from @bazel_tools//tools/build_defs/repo:git.bzl instead.")
     if not ctx.attr.commit and not ctx.attr.tag:
         fail("either 'commit' or 'tag' must be specified")
     if ctx.attr.commit and ctx.attr.tag:

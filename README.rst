@@ -41,8 +41,8 @@ may change. Gazelle is not an official Google product.*
 * `Repository rules`_
 
   * `go_repository`_
-  * `git_repository`_
-  * `http_archive`_
+  * `git_repository`_ (deprecated)
+  * `http_archive`_ (deprecated)
 
 * `Avoiding conflicts with proto rules`_
 
