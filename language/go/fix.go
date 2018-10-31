@@ -59,7 +59,7 @@ func migrateGrpcCompilers(c *config.Config, f *rule.File) {
 			continue
 		}
 		r.SetKind("go_proto_library")
-		r.SetAttr("compilers", []string{config.GrpcCompilerLabel})
+		r.SetAttr("compilers", []string{grpcCompilerLabel})
 	}
 }
 
@@ -74,7 +74,7 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 	// Find the default cgo_library and go_library rules.
 	var cgoLibrary, goLibrary *rule.Rule
 	for _, r := range f.Rules {
-		if r.Kind() == "cgo_library" && r.Name() == config.DefaultCgoLibName && !r.ShouldKeep() {
+		if r.Kind() == "cgo_library" && r.Name() == "cgo_default_library" && !r.ShouldKeep() {
 			if cgoLibrary != nil {
 				log.Printf("%s: when fixing existing file, multiple cgo_library rules with default name found", f.Path)
 				continue
@@ -82,7 +82,7 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 			cgoLibrary = r
 			continue
 		}
-		if r.Kind() == "go_library" && r.Name() == config.DefaultLibName {
+		if r.Kind() == "go_library" && r.Name() == defaultLibName {
 			if goLibrary != nil {
 				log.Printf("%s: when fixing existing file, multiple go_library rules with default name referencing cgo_library found", f.Path)
 			}
@@ -101,7 +101,7 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 
 	if goLibrary == nil {
 		cgoLibrary.SetKind("go_library")
-		cgoLibrary.SetName(config.DefaultLibName)
+		cgoLibrary.SetName(defaultLibName)
 		cgoLibrary.SetAttr("cgo", true)
 		return
 	}
@@ -126,9 +126,9 @@ func squashXtest(c *config.Config, f *rule.File) {
 		if r.Kind() != "go_test" {
 			continue
 		}
-		if r.Name() == config.DefaultTestName {
+		if r.Name() == defaultTestName {
 			itest = r
-		} else if r.Name() == config.DefaultXTestName {
+		} else if r.Name() == "go_default_xtest" {
 			xtest = r
 		}
 	}
@@ -147,7 +147,7 @@ func squashXtest(c *config.Config, f *rule.File) {
 
 	// If there was no internal test, we can just rename the external test.
 	if itest == nil {
-		xtest.SetName(config.DefaultTestName)
+		xtest.SetName(defaultTestName)
 		return
 	}
 

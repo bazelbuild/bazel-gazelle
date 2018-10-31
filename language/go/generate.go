@@ -377,7 +377,7 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 		return "", nil
 	}
 
-	filegroupName := config.DefaultProtosName
+	filegroupName := legacyProtoFilegroupName
 	protoName := target.name
 	if protoName == "" {
 		importPath := inferImportPath(getGoConfig(g.c), g.rel)
@@ -419,7 +419,7 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 }
 
 func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
-	goLibrary := rule.NewRule("go_library", config.DefaultLibName)
+	goLibrary := rule.NewRule("go_library", defaultLibName)
 	if !pkg.library.sources.hasGo() && embed == "" {
 		return goLibrary // empty
 	}
@@ -447,7 +447,7 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
 }
 
 func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
-	goTest := rule.NewRule("go_test", config.DefaultTestName)
+	goTest := rule.NewRule("go_test", defaultTestName)
 	if !pkg.test.sources.hasGo() {
 		return goTest // empty
 	}

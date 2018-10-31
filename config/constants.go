@@ -18,51 +18,10 @@ package config
 const (
 	// RulesGoRepoName is the canonical name of the rules_go repository. It must
 	// match the workspace name in WORKSPACE.
+	// TODO(jayconrod): move to language/go.
 	RulesGoRepoName = "io_bazel_rules_go"
-	// DefaultLibName is the name of the default go_library rule in a Go
-	// package directory. It must be consistent to DEFAULT_LIB in go/private/common.bf.
-	DefaultLibName = "go_default_library"
-	// DefaultTestName is a name of an internal test corresponding to
-	// DefaultLibName. It does not need to be consistent to something but it
-	// just needs to be unique in the Bazel package
-	DefaultTestName = "go_default_test"
-	// DefaultXTestName is a name of an external test corresponding to
-	// DefaultLibName.
-	DefaultXTestName = "go_default_xtest"
-	// DefaultProtosName is the name of a filegroup created
-	// whenever the library contains .pb.go files
-	DefaultProtosName = "go_default_library_protos"
-	// DefaultCgoLibName is the name of the default cgo_library rule in a Go package directory.
-	DefaultCgoLibName = "cgo_default_library"
-
-	// GrpcCompilerLabel is the label for the gRPC compiler plugin, used in the
-	// "compilers" attribute of go_proto_library rules.
-	GrpcCompilerLabel = "@io_bazel_rules_go//proto:go_grpc"
 
 	// GazelleImportsKey is an internal attribute that lists imported packages
 	// on generated rules. It is replaced with "deps" during import resolution.
 	GazelleImportsKey = "_gazelle_imports"
 )
-
-// Language is the name of a programming langauge that Gazelle knows about.
-// This is used to specify import paths.
-type Language int
-
-const (
-	// GoLang marks Go targets.
-	GoLang Language = iota
-
-	// ProtoLang marks protocol buffer targets.
-	ProtoLang
-)
-
-func (l Language) String() string {
-	switch l {
-	case GoLang:
-		return "go"
-	case ProtoLang:
-		return "proto"
-	default:
-		return "unknown"
-	}
-}

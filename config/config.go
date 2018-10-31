@@ -13,12 +13,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package config provides extensible configuration for Gazelle libraries.
+//
+// Packages may define Configurers which add support for new command-line
+// options and directive comments in build files. Note that the
+// language.Language interface embeds Configurer, so each language extension
+// has the opportunity
+//
+// When Gazelle walks the directory trees in a repository, it calls the
+// Configure method of each Configurer to produce a Config object.
+// Config objects are passed as arguments to most functions in Gazelle, so
+// this mechanism may be used to control many aspects of Gazelle's behavior.
 package config
 
 import (
 	"flag"
 	"fmt"
-	"go/build"
 	"path/filepath"
 	"strings"
 
@@ -88,6 +98,8 @@ func (c *Config) Clone() *Config {
 
 var DefaultValidBuildFileNames = []string{"BUILD.bazel", "BUILD"}
 
+// IsValidBuildFileName returns true if a file with the given base name
+// should be treated as a build file.
 func (c *Config) IsValidBuildFileName(name string) bool {
 	for _, n := range c.ValidBuildFileNames {
 		if name == n {
@@ -97,6 +109,7 @@ func (c *Config) IsValidBuildFileName(name string) bool {
 	return false
 }
 
+// DefaultBuildFileName returns the base name used to create new build files.
 func (c *Config) DefaultBuildFileName() string {
 	return c.ValidBuildFileNames[0]
 }
@@ -193,73 +206,5 @@ func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
 		if d.Key == "build_file_name" {
 			c.ValidBuildFileNames = strings.Split(d.Value, ",")
 		}
-	}
-}
-
-// CheckPrefix checks that a string may be used as a prefix. We forbid local
-// (relative) imports and those beginning with "/". We allow the empty string,
-// but generated rules must not have an empty importpath.
-func CheckPrefix(prefix string) error {
-	if strings.HasPrefix(prefix, "/") || build.IsLocalImport(prefix) {
-		return fmt.Errorf("invalid prefix: %q", prefix)
-	}
-	return nil
-}
-
-// DependencyMode determines how imports of packages outside of the prefix
-// are resolved.
-type DependencyMode int
-
-const (
-	// ExternalMode indicates imports should be resolved to external dependencies
-	// (declared in WORKSPACE).
-	ExternalMode DependencyMode = iota
-
-	// VendorMode indicates imports should be resolved to libraries in the
-	// vendor directory.
-	VendorMode
-)
-
-// DependencyModeFromString converts a string from the command line
-// to a DependencyMode. Valid strings are "external", "vendor". An error will
-// be returned for an invalid string.
-func DependencyModeFromString(s string) (DependencyMode, error) {
-	switch s {
-	case "external":
-		return ExternalMode, nil
-	case "vendored":
-		return VendorMode, nil
-	default:
-		return 0, fmt.Errorf("unrecognized dependency mode: %q", s)
-	}
-}
-
-// ProtoMode determines how proto rules are generated.
-type ProtoMode int
-
-const (
-	// DefaultProtoMode generates proto_library and new grpc_proto_library rules.
-	// .pb.go files are excluded when there is a .proto file with a similar name.
-	DefaultProtoMode ProtoMode = iota
-
-	// DisableProtoMode ignores .proto files. .pb.go files are treated
-	// as normal sources.
-	DisableProtoMode
-
-	// LegacyProtoMode generates filegroups for .proto files if .pb.go files
-	// are present in the same directory.
-	LegacyProtoMode
-)
-
-func ProtoModeFromString(s string) (ProtoMode, error) {
-	switch s {
-	case "default":
-		return DefaultProtoMode, nil
-	case "disable":
-		return DisableProtoMode, nil
-	case "legacy":
-		return LegacyProtoMode, nil
-	default:
-		return 0, fmt.Errorf("unrecognized proto mode: %q", s)
 	}
 }

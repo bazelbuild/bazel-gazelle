@@ -156,7 +156,7 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r
 
 	if pathtools.HasPrefix(imp, gc.prefix) {
 		pkg := path.Join(gc.prefixRel, pathtools.TrimPrefix(imp, gc.prefix))
-		return label.New("", pkg, config.DefaultLibName), nil
+		return label.New("", pkg, defaultLibName), nil
 	}
 
 	if gc.depMode == externalMode {
@@ -235,11 +235,11 @@ func resolveExternal(rc *repos.RemoteCache, imp string) (label.Label, error) {
 		pkg = pathtools.TrimPrefix(imp, prefix)
 	}
 
-	return label.New(repo, pkg, config.DefaultLibName), nil
+	return label.New(repo, pkg, defaultLibName), nil
 }
 
 func resolveVendored(rc *repos.RemoteCache, imp string) (label.Label, error) {
-	return label.New("", path.Join("vendor", imp), config.DefaultLibName), nil
+	return label.New("", path.Join("vendor", imp), defaultLibName), nil
 }
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
@@ -278,7 +278,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache
 	if from.Pkg == "vendor" || strings.HasPrefix(from.Pkg, "vendor/") {
 		rel = path.Join("vendor", rel)
 	}
-	return label.New("", rel, config.DefaultLibName), nil
+	return label.New("", rel, defaultLibName), nil
 }
 
 // wellKnownProtos is the set of proto sets for which we don't need to add
