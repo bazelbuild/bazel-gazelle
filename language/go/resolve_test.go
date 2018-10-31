@@ -23,7 +23,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/bazel-gazelle/repos"
+	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
@@ -882,7 +882,7 @@ func TestResolveDisableGlobal(t *testing.T) {
 		"-proto=disable_global")
 	ix := resolve.NewRuleIndex(nil)
 	ix.Finish()
-	rc := testRemoteCache([]repos.Repo{
+	rc := testRemoteCache([]repo.Repo{
 		{
 			Name:     "com_github_golang_protobuf",
 			GoPrefix: "github.com/golang/protobuf",
@@ -968,7 +968,7 @@ func TestResolveExternal(t *testing.T) {
 	gl := langs[1].(*goLang)
 	for _, tc := range []struct {
 		desc, importpath string
-		repos            []repos.Repo
+		repos            []repo.Repo
 		want             string
 	}{
 		{
@@ -981,7 +981,7 @@ func TestResolveExternal(t *testing.T) {
 			want:       "@com_example_repo//lib:go_default_library",
 		}, {
 			desc: "custom_repo",
-			repos: []repos.Repo{{
+			repos: []repo.Repo{{
 				Name:     "custom_repo_name",
 				GoPrefix: "example.com/repo",
 			}},
@@ -1014,8 +1014,8 @@ func TestResolveExternal(t *testing.T) {
 	}
 }
 
-func testRemoteCache(knownRepos []repos.Repo) *repos.RemoteCache {
-	rc := repos.NewRemoteCache(knownRepos)
+func testRemoteCache(knownRepos []repo.Repo) *repo.RemoteCache {
+	rc := repo.NewRemoteCache(knownRepos)
 	rc.RepoRootForImportPath = stubRepoRootForImportPath
 	rc.HeadCmd = func(remote, vcs string) (string, error) {
 		return "", fmt.Errorf("HeadCmd not supported in test")

@@ -25,7 +25,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/bazel-gazelle/repos"
+	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
@@ -44,7 +44,7 @@ func (_ *protoLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return nil
 }
 
-func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repos.RemoteCache, r *rule.Rule, from label.Label) {
+func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, from label.Label) {
 	importsRaw := r.PrivateAttr(config.GazelleImportsKey)
 	if importsRaw == nil {
 		// may not be set in tests.

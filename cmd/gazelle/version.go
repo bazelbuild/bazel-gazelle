@@ -23,7 +23,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/version"
-	"github.com/bazelbuild/bazel-gazelle/repos"
+	"github.com/bazelbuild/bazel-gazelle/repo"
 )
 
 var minimumRulesGoVersion = version.Version{0, 13, 0}
@@ -39,7 +39,7 @@ func checkRulesGoVersion(repoRoot string) {
 	const message = `Gazelle may not be compatible with this version of rules_go.
 Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 
-	rulesGoPath, err := repos.FindExternalRepo(repoRoot, config.RulesGoRepoName)
+	rulesGoPath, err := repo.FindExternalRepo(repoRoot, config.RulesGoRepoName)
 	if err != nil {
 		return
 	}

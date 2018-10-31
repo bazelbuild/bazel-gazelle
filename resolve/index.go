@@ -20,7 +20,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/bazel-gazelle/repos"
+	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -58,7 +58,7 @@ type Resolver interface {
 	// dictate how that is stored or represented). Resolve generates a "deps"
 	// attribute (or the appropriate language-specific equivalent) for each
 	// import according to language-specific rules and heuristics.
-	Resolve(c *config.Config, ix *RuleIndex, rc *repos.RemoteCache, r *rule.Rule, from label.Label)
+	Resolve(c *config.Config, ix *RuleIndex, rc *repo.RemoteCache, r *rule.Rule, from label.Label)
 }
 
 // RuleIndex is a table of rules in a workspace, indexed by label and by

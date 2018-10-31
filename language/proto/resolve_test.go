@@ -22,7 +22,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/bazel-gazelle/repos"
+	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
@@ -259,7 +259,7 @@ proto_library(
 		t.Run(tc.desc, func(t *testing.T) {
 			c, lang, cexts := testConfig(t, "testdata")
 			ix := resolve.NewRuleIndex(map[string]resolve.Resolver{"proto_library": lang})
-			rc := (*repos.RemoteCache)(nil)
+			rc := (*repo.RemoteCache)(nil)
 			for _, bf := range tc.index {
 				f, err := rule.LoadData(filepath.Join(bf.rel, "BUILD.bazel"), bf.rel, []byte(bf.content))
 				if err != nil {
