@@ -13,6 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package language provides an interface for language extensions in Gazelle.
+// Support for a new language can be added by defining a package with a
+// function named "New" that returns a value assignable to this interface.
+//
+// TODO(jayconrod): document how to incorporate languages into a gazelle
+// binary that can be run by Bazel.
 package language
 
 import (
@@ -55,6 +61,7 @@ import (
 // * Merging generated rules into existing rules: languages provide metadata
 // that helps with rule matching, merging, and deletion.
 type Language interface {
+	// TODO(jayconrod): is embedding Configurer strictly necessary?
 	config.Configurer
 	resolve.Resolver
 
