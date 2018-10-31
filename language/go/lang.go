@@ -51,7 +51,6 @@ limitations under the License.
 //
 // Gazelle has special cases for import paths associated with proto Well
 // Known Types and Google APIs. rules_go declares canonical rules for these.
-
 package golang
 
 import "github.com/bazelbuild/bazel-gazelle/language"
