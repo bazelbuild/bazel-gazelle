@@ -13,7 +13,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package merger provides methods for merging parsed BUILD files.
+// Package merger provides functions for merging generated rules into
+// existing build files.
+//
+// Gazelle's normal workflow is roughly as follows:
+//
+// 1. Read metadata from sources.
+//
+// 2. Generate new rules.
+//
+// 3. Merge newly generated rules with rules in the existing build file
+// if there is one.
+//
+// 4. Build an index of merged library rules for dependency resolution.
+//
+// 5. Resolve dependencies (i.e., convert import strings to deps labels).
+//
+// 6. Merge the newly resolved dependencies.
+//
+// 7. Write the merged file back to disk.
+//
+// This package is used for sets 3 and 6 above.
 package merger
 
 import (
@@ -24,26 +44,57 @@ import (
 )
 
 // Phase indicates which attributes should be merged in matching rules.
-//
-// The pre-resolve merge is performed before rules are indexed for dependency
-// resolution. All attributes not related to dependencies are merged. This
-// merge must be performed indexing because attributes related to indexing
-// (e.g., srcs, importpath) will be affected.
-//
-// The post-resolve merge is performed after rules are indexed. All attributes
-// related to dependencies are merged.
 type Phase int
 
 const (
+	// The pre-resolve merge is performed before rules are indexed for dependency
+	// resolution. All attributes not related to dependencies are merged
+	// (i.e., rule.KindInfo.MergeableAttrs). This merge must be performed
+	// before indexing because attributes related to indexing (e.g.,
+	// srcs, importpath) will be affected.
 	PreResolve Phase = iota
+
+	// The post-resolve merge is performed after rules are indexed. All attributes
+	// related to dependencies are merged (i.e., rule.KindInfo.ResolveAttrs).
 	PostResolve
 )
 
-// MergeFile merges the rules in genRules with matching rules in f and
-// adds unmatched rules to the end of the merged file. MergeFile also merges
-// rules in empty with matching rules in f and deletes rules that
-// are empty after merging. attrs is the set of attributes to merge. Attributes
-// not in this set will be left alone if they already exist.
+// MergeFile combines information from newly generated rules with matching
+// rules in an existing build file. MergeFile can also delete rules which
+// are empty after merging.
+//
+// oldFile is the file to merge. It must not be nil.
+//
+// emptyRules is a list of stub rules (with no attributes other than name)
+// which were not generated. These are merged with matching rules. The merged
+// rules are deleted if they contain no attributes that make them buildable
+// (e.g., srcs, deps, anything in rule.KindInfo.NonEmptyAttrs).
+//
+// genRules is a list of newly generated rules. These are merged with
+// matching rules. A rule matches if it has the same kind and name or if
+// some other attribute in rule.KindInfo.MatchAttrs matches (e.g.,
+// "importpath" in go_library). Elements of genRules that don't match
+// any existing rule are appended to the end of oldFile.
+//
+// phase indicates whether this is a pre- or post-resolve merge. Different
+// attributes (rule.KindInfo.MergeableAttrs or ResolveAttrs) will be merged.
+//
+// kinds maps rule kinds (e.g., "go_library") to metadata that helps merge
+// rules of that kind.
+//
+// When a generated and existing rule are merged, each attribute is merged
+// separately. If an attribute is mergeable (according to KindInfo), values
+// from the existing attribute are replaced by values from the generated
+// attribute. Comments are preserved on values that are present in both
+// versions of the attribute. If at attribute is not mergeable, the generated
+// version of the attribute will be added if no existing attribute is present;
+// otherwise, the existing attribute will be preserved.
+//
+// Note that "# keep" comments affect merging. If a value within an existing
+// attribute is marked with a "# keep" comment, it will not be removed.
+// If an attribute is marked with a "# keep" comment, it will not be merged.
+// If a rule is marked with a "# keep" comment, the whole rule will not
+// be modified.
 func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, phase Phase, kinds map[string]rule.KindInfo) {
 	getMergeAttrs := func(r *rule.Rule) map[string]bool {
 		if phase == PreResolve {
