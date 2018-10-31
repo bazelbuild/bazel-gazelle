@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package label provides utilities for parsing and manipulating
+// Bazel labels. See
+// https://docs.bazel.build/versions/master/build-ref.html#labels
+// for more information.
 package label
 
 import (
@@ -25,17 +29,33 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 )
 
-// A Label represents a label of a build target in Bazel.
+// A Label represents a label of a build target in Bazel. Labels have three
+// parts: a repository name, a package name, and a target name, formatted
+// as @repo//pkg:target.
 type Label struct {
-	Repo, Pkg, Name string
-	Relative        bool
+	// Repo is the repository name. If omitted, the label refers to a target
+	// in the current repository.
+	Repo string
+
+	// Pkg is the package name, which is usually the directory that contains
+	// the target. If both Repo and Pkg are omitted, the label is relative.
+	Pkg string
+
+	// Name is the name of the target the label refers to. If omitted, Name
+	// is assumed to be the same as Pkg.
+	Name string
+
+	// Relative indicates whether the label refers to a target in the current
+	// package. Relative is true if and only if Repo and Pkg are both omitted.
+	Relative bool
 }
 
+// New constructs a new label from components.
 func New(repo, pkg, name string) Label {
 	return Label{Repo: repo, Pkg: pkg, Name: name}
 }
 
-// NoLabel is the nil value of Label. It is not a valid label and may be
+// NoLabel is the zero  value of Label. It is not a valid label and may be
 // returned when an error occurs.
 var NoLabel = Label{}
 
@@ -120,6 +140,9 @@ func (l Label) String() string {
 	return fmt.Sprintf("%s//%s:%s", repo, l.Pkg, l.Name)
 }
 
+// Abs computes an absolute label (one with a repository and package name)
+// from this label. If this label is already absolute, it is returned
+// unchanged.
 func (l Label) Abs(repo, pkg string) Label {
 	if !l.Relative {
 		return l
@@ -127,6 +150,9 @@ func (l Label) Abs(repo, pkg string) Label {
 	return Label{Repo: repo, Pkg: pkg, Name: l.Name}
 }
 
+// Rel attempts to compute a relative label from this label. If this label
+// is already relative or is in a different package, this label may be
+// returned unchanged.
 func (l Label) Rel(repo, pkg string) Label {
 	if l.Relative || l.Repo != repo {
 		return l
@@ -137,6 +163,8 @@ func (l Label) Rel(repo, pkg string) Label {
 	return Label{Pkg: l.Pkg, Name: l.Name}
 }
 
+// Equal returns whether two labels are exactly the same. It does not return
+// true for different labels that refer to the same target.
 func (l Label) Equal(other Label) bool {
 	return l.Repo == other.Repo &&
 		l.Pkg == other.Pkg &&
