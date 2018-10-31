@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package pathtools provides utilities for manipulating paths.  Most paths
+// within Gazelle are slash-separated paths, relative to the repository root
+// directory. The repository root directory is represented by the empty
+// string. Paths in this format may be used directly as package names in labels.
 package pathtools
 
 import (
