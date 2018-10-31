@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package flag provides some general-purpose types which satisfy the
+// flag.Value interface.
 package flag
 
 import (
@@ -19,7 +21,7 @@ import (
 	"strings"
 )
 
-// MultiFlag allows repeated string flags to be collected into a slice
+// MultiFlag collects repeated string flags into a slice.
 type MultiFlag struct {
 	Values *[]string
 }
