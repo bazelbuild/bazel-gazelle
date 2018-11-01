@@ -19,10 +19,10 @@ limitations under the License.
 // is language agnostic, but it may be used for language-specific rules by
 // providing configuration.
 //
-// File is the primary interface to this package. Rule and Load are used to
-// create, read, update, and delete rules. Once modifications are performed,
-// File.Sync() may be called to write the changes back to the original AST,
-// which may then be formatted and written back to a file.
+// File is the primary interface to this package. A File represents an
+// individual build file. It comprises a list of Rules and a list of Loads.
+// Rules and Loads may be inserted, modified, or deleted. When all changes
+// are done, File.Save() may be called to write changes back to a file.
 package rule
 
 import (
@@ -36,11 +36,9 @@ import (
 	bt "github.com/bazelbuild/buildtools/tables"
 )
 
-// File provides editing functionality on top of a Skylark syntax tree. This
-// is the primary interface Gazelle uses for reading and updating build files.
-// To use, create a new file with EmptyFile or wrap a syntax tree with
-// LoadFile. Perform edits on Loads and Rules, then call Sync() to write
-// changes back to the AST.
+// File provides editing functionality for a build file. You can create a
+// new file with EmptyFile or load an existing file with LoadFile. After
+// changes have been made, call Save to write changes back to a file.
 type File struct {
 	// File is the underlying build file syntax tree. Some editing operations
 	// may modify this, but editing is not complete until Sync() is called.
@@ -471,19 +469,24 @@ func (r *Rule) ShouldKeep() bool {
 	return ShouldKeep(r.call)
 }
 
+// Kind returns the kind of rule this is (for example, "go_library").
 func (r *Rule) Kind() string {
 	return r.kind
 }
 
+// SetKind changes the kind of rule this is.
 func (r *Rule) SetKind(kind string) {
 	r.kind = kind
 	r.updated = true
 }
 
+// Name returns the value of the rule's "name" attribute if it is a string
+// or "" if the attribute does not exist or is not a string.
 func (r *Rule) Name() string {
 	return r.AttrString("name")
 }
 
+// SetName sets the value of the rule's "name" attribute.
 func (r *Rule) SetName(name string) {
 	r.SetAttr("name", name)
 }
@@ -615,18 +618,6 @@ func (r *Rule) IsEmpty(info KindInfo) bool {
 		return false
 	}
 	for k := range info.NonEmptyAttrs {
-		if _, ok := r.attrs[k]; ok {
-			return false
-		}
-	}
-	return true
-}
-
-func (r *Rule) IsEmptyOld(attrs map[string]bool) bool {
-	if attrs == nil {
-		return false
-	}
-	for k := range attrs {
 		if _, ok := r.attrs[k]; ok {
 			return false
 		}

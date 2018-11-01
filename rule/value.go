@@ -40,12 +40,12 @@ type GlobValue struct {
 // ExprFromValue converts a value into an expression that can be written into
 // a Bazel build file. The following types of values can be converted:
 //
-// * bools, integers, floats, strings.
-// * slices, arrays (converted to lists).
-// * maps (converted to select expressions; keys must be rules in
-//   @io_bazel_rules_go//go/platform).
-// * GlobValue (converted to glob expressions).
-// * PlatformStrings (converted to a concatenation of a list and selects).
+//   * bools, integers, floats, strings.
+//   * slices, arrays (converted to lists).
+//   * maps (converted to select expressions; keys must be rules in
+//     @io_bazel_rules_go//go/platform).
+//   * GlobValue (converted to glob expressions).
+//   * PlatformStrings (converted to a concatenation of a list and selects).
 //
 // Converting unsupported types will cause a panic.
 func ExprFromValue(val interface{}) bzl.Expr {

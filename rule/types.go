@@ -15,13 +15,6 @@ limitations under the License.
 
 package rule
 
-// MergableAttrs is the set of attribute names for each kind of rule that
-// may be merged. When an attribute is mergeable, a generated value may
-// replace or augment an existing value. If an attribute is not mergeable,
-// existing values are preserved. Generated non-mergeable attributes may
-// still be added to a rule if there is no corresponding existing attribute.
-type MergeableAttrs map[string]map[string]bool
-
 // LoadInfo describes a file that Gazelle knows about and the symbols
 // it defines.
 type LoadInfo struct {
