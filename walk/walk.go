@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package walk provides customizable functionality for visiting each
+// subdirectory in a directory tree.
 package walk
 
 import (
@@ -73,13 +75,33 @@ const (
 // "out" and "outs" attributes of rules in f.
 type WalkFunc func(dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string)
 
-// Walk traverses the directory tree rooted at c.RepoRoot in depth-first order.
+// Walk traverses the directory tree rooted at c.RepoRoot. Walk visits
+// subdirectories in depth-first post-order.
 //
-// Walk calls the Configure method on each configuration extension in cexts
-// in each directory in pre-order, whether a build file is present in the
-// directory or not. cexts must contain a walk.Configurer.
+// When Walk visits a directory, it lists the files and subdirectories within
+// that directory. If a build file is present, Walk reads the build file and
+// applies any directives to the configuration (a copy of the parent directory's
+// configuration is made, and the copy is modified). After visiting
+// subdirectories, the callback wf may be called, depending on the mode.
 //
-// Walk calls the callback wf in post-order.
+// c is the root configuration to start with. This includes changes made by
+// command line flags, but not by the root build file. This configuration
+// should not be modified.
+//
+// cexts is a list of configuration extensions. When visiting a directory,
+// before visiting subdirectories, Walk makes a copy of the parent configuration
+// and Configure for each extension on the copy. If Walk sees a directive
+// that is not listed in KnownDirectives of any extension, an error will
+// be logged.
+//
+// dirs is a list of absolute, canonical file system paths of directories
+// to visit.
+//
+// mode determines whether subdirectories of dirs should be visited recursively,
+// when the wf callback should be called, and when the "update" argument
+// to the wf callback should be set.
+//
+// wf is a function that may be called in each directory.
 func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode, wf WalkFunc) {
 	knownDirectives := make(map[string]bool)
 	for _, cext := range cexts {
