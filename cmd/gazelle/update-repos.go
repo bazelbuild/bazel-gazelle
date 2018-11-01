@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package gazelle
 
 import (
 	"errors"
@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/language"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/rule"
@@ -74,7 +75,7 @@ func (_ *updateReposConfigurer) KnownDirectives() []string { return nil }
 
 func (_ *updateReposConfigurer) Configure(c *config.Config, rel string, f *rule.File) {}
 
-func updateRepos(args []string) error {
+func updateRepos(languages []language.Language, args []string) error {
 	cexts := make([]config.Configurer, 0, len(languages)+2)
 	cexts = append(cexts, &config.CommonConfigurer{}, &updateReposConfigurer{})
 	kinds := make(map[string]rule.KindInfo)

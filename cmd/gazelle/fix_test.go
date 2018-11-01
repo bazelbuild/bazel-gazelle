@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package gazelle
 
 import (
 	"flag"
@@ -55,7 +55,7 @@ func TestCreateFile(t *testing.T) {
 	}
 
 	// Check that Gazelle creates a new file named "BUILD.bazel".
-	run(defaultArgs(dir))
+	Run(DefaultLanguages, defaultArgs(dir))
 
 	buildFile := filepath.Join(dir, "BUILD.bazel")
 	if _, err = os.Stat(buildFile); err != nil {
@@ -83,7 +83,7 @@ func TestUpdateFile(t *testing.T) {
 	}
 
 	// Check that Gazelle updates the BUILD file in place.
-	run(defaultArgs(dir))
+	Run(DefaultLanguages, defaultArgs(dir))
 	if st, err := os.Stat(buildFile); err != nil {
 		t.Errorf("could not stat BUILD: %v", err)
 	} else if st.Size() == 0 {
@@ -238,7 +238,7 @@ go_library(
 			for i := range tc.args {
 				tc.args[i] = replacer.Replace(tc.args[i])
 			}
-			if err := run(tc.args); err != nil {
+			if err := Run(DefaultLanguages, tc.args); err != nil {
 				t.Error(err)
 			}
 			testtools.CheckFiles(t, dir, tc.want)

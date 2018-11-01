@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package gazelle
 
 import (
 	"bytes"
@@ -28,6 +28,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
 	"github.com/bazelbuild/bazel-gazelle/internal/label"
+	"github.com/bazelbuild/bazel-gazelle/internal/language"
 	"github.com/bazelbuild/bazel-gazelle/internal/merger"
 	"github.com/bazelbuild/bazel-gazelle/internal/repos"
 	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
@@ -156,7 +157,7 @@ var genericLoads = []rule.LoadInfo{
 	},
 }
 
-func runFixUpdate(cmd command, args []string) error {
+func runFixUpdate(languages []language.Language, cmd command, args []string) error {
 	cexts := make([]config.Configurer, 0, len(languages)+3)
 	cexts = append(cexts,
 		&config.CommonConfigurer{},

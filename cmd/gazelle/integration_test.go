@@ -17,7 +17,7 @@ limitations under the License.
 // common usage patterns and check for errors that are difficult to test in
 // unit tests.
 
-package main
+package gazelle
 
 import (
 	"bytes"
@@ -54,7 +54,7 @@ func runGazelle(wd string, args []string) error {
 	}
 	defer os.Chdir(oldWd)
 
-	return run(args)
+	return Run(DefaultLanguages, args)
 }
 
 // TestHelp checks that help commands do not panic due to nil flag values.

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package gazelle
 
 import (
 	"github.com/bazelbuild/bazel-gazelle/internal/language"
@@ -21,7 +21,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/internal/language/proto"
 )
 
-var languages = []language.Language{
+var DefaultLanguages = []language.Language{
 	proto.New(),
 	golang.New(),
 }
