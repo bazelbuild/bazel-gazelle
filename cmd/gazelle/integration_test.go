@@ -29,9 +29,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/testtools"
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
+	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
 
 // skipIfWorkspaceVisible skips the test if the WORKSPACE file for the

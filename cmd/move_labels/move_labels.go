@@ -28,8 +28,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/label"
-	"github.com/bazelbuild/bazel-gazelle/internal/pathtools"
+	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/buildtools/build"
 )
 

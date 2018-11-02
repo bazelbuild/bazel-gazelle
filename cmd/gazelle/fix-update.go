@@ -25,14 +25,14 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/config"
-	gzflag "github.com/bazelbuild/bazel-gazelle/internal/flag"
-	"github.com/bazelbuild/bazel-gazelle/internal/label"
-	"github.com/bazelbuild/bazel-gazelle/internal/merger"
-	"github.com/bazelbuild/bazel-gazelle/internal/repos"
-	"github.com/bazelbuild/bazel-gazelle/internal/resolve"
-	"github.com/bazelbuild/bazel-gazelle/internal/rule"
-	"github.com/bazelbuild/bazel-gazelle/internal/walk"
+	"github.com/bazelbuild/bazel-gazelle/config"
+	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
+	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/merger"
+	"github.com/bazelbuild/bazel-gazelle/repo"
+	"github.com/bazelbuild/bazel-gazelle/resolve"
+	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/bazel-gazelle/walk"
 )
 
 // updateConfig holds configuration information needed to run the fix and
@@ -41,7 +41,7 @@ import (
 type updateConfig struct {
 	dirs        []string
 	emit        emitFunc
-	repos       []repos.Repo
+	repos       []repo.Repo
 	useIndex    bool
 	walkMode    walk.Mode
 	patchPath   string
@@ -247,7 +247,7 @@ func runFixUpdate(cmd command, args []string) error {
 	ruleIndex.Finish()
 
 	// Resolve dependencies.
-	rc := repos.NewRemoteCache(uc.repos)
+	rc := repo.NewRemoteCache(uc.repos)
 	for _, v := range visits {
 		for _, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
@@ -313,7 +313,7 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 			return nil, err
 		}
 		c.RepoName = findWorkspaceName(workspace)
-		uc.repos = repos.ListRepositories(workspace)
+		uc.repos = repo.ListRepositories(workspace)
 	}
 	repoPrefixes := make(map[string]bool)
 	for _, r := range uc.repos {
@@ -323,7 +323,7 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 		if repoPrefixes[imp] {
 			continue
 		}
-		repo := repos.Repo{
+		repo := repo.Repo{
 			Name:     label.ImportPathToBazelRepoName(imp),
 			GoPrefix: imp,
 		}

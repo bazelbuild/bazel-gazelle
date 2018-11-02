@@ -6,8 +6,8 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/move_labels",
     visibility = ["//visibility:private"],
     deps = [
-        "//internal/label:go_default_library",
-        "//internal/pathtools:go_default_library",
+        "//label:go_default_library",
+        "//pathtools:go_default_library",
         "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
     ],
 )
@@ -22,5 +22,5 @@ go_test(
     name = "go_default_test",
     srcs = ["move_labels_test.go"],
     embed = [":go_default_library"],
-    deps = ["//internal/testtools:go_default_library"],
+    deps = ["//testtools:go_default_library"],
 )
