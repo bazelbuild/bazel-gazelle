@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@bazel_gazelle//:def.bzl", "gazelle_plugin")
 
 # gazelle:exclude testdata
 
@@ -57,6 +58,13 @@ go_test(
         "//internal/walk:go_default_library",
         "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
     ],
+)
+
+gazelle_plugin(
+    name = "proto",
+    constructor = "proto.New",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
 )
 
 exports_files(["proto.csv"])

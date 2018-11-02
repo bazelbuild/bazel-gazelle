@@ -1,5 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load(":def.bzl", "std_package_list")
+load("@bazel_gazelle//:def.bzl", "gazelle_plugin")
 
 # gazelle:exclude testdata
 
@@ -85,4 +86,11 @@ go_test(
         "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
         "//vendor/golang.org/x/tools/go/vcs:go_default_library",
     ],
+)
+
+gazelle_plugin(
+    name = "go",
+    constructor = "golang.New",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
 )

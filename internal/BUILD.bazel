@@ -40,6 +40,9 @@ bazel_test(
 # workspace directory so we can have overlay build files.
 
 exports_files(
-    ["gazelle.bash.in"],
+    [
+        "gazelle.bash.in",
+        "gazelle_main.go.in",
+    ],
     visibility = ["//visibility:public"],
 )
