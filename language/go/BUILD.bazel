@@ -44,7 +44,7 @@ go_library(
         "std_package_list.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/language/go",
-    visibility = ["//:__subpackages__"],
+    visibility = ["//visibility:public"],
     deps = [
         "//config:go_default_library",
         "//flag:go_default_library",

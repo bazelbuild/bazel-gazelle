@@ -4,7 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = ["lang.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/language",
-    visibility = ["//:__subpackages__"],
+    visibility = ["//visibility:public"],
     deps = [
         "//config:go_default_library",
         "//resolve:go_default_library",

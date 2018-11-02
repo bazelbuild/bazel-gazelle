@@ -4,5 +4,5 @@ go_library(
     name = "go_default_library",
     srcs = ["flag.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/flag",
-    visibility = ["//:__subpackages__"],
+    visibility = ["//visibility:public"],
 )
