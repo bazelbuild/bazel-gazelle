@@ -14,17 +14,21 @@
 
 load(
     "@bazel_gazelle//internal:go_repository.bzl",
+    # Load go_repository in order to re-export. Users should get it
+    # from this file.
     "go_repository",
     _go_repository_tools = "go_repository_tools",
 )
 load(
     "@bazel_gazelle//internal:overlay_repository.bzl",
+    # Load overlay git_repository and http_archive in order to re-export.
+    # These may be removed at some point in the future.
     "git_repository",
     "http_archive",
 )
 load(
-    "@bazel_gazelle//third_party:manifest.bzl",
-    _manifest = "manifest",
+    "@bazel_tools//tools/build_defs/repo:git.bzl",
+    _tools_git_repository = "git_repository",
 )
 
 def gazelle_dependencies(go_sdk = "@go_sdk//:ROOT"):
@@ -34,10 +38,10 @@ def gazelle_dependencies(go_sdk = "@go_sdk//:ROOT"):
     )
 
     _maybe(
-        git_repository,
+        _tools_git_repository,
         name = "bazel_skylib",
         remote = "https://github.com/bazelbuild/bazel-skylib",
-        commit = "f3dd8fd95a7d078cb10fd7fb475b22c3cdbcb307",  # 0.2.0 as of 2017-12-04
+        commit = "3fea8cb680f4a53a129f7ebace1a5a4d1e035914",  # 0.5.0 as of 2018-11-01
     )
 
 def _maybe(repo_rule, name, **kwargs):
