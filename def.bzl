@@ -20,6 +20,12 @@ load(
 load("@bazel_skylib//:lib.bzl", "shell")
 load("//internal:go_repository.bzl", "go_repository")
 load("//internal:overlay_repository.bzl", "git_repository", "http_archive")
+load("//internal:gazelle_binary.bzl", "gazelle_binary")
+
+DEFAULT_LANGUAGES = [
+    "@bazel_gazelle//language/proto:go_default_library",
+    "@bazel_gazelle//language/go:go_default_library",
+]
 
 def _gazelle_runner_impl(ctx):
     go = _go_context(ctx)
@@ -27,9 +33,9 @@ def _gazelle_runner_impl(ctx):
         ctx.attr.command,
         "-mode",
         ctx.attr.mode,
-        "-external",
-        ctx.attr.external,
     ]
+    if ctx.attr.external:
+        args.extend(["-external", ctx.attr.external])
     if ctx.attr.prefix:
         args.extend(["-go_prefix", ctx.attr.prefix])
     if ctx.attr.build_tags:
@@ -81,8 +87,8 @@ _gazelle_runner = _go_rule(
             default = "fix",
         ),
         "external": attr.string(
-            values = ["external", "vendored"],
-            default = "external",
+            values = ["", "external", "vendored"],
+            default = "",
         ),
         "build_tags": attr.string_list(),
         "prefix": attr.string(),
