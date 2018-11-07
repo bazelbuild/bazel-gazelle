@@ -79,5 +79,12 @@ func diffFile(c *config.Config, f *rule.File) error {
 	if err := difflib.WriteUnifiedDiff(out, diff); err != nil {
 		return fmt.Errorf("error diffing %s: %v", f.Path, err)
 	}
+
+	// We have successfully written out the file, but the exit code of the program
+	// should reflect if there was a diff or not
+	if ds, _ := difflib.GetUnifiedDiffString(diff); ds != "" {
+		return fmt.Errorf("Gazelle found differences")
+	}
+
 	return nil
 }
