@@ -37,7 +37,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 	// files and generate go_proto_library rules.
 	c := args.Config
 	gc := getGoConfig(c)
-	pc := proto.GetProtoConfig(c)
+	pcMode := getProtoMode(c)
 	var protoRuleNames []string
 	protoPackages := make(map[string]proto.Package)
 	protoFileInfo := make(map[string]proto.FileInfo)
@@ -62,7 +62,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 
 	// If proto rule generation is enabled, exclude .pb.go files that correspond
 	// to any .proto files present.
-	if !pc.Mode.ShouldIncludePregeneratedFiles() {
+	if !pcMode.ShouldIncludePregeneratedFiles() {
 		keep := func(f string) bool {
 			if strings.HasSuffix(f, ".pb.go") {
 				_, ok := protoFileInfo[strings.TrimSuffix(f, ".pb.go")+".proto"]
@@ -148,11 +148,11 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 		ppkg := protoPackages[name]
 		var rs []*rule.Rule
 		if name == protoName {
-			protoEmbed, rs = g.generateProto(pc.Mode, pkg.proto, pkg.importPath)
+			protoEmbed, rs = g.generateProto(pcMode, pkg.proto, pkg.importPath)
 		} else {
 			target := protoTargetFromProtoPackage(name, ppkg)
 			importPath := goProtoImportPath(gc, ppkg, args.Rel)
-			_, rs = g.generateProto(pc.Mode, target, importPath)
+			_, rs = g.generateProto(pcMode, target, importPath)
 		}
 		rules = append(rules, rs...)
 	}
@@ -160,7 +160,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 		goProtoName := strings.TrimSuffix(name, "_proto") + "_go_proto"
 		empty = append(empty, rule.NewRule("go_proto_library", goProtoName))
 	}
-	if pkg != nil && pc.Mode == proto.PackageMode && pkg.firstGoFile() == "" {
+	if pkg != nil && pcMode == proto.PackageMode && pkg.firstGoFile() == "" {
 		// In proto package mode, don't generate a go_library embedding a
 		// go_proto_library unless there are actually go files.
 		protoEmbed = ""
@@ -206,7 +206,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 		// Generate Go rules.
 		if protoName == "" {
 			// Empty proto rules for deletion.
-			_, rs := g.generateProto(pc.Mode, pkg.proto, pkg.importPath)
+			_, rs := g.generateProto(pcMode, pkg.proto, pkg.importPath)
 			rules = append(rules, rs...)
 		}
 		lib := g.generateLib(pkg, protoEmbed)
