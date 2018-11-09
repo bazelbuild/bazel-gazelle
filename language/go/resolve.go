@@ -25,7 +25,6 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -109,7 +108,7 @@ var (
 
 func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
 	gc := getGoConfig(c)
-	pc := proto.GetProtoConfig(c)
+	pcMode := getProtoMode(c)
 	if build.IsLocalImport(imp) {
 		cleanRel := path.Clean(path.Join(from.Pkg, imp))
 		if build.IsLocalImport(cleanRel) {
@@ -126,7 +125,7 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 		return l, nil
 	}
 
-	if pc.Mode.ShouldUseKnownImports() {
+	if pcMode.ShouldUseKnownImports() {
 		// These are commonly used libraries that depend on Well Known Types.
 		// They depend on the generated versions of these protos to avoid conflicts.
 		// However, since protoc-gen-go depends on these libraries, we generate
@@ -257,7 +256,7 @@ func resolveVendored(rc *repo.RemoteCache, imp string) (label.Label, error) {
 }
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
-	pc := proto.GetProtoConfig(c)
+	pcMode := getProtoMode(c)
 
 	if wellKnownProtos[imp] {
 		return label.NoLabel, skipImportError
@@ -267,7 +266,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 		return l, nil
 	}
 
-	if l, ok := knownProtoImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
+	if l, ok := knownProtoImports[imp]; ok && pcMode.ShouldUseKnownImports() {
 		if l.Equal(from) {
 			return label.NoLabel, skipImportError
 		} else {

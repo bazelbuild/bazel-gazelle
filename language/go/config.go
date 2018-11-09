@@ -105,6 +105,14 @@ func (gc *goConfig) setBuildTags(tags string) error {
 	return nil
 }
 
+func getProtoMode(c *config.Config) proto.Mode {
+	if pc := proto.GetProtoConfig(c); pc != nil {
+		return pc.Mode
+	} else {
+		return proto.DisableGlobalMode
+	}
+}
+
 // dependencyMode determines how imports of packages outside of the prefix
 // are resolved.
 type dependencyMode int
@@ -194,8 +202,9 @@ func (_ *goLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	// or when the package name can't be determined.
 	// TODO(jayconrod): deprecate and remove this behavior.
 	gc := getGoConfig(c)
-	pc := proto.GetProtoConfig(c)
-	pc.GoPrefix = gc.prefix
+	if pc := proto.GetProtoConfig(c); pc != nil {
+		pc.GoPrefix = gc.prefix
+	}
 	return nil
 }
 

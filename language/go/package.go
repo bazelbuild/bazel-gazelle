@@ -92,7 +92,7 @@ func (pkg *goPackage) addFile(c *config.Config, info fileInfo, cgo bool) error {
 	case info.ext == unknownExt || !cgo && (info.ext == cExt || info.ext == csExt):
 		return nil
 	case info.ext == protoExt:
-		if proto.GetProtoConfig(c).Mode == proto.LegacyMode {
+		if pcMode := getProtoMode(c); pcMode == proto.LegacyMode {
 			// Only add files in legacy mode. This is used to generate a filegroup
 			// that contains all protos. In order modes, we get the .proto files
 			// from information emitted by the proto language extension.
