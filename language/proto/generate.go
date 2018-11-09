@@ -22,10 +22,12 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (_ *protoLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, otherEmpty, otherGen []*rule.Rule) (empty, gen []*rule.Rule) {
+func (_ *protoLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.Rule) {
+	c := args.Config
 	pc := GetProtoConfig(c)
 	if !pc.Mode.ShouldGenerateRules() {
 		// Don't create or delete proto rules in this mode. Any existing rules
@@ -34,21 +36,21 @@ func (_ *protoLang) GenerateRules(c *config.Config, dir, rel string, f *rule.Fil
 	}
 
 	var regularProtoFiles []string
-	for _, name := range regularFiles {
+	for _, name := range args.RegularFiles {
 		if strings.HasSuffix(name, ".proto") {
 			regularProtoFiles = append(regularProtoFiles, name)
 		}
 	}
 	var genProtoFiles []string
-	for _, name := range genFiles {
+	for _, name := range args.GenFiles {
 		if strings.HasSuffix(name, ".proto") {
-			genProtoFiles = append(genFiles, name)
+			genProtoFiles = append(args.GenFiles, name)
 		}
 	}
-	pkgs := buildPackages(pc, dir, rel, regularProtoFiles, genProtoFiles)
-	shouldSetVisibility := !hasDefaultVisibility(f)
+	pkgs := buildPackages(pc, args.Dir, args.Rel, regularProtoFiles, genProtoFiles)
+	shouldSetVisibility := !hasDefaultVisibility(args.File)
 	for _, pkg := range pkgs {
-		r := generateProto(pc, rel, pkg, shouldSetVisibility)
+		r := generateProto(pc, args.Rel, pkg, shouldSetVisibility)
 		if r.IsEmpty(protoKinds[r.Kind()]) {
 			empty = append(empty, r)
 		} else {
@@ -58,7 +60,7 @@ func (_ *protoLang) GenerateRules(c *config.Config, dir, rel string, f *rule.Fil
 	sort.SliceStable(gen, func(i, j int) bool {
 		return gen[i].Name() < gen[j].Name()
 	})
-	empty = append(empty, generateEmpty(f, regularProtoFiles, genProtoFiles)...)
+	empty = append(empty, generateEmpty(args.File, regularProtoFiles, genProtoFiles)...)
 	return empty, gen
 }
 
