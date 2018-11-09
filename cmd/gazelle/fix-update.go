@@ -28,6 +28,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
 	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -213,7 +214,16 @@ func runFixUpdate(cmd command, args []string) error {
 		// Generate rules.
 		var empty, gen []*rule.Rule
 		for _, l := range languages {
-			lempty, lgen := l.GenerateRules(c, dir, rel, f, subdirs, regularFiles, genFiles, empty, gen)
+			lempty, lgen := l.GenerateRules(language.GenerateArgs{
+				Config:       c,
+				Dir:          dir,
+				Rel:          rel,
+				File:         f,
+				Subdirs:      subdirs,
+				RegularFiles: regularFiles,
+				GenFiles:     genFiles,
+				OtherEmpty:   empty,
+				OtherGen:     gen})
 			empty = append(empty, lempty...)
 			gen = append(gen, lgen...)
 		}
