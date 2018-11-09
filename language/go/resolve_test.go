@@ -425,6 +425,26 @@ go_library(
 )
 `,
 		}, {
+			desc: "gazelle_special",
+			old: buildFile{content: `
+go_library(
+    name = "go_default_library",
+    _imports = [
+        "github.com/bazelbuild/bazel-gazelle/language",
+        "github.com/bazelbuild/rules_go/go/tools/bazel",
+    ],
+)        
+`},
+			want: `
+go_library(
+    name = "go_default_library",
+    deps = [
+        "@bazel_gazelle//language:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)
+`,
+		}, {
 			desc: "local_unknown",
 			old: buildFile{content: `
 go_binary(
