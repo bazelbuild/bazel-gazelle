@@ -17,7 +17,7 @@ load(
     _go_context = "go_context",
     _go_rule = "go_rule",
 )
-load("@bazel_skylib//:lib.bzl", "shell")
+load("@bazel_skylib//lib:shell.bzl", "shell")
 load("//internal:go_repository.bzl", "go_repository")
 load("//internal:overlay_repository.bzl", "git_repository", "http_archive")
 
