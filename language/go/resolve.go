@@ -174,9 +174,8 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 
 	if gc.depMode == externalMode {
 		return resolveExternal(rc, imp)
-	} else {
-		return resolveVendored(rc, imp)
 	}
+	return resolveVendored(rc, gc.vendorDir, imp)
 }
 
 // isStandard returns whether a package is in the standard library.
@@ -251,8 +250,11 @@ func resolveExternal(rc *repo.RemoteCache, imp string) (label.Label, error) {
 	return label.New(repo, pkg, defaultLibName), nil
 }
 
-func resolveVendored(rc *repo.RemoteCache, imp string) (label.Label, error) {
-	return label.New("", path.Join("vendor", imp), defaultLibName), nil
+func resolveVendored(rc *repo.RemoteCache, vendorDir, imp string) (label.Label, error) {
+	if vendorDir == "" {
+		vendorDir = "vendor"
+	}
+	return label.New("", path.Join(vendorDir, imp), defaultLibName), nil
 }
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {

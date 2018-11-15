@@ -59,6 +59,10 @@ type goConfig struct {
 	// depMode determines how imports that are not standard, indexed, or local
 	// (under the current prefix) should be resolved.
 	depMode dependencyMode
+
+	// vendorDir specifies the vendor directory relative to WORKSPACE. Set with
+	// -vendor_path. It defaults to "vendor".
+	vendorDir string
 }
 
 func newGoConfig() *goConfig {
@@ -192,6 +196,7 @@ func (_ *goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			&externalFlag{&gc.depMode},
 			"external",
 			"external: resolve external packages with go_repository\n\tvendored: resolve external packages as packages in vendor/")
+		fs.StringVar(&gc.vendorDir, "vendor_dir", "vendor", "the vendor directory (default: \"vendor\"); used when -external is set to vendored.")
 	}
 	c.Exts[goName] = gc
 }
