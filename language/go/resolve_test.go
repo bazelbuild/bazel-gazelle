@@ -425,6 +425,26 @@ go_library(
 )
 `,
 		}, {
+			desc: "gazelle_special",
+			old: buildFile{content: `
+go_library(
+    name = "go_default_library",
+    _imports = [
+        "github.com/bazelbuild/bazel-gazelle/language",
+        "github.com/bazelbuild/rules_go/go/tools/bazel",
+    ],
+)        
+`},
+			want: `
+go_library(
+    name = "go_default_library",
+    deps = [
+        "@bazel_gazelle//language:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)
+`,
+		}, {
 			desc: "local_unknown",
 			old: buildFile{content: `
 go_binary(
@@ -760,6 +780,7 @@ go_library(
     _imports = [
         "github.com/golang/protobuf/jsonpb",
         "github.com/golang/protobuf/descriptor",
+        "github.com/golang/protobuf/protoc-gen-go/generator",
         "github.com/golang/protobuf/ptypes",
         "google.golang.org/grpc",
     ],
@@ -771,6 +792,7 @@ go_library(
     deps = [
         "@com_github_golang_protobuf//descriptor:go_default_library_gen",
         "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
+        "@com_github_golang_protobuf//protoc-gen-go/generator:go_default_library_gen",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@org_golang_google_grpc//:go_default_library",
     ],

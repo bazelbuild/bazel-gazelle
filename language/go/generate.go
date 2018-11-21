@@ -26,20 +26,22 @@ import (
 	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File, subdirs, regularFiles, genFiles []string, otherEmpty, otherGen []*rule.Rule) (empty, gen []*rule.Rule) {
+func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.Rule) {
 	// Extract information about proto files. We need this to exclude .pb.go
 	// files and generate go_proto_library rules.
+	c := args.Config
 	gc := getGoConfig(c)
-	pc := proto.GetProtoConfig(c)
+	pcMode := getProtoMode(c)
 	var protoRuleNames []string
 	protoPackages := make(map[string]proto.Package)
 	protoFileInfo := make(map[string]proto.FileInfo)
-	for _, r := range otherGen {
+	for _, r := range args.OtherGen {
 		if r.Kind() != "proto_library" {
 			continue
 		}
@@ -52,7 +54,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 	}
 	sort.Strings(protoRuleNames)
 	var emptyProtoRuleNames []string
-	for _, r := range otherEmpty {
+	for _, r := range args.OtherEmpty {
 		if r.Kind() == "proto_library" {
 			emptyProtoRuleNames = append(emptyProtoRuleNames, r.Name())
 		}
@@ -60,7 +62,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 
 	// If proto rule generation is enabled, exclude .pb.go files that correspond
 	// to any .proto files present.
-	if !pc.Mode.ShouldIncludePregeneratedFiles() {
+	if !pcMode.ShouldIncludePregeneratedFiles() {
 		keep := func(f string) bool {
 			if strings.HasSuffix(f, ".pb.go") {
 				_, ok := protoFileInfo[strings.TrimSuffix(f, ".pb.go")+".proto"]
@@ -68,14 +70,14 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 			}
 			return true
 		}
-		filterFiles(&regularFiles, keep)
-		filterFiles(&genFiles, keep)
+		filterFiles(&args.RegularFiles, keep)
+		filterFiles(&args.GenFiles, keep)
 	}
 
 	// Split regular files into files which can determine the package name and
 	// import path and other files.
 	var goFiles, otherFiles []string
-	for _, f := range regularFiles {
+	for _, f := range args.RegularFiles {
 		if strings.HasSuffix(f, ".go") {
 			goFiles = append(goFiles, f)
 		} else {
@@ -86,34 +88,34 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 	// Look for a subdirectory named testdata. Only treat it as data if it does
 	// not contain a buildable package.
 	var hasTestdata bool
-	for _, sub := range subdirs {
+	for _, sub := range args.Subdirs {
 		if sub == "testdata" {
-			hasTestdata = !gl.goPkgRels[path.Join(rel, "testdata")]
+			hasTestdata = !gl.goPkgRels[path.Join(args.Rel, "testdata")]
 			break
 		}
 	}
 
 	// Build a set of packages from files in this directory.
-	goPackageMap, goFilesWithUnknownPackage := buildPackages(c, dir, rel, goFiles, hasTestdata)
+	goPackageMap, goFilesWithUnknownPackage := buildPackages(c, args.Dir, args.Rel, goFiles, hasTestdata)
 
 	// Select a package to generate rules for. If there is no package, create
 	// an empty package so we can generate empty rules.
 	var protoName string
-	pkg, err := selectPackage(c, dir, goPackageMap)
+	pkg, err := selectPackage(c, args.Dir, goPackageMap)
 	if err != nil {
 		if _, ok := err.(*build.NoGoError); ok {
 			if len(protoPackages) == 1 {
 				for name, ppkg := range protoPackages {
 					pkg = &goPackage{
 						name:       goProtoPackageName(ppkg),
-						importPath: goProtoImportPath(gc, ppkg, rel),
+						importPath: goProtoImportPath(gc, ppkg, args.Rel),
 						proto:      protoTargetFromProtoPackage(name, ppkg),
 					}
 					protoName = name
 					break
 				}
 			} else {
-				pkg = emptyPackage(c, dir, rel)
+				pkg = emptyPackage(c, args.Dir, args.Rel)
 			}
 		} else {
 			log.Print(err)
@@ -129,7 +131,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 		}
 		for _, name := range protoRuleNames {
 			ppkg := protoPackages[name]
-			if pkg.importPath == goProtoImportPath(gc, ppkg, rel) {
+			if pkg.importPath == goProtoImportPath(gc, ppkg, args.Rel) {
 				protoName = name
 				pkg.proto = protoTargetFromProtoPackage(name, ppkg)
 				break
@@ -139,18 +141,18 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 
 	// Generate rules for proto packages. These should come before the other
 	// Go rules.
-	g := newGenerator(c, f, rel)
+	g := newGenerator(c, args.File, args.Rel)
 	var rules []*rule.Rule
 	var protoEmbed string
 	for _, name := range protoRuleNames {
 		ppkg := protoPackages[name]
 		var rs []*rule.Rule
 		if name == protoName {
-			protoEmbed, rs = g.generateProto(pc.Mode, pkg.proto, pkg.importPath)
+			protoEmbed, rs = g.generateProto(pcMode, pkg.proto, pkg.importPath)
 		} else {
 			target := protoTargetFromProtoPackage(name, ppkg)
-			importPath := goProtoImportPath(gc, ppkg, rel)
-			_, rs = g.generateProto(pc.Mode, target, importPath)
+			importPath := goProtoImportPath(gc, ppkg, args.Rel)
+			_, rs = g.generateProto(pcMode, target, importPath)
 		}
 		rules = append(rules, rs...)
 	}
@@ -158,7 +160,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 		goProtoName := strings.TrimSuffix(name, "_proto") + "_go_proto"
 		empty = append(empty, rule.NewRule("go_proto_library", goProtoName))
 	}
-	if pkg != nil && pc.Mode == proto.PackageMode && pkg.firstGoFile() == "" {
+	if pkg != nil && pcMode == proto.PackageMode && pkg.firstGoFile() == "" {
 		// In proto package mode, don't generate a go_library embedding a
 		// go_proto_library unless there are actually go files.
 		protoEmbed = ""
@@ -178,7 +180,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 
 		// Process the other static files.
 		for _, file := range otherFiles {
-			info := otherFileInfo(filepath.Join(dir, file))
+			info := otherFileInfo(filepath.Join(args.Dir, file))
 			if err := pkg.addFile(c, info, cgo); err != nil {
 				log.Print(err)
 			}
@@ -188,14 +190,14 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 		// as static files. Bazel will use the generated files, but we will look at
 		// the content of static files, assuming they will be the same.
 		regularFileSet := make(map[string]bool)
-		for _, f := range regularFiles {
+		for _, f := range args.RegularFiles {
 			regularFileSet[f] = true
 		}
-		for _, f := range genFiles {
+		for _, f := range args.GenFiles {
 			if regularFileSet[f] {
 				continue
 			}
-			info := fileNameInfo(filepath.Join(dir, f))
+			info := fileNameInfo(filepath.Join(args.Dir, f))
 			if err := pkg.addFile(c, info, cgo); err != nil {
 				log.Print(err)
 			}
@@ -204,7 +206,7 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 		// Generate Go rules.
 		if protoName == "" {
 			// Empty proto rules for deletion.
-			_, rs := g.generateProto(pc.Mode, pkg.proto, pkg.importPath)
+			_, rs := g.generateProto(pcMode, pkg.proto, pkg.importPath)
 			rules = append(rules, rs...)
 		}
 		lib := g.generateLib(pkg, protoEmbed)
@@ -226,12 +228,12 @@ func (gl *goLang) GenerateRules(c *config.Config, dir, rel string, f *rule.File,
 		}
 	}
 
-	if f != nil || len(gen) > 0 {
-		gl.goPkgRels[rel] = true
+	if args.File != nil || len(gen) > 0 {
+		gl.goPkgRels[args.Rel] = true
 	} else {
-		for _, sub := range subdirs {
-			if gl.goPkgRels[path.Join(rel, sub)] {
-				gl.goPkgRels[rel] = true
+		for _, sub := range args.Subdirs {
+			if gl.goPkgRels[path.Join(args.Rel, sub)] {
+				gl.goPkgRels[args.Rel] = true
 				break
 			}
 		}

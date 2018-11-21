@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/walk"
@@ -43,7 +44,16 @@ func TestGenerateRules(t *testing.T) {
 		t.Run(rel, func(t *testing.T) {
 			var empty, gen []*rule.Rule
 			for _, lang := range langs {
-				e, g := lang.GenerateRules(c, dir, rel, oldFile, subdirs, regularFiles, genFiles, empty, gen)
+				e, g := lang.GenerateRules(language.GenerateArgs{
+					Config:       c,
+					Dir:          dir,
+					Rel:          rel,
+					File:         oldFile,
+					Subdirs:      subdirs,
+					RegularFiles: regularFiles,
+					GenFiles:     genFiles,
+					OtherEmpty:   empty,
+					OtherGen:     gen})
 				empty = append(empty, e...)
 				gen = append(gen, g...)
 			}
@@ -84,7 +94,10 @@ func TestGenerateRules(t *testing.T) {
 func TestGenerateRulesEmpty(t *testing.T) {
 	c, langs, _ := testConfig(t)
 	goLang := langs[1].(*goLang)
-	empty, gen := goLang.GenerateRules(c, "./foo", "foo", nil, nil, nil, nil, nil, nil)
+	empty, gen := goLang.GenerateRules(language.GenerateArgs{
+		Config: c,
+		Dir:    "./foo",
+		Rel:    "foo"})
 	if len(gen) > 0 {
 		t.Errorf("got %d generated rules; want 0", len(gen))
 	}
@@ -113,7 +126,10 @@ go_test(name = "go_default_test")
 func TestGenerateRulesEmptyLegacyProto(t *testing.T) {
 	c, langs, _ := testConfig(t, "-proto=legacy")
 	goLang := langs[len(langs)-1].(*goLang)
-	empty, _ := goLang.GenerateRules(c, "./foo", "foo", nil, nil, nil, nil, nil, nil)
+	empty, _ := goLang.GenerateRules(language.GenerateArgs{
+		Config: c,
+		Dir:    "./foo",
+		Rel:    "foo"})
 	for _, e := range empty {
 		if kind := e.Kind(); kind == "proto_library" || kind == "go_proto_library" || kind == "go_grpc_library" {
 			t.Errorf("deleted rule %s ; should not delete in legacy proto mode", kind)
@@ -135,7 +151,12 @@ proto_library(
 	}
 	var empty []*rule.Rule
 	for _, lang := range langs {
-		es, _ := lang.GenerateRules(c, "./foo", "foo", old, nil, nil, nil, empty, nil)
+		es, _ := lang.GenerateRules(language.GenerateArgs{
+			Config:     c,
+			Dir:        "./foo",
+			Rel:        "foo",
+			File:       old,
+			OtherEmpty: empty})
 		empty = append(empty, es...)
 	}
 	f := rule.EmptyFile("test", "")

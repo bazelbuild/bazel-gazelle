@@ -48,8 +48,14 @@ type ProtoConfig struct {
 	groupOption string
 }
 
+// GetProtoConfig returns the proto language configuration. If the proto
+// extension was not run, it will return nil.
 func GetProtoConfig(c *config.Config) *ProtoConfig {
-	return c.Exts[protoName].(*ProtoConfig)
+	pc := c.Exts[protoName]
+	if pc == nil {
+		return nil
+	}
+	return pc.(*ProtoConfig)
 }
 
 // Mode determines how proto rules are generated.

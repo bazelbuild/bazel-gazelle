@@ -25,7 +25,6 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -109,7 +108,7 @@ var (
 
 func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
 	gc := getGoConfig(c)
-	pc := proto.GetProtoConfig(c)
+	pcMode := getProtoMode(c)
 	if build.IsLocalImport(imp) {
 		cleanRel := path.Clean(path.Join(from.Pkg, imp))
 		if build.IsLocalImport(cleanRel) {
@@ -126,7 +125,7 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 		return l, nil
 	}
 
-	if pc.Mode.ShouldUseKnownImports() {
+	if pcMode.ShouldUseKnownImports() {
 		// These are commonly used libraries that depend on Well Known Types.
 		// They depend on the generated versions of these protos to avoid conflicts.
 		// However, since protoc-gen-go depends on these libraries, we generate
@@ -140,6 +139,8 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 			return label.New("com_github_golang_protobuf", "descriptor", "go_default_library_gen"), nil
 		case "github.com/golang/protobuf/ptypes":
 			return label.New("com_github_golang_protobuf", "ptypes", "go_default_library_gen"), nil
+		case "github.com/golang/protobuf/protoc-gen-go/generator":
+			return label.New("com_github_golang_protobuf", "protoc-gen-go/generator", "go_default_library_gen"), nil
 		case "google.golang.org/grpc":
 			return label.New("org_golang_google_grpc", "", "go_default_library"), nil
 		}
@@ -152,6 +153,18 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 		return l, err
 	} else if err != notFoundError {
 		return label.NoLabel, err
+	}
+
+	// Special cases for rules_go and bazel_gazelle.
+	// These have names that don't following conventions and they're
+	// typeically declared with http_archive, not go_repository, so Gazelle
+	// won't recognize them.
+	if pathtools.HasPrefix(imp, "github.com/bazelbuild/rules_go") {
+		pkg := pathtools.TrimPrefix(imp, "github.com/bazelbuild/rules_go")
+		return label.New("io_bazel_rules_go", pkg, "go_default_library"), nil
+	} else if pathtools.HasPrefix(imp, "github.com/bazelbuild/bazel-gazelle") {
+		pkg := pathtools.TrimPrefix(imp, "github.com/bazelbuild/bazel-gazelle")
+		return label.New("bazel_gazelle", pkg, "go_default_library"), nil
 	}
 
 	if pathtools.HasPrefix(imp, gc.prefix) {
@@ -243,7 +256,7 @@ func resolveVendored(rc *repo.RemoteCache, imp string) (label.Label, error) {
 }
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
-	pc := proto.GetProtoConfig(c)
+	pcMode := getProtoMode(c)
 
 	if wellKnownProtos[imp] {
 		return label.NoLabel, skipImportError
@@ -253,7 +266,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 		return l, nil
 	}
 
-	if l, ok := knownProtoImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
+	if l, ok := knownProtoImports[imp]; ok && pcMode.ShouldUseKnownImports() {
 		if l.Equal(from) {
 			return label.NoLabel, skipImportError
 		} else {
