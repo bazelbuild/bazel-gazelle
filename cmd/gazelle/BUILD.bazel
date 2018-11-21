@@ -24,6 +24,7 @@ gazelle_binary(
 
 go_library(
     name = "go_default_library",
+    # keep
     srcs = [
         "diff.go",
         "fix.go",
@@ -42,6 +43,8 @@ go_library(
         "//internal/version:go_default_library",
         "//label:go_default_library",
         "//language:go_default_library",
+        "//language/go:go_default_library",
+        "//language/proto:go_default_library",
         "//merger:go_default_library",
         "//repo:go_default_library",
         "//resolve:go_default_library",
@@ -58,14 +61,12 @@ go_test(
         "diff_test.go",
         "fix_test.go",
         "integration_test.go",
-        "langs.go",
+        "langs.go",  # keep
     ],
     embed = [":go_default_library"],
     deps = [
         "//config:go_default_library",
         "//internal/wspace:go_default_library",
-        "//language/go:go_default_library",
-        "//language/proto:go_default_library",
         "//testtools:go_default_library",
     ],
 )

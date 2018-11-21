@@ -81,7 +81,7 @@ func TestGenerateRules(t *testing.T) {
 }
 
 func TestGenerateRulesEmpty(t *testing.T) {
-	lang := New()
+	lang := NewLanguage()
 	c := config.New()
 	c.Exts[protoName] = &ProtoConfig{}
 
@@ -129,7 +129,7 @@ proto_library(
 }
 
 func TestGeneratePackage(t *testing.T) {
-	lang := New()
+	lang := NewLanguage()
 	c, _, _ := testConfig(t, "testdata")
 	dir := filepath.FromSlash("testdata/protos")
 	_, gen := lang.GenerateRules(language.GenerateArgs{
@@ -174,7 +174,7 @@ func testConfig(t *testing.T, repoRoot string) (*config.Config, language.Languag
 		&walk.Configurer{},
 		&resolve.Configurer{},
 	}
-	lang := New()
+	lang := NewLanguage()
 	c := testtools.NewTestConfig(t, cexts, []language.Language{lang}, []string{
 		"-build_file_name=BUILD.old",
 		"-repo_root=" + repoRoot,

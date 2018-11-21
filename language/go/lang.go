@@ -65,6 +65,6 @@ type goLang struct {
 
 func (_ *goLang) Name() string { return goName }
 
-func New() language.Language {
+func NewLanguage() language.Language {
 	return &goLang{goPkgRels: make(map[string]bool)}
 }

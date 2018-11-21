@@ -135,7 +135,7 @@ gazelle_binary = go_rule(
             default = "auto",
         ),
         "_srcs": attr.label(
-            default = "@bazel_gazelle//cmd/gazelle:go_default_library",
+            default = "//cmd/gazelle:go_default_library",
             aspects = [go_archive_aspect],
         ),
     },
@@ -148,4 +148,4 @@ def _format_import(importpath):
 
 def _format_call(importpath):
     _, _, base = importpath.rpartition("/")
-    return "{}.New()".format(base + "_")
+    return "{}.NewLanguage()".format(base + "_")

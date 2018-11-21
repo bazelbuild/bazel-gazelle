@@ -67,6 +67,6 @@ type protoLang struct{}
 
 func (_ *protoLang) Name() string { return protoName }
 
-func New() language.Language {
+func NewLanguage() language.Language {
 	return &protoLang{}
 }
