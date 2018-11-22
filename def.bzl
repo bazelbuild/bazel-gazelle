@@ -18,8 +18,10 @@ load(
     _go_rule = "go_rule",
 )
 load("@bazel_skylib//lib:shell.bzl", "shell")
-load("//internal:go_repository.bzl", "go_repository")
+load("//internal:go_repository.bzl", _go_repository = "go_repository")
 load("//internal:overlay_repository.bzl", "git_repository", "http_archive")
+
+go_repository = _go_repository
 
 def _gazelle_runner_impl(ctx):
     go = _go_context(ctx)
