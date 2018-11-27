@@ -14,9 +14,7 @@
 
 load(
     "@bazel_gazelle//internal:go_repository.bzl",
-    # Load go_repository in order to re-export. Users should get it
-    # from this file.
-    "go_repository",
+    _go_repository = "go_repository",
     _go_repository_tools = "go_repository_tools",
 )
 load(
@@ -30,6 +28,9 @@ load(
     "@bazel_tools//tools/build_defs/repo:git.bzl",
     _tools_git_repository = "git_repository",
 )
+
+# Re-export go_repository . Users should get it from this file.
+go_repository = _go_repository
 
 def gazelle_dependencies(go_sdk = "@go_sdk//:ROOT"):
     _go_repository_tools(
