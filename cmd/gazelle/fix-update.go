@@ -248,8 +248,10 @@ func runFixUpdate(cmd command, args []string) error {
 		})
 
 		// Add library rules to the dependency resolution table.
-		for _, r := range f.Rules {
-			ruleIndex.AddRule(c, r, f)
+		if uc.useIndex {
+			for _, r := range f.Rules {
+				ruleIndex.AddRule(c, r, f)
+			}
 		}
 	})
 
