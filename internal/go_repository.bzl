@@ -235,10 +235,21 @@ def _go_repository_tools_impl(ctx):
         "GOPATH": str(ctx.path(".")),
         # workaround: to find gcc for go link tool on Arm platform
         "PATH": ctx.os.environ["PATH"],
+        # workaround: avoid the Go SDK paths from leaking into the binary
+        "GOROOT_FINAL": "GOROOT",
+        # workaround: avoid cgo paths in /tmp leaking into binary
+        "CGO_ENABLED": "0",
     }
 
     for tool in ("fetch_repo", "gazelle"):
-        args = [go_tool, "install", "github.com/bazelbuild/bazel-gazelle/cmd/{}".format(tool)]
+        args = [
+            go_tool, "install",
+            "-a",
+            "-ldflags", "-w -s",
+            "-gcflags", "all=-trimpath=" + env["GOPATH"],
+            "-asmflags", "all=-trimpath=" + env["GOPATH"],
+            "github.com/bazelbuild/bazel-gazelle/cmd/{}".format(tool),
+        ]
         result = env_execute(ctx, args, environment = env)
         if result.return_code:
             fail("failed to build {}: {}".format(tool, result.stderr))

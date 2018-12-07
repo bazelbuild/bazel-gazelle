@@ -89,6 +89,7 @@ if [ "$is_bazel_run" = true ]; then
   # If the script was invoked by "bazel run", jump out of the execroot, into
   # the workspace before running Gazelle.
   # TODO(jayconrod): detect when a command can't be run this way.
+  set_goroot
   gazelle_short_path=$(find_runfile "$GAZELLE_SHORT_PATH")
   if [ -z "$gazelle_short_path" ]; then
     echo "error: could not locate gazelle binary" >&2

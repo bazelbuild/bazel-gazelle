@@ -17,10 +17,28 @@ load(
     _go_context = "go_context",
     _go_rule = "go_rule",
 )
-load("@bazel_skylib//lib:shell.bzl", "shell")
-load("//internal:go_repository.bzl", "go_repository")
-load("//internal:overlay_repository.bzl", "git_repository", "http_archive")
-load("//internal:gazelle_binary.bzl", "gazelle_binary")
+load(
+    "@bazel_skylib//lib:shell.bzl",
+    "shell",
+)
+load(
+    "//internal:go_repository.bzl",
+    _go_repository = "go_repository",
+)
+load(
+    "//internal:overlay_repository.bzl",
+    _git_repository = "git_repository",
+    _http_archive = "http_archive",
+)
+load(
+    "//internal:gazelle_binary.bzl",
+    _gazelle_binary = "gazelle_binary",
+)
+
+go_repository = _go_repository
+git_repository = _git_repository
+http_archive = _http_archive
+gazelle_binary = _gazelle_binary
 
 DEFAULT_LANGUAGES = [
     "@bazel_gazelle//language/proto:go_default_library",

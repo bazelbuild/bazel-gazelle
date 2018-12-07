@@ -26,7 +26,7 @@ set -euo pipefail
 case "$1" in
   build|coverage|cquery|fetch|mobile-install|print_action|query|run|test)
     "$BAZEL_REAL" run @bazel_gazelle//cmd/autogazelle -- -gazelle=//:gazelle
-    echo "done running autogazelle" >&1
+    echo "done running autogazelle" 1>&2
     ;;
 esac
 

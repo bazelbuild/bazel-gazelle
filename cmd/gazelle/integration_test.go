@@ -1347,6 +1347,66 @@ func TestDontCreateBuildFileInEmptyDir(t *testing.T) {
 	}
 }
 
+// TestNoIndex checks that gazelle does not index existing or generated
+// library rules with the flag -index=false. Verifies #384.
+func TestNoIndex(t *testing.T) {
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{
+			Path: "foo/foo.go",
+			Content: `
+package foo
+
+import _ "example.com/bar"
+`,
+		}, {
+			Path:    "third_party/example.com/bar/bar.go",
+			Content: "package bar",
+		}, {
+			Path:    "third_party/BUILD.bazel",
+			Content: "# gazelle:prefix",
+		}, {
+			Path: "third_party/example.com/bar/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["bar.go"],
+    importpath = "example.com/bar",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{
+		"-go_prefix=example.com/repo",
+		"-external=vendored",
+		"-index=false",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: "foo/BUILD.bazel",
+		Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/repo/foo",
+    visibility = ["//visibility:public"],
+    deps = ["//vendor/example.com/bar:go_default_library"],
+)
+`,
+	}})
+}
+
 // TestNoIndexNoRecurse checks that gazelle behaves correctly with the flags
 // -r=false -index=false. Gazelle should not generate build files in
 // subdirectories and should not resolve dependencies to local libraries.
