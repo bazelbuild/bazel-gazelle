@@ -1,19 +1,42 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle_binary")
+
+gazelle_binary(
+    name = "gazelle",
+    languages = DEFAULT_LANGUAGES,
+    msan = "off",
+    pure = "off",
+    race = "off",
+    static = "off",
+    visibility = ["//visibility:public"],
+)
+
+gazelle_binary(
+    name = "gazelle_pure",
+    languages = DEFAULT_LANGUAGES,
+    msan = "off",
+    pure = "on",
+    race = "off",
+    static = "off",
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)
 
 go_library(
     name = "go_default_library",
+    # keep
     srcs = [
         "diff.go",
         "fix.go",
         "fix-update.go",
         "gazelle.go",
-        "langs.go",
         "print.go",
         "update-repos.go",
         "version.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
-    visibility = ["//visibility:private"],
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
     deps = [
         "//config:go_default_library",
         "//flag:go_default_library",
@@ -31,27 +54,6 @@ go_library(
     ],
 )
 
-go_binary(
-    name = "gazelle",
-    embed = [":go_default_library"],
-    msan = "off",
-    pure = "off",
-    race = "off",
-    static = "off",
-    visibility = ["//visibility:public"],
-)
-
-go_binary(
-    name = "gazelle_pure",
-    embed = [":go_default_library"],
-    msan = "off",
-    pure = "on",
-    race = "off",
-    static = "off",
-    tags = ["manual"],
-    visibility = ["//visibility:public"],
-)
-
 go_test(
     name = "go_default_test",
     size = "small",
@@ -59,6 +61,7 @@ go_test(
         "diff_test.go",
         "fix_test.go",
         "integration_test.go",
+        "langs.go",  # keep
     ],
     embed = [":go_default_library"],
     deps = [

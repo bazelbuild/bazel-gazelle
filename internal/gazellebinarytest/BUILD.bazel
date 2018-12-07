@@ -1,0 +1,36 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//:def.bzl", "gazelle_binary")
+
+gazelle_binary(
+    name = "gazelle_go_x",
+    # keep
+    languages = [
+        "//language/go:go_default_library",
+        ":go_default_library",
+    ],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["xlang.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/internal/gazellebinarytest",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//config:go_default_library",
+        "//label:go_default_library",
+        "//language:go_default_library",
+        "//repo:go_default_library",
+        "//resolve:go_default_library",
+        "//rule:go_default_library",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["gazellebinary_test.go"],
+    args = ["-gazelle=$(location :gazelle_go_x)"],
+    data = [":gazelle_go_x"],
+    embed = [":go_default_library"],
+    rundir = ".",
+    deps = ["//testtools:go_default_library"],
+)

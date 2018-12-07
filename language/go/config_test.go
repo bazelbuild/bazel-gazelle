@@ -50,7 +50,7 @@ func testConfig(t *testing.T, args ...string) (*config.Config, []language.Langua
 		&walk.Configurer{},
 		&resolve.Configurer{},
 	}
-	langs := []language.Language{proto.New(), New()}
+	langs := []language.Language{proto.NewLanguage(), NewLanguage()}
 	c := testtools.NewTestConfig(t, cexts, langs, args)
 	for _, lang := range langs {
 		cexts = append(cexts, lang)

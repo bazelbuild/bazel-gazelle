@@ -904,7 +904,7 @@ var (
 
 func init() {
 	testKinds = make(map[string]rule.KindInfo)
-	langs := []language.Language{proto.New(), golang.New()}
+	langs := []language.Language{proto.NewLanguage(), golang.NewLanguage()}
 	for _, lang := range langs {
 		for kind, info := range lang.Kinds() {
 			testKinds[kind] = info

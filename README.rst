@@ -12,6 +12,9 @@ Gazelle build file generator
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
 .. _gazelle rule: #bazel-rule
+.. _Extending Gazelle: extend.rst
+.. _extended: `Extending Gazelle`_
+.. _gazelle_binary: extend.rst#gazelle_binary
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -27,7 +30,8 @@ files for a project that follows "go build" conventions, and it can update
 existing build files to include new sources, dependencies, and options. Gazelle
 may be run by Bazel using the `gazelle rule`_, or it can be run as a command
 line tool. Gazelle can also be run in an external repository as part of the
-`go_repository`_ rule.
+`go_repository`_ rule. Gazelle may be extended_ to support new languages
+and custom rule sets.
 
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
@@ -44,6 +48,7 @@ may change. Gazelle is not an official Google product.*
   * `git_repository`_ (deprecated)
   * `http_archive`_ (deprecated)
 
+* `Extending Gazelle`_
 * `Avoiding conflicts with proto rules`_
 
 Setup
@@ -198,8 +203,8 @@ The following attributes are available on the ``gazelle`` rule.
 +======================+=====================+======================================+
 | :param:`gazelle`     | :type:`label`       | :value:`@bazel_gazelle//cmd/gazelle` |
 +----------------------+---------------------+--------------------------------------+
-| The ``go_binary`` rule that builds Gazelle. You can substitute a modified         |
-| version of Gazelle with this.                                                     |
+| The `gazelle_binary`_ rule that builds Gazelle. You can substitute a modified     |
+| version of Gazelle with this. See `Extending Gazelle`_.                           |
 +----------------------+---------------------+--------------------------------------+
 | :param:`external`    | :type:`string`      | :value:`external`                    |
 +----------------------+---------------------+--------------------------------------+
