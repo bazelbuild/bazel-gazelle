@@ -12,6 +12,8 @@ Gazelle build file generator
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
 .. _gazelle rule: #bazel-rule
+.. _Extending Gazelle: extend.rst
+.. _gazelle_binary: extend.rst#gazelle_binary
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -44,6 +46,7 @@ may change. Gazelle is not an official Google product.*
   * `git_repository`_ (deprecated)
   * `http_archive`_ (deprecated)
 
+* `Extending Gazelle`_
 * `Avoiding conflicts with proto rules`_
 
 Setup
@@ -198,8 +201,8 @@ The following attributes are available on the ``gazelle`` rule.
 +======================+=====================+======================================+
 | :param:`gazelle`     | :type:`label`       | :value:`@bazel_gazelle//cmd/gazelle` |
 +----------------------+---------------------+--------------------------------------+
-| The ``go_binary`` rule that builds Gazelle. You can substitute a modified         |
-| version of Gazelle with this.                                                     |
+| The `gazelle_binary`_ rule that builds Gazelle. You can substitute a modified     |
+| version of Gazelle with this. See `Extending Gazelle`_.                           |
 +----------------------+---------------------+--------------------------------------+
 | :param:`external`    | :type:`string`      | :value:`external`                    |
 +----------------------+---------------------+--------------------------------------+
