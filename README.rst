@@ -13,6 +13,7 @@ Gazelle build file generator
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
 .. _gazelle rule: #bazel-rule
 .. _Extending Gazelle: extend.rst
+.. _extended: `Extending Gazelle`_
 .. _gazelle_binary: extend.rst#gazelle_binary
 
 .. role:: cmd(code)
@@ -29,7 +30,8 @@ files for a project that follows "go build" conventions, and it can update
 existing build files to include new sources, dependencies, and options. Gazelle
 may be run by Bazel using the `gazelle rule`_, or it can be run as a command
 line tool. Gazelle can also be run in an external repository as part of the
-`go_repository`_ rule.
+`go_repository`_ rule. Gazelle may be extended_ to support new languages
+and custom rule sets.
 
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*

@@ -3,9 +3,10 @@ Extending Gazelle
 
 .. Begin directives
 .. _Language: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language#Language
-.. _`//internal/gazellebinarytest:go_default_library`: https://github.com/bazelbuild/bazel-gazelle/tree/master/language/proto
-.. _`//language/go:go_default_library`: https://github.com/bazelbuild/bazel-gazelle/tree/master/language/proto
+.. _`//internal/gazellebinarytest:go_default_library`: https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/gazellebinarytest
+.. _`//language/go:go_default_library`: https://github.com/bazelbuild/bazel-gazelle/tree/master/language/go
 .. _`//language/proto:go_default_library`: https://github.com/bazelbuild/bazel-gazelle/tree/master/language/proto
+.. _gazelle: https://github.com/bazelbuild/bazel-gazelle#bazel-rule
 .. _go_binary: https://github.com/bazelbuild/rules_go/blob/master/go/core.rst#go-binary
 .. _go_library: https://github.com/bazelbuild/rules_go/blob/master/go/core.rst#go-library
 .. _proto godoc: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto
