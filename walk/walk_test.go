@@ -194,7 +194,7 @@ gen(
 			files = append(files, path.Join(rel, f))
 		}
 	})
-	want := []string{"BUILD.bazel"}
+	want := []string{"BUILD.bazel", "_blank"}
 	if !reflect.DeepEqual(files, want) {
 		t.Errorf("got %#v; want %#v", files, want)
 	}

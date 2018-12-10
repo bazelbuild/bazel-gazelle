@@ -215,6 +215,9 @@ func fileNameInfo(path_ string) fileInfo {
 	default:
 		ext = unknownExt
 	}
+	if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
+		ext = unknownExt
+	}
 
 	// Determine test, goos, and goarch. This is intended to match the logic
 	// in goodOSArchFile in go/build.

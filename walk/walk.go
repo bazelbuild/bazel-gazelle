@@ -140,7 +140,7 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		for _, fi := range files {
 			base := fi.Name()
 			switch {
-			case base == "" || base[0] == '.' || base[0] == '_' || wc.isExcluded(rel, base):
+			case base == "" || base[0] == '.' || wc.isExcluded(rel, base):
 				continue
 
 			case fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 && symlinks.follow(c, dir, rel, base):
