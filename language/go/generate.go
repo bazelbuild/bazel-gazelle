@@ -62,6 +62,8 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 
 	// If proto rule generation is enabled, exclude .pb.go files that correspond
 	// to any .proto files present.
+	regularFiles := append([]string{}, args.RegularFiles...)
+	genFiles := append([]string{}, args.GenFiles...)
 	if !pcMode.ShouldIncludePregeneratedFiles() {
 		keep := func(f string) bool {
 			if strings.HasSuffix(f, ".pb.go") {
@@ -70,14 +72,14 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 			}
 			return true
 		}
-		filterFiles(&args.RegularFiles, keep)
-		filterFiles(&args.GenFiles, keep)
+		filterFiles(&regularFiles, keep)
+		filterFiles(&genFiles, keep)
 	}
 
 	// Split regular files into files which can determine the package name and
 	// import path and other files.
 	var goFiles, otherFiles []string
-	for _, f := range args.RegularFiles {
+	for _, f := range regularFiles {
 		if strings.HasSuffix(f, ".go") {
 			goFiles = append(goFiles, f)
 		} else {
@@ -190,10 +192,10 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 		// as static files. Bazel will use the generated files, but we will look at
 		// the content of static files, assuming they will be the same.
 		regularFileSet := make(map[string]bool)
-		for _, f := range args.RegularFiles {
+		for _, f := range regularFiles {
 			regularFileSet[f] = true
 		}
-		for _, f := range args.GenFiles {
+		for _, f := range genFiles {
 			if regularFileSet[f] {
 				continue
 			}

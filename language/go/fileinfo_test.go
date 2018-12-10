@@ -94,8 +94,7 @@ func TestFileNameInfo(t *testing.T) {
 			"_test source",
 			"_test.go",
 			fileInfo{
-				ext:    goExt,
-				isTest: true,
+				ext: unknownExt,
 			},
 		},
 		{
@@ -238,6 +237,12 @@ func TestFileNameInfo(t *testing.T) {
 		{
 			"ignored file",
 			"foo.txt",
+			fileInfo{
+				ext: unknownExt,
+			},
+		}, {
+			"hidden file",
+			".foo.go",
 			fileInfo{
 				ext: unknownExt,
 			},
