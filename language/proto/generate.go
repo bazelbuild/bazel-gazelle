@@ -26,13 +26,13 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (_ *protoLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.Rule) {
+func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	c := args.Config
 	pc := GetProtoConfig(c)
 	if !pc.Mode.ShouldGenerateRules() {
 		// Don't create or delete proto rules in this mode. Any existing rules
 		// are likely hand-written.
-		return nil, nil
+		return language.GenerateResult{}
 	}
 
 	var regularProtoFiles []string
@@ -49,19 +49,24 @@ func (_ *protoLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rul
 	}
 	pkgs := buildPackages(pc, args.Dir, args.Rel, regularProtoFiles, genProtoFiles)
 	shouldSetVisibility := !hasDefaultVisibility(args.File)
+	var res language.GenerateResult
 	for _, pkg := range pkgs {
 		r := generateProto(pc, args.Rel, pkg, shouldSetVisibility)
 		if r.IsEmpty(protoKinds[r.Kind()]) {
-			empty = append(empty, r)
+			res.Empty = append(res.Empty, r)
 		} else {
-			gen = append(gen, r)
+			res.Gen = append(res.Gen, r)
 		}
 	}
-	sort.SliceStable(gen, func(i, j int) bool {
-		return gen[i].Name() < gen[j].Name()
+	sort.SliceStable(res.Gen, func(i, j int) bool {
+		return res.Gen[i].Name() < res.Gen[j].Name()
 	})
-	empty = append(empty, generateEmpty(args.File, regularProtoFiles, genProtoFiles)...)
-	return empty, gen
+	res.Imports = make([]interface{}, len(res.Gen))
+	for i, r := range res.Gen {
+		res.Imports[i] = r.PrivateAttr(config.GazelleImportsKey)
+	}
+	res.Empty = append(res.Empty, generateEmpty(args.File, regularProtoFiles, genProtoFiles)...)
+	return res
 }
 
 // RuleName returns a name for a proto_library derived from the given strings.
@@ -205,6 +210,8 @@ func generateProto(pc *ProtoConfig, rel string, pkg *Package, shouldSetVisibilit
 		imports = append(imports, i)
 	}
 	sort.Strings(imports)
+	// NOTE: This attribute should not be used outside this extension. It's still
+	// convenient for testing though.
 	r.SetPrivateAttr(config.GazelleImportsKey, imports)
 	for k, v := range pkg.Options {
 		r.SetPrivateAttr(k, v)

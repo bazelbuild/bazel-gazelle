@@ -63,8 +63,11 @@ func (x *xlang) KnownDirectives() []string {
 func (x *xlang) Configure(c *config.Config, rel string, f *rule.File) {
 }
 
-func (x *xlang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.Rule) {
-	return nil, []*rule.Rule{rule.NewRule("x_library", "x_default_library")}
+func (x *xlang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
+	return language.GenerateResult{
+		Gen:     []*rule.Rule{rule.NewRule("x_library", "x_default_library")},
+		Imports: []interface{}{nil},
+	}
 }
 
 func (x *xlang) Fix(c *config.Config, f *rule.File) {
@@ -78,5 +81,5 @@ func (x *xlang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return nil
 }
 
-func (x *xlang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, from label.Label) {
+func (x *xlang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
 }

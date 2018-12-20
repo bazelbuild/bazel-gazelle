@@ -48,7 +48,7 @@ func TestGenerateRules(t *testing.T) {
 			return
 		}
 		t.Run(rel, func(t *testing.T) {
-			empty, gen := lang.GenerateRules(language.GenerateArgs{
+			res := lang.GenerateRules(language.GenerateArgs{
 				Config:       c,
 				Dir:          dir,
 				Rel:          rel,
@@ -56,11 +56,11 @@ func TestGenerateRules(t *testing.T) {
 				Subdirs:      subdirs,
 				RegularFiles: regularFiles,
 				GenFiles:     genFiles})
-			if len(empty) > 0 {
-				t.Errorf("got %d empty rules; want 0", len(empty))
+			if len(res.Empty) > 0 {
+				t.Errorf("got %d empty rules; want 0", len(res.Empty))
 			}
 			f := rule.EmptyFile("test", "")
-			for _, r := range gen {
+			for _, r := range res.Gen {
 				r.Insert(f)
 			}
 			merger.FixLoads(f, lang.Loads())
@@ -108,16 +108,16 @@ proto_library(
 		t.Fatal(err)
 	}
 	genFiles := []string{"bar.proto"}
-	empty, gen := lang.GenerateRules(language.GenerateArgs{
+	res := lang.GenerateRules(language.GenerateArgs{
 		Config:   c,
 		Rel:      "foo",
 		File:     old,
 		GenFiles: genFiles})
-	if len(gen) > 0 {
-		t.Errorf("got %d generated rules; want 0", len(gen))
+	if len(res.Gen) > 0 {
+		t.Errorf("got %d generated rules; want 0", len(res.Gen))
 	}
 	f := rule.EmptyFile("test", "")
-	for _, r := range empty {
+	for _, r := range res.Empty {
 		r.Insert(f)
 	}
 	f.Sync()
@@ -132,12 +132,12 @@ func TestGeneratePackage(t *testing.T) {
 	lang := NewLanguage()
 	c, _, _ := testConfig(t, "testdata")
 	dir := filepath.FromSlash("testdata/protos")
-	_, gen := lang.GenerateRules(language.GenerateArgs{
+	res := lang.GenerateRules(language.GenerateArgs{
 		Config:       c,
 		Dir:          dir,
 		Rel:          "protos",
 		RegularFiles: []string{"foo.proto"}})
-	r := gen[0]
+	r := res.Gen[0]
 	got := r.PrivateAttr(PackageKey).(Package)
 	want := Package{
 		Name: "bar.foo",

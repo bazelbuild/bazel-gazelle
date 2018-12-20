@@ -21,7 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -879,13 +878,14 @@ go_library(
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, r := range f.Rules {
-				convertImportsAttr(r)
+			imports := make([]interface{}, len(f.Rules))
+			for i, r := range f.Rules {
+				imports[i] = convertImportsAttr(r)
 				ix.AddRule(c, r, f)
 			}
 			ix.Finish()
-			for _, r := range f.Rules {
-				kindToResolver[r.Kind()].Resolve(c, ix, rc, r, label.New("", tc.old.rel, r.Name()))
+			for i, r := range f.Rules {
+				kindToResolver[r.Kind()].Resolve(c, ix, rc, r, imports[i], label.New("", tc.old.rel, r.Name()))
 			}
 			f.Sync()
 			got := strings.TrimSpace(string(bzl.Format(f.File)))
@@ -945,8 +945,8 @@ go_library(
 		t.Fatal(err)
 	}
 	for _, r := range f.Rules {
-		convertImportsAttr(r)
-		gl.Resolve(c, ix, rc, r, label.New("", "", r.Name()))
+		imports := convertImportsAttr(r)
+		gl.Resolve(c, ix, rc, r, imports, label.New("", "", r.Name()))
 	}
 	f.Sync()
 	got := strings.TrimSpace(string(bzl.Format(f.File)))
@@ -1023,8 +1023,7 @@ func TestResolveExternal(t *testing.T) {
 			rc := testRemoteCache(tc.repos)
 			r := rule.NewRule("go_library", "x")
 			imports := rule.PlatformStrings{Generic: []string{tc.importpath}}
-			r.SetPrivateAttr(config.GazelleImportsKey, imports)
-			gl.Resolve(c, ix, rc, r, label.New("", "", "x"))
+			gl.Resolve(c, ix, rc, r, imports, label.New("", "", "x"))
 			deps := r.AttrStrings("deps")
 			if len(deps) != 1 {
 				t.Fatalf("deps: got %d; want 1", len(deps))
@@ -1074,13 +1073,14 @@ func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, 
 	return nil, fmt.Errorf("could not resolve import path: %q", importpath)
 }
 
-func convertImportsAttr(r *rule.Rule) {
+func convertImportsAttr(r *rule.Rule) interface{} {
 	kind := r.Kind()
 	value := r.AttrStrings("_imports")
 	r.DelAttr("_imports")
 	if _, ok := goKinds[kind]; ok {
-		r.SetPrivateAttr(config.GazelleImportsKey, rule.PlatformStrings{Generic: value})
-	} else if kind == "proto_library" {
-		r.SetPrivateAttr(config.GazelleImportsKey, value)
+		return rule.PlatformStrings{Generic: value}
+	} else {
+		// proto_library
+		return value
 	}
 }
