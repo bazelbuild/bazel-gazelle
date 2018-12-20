@@ -66,13 +66,13 @@ should look like this:
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
     http_archive(
         name = "io_bazel_rules_go",
-        urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.16.3/rules_go-0.16.3.tar.gz"],
-        sha256 = "b7a62250a3a73277ade0ce306d22f122365b513f5402222403e507f2f997d421",
+        urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.16.5/rules_go-0.16.5.tar.gz"],
+        sha256 = "7be7dc01f1e0afdba6c8eb2b43d2fa01c743be1b9273ab1eaf6c233df078d705",
     )
     http_archive(
         name = "bazel_gazelle",
-        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.15.0/bazel-gazelle-0.15.0.tar.gz"],
-        sha256 = "6e875ab4b6bf64a38c352887760f21203ab054676d9c1b274963907e0768740d",
+        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.16.0/bazel-gazelle-0.16.0.tar.gz"],
+        sha256 = "7949fc6cc17b5b191103e97481cf8889217263acf52e00b560683413af204fcb",
     )
     load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
     go_rules_dependencies()
@@ -163,6 +163,8 @@ you're using a compatible version.
 | 0.14.0              | 0.13.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 | 0.15.0              | 0.13.0                       | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.16.0              | 0.13.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
