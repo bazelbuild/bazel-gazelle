@@ -32,7 +32,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.Rule) {
+func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	// Extract information about proto files. We need this to exclude .pb.go
 	// files and generate go_proto_library rules.
 	c := args.Config
@@ -144,6 +144,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 	// Generate rules for proto packages. These should come before the other
 	// Go rules.
 	g := newGenerator(c, args.File, args.Rel)
+	var res language.GenerateResult
 	var rules []*rule.Rule
 	var protoEmbed string
 	for _, name := range protoRuleNames {
@@ -160,7 +161,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 	}
 	for _, name := range emptyProtoRuleNames {
 		goProtoName := strings.TrimSuffix(name, "_proto") + "_go_proto"
-		empty = append(empty, rule.NewRule("go_proto_library", goProtoName))
+		res.Empty = append(res.Empty, rule.NewRule("go_proto_library", goProtoName))
 	}
 	if pkg != nil && pcMode == proto.PackageMode && pkg.firstGoFile() == "" {
 		// In proto package mode, don't generate a go_library embedding a
@@ -224,13 +225,14 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 
 	for _, r := range rules {
 		if r.IsEmpty(goKinds[r.Kind()]) {
-			empty = append(empty, r)
+			res.Empty = append(res.Empty, r)
 		} else {
-			gen = append(gen, r)
+			res.Gen = append(res.Gen, r)
+			res.Imports = append(res.Imports, r.PrivateAttr(config.GazelleImportsKey))
 		}
 	}
 
-	if args.File != nil || len(gen) > 0 {
+	if args.File != nil || len(res.Gen) > 0 {
 		gl.goPkgRels[args.Rel] = true
 	} else {
 		for _, sub := range args.Subdirs {
@@ -241,7 +243,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) (empty, gen []*rule.
 		}
 	}
 
-	return empty, gen
+	return res
 }
 
 func filterFiles(files *[]string, pred func(string) bool) {

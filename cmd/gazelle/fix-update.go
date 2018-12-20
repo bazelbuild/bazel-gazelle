@@ -137,6 +137,9 @@ type visitRecord struct {
 	// rules is a list of generated Go rules.
 	rules []*rule.Rule
 
+	// imports contains opaque import information for each rule in rules.
+	imports []interface{}
+
 	// empty is a list of empty Go rules that may be deleted.
 	empty []*rule.Rule
 
@@ -213,8 +216,9 @@ func runFixUpdate(cmd command, args []string) error {
 
 		// Generate rules.
 		var empty, gen []*rule.Rule
+		var imports []interface{}
 		for _, l := range languages {
-			lempty, lgen := l.GenerateRules(language.GenerateArgs{
+			res := l.GenerateRules(language.GenerateArgs{
 				Config:       c,
 				Dir:          dir,
 				Rel:          rel,
@@ -224,8 +228,12 @@ func runFixUpdate(cmd command, args []string) error {
 				GenFiles:     genFiles,
 				OtherEmpty:   empty,
 				OtherGen:     gen})
-			empty = append(empty, lempty...)
-			gen = append(gen, lgen...)
+			if len(res.Gen) != len(res.Imports) {
+				log.Panicf("%s: language %s generated %d rules but returned %d imports", rel, l.Name(), len(res.Gen), len(res.Imports))
+			}
+			empty = append(empty, res.Empty...)
+			gen = append(gen, res.Gen...)
+			imports = append(imports, res.Imports...)
 		}
 		if f == nil && len(gen) == 0 {
 			return
@@ -241,10 +249,11 @@ func runFixUpdate(cmd command, args []string) error {
 			merger.MergeFile(f, empty, gen, merger.PreResolve, kinds)
 		}
 		visits = append(visits, visitRecord{
-			pkgRel: rel,
-			rules:  gen,
-			empty:  empty,
-			file:   f,
+			pkgRel:  rel,
+			rules:   gen,
+			imports: imports,
+			empty:   empty,
+			file:    f,
 		})
 
 		// Add library rules to the dependency resolution table.
@@ -261,9 +270,9 @@ func runFixUpdate(cmd command, args []string) error {
 	// Resolve dependencies.
 	rc := repo.NewRemoteCache(uc.repos)
 	for _, v := range visits {
-		for _, r := range v.rules {
+		for i, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
-			kindToResolver[r.Kind()].Resolve(c, ruleIndex, rc, r, from)
+			kindToResolver[r.Kind()].Resolve(c, ruleIndex, rc, r, v.imports[i], from)
 		}
 		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve, kinds)
 	}

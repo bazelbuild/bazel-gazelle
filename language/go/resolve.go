@@ -59,8 +59,7 @@ func (_ *goLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return embedLabels
 }
 
-func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, from label.Label) {
-	importsRaw := r.PrivateAttr(config.GazelleImportsKey)
+func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, importsRaw interface{}, from label.Label) {
 	if importsRaw == nil {
 		// may not be set in tests.
 		return

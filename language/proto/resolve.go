@@ -44,8 +44,7 @@ func (_ *protoLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return nil
 }
 
-func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, from label.Label) {
-	importsRaw := r.PrivateAttr(config.GazelleImportsKey)
+func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, importsRaw interface{}, from label.Label) {
 	if importsRaw == nil {
 		// may not be set in tests.
 		return

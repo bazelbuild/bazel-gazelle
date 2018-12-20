@@ -20,7 +20,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
@@ -278,13 +277,14 @@ proto_library(
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, r := range f.Rules {
-				convertImportsAttr(r)
+			imports := make([]interface{}, len(f.Rules))
+			for i, r := range f.Rules {
+				imports[i] = convertImportsAttr(r)
 				ix.AddRule(c, r, f)
 			}
 			ix.Finish()
-			for _, r := range f.Rules {
-				lang.Resolve(c, ix, rc, r, label.New("", "test", r.Name()))
+			for i, r := range f.Rules {
+				lang.Resolve(c, ix, rc, r, imports[i], label.New("", "test", r.Name()))
 			}
 			f.Sync()
 			got := strings.TrimSpace(string(bzl.Format(f.File)))
@@ -296,11 +296,11 @@ proto_library(
 	}
 }
 
-func convertImportsAttr(r *rule.Rule) {
+func convertImportsAttr(r *rule.Rule) interface{} {
 	value := r.AttrStrings("_imports")
 	if value == nil {
 		value = []string(nil)
 	}
 	r.DelAttr("_imports")
-	r.SetPrivateAttr(config.GazelleImportsKey, value)
+	return value
 }

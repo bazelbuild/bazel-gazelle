@@ -44,7 +44,7 @@ func TestGenerateRules(t *testing.T) {
 		t.Run(rel, func(t *testing.T) {
 			var empty, gen []*rule.Rule
 			for _, lang := range langs {
-				e, g := lang.GenerateRules(language.GenerateArgs{
+				res := lang.GenerateRules(language.GenerateArgs{
 					Config:       c,
 					Dir:          dir,
 					Rel:          rel,
@@ -54,8 +54,8 @@ func TestGenerateRules(t *testing.T) {
 					GenFiles:     genFiles,
 					OtherEmpty:   empty,
 					OtherGen:     gen})
-				empty = append(empty, e...)
-				gen = append(gen, g...)
+				empty = append(empty, res.Empty...)
+				gen = append(gen, res.Gen...)
 			}
 			isTest := false
 			for _, name := range regularFiles {
@@ -94,15 +94,15 @@ func TestGenerateRules(t *testing.T) {
 func TestGenerateRulesEmpty(t *testing.T) {
 	c, langs, _ := testConfig(t)
 	goLang := langs[1].(*goLang)
-	empty, gen := goLang.GenerateRules(language.GenerateArgs{
+	res := goLang.GenerateRules(language.GenerateArgs{
 		Config: c,
 		Dir:    "./foo",
 		Rel:    "foo"})
-	if len(gen) > 0 {
-		t.Errorf("got %d generated rules; want 0", len(gen))
+	if len(res.Gen) > 0 {
+		t.Errorf("got %d generated rules; want 0", len(res.Gen))
 	}
 	f := rule.EmptyFile("test", "")
-	for _, r := range empty {
+	for _, r := range res.Empty {
 		r.Insert(f)
 	}
 	f.Sync()
@@ -126,11 +126,11 @@ go_test(name = "go_default_test")
 func TestGenerateRulesEmptyLegacyProto(t *testing.T) {
 	c, langs, _ := testConfig(t, "-proto=legacy")
 	goLang := langs[len(langs)-1].(*goLang)
-	empty, _ := goLang.GenerateRules(language.GenerateArgs{
+	res := goLang.GenerateRules(language.GenerateArgs{
 		Config: c,
 		Dir:    "./foo",
 		Rel:    "foo"})
-	for _, e := range empty {
+	for _, e := range res.Empty {
 		if kind := e.Kind(); kind == "proto_library" || kind == "go_proto_library" || kind == "go_grpc_library" {
 			t.Errorf("deleted rule %s ; should not delete in legacy proto mode", kind)
 		}
@@ -151,13 +151,13 @@ proto_library(
 	}
 	var empty []*rule.Rule
 	for _, lang := range langs {
-		es, _ := lang.GenerateRules(language.GenerateArgs{
+		res := lang.GenerateRules(language.GenerateArgs{
 			Config:     c,
 			Dir:        "./foo",
 			Rel:        "foo",
 			File:       old,
 			OtherEmpty: empty})
-		empty = append(empty, es...)
+		empty = append(empty, res.Empty...)
 	}
 	f := rule.EmptyFile("test", "")
 	for _, r := range empty {
