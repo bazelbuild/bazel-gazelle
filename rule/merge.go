@@ -234,6 +234,7 @@ func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
 			if e.mergedValue == nil {
 				e.mergedValue = &bzl.ListExpr{}
 			}
+			keys = append(keys, e.key)
 		} else if e.mergedValue != nil {
 			keys = append(keys, e.key)
 		}
@@ -242,10 +243,6 @@ func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
 		return nil, nil
 	}
 	sort.Strings(keys)
-	// Always put the default case last.
-	if haveDefault {
-		keys = append(keys, "//conditions:default")
-	}
 
 	mergedEntries := make([]bzl.Expr, len(keys))
 	for i, k := range keys {
@@ -408,18 +405,10 @@ func squashDict(x, y *bzl.DictExpr) (*bzl.DictExpr, error) {
 	}
 
 	keys := make([]string, 0, len(cases))
-	haveDefault := false
 	for k := range cases {
-		if k == "//conditions:default" {
-			haveDefault = true
-			continue
-		}
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	if haveDefault {
-		keys = append(keys, "//conditions:default") // must be last
-	}
 
 	squashed := *x
 	squashed.Comments.Before = append(x.Comments.Before, y.Comments.Before...)

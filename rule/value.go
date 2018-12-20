@@ -24,6 +24,10 @@ import (
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
+const (
+	defaultCondition = "//conditions:default"
+)
+
 // KeyValue represents a key-value pair. This gets converted into a
 // rule attribute, i.e., a Skylark keyword argument.
 type KeyValue struct {
@@ -82,10 +86,19 @@ func ExprFromValue(val interface{}) bzl.Expr {
 
 	case reflect.Map:
 		rkeys := rv.MapKeys()
+		rkeys = append(rkeys, reflect.ValueOf(defaultCondition))
 		sort.Sort(byString(rkeys))
 		args := make([]bzl.Expr, len(rkeys))
 		for i, rk := range rkeys {
-			label := fmt.Sprintf("@io_bazel_rules_go//go/platform:%s", mapKeyString(rk))
+			val := mapKeyString(rk)
+			if val == defaultCondition {
+				args[i] = &bzl.KeyValueExpr{
+					Key:   &bzl.StringExpr{Value: defaultCondition},
+					Value: &bzl.ListExpr{},
+				}
+				continue
+			}
+			label := fmt.Sprintf("@io_bazel_rules_go//go/platform:%s", val)
 			k := &bzl.StringExpr{Value: label}
 			v := ExprFromValue(rv.MapIndex(rk).Interface())
 			if l, ok := v.(*bzl.ListExpr); ok {
@@ -93,10 +106,7 @@ func ExprFromValue(val interface{}) bzl.Expr {
 			}
 			args[i] = &bzl.KeyValueExpr{Key: k, Value: v}
 		}
-		args = append(args, &bzl.KeyValueExpr{
-			Key:   &bzl.StringExpr{Value: "//conditions:default"},
-			Value: &bzl.ListExpr{},
-		})
+
 		sel := &bzl.CallExpr{
 			X:    &bzl.LiteralExpr{Token: "select"},
 			List: []bzl.Expr{&bzl.DictExpr{List: args, ForceMultiLine: true}},
