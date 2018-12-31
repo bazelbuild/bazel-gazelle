@@ -1017,6 +1017,14 @@ func TestResolveExternal(t *testing.T) {
 			desc:       "domain",
 			importpath: "example.com/lib",
 			want:       "@com_example//lib:go_default_library",
+		}, {
+			desc: "same_prefix",
+			importpath: "example.com/local/ext",
+			repos: []repo.Repo{{
+				Name: "local_ext",
+				GoPrefix: "example.com/local/ext",
+			}},
+			want: "@local_ext//:go_default_library",
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
