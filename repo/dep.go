@@ -44,11 +44,16 @@ func importRepoRulesDep(filename string) ([]Repo, error) {
 
 	var repos []Repo
 	for _, p := range file.Projects {
+		var vcs string
+		if len(p.Source) > 0 {
+			vcs = "git"
+		}
 		repos = append(repos, Repo{
 			Name:     label.ImportPathToBazelRepoName(p.Name),
 			GoPrefix: p.Name,
 			Commit:   p.Revision,
 			Remote:   p.Source,
+			VCS: vcs,
 		})
 	}
 	return repos, nil
