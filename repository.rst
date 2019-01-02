@@ -87,7 +87,7 @@ external Go projects.
       name = "com_github_pkg_errors",
       importpath = "github.com/pkg/errors",
       urls = ["https://codeload.github.com/pkg/errors/zip/816c9085562cd7ee03e7f8188a1cfd942858cded"],
-      strip_prefix = ["errors-816c9085562cd7ee03e7f8188a1cfd942858cded"],
+      strip_prefix = "errors-816c9085562cd7ee03e7f8188a1cfd942858cded",
       type = "zip",
   )
 
