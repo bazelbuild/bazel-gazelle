@@ -45,7 +45,12 @@ func importRepoRulesDep(filename string) ([]Repo, error) {
 	var repos []Repo
 	for _, p := range file.Projects {
 		var vcs string
-		if len(p.Source) > 0 {
+		if p.Source != "" {
+			// TODO(#411): Handle source directives correctly. It may be an import
+			// path, or a URL. In the case of an import path, we should resolve it
+			// to the correct remote and vcs. In the case of a URL, we should
+			// correctly determine what VCS to use (the URL will usually start
+			// with "https://", which is used by multiple VCSs).
 			vcs = "git"
 		}
 		repos = append(repos, Repo{
@@ -53,7 +58,7 @@ func importRepoRulesDep(filename string) ([]Repo, error) {
 			GoPrefix: p.Name,
 			Commit:   p.Revision,
 			Remote:   p.Source,
-			VCS: vcs,
+			VCS:      vcs,
 		})
 	}
 	return repos, nil
