@@ -166,16 +166,16 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 		return label.New("bazel_gazelle", pkg, "go_default_library"), nil
 	}
 
+	if gc.depMode == externalMode {
+		return resolveExternal(rc, imp)
+	}
+
+	// This is a last ditch effort in case the rule index was incomplete.
 	if pathtools.HasPrefix(imp, gc.prefix) {
 		pkg := path.Join(gc.prefixRel, pathtools.TrimPrefix(imp, gc.prefix))
 		return label.New("", pkg, defaultLibName), nil
 	}
-
-	if gc.depMode == externalMode {
-		return resolveExternal(rc, imp)
-	} else {
-		return resolveVendored(rc, imp)
-	}
+	return resolveVendored(rc, imp)
 }
 
 // isStandard returns whether a package is in the standard library.
