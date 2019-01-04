@@ -1506,7 +1506,7 @@ import (
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	if err := runGazelle(dir, []string{"-external=vendored"}); err != nil {
+	if err := runGazelle(dir, []string{"-external=vendored", "-index=false"}); err != nil {
 		t.Fatal(err)
 	}
 

@@ -38,6 +38,7 @@ func TestResolveGo(t *testing.T) {
 		index []buildFile
 		old   buildFile
 		want  string
+		skipIndex bool
 	}
 	for _, tc := range []testCase{
 		{
@@ -445,6 +446,7 @@ go_library(
 `,
 		}, {
 			desc: "local_unknown",
+			skipIndex: true,
 			old: buildFile{content: `
 go_binary(
     name = "bin",
@@ -465,6 +467,35 @@ go_binary(
 `,
 		}, {
 			desc: "local_relative",
+			index: []buildFile{
+				{
+					rel: "a",
+					content: `
+go_library(
+    name = "go_default_library",
+    importpath = "example.com/repo/resolve/a",
+)
+`,
+				},
+				{
+					rel: "a/b",
+					content: `
+go_library(
+    name = "go_default_library",
+    importpath = "example.com/repo/resolve/a/b",
+)
+`,
+				},
+				{
+					rel: "c",
+					content: `
+go_library(
+    name = "go_default_library",
+    importpath = "example.com/repo/resolve/c",
+)
+`,
+				},
+			},
 			old: buildFile{
 				rel: "a",
 				content: `
@@ -848,7 +879,7 @@ go_library(
 			c, langs, cexts := testConfig(
 				t,
 				"-go_prefix=example.com/repo/resolve",
-				"-external=vendored")
+				"-external=vendored", fmt.Sprintf("-index=%v", !tc.skipIndex))
 			kindToResolver := make(map[string]resolve.Resolver)
 			for _, lang := range langs {
 				for kind := range lang.Kinds() {
