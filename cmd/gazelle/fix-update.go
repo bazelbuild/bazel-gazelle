@@ -134,6 +134,9 @@ type visitRecord struct {
 	// the repository root. "" for the repository root itself.
 	pkgRel string
 
+	// c is the configuration for the directory with directives applied.
+	c *config.Config
+
 	// rules is a list of generated Go rules.
 	rules []*rule.Rule
 
@@ -250,6 +253,7 @@ func runFixUpdate(cmd command, args []string) error {
 		}
 		visits = append(visits, visitRecord{
 			pkgRel:  rel,
+			c:       c,
 			rules:   gen,
 			imports: imports,
 			empty:   empty,
@@ -272,7 +276,7 @@ func runFixUpdate(cmd command, args []string) error {
 	for _, v := range visits {
 		for i, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
-			kindToResolver[r.Kind()].Resolve(c, ruleIndex, rc, r, v.imports[i], from)
+			kindToResolver[r.Kind()].Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
 		}
 		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve, kinds)
 	}
@@ -280,7 +284,7 @@ func runFixUpdate(cmd command, args []string) error {
 	// Emit merged files.
 	for _, v := range visits {
 		merger.FixLoads(v.file, loads)
-		if err := uc.emit(c, v.file); err != nil {
+		if err := uc.emit(v.c, v.file); err != nil {
 			log.Print(err)
 		}
 	}

@@ -1479,6 +1479,60 @@ go_library(
 	})
 }
 
+// TestSubdirectoryPrefixExternal checks that directives set in subdirectories
+// may be used in dependency resolution. Verifies #412.
+func TestSubdirectoryPrefixExternal(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		}, {
+			Path:    "BUILD.bazel",
+			Content: "# gazelle:prefix",
+		}, {
+			Path:    "sub/BUILD.bazel",
+			Content: "# gazelle:prefix example.com/sub",
+		}, {
+			Path: "sub/sub.go",
+			Content: `
+package sub
+
+import (
+	_ "example.com/sub/missing"
+	_ "example.com/external"
+)
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"-external=vendored"}); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "sub/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:prefix example.com/sub
+
+go_library(
+    name = "go_default_library",
+    srcs = ["sub.go"],
+    importpath = "example.com/sub",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//sub/missing:go_default_library",
+        "//vendor/example.com/external:go_default_library",
+    ],
+)
+`,
+		},
+	})
+}
+
 // TODO(jayconrod): more tests
 //   run in fix mode in testdata directories to create new files
 //   run in diff mode in testdata directories to update existing files (no change)
