@@ -43,7 +43,6 @@ type updateConfig struct {
 	dirs        []string
 	emit        emitFunc
 	repos       []repo.Repo
-	useIndex    bool
 	walkMode    walk.Mode
 	patchPath   string
 	patchBuffer bytes.Buffer
@@ -75,7 +74,6 @@ func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *conf
 	c.ShouldFix = cmd == "fix"
 
 	fs.StringVar(&ucr.mode, "mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
-	fs.BoolVar(&uc.useIndex, "index", true, "when true, gazelle will build an index of libraries in the workspace for dependency resolution")
 	fs.BoolVar(&ucr.recursive, "r", true, "when true, gazelle will update subdirectories recursively")
 	fs.StringVar(&uc.patchPath, "patch", "", "when set with -mode=diff, gazelle will write to a file instead of stdout")
 }
@@ -114,7 +112,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 
 	if ucr.recursive {
 		uc.walkMode = walk.VisitAllUpdateSubdirsMode
-	} else if uc.useIndex {
+	} else if c.IndexLibraries {
 		uc.walkMode = walk.VisitAllUpdateDirsMode
 	} else {
 		uc.walkMode = walk.UpdateDirsMode
@@ -202,7 +200,7 @@ func runFixUpdate(cmd command, args []string) error {
 		// If this file is ignored or if Gazelle was not asked to update this
 		// directory, just index the build file and move on.
 		if !update {
-			if uc.useIndex && f != nil {
+			if c.IndexLibraries && f != nil {
 				for _, r := range f.Rules {
 					ruleIndex.AddRule(c, r, f)
 				}
@@ -261,7 +259,7 @@ func runFixUpdate(cmd command, args []string) error {
 		})
 
 		// Add library rules to the dependency resolution table.
-		if uc.useIndex {
+		if c.IndexLibraries {
 			for _, r := range f.Rules {
 				ruleIndex.AddRule(c, r, f)
 			}

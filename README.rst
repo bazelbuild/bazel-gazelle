@@ -292,6 +292,12 @@ The following flags are accepted:
 | current repository. May be :value:`external` or :value:`vendored`. See                           |
 | `Dependency resolution`_.                                                                        |
 +--------------------------------------------------------------+-----------------------------------+
+| :flag:`-index true|false`                                    | :value:`true`                     |
++--------------------------------------------------------------+-----------------------------------+
+| Determines whether Galleze should index the libraries in the current repository and whether it   |
+| should use the index to resolve dependencies. If this is switched off, Galleze would rely on     |
+| ``# gazelle:prefix`` directive or ``-go_prefix`` flag to resolve dependencies.                   |
++--------------------------------------------------------------+-----------------------------------+
 | :flag:`-go_prefix example.com/repo`                          |                                   |
 +--------------------------------------------------------------+-----------------------------------+
 | A prefix of import paths for libraries in the repository that corresponds to                     |
@@ -620,16 +626,16 @@ below to resolve dependencies:
       ``jsonpb`` are mapped to special rules in ``@com_github_golang_protobuf``.
       See `Avoiding conflicts with proto rules`_.
 
-4. If the import to be resolved is provided by a library in the current
-   repository, the import will be resolved to that library. Gazelle builds
-   an index of library rules in the current repository before starting
-   dependency resolution, and this is how most dependencies are resolved.
+4. If the import to be resolved is in the library index, the import will be resolved
+   to that library. If ``-index=true``, Gazelle builds an index of library rules in
+   the current repository before starting dependency resolution, and this is how
+   most dependencies are resolved.
 
    a) For Go, the match is based on the ``importpath`` attribute.
    b) For proto, the match is based on the ``srcs`` attribute.
 
-5. If a package is imported that has the current ``go_prefix`` as a prefix,
-   Gazelle generates a label following a convention. For example, if
+5. If ``-index=false`` and a package is imported that has the current ``go_prefix``
+   as a prefix, Gazelle generates a label following a convention. For example, if
    the build file in ``//src`` set the prefix with
    ``# gazelle:prefix example.com/repo/foo``, and you import the library
    ``"example.com/repo/foo/bar``, the dependency will be

@@ -70,6 +70,10 @@ type Config struct {
 	// usage of deprecated rules.
 	ShouldFix bool
 
+	// IndexLibraries determines whether Gazelle should build an index of
+	// libraries in the workspace for dependency resolution
+	IndexLibraries bool
+
 	// Exts is a set of configurable extensions. Generally, each language
 	// has its own set of extensions, but other modules may provide their own
 	// extensions as well. Values in here may be populated by command line
@@ -152,11 +156,13 @@ type Configurer interface {
 // i.e., those that apply to Config itself and not to Config.Exts.
 type CommonConfigurer struct {
 	repoRoot, buildFileNames, readBuildFilesDir, writeBuildFilesDir string
+	indexLibraries bool
 }
 
 func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Config) {
 	fs.StringVar(&cc.repoRoot, "repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
 	fs.StringVar(&cc.buildFileNames, "build_file_name", strings.Join(DefaultValidBuildFileNames, ","), "comma-separated list of valid build file names.\nThe first element of the list is the name of output build files to generate.")
+	fs.BoolVar(&cc.indexLibraries, "index", true, "when true, gazelle will build an index of libraries in the workspace for dependency resolution")
 	fs.StringVar(&cc.readBuildFilesDir, "experimental_read_build_files_dir", "", "path to a directory where build files should be read from (instead of -repo_root)")
 	fs.StringVar(&cc.writeBuildFilesDir, "experimental_write_build_files_dir", "", "path to a directory where build files should be written to (instead of -repo_root)")
 }
@@ -190,7 +196,7 @@ func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 			return fmt.Errorf("%s: failed to find absolute path of -write_build_files_dir: %v", cc.writeBuildFilesDir, err)
 		}
 	}
-
+	c.IndexLibraries = cc.indexLibraries
 	return nil
 }
 

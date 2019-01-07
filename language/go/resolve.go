@@ -166,9 +166,13 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 		return label.New("bazel_gazelle", pkg, "go_default_library"), nil
 	}
 
-	if pathtools.HasPrefix(imp, gc.prefix) {
-		pkg := path.Join(gc.prefixRel, pathtools.TrimPrefix(imp, gc.prefix))
-		return label.New("", pkg, defaultLibName), nil
+	if !c.IndexLibraries {
+		// packages in current repo were not indexed, relying on prefix to decide what may have been in
+		// current repo
+		if pathtools.HasPrefix(imp, gc.prefix) {
+			pkg := path.Join(gc.prefixRel, pathtools.TrimPrefix(imp, gc.prefix))
+			return label.New("", pkg, defaultLibName), nil
+		}
 	}
 
 	if gc.depMode == externalMode {
