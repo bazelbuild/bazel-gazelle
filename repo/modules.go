@@ -35,7 +35,23 @@ type module struct {
 	Main          bool
 }
 
-var regexMixedVersioning = regexp.MustCompile(`^(.*?)-([0-9]{14})-([a-fA-F0-9]{12})$`)
+// Per the `go help modules` documentation:
+//   There are three pseudo-version forms:
+//
+//   vX.0.0-yyyymmddhhmmss-abcdefabcdef is used when there is no earlier
+//   versioned commit with an appropriate major version before the target commit.
+//   (This was originally the only form, so some older go.mod files use this form
+//   even for commits that do follow tags.)
+//
+//   vX.Y.Z-pre.0.yyyymmddhhmmss-abcdefabcdef is used when the most
+//   recent versioned commit before the target commit is vX.Y.Z-pre.
+//
+//   vX.Y.(Z+1)-0.yyyymmddhhmmss-abcdefabcdef is used when the most
+//   recent versioned commit before the target commit is vX.Y.Z.
+//
+// We need to match all three of these with the following regexp.
+
+var regexMixedVersioning = regexp.MustCompile(`^(.*?)[-.]((?:0\.|)[0-9]{14})-([a-fA-F0-9]{12})$`)
 
 func toRepoRule(mod module) Repo {
 	var tag, commit string
