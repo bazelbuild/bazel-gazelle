@@ -233,6 +233,9 @@ def _go_repository_tools_impl(ctx):
     env = {
         "GOROOT": str(go_root),
         "GOPATH": str(ctx.path(".")),
+        "GO111MODULE": "off",
+        # GOCACHE is required starting in Go 1.12
+        "GOCACHE": str(ctx.path(".")) + "/.gocache",
         # workaround: to find gcc for go link tool on Arm platform
         "PATH": ctx.os.environ["PATH"],
         # workaround: avoid the Go SDK paths from leaking into the binary
@@ -243,16 +246,24 @@ def _go_repository_tools_impl(ctx):
 
     for tool in ("fetch_repo", "gazelle"):
         args = [
-            go_tool, "install",
+            go_tool,
+            "install",
             "-a",
-            "-ldflags", "-w -s",
-            "-gcflags", "all=-trimpath=" + env["GOPATH"],
-            "-asmflags", "all=-trimpath=" + env["GOPATH"],
+            "-ldflags",
+            "-w -s",
+            "-gcflags",
+            "all=-trimpath=" + env["GOPATH"],
+            "-asmflags",
+            "all=-trimpath=" + env["GOPATH"],
             "github.com/bazelbuild/bazel-gazelle/cmd/{}".format(tool),
         ]
         result = env_execute(ctx, args, environment = env)
         if result.return_code:
             fail("failed to build {}: {}".format(tool, result.stderr))
+
+    result = ctx.execute(["rm", "-rf", ".gocache"])
+    if result.return_code:
+        print("failed to remove GOCACHE: {}".format(result.stderr))
 
     # add a build file to export the tools
     ctx.file(
@@ -271,9 +282,6 @@ go_repository_tools = repository_rule(
         "_deps": attr.label_keyed_string_dict(
             default = {
                 "@bazel_gazelle//:WORKSPACE": "github.com/bazelbuild/bazel-gazelle",
-                "@bazel_gazelle//vendor/github.com/bazelbuild/buildtools/build:BUILD.bazel": "github.com/bazelbuild/buildtools/build",
-                "@bazel_gazelle//vendor/github.com/pelletier/go-toml:BUILD.bazel": "github.com/pelletier/go-toml",
-                "@bazel_gazelle//vendor/golang.org/x/tools/go/vcs:BUILD.bazel": "golang.org/x/tools/go/vcs",
             },
         ),
     },
