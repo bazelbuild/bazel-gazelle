@@ -39,8 +39,9 @@ func TestDiffExisting(t *testing.T) {
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	if err := runGazelle(dir, []string{"-mode=diff", "-patch=p"}); err != nil {
-		t.Fatal(err)
+	wantError := "encountered changes while running diff"
+	if err := runGazelle(dir, []string{"-mode=diff", "-patch=p"}); err.Error() != wantError {
+		t.Fatalf("got %q; want %q", err, wantError)
 	}
 
 	want := append(files, testtools.FileSpec{
@@ -76,8 +77,9 @@ func TestDiffNew(t *testing.T) {
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	if err := runGazelle(dir, []string{"-go_prefix=example.com/hello", "-mode=diff", "-patch=p"}); err != nil {
-		t.Fatal(err)
+	wantError := "encountered changes while running diff"
+	if err := runGazelle(dir, []string{"-go_prefix=example.com/hello", "-mode=diff", "-patch=p"}); err.Error() != wantError {
+		t.Fatalf("got %q; want %q", err, wantError)
 	}
 
 	want := append(files, testtools.FileSpec{
@@ -121,8 +123,10 @@ func TestDiffReadWriteDir(t *testing.T) {
 		"-experimental_write_build_files_dir=write",
 		"repo",
 	}
-	if err := runGazelle(dir, args); err != nil {
-		t.Fatal(err)
+
+	wantError := "encountered changes while running diff"
+	if err := runGazelle(dir, args); err.Error() != wantError {
+		t.Fatalf("got %q; want %q", err, wantError)
 	}
 
 	wantPatch := fmt.Sprintf(`

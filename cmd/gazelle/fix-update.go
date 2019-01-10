@@ -280,10 +280,15 @@ func runFixUpdate(cmd command, args []string) error {
 	}
 
 	// Emit merged files.
+	var exit error
 	for _, v := range visits {
 		merger.FixLoads(v.file, loads)
 		if err := uc.emit(v.c, v.file); err != nil {
-			log.Print(err)
+			if err == exitError {
+				exit = err
+			} else {
+				log.Print(err)
+			}
 		}
 	}
 	if uc.patchPath != "" {
@@ -292,7 +297,7 @@ func runFixUpdate(cmd command, args []string) error {
 		}
 	}
 
-	return nil
+	return exit
 }
 
 func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Configurer, loads []rule.LoadInfo) (*config.Config, error) {
