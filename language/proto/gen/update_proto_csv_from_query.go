@@ -109,8 +109,7 @@ func readQueryXml(xmlPath string) (Query, error) {
 
 func processQuery(query Query) ([]string, error) {
 	protoLabelMap := make(map[string]string)
-	for i := 0; i < len(query.Rules); i++ {
-		rule := query.Rules[i]
+	for _, rule := range query.Rules {
 		if "go_proto_library" == rule.Class {
 			m, err := processGoProtoLibraryRule(rule)
 			if err != nil {
@@ -148,7 +147,7 @@ func processGoProtoLibraryRule(rule Rule) (map[string]string, error) {
 		}
 	}
 
-	if len(packagePath) <= 0 {
+	if packagePath == "" {
 		// should never happen
 		return protoLabelMap, fmt.Errorf("go_proto_library does not have 'importpath' argument")
 	}
@@ -163,7 +162,7 @@ func processGoProtoLibraryRule(rule Rule) (map[string]string, error) {
 	}
 
 	goLabel := repoPrefix + rule.Name
-	if len(protoLabel) > 0 {
+	if protoLabel != "" {
 		protoLabelMap[protoLabel] = strings.Join([]string{repoPrefix + protoLabel, packagePath, goLabel}, ",")
 		return protoLabelMap, nil
 	}
@@ -186,7 +185,7 @@ func processProtoLibraryRule(protoLabelInfo string, rule Rule) ([]string, error)
 
 	relPathList := []string{}
 
-	if len(protoLabelInfo) <= 0 {
+	if protoLabelInfo == "" {
 		return relPathList, nil
 	}
 
