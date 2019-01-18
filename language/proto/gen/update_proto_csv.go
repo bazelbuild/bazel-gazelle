@@ -24,6 +24,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -78,7 +79,7 @@ func main() {
 			log.Fatal(err)
 		}
 	} else if *googleapisXmlPath != "" {
-		if err := processQueryXml(*googleapisXmlPath, "@com_google_googleapis", protoContent); err != nil {
+		if err := processQueryXml(*googleapisXmlPath, protoContent); err != nil {
 			log.Fatal(err)
 		}
 	} else {
@@ -90,7 +91,7 @@ func main() {
 	}
 }
 
-func processRepository(rootPath string, protoContent *bytes.Buffer) (err error) {
+func processRepository(rootPath string, protoContent io.Writer) error {
 	return filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err

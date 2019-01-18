@@ -26,6 +26,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"sort"
@@ -65,13 +66,15 @@ type String struct {
 	Value   string   `xml:"value,attr"`
 }
 
-func processQueryXml(xmlPath, repoPrefix string, protoContent *bytes.Buffer) (err error) {
+const repoPrefix = "@com_google_googleapis"
+
+func processQueryXml(xmlPath string, protoContent io.Writer) error {
 	query, err := readQueryXml(xmlPath)
 	if err != nil {
-		return
+		return err
 	}
 
-	relPathList, err := processQuery(query, repoPrefix)
+	relPathList, err := processQuery(query)
 	for _, v := range relPathList {
 		if _, err = fmt.Fprintf(protoContent, "%s\n", v); err != nil {
 			return err
@@ -81,36 +84,35 @@ func processQueryXml(xmlPath, repoPrefix string, protoContent *bytes.Buffer) (er
 	return nil
 }
 
-func readQueryXml(xmlPath string) (query Query, err error) {
+func readQueryXml(xmlPath string) (Query, error) {
 	xmlFile, err := os.Open(xmlPath)
+	query := Query{}
 	if err != nil {
-		fmt.Println(err)
 		return query, err
 	}
 	defer xmlFile.Close()
 
-	byteValue, err := ioutil.ReadAll(xmlFile)
+	xmlData, err := ioutil.ReadAll(xmlFile)
 	if err != nil {
 		return query, err
 	}
 
 	// golang cannot process xml version > 1.0 yet. It seems like the generated xml is still a
 	// valid 1.0 one, so the following hack is "Ok".
-	xmlVersion := byteValue[:19]
-	if string(xmlVersion) == `<?xml version="1.1"` {
-		copy(xmlVersion, `<?xml version="1.0"`)
+	if bytes.HasPrefix(xmlData, []byte(`<?xml version="1.1"`)) {
+		copy(xmlData, []byte(`<?xml version="1.0"`))
 	}
 
-	err = xml.Unmarshal(byteValue, &query)
+	err = xml.Unmarshal(xmlData, &query)
 	return query, err
 }
 
-func processQuery(query Query, repoPrefix string) (relPathList []string, err error) {
+func processQuery(query Query) ([]string, error) {
 	protoLabelMap := make(map[string]string)
 	for i := 0; i < len(query.Rules); i++ {
 		rule := query.Rules[i]
 		if "go_proto_library" == rule.Class {
-			m, err := processGoProtoLibraryRule(rule, repoPrefix)
+			m, err := processGoProtoLibraryRule(rule)
 			if err != nil {
 				continue
 			}
@@ -120,9 +122,8 @@ func processQuery(query Query, repoPrefix string) (relPathList []string, err err
 		}
 	}
 
-	relPathList = []string{}
-	for i := 0; i < len(query.Rules); i++ {
-		rule := query.Rules[i]
+	relPathList := []string{}
+	for _, rule := range query.Rules {
 		if "proto_library" == rule.Class {
 			paths, err := processProtoLibraryRule(protoLabelMap[rule.Name], rule)
 			if err != nil {
@@ -136,12 +137,11 @@ func processQuery(query Query, repoPrefix string) (relPathList []string, err err
 	return relPathList, nil
 }
 
-func processGoProtoLibraryRule(rule Rule, repoPrefix string) (protoLabelMap map[string]string, err error) {
-	protoLabelMap = make(map[string]string)
+func processGoProtoLibraryRule(rule Rule) (map[string]string, error) {
+	protoLabelMap := make(map[string]string)
 
 	packagePath := ""
-	for j := 0; j < len(rule.Strings); j++ {
-		str := rule.Strings[j]
+	for _, str := range rule.Strings {
 		if "importpath" == str.Name {
 			packagePath = str.Value
 			break
@@ -155,8 +155,7 @@ func processGoProtoLibraryRule(rule Rule, repoPrefix string) (protoLabelMap map[
 
 	// "proto" argument case (single value)
 	protoLabel := ""
-	for j := 0; j < len(rule.Labels); j++ {
-		label := rule.Labels[j]
+	for _, label := range rule.Labels {
 		if "proto" == label.Name {
 			protoLabel = label.Value
 			break
@@ -164,41 +163,39 @@ func processGoProtoLibraryRule(rule Rule, repoPrefix string) (protoLabelMap map[
 	}
 
 	goLabel := repoPrefix + rule.Name
-
 	if len(protoLabel) > 0 {
 		protoLabelMap[protoLabel] = strings.Join([]string{repoPrefix + protoLabel, packagePath, goLabel}, ",")
 		return protoLabelMap, nil
 	}
 
 	// "protos" argument case (multiple values)
-	for j := 0; j < len(rule.Lists); j++ {
-		list := rule.Lists[j]
-		if "protos" != list.Name {
-			continue
-		}
-		for k := 0; k < len(list.Labels); k++ {
-			protoLabel = list.Labels[k].Value
-			protoLabelMap[protoLabel] = strings.Join([]string{repoPrefix + protoLabel, packagePath, goLabel}, ",")
+	for _, list := range rule.Lists {
+		if "protos" == list.Name {
+			for _, label := range list.Labels {
+				protoLabel = label.Value
+				protoLabelMap[protoLabel] = strings.Join([]string{repoPrefix + protoLabel, packagePath, goLabel}, ",")
+			}
 		}
 	}
 
 	return protoLabelMap, nil
 }
 
-func processProtoLibraryRule(protoLabelInfo string, rule Rule) (relPathList []string, err error) {
+func processProtoLibraryRule(protoLabelInfo string, rule Rule) ([]string, error) {
 	extraSuffix := "_with_info"
+
+	relPathList := []string{}
 
 	if len(protoLabelInfo) <= 0 {
 		return relPathList, nil
 	}
 
-	for j := 0; j < len(rule.Lists); j++ {
-		list := rule.Lists[j]
+	for _, list := range rule.Lists {
 		if "srcs" != list.Name {
 			continue
 		}
-		for k := 0; k < len(list.Labels); k++ {
-			relPath := list.Labels[k].Value
+		for _, label := range list.Labels {
+			relPath := label.Value
 			if strings.HasSuffix(relPath, extraSuffix) {
 				relPath = relPath[:-len(extraSuffix)]
 			}
