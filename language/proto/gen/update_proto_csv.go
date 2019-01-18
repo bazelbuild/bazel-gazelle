@@ -37,6 +37,7 @@ var (
 	progName           = filepath.Base(os.Args[0])
 	protoCsvPath       = flag.String("proto_csv", "", "Path to proto.csv to update")
 	googleapisRootPath = flag.String("go_googleapis", "", "Path to @go_googleapis repository root directory")
+	googleapisXmlPath  = flag.String("googleapis_xml", "", "Path to googleapis.xml (the output of the bazel query)")
 )
 
 var prefix = `# This file lists special protos that Gazelle knows how to import. This is used to generate
@@ -66,25 +67,40 @@ func main() {
 	flag.Parse()
 
 	if *protoCsvPath == "" {
-		log.Fatal("-proto must be set")
-	}
-	if *googleapisRootPath == "" {
-		log.Fatal("-go_googleapis must be set")
+		log.Fatal("-proto_csv must be set")
 	}
 
 	protoContent := &bytes.Buffer{}
 	protoContent.WriteString(prefix)
 
-	err := filepath.Walk(*googleapisRootPath, func(path string, info os.FileInfo, err error) error {
+	if *googleapisRootPath != "" {
+		if err := processRepository(*googleapisRootPath, protoContent); err != nil {
+			log.Fatal(err)
+		}
+	} else if *googleapisXmlPath != "" {
+		if err := processQueryXml(*googleapisXmlPath, "@com_google_googleapis", protoContent); err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal("either -go_googleapis or -googleapis_xml must be set")
+	}
+
+	if err := ioutil.WriteFile(*protoCsvPath, protoContent.Bytes(), 0666); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func processRepository(rootPath string, protoContent *bytes.Buffer) (err error) {
+	return filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !strings.HasSuffix(path, ".proto") {
 			return nil
 		}
-		relPath, err := filepath.Rel(*googleapisRootPath, path)
+		relPath, err := filepath.Rel(rootPath, path)
 		if err != nil || strings.HasPrefix(relPath, "..") {
-			log.Panicf("file %q not in googleapisRootPath %q", path, *googleapisRootPath)
+			log.Panicf("file %q not in repository rootPath %q", path, rootPath)
 		}
 		relPath = filepath.ToSlash(relPath)
 
@@ -110,13 +126,6 @@ func main() {
 		fmt.Fprintf(protoContent, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
 		return nil
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := ioutil.WriteFile(*protoCsvPath, protoContent.Bytes(), 0666); err != nil {
-		log.Fatal(err)
-	}
 }
 
 var goPackageRx = regexp.MustCompile(`option go_package = "([^"]*)"`)
