@@ -383,10 +383,11 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 		return "", nil
 	}
 
+	gc := getGoConfig(g.c)
 	filegroupName := legacyProtoFilegroupName
 	protoName := target.name
 	if protoName == "" {
-		importPath := inferImportPath(getGoConfig(g.c), g.rel)
+		importPath := inferImportPath(gc, g.rel)
 		protoName = proto.RuleName(importPath)
 	}
 	goProtoName := strings.TrimSuffix(protoName, "_proto") + "_go_proto"
@@ -415,7 +416,9 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 	goProtoLibrary.SetAttr("proto", ":"+protoName)
 	g.setImportAttrs(goProtoLibrary, importPath)
 	if target.hasServices {
-		goProtoLibrary.SetAttr("compilers", []string{"@io_bazel_rules_go//proto:go_grpc"})
+		goProtoLibrary.SetAttr("compilers", gc.goGrpcCompilers)
+	} else if gc.goProtoCompilersSet {
+		goProtoLibrary.SetAttr("compilers", gc.goProtoCompilers)
 	}
 	if g.shouldSetVisibility {
 		goProtoLibrary.SetAttr("visibility", visibility)

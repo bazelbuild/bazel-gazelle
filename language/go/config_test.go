@@ -18,6 +18,7 @@ package golang
 import (
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -85,6 +86,8 @@ func TestDirectives(t *testing.T) {
 # gazelle:build_tags foo,bar
 # gazelle:importmap_prefix x
 # gazelle:prefix y
+# gazelle:go_grpc_compilers abc, def
+# gazelle:go_proto_compilers foo, bar
 `)
 	f, err := rule.LoadData(filepath.FromSlash("test/BUILD.bazel"), "test", content)
 	if err != nil {
@@ -110,6 +113,43 @@ func TestDirectives(t *testing.T) {
 	}
 	if gc.importMapPrefixRel != "test" {
 		t.Errorf(`got importmapPrefixRel %q; want "test"`, gc.importMapPrefixRel)
+	}
+	if !gc.goGrpcCompilersSet {
+		t.Error("expected goGrpcCompilersSet to be set")
+	}
+	if !reflect.DeepEqual(gc.goGrpcCompilers, []string{"abc", "def"}) {
+		t.Errorf("got goGrpcCompilers %v; want [abc def]", gc.goGrpcCompilers)
+	}
+	if !gc.goProtoCompilersSet {
+		t.Error("expected goProtoCompilersSet to be set")
+	}
+	if !reflect.DeepEqual(gc.goProtoCompilers, []string{"foo", "bar"}) {
+		t.Errorf("got goProtoCompilers %v; want [foo bar]", gc.goProtoCompilers)
+	}
+
+	subContent := []byte(`
+# gazelle:go_grpc_compilers
+# gazelle:go_proto_compilers
+`)
+	f, err = rule.LoadData(filepath.FromSlash("test/sub/BUILD.bazel"), "sub", subContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cext := range cexts {
+		cext.Configure(c, "test/sub", f)
+	}
+	gc = getGoConfig(c)
+	if gc.goGrpcCompilersSet {
+		t.Error("expected goGrpcCompilersSet to be unset")
+	}
+	if !reflect.DeepEqual(gc.goGrpcCompilers, defaultGoGrpcCompilers) {
+		t.Errorf("got goGrpcCompilers %v; want %v", gc.goGrpcCompilers, defaultGoGrpcCompilers)
+	}
+	if gc.goProtoCompilersSet {
+		t.Error("expected goProtoCompilersSet to be unset")
+	}
+	if !reflect.DeepEqual(gc.goProtoCompilers, defaultGoProtoCompilers) {
+		t.Errorf("got goProtoCompilers %v; want %v", gc.goProtoCompilers, defaultGoProtoCompilers)
 	}
 }
 
@@ -278,5 +318,26 @@ gazelle(
 				t.Errorf("rel: got %q; want %q", gc.prefixRel, "x")
 			}
 		})
+	}
+}
+
+func TestSplitValue(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		parts []string
+	}{
+		{
+			value: "\t foo, bar \t",
+			parts: []string{"foo", "bar"},
+		},
+		{
+			value: " foo ",
+			parts: []string{"foo"},
+		},
+	} {
+		parts := splitValue(tc.value)
+		if !reflect.DeepEqual(tc.parts, parts) {
+			t.Errorf("want %v; got %v", tc.parts, parts)
+		}
 	}
 }

@@ -78,6 +78,7 @@ var goKinds = map[string]rule.KindInfo{
 			"copts":      true,
 			"embed":      true,
 			"proto":      true,
+			"compilers":  true,
 		},
 		ResolveAttrs: map[string]bool{"deps": true},
 	},

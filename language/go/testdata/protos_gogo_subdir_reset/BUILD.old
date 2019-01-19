@@ -1,0 +1,1 @@
+# gazelle:go_proto_compilers @io_bazel_rules_go//proto:gogoslick_proto, //:go_yarpc

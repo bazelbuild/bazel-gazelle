@@ -1,0 +1,33 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "service_gogo_proto",
+    srcs = ["service.proto"],
+    _gazelle_imports = [
+        "google/protobuf/any.proto",
+        "service/sub/sub.proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "service_gogo_go_proto",
+    _gazelle_imports = [
+        "google/protobuf/any.proto",
+        "service/sub/sub.proto",
+    ],
+    compilers = ["@io_bazel_rules_go//proto:gogofast_grpc"],
+    importpath = "example.com/repo/service_gogo",
+    proto = ":service_gogo_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["extra.go"],
+    _gazelle_imports = [],
+    embed = [":service_gogo_go_proto"],
+    importpath = "example.com/repo/service_gogo",
+    visibility = ["//visibility:public"],
+)

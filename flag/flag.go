@@ -23,12 +23,17 @@ import (
 
 // MultiFlag collects repeated string flags into a slice.
 type MultiFlag struct {
+	IsSet  *bool
 	Values *[]string
 }
 
 var _ stdflag.Value = (*MultiFlag)(nil)
 
 func (m *MultiFlag) Set(v string) error {
+	if m.IsSet != nil && !*m.IsSet {
+		*m.IsSet = true
+		*m.Values = nil // clear any default values
+	}
 	*m.Values = append(*m.Values, v)
 	return nil
 }
