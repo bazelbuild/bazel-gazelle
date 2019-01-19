@@ -25,10 +25,10 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
+	"go/format"
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"text/template"
 
@@ -132,17 +132,12 @@ func run(args []string) (err error) {
 	if err := knownImportsTpl.Execute(knownImportsBuf, data); err != nil {
 		return err
 	}
-
-	if err := ioutil.WriteFile(knownImportsPath, knownImportsBuf.Bytes(), 0666); err != nil {
+	knownImportsData, err := format.Source(knownImportsBuf.Bytes())
+	if err != nil {
 		return err
 	}
-
-	if gofmtPath, err := exec.LookPath("gofmt"); err == nil {
-		// gofmt won't be available when run by Bazel, but it doesn't matter;
-		// we just need to format the sources that get checked in.
-		if err := exec.Command(gofmtPath, "-w", knownImportsPath).Run(); err != nil {
-			return err
-		}
+	if err := ioutil.WriteFile(knownImportsPath, knownImportsData, 0666); err != nil {
+		return err
 	}
 
 	return nil
