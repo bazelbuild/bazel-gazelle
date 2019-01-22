@@ -26,6 +26,7 @@ limitations under the License.
 package rule
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -94,6 +95,9 @@ func LoadData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
+	if ast.Type != bzl.TypeBuild && ast.Type != bzl.TypeWorkspace {
+		return nil, errors.New("gazelle can process only BUILD and WORKSPACE files")
+	}
 	return ScanAST(pkg, ast), nil
 }
 
@@ -106,21 +110,17 @@ func ScanAST(pkg string, bzlFile *bzl.File) *File {
 		Path: bzlFile.Path,
 	}
 	for i, stmt := range f.File.Stmt {
-		call, ok := stmt.(*bzl.CallExpr)
-		if !ok {
-			continue
-		}
-		x, ok := call.X.(*bzl.LiteralExpr)
-		if !ok {
-			continue
-		}
-		if x.Token == "load" {
-			if l := loadFromExpr(i, call); l != nil {
+		switch stmt.(type) {
+		case *bzl.LoadStmt:
+			{
+				l := loadFromExpr(i, stmt.(*bzl.LoadStmt))
 				f.Loads = append(f.Loads, l)
 			}
-		} else {
-			if r := ruleFromExpr(i, call); r != nil {
-				f.Rules = append(f.Rules, r)
+		case *bzl.CallExpr:
+			{
+				if r := ruleFromExpr(i, stmt.(*bzl.CallExpr)); r != nil {
+					f.Rules = append(f.Rules, r)
+				}
 			}
 		}
 	}
@@ -192,14 +192,14 @@ func (f *File) Sync() {
 	for i, stmt := range oldStmt {
 		for ii < len(inserts) && inserts[ii].index == i {
 			inserts[ii].index = len(f.File.Stmt)
-			f.File.Stmt = append(f.File.Stmt, inserts[ii].call)
+			f.File.Stmt = append(f.File.Stmt, inserts[ii].expr)
 			ii++
 		}
 		if di < len(deletes) && deletes[di].index == i {
 			di++
 			continue
 		}
-		if si < len(stmts) && stmts[si].call == stmt {
+		if si < len(stmts) && stmts[si].expr == stmt {
 			stmts[si].index = len(f.File.Stmt)
 			si++
 		}
@@ -207,7 +207,7 @@ func (f *File) Sync() {
 	}
 	for ii < len(inserts) {
 		inserts[ii].index = len(f.File.Stmt)
-		f.File.Stmt = append(f.File.Stmt, inserts[ii].call)
+		f.File.Stmt = append(f.File.Stmt, inserts[ii].expr)
 		ii++
 	}
 }
@@ -229,7 +229,7 @@ func (f *File) Save(path string) error {
 type stmt struct {
 	index                      int
 	deleted, inserted, updated bool
-	call                       *bzl.CallExpr
+	expr                       bzl.Expr
 }
 
 // Index returns the index for this statement within the build file. For
@@ -260,53 +260,33 @@ func (s byIndex) Swap(i, j int) {
 type Load struct {
 	stmt
 	name    string
-	symbols map[string]bzl.Expr
+	symbols map[string]*bzl.Ident
 }
 
 // NewLoad creates a new, empty load statement for the given file name.
 func NewLoad(name string) *Load {
 	return &Load{
 		stmt: stmt{
-			call: &bzl.CallExpr{
-				X:            &bzl.LiteralExpr{Token: "load"},
-				List:         []bzl.Expr{&bzl.StringExpr{Value: name}},
+			expr: &bzl.LoadStmt{
+				Module:       &bzl.StringExpr{Value: name},
 				ForceCompact: true,
 			},
 		},
 		name:    name,
-		symbols: make(map[string]bzl.Expr),
+		symbols: make(map[string]*bzl.Ident),
 	}
 }
 
-func loadFromExpr(index int, call *bzl.CallExpr) *Load {
+func loadFromExpr(index int, loadStmt *bzl.LoadStmt) *Load {
 	l := &Load{
-		stmt:    stmt{index: index, call: call},
-		symbols: make(map[string]bzl.Expr),
+		stmt:    stmt{index: index, expr: loadStmt},
+		name:    loadStmt.Module.Value,
+		symbols: make(map[string]*bzl.Ident),
 	}
-	if len(call.List) == 0 {
-		return nil
-	}
-	name, ok := call.List[0].(*bzl.StringExpr)
-	if !ok {
-		return nil
-	}
-	l.name = name.Value
-	for _, arg := range call.List[1:] {
-		switch arg := arg.(type) {
-		case *bzl.StringExpr:
-			l.symbols[arg.Value] = arg
-		case *bzl.BinaryExpr:
-			x, ok := arg.X.(*bzl.LiteralExpr)
-			if !ok {
-				return nil
-			}
-			if _, ok := arg.Y.(*bzl.StringExpr); !ok {
-				return nil
-			}
-			l.symbols[x.Token] = arg
-		default:
-			return nil
-		}
+	for i := range loadStmt.From {
+		x := loadStmt.To[i]
+		y := loadStmt.From[i]
+		l.symbols[x.Name] = y
 	}
 	return l
 }
@@ -337,7 +317,7 @@ func (l *Load) Has(sym string) bool {
 // doesn't matter.
 func (l *Load) Add(sym string) {
 	if _, ok := l.symbols[sym]; !ok {
-		l.symbols[sym] = &bzl.StringExpr{Value: sym}
+		l.symbols[sym] = &bzl.Ident{Name: sym}
 		l.updated = true
 	}
 }
@@ -371,32 +351,32 @@ func (l *Load) sync() {
 	}
 	l.updated = false
 
-	args := make([]*bzl.StringExpr, 0, len(l.symbols))
-	kwargs := make([]*bzl.BinaryExpr, 0, len(l.symbols))
-	for _, e := range l.symbols {
-		if a, ok := e.(*bzl.StringExpr); ok {
-			args = append(args, a)
+	// args1 and args2 are two different sort groups based on whether a remap of the identifier is present.
+	var args1, args2, args []string
+	for x, y := range l.symbols {
+		if x == y.Name {
+			args1 = append(args1, x)
 		} else {
-			kwargs = append(kwargs, e.(*bzl.BinaryExpr))
+			args2 = append(args2, x)
 		}
 	}
-	sort.Slice(args, func(i, j int) bool {
-		return args[i].Value < args[j].Value
-	})
-	sort.Slice(kwargs, func(i, j int) bool {
-		return kwargs[i].X.(*bzl.StringExpr).Value < kwargs[j].Y.(*bzl.StringExpr).Value
-	})
+	sort.Strings(args1)
+	sort.Strings(args2)
+	args = append(args, args1...)
+	args = append(args, args2...)
 
-	list := make([]bzl.Expr, 0, 1+len(l.symbols))
-	list = append(list, l.call.List[0])
-	for _, a := range args {
-		list = append(list, a)
+	loadStmt := l.expr.(*bzl.LoadStmt)
+	loadStmt.Module.Value = l.name
+	loadStmt.From = make([]*bzl.Ident, 0, len(args))
+	loadStmt.To = make([]*bzl.Ident, 0, len(args))
+	for _, x := range args {
+		y := l.symbols[x]
+		loadStmt.From = append(loadStmt.From, y)
+		loadStmt.To = append(loadStmt.To, &bzl.Ident{Name: x})
+		if y.Name != x {
+			loadStmt.ForceCompact = false
+		}
 	}
-	for _, a := range kwargs {
-		list = append(list, a)
-	}
-	l.call.List = list
-	l.call.ForceCompact = len(kwargs) == 0
 }
 
 // Rule represents a rule statement within a build file.
@@ -411,14 +391,14 @@ type Rule struct {
 // NewRule creates a new, empty rule with the given kind and name.
 func NewRule(kind, name string) *Rule {
 	nameAttr := &bzl.BinaryExpr{
-		X:  &bzl.LiteralExpr{Token: "name"},
+		X:  &bzl.Ident{Name: "name"},
 		Y:  &bzl.StringExpr{Value: name},
 		Op: "=",
 	}
 	r := &Rule{
 		stmt: stmt{
-			call: &bzl.CallExpr{
-				X:    &bzl.LiteralExpr{Token: kind},
+			expr: &bzl.CallExpr{
+				X:    &bzl.Ident{Name: kind},
 				List: []bzl.Expr{nameAttr},
 			},
 		},
@@ -434,18 +414,18 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 	if !ok {
 		return nil
 	}
-	x, ok := call.X.(*bzl.LiteralExpr)
+	x, ok := call.X.(*bzl.Ident)
 	if !ok {
 		return nil
 	}
-	kind := x.Token
+	kind := x.Name
 	var args []bzl.Expr
 	attrs := make(map[string]*bzl.BinaryExpr)
 	for _, arg := range call.List {
 		attr, ok := arg.(*bzl.BinaryExpr)
 		if ok && attr.Op == "=" {
-			key := attr.X.(*bzl.LiteralExpr) // required by parser
-			attrs[key.Token] = attr
+			key := attr.X.(*bzl.Ident) // required by parser
+			attrs[key.Name] = attr
 		} else {
 			args = append(args, arg)
 		}
@@ -453,7 +433,7 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 	return &Rule{
 		stmt: stmt{
 			index: index,
-			call:  call,
+			expr:  call,
 		},
 		kind:    kind,
 		args:    args,
@@ -466,7 +446,7 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 // that are kept should not be modified. This does not check whether
 // subexpressions within the rule should be kept.
 func (r *Rule) ShouldKeep() bool {
-	return ShouldKeep(r.call)
+	return ShouldKeep(r.expr)
 }
 
 // Kind returns the kind of rule this is (for example, "go_library").
@@ -565,7 +545,7 @@ func (r *Rule) SetAttr(key string, value interface{}) {
 		attr.Y = y
 	} else {
 		r.attrs[key] = &bzl.BinaryExpr{
-			X:  &bzl.LiteralExpr{Token: key},
+			X:  &bzl.Ident{Name: key},
 			Y:  y,
 			Op: "=",
 		}
@@ -637,8 +617,8 @@ func (r *Rule) sync() {
 		}
 	}
 
-	call := r.call
-	call.X.(*bzl.LiteralExpr).Token = r.kind
+	call := r.expr.(*bzl.CallExpr)
+	call.X.(*bzl.Ident).Name = r.kind
 
 	list := make([]bzl.Expr, 0, len(r.args)+len(r.attrs))
 	list = append(list, r.args...)
@@ -646,7 +626,7 @@ func (r *Rule) sync() {
 		list = append(list, attr)
 	}
 	sortedAttrs := list[len(r.args):]
-	key := func(e bzl.Expr) string { return e.(*bzl.BinaryExpr).X.(*bzl.LiteralExpr).Token }
+	key := func(e bzl.Expr) string { return e.(*bzl.BinaryExpr).X.(*bzl.Ident).Name }
 	sort.SliceStable(sortedAttrs, func(i, j int) bool {
 		ki := key(sortedAttrs[i])
 		kj := key(sortedAttrs[j])
@@ -656,7 +636,7 @@ func (r *Rule) sync() {
 		return ki < kj
 	})
 
-	r.call.List = list
+	call.List = list
 	r.updated = false
 }
 

@@ -102,7 +102,7 @@ func CheckFiles(t *testing.T, dir string, files []FileSpec) {
 			}
 			got := strings.TrimSpace(string(gotBytes))
 			if got != want {
-				t.Errorf("%s: got:\n%s\nwant:\n %s", f.Path, gotBytes, f.Content)
+				t.Errorf("%s: got:\n%s\nwant:\n%s", f.Path, gotBytes, f.Content)
 			}
 		}
 	}

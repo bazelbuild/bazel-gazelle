@@ -16,6 +16,7 @@ limitations under the License.
 package merger
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -870,15 +871,15 @@ go_proto_library(
 func TestMergeFile(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			genFile, err := rule.LoadData("current", "", []byte(tc.current))
+			genFile, err := rule.LoadData(filepath.Join("current", "BUILD.bazel"), "", []byte(tc.current))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			f, err := rule.LoadData("previous", "", []byte(tc.previous))
+			f, err := rule.LoadData(filepath.Join("previous", "BUILD.bazel"), "", []byte(tc.previous))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			emptyFile, err := rule.LoadData("empty", "", []byte(tc.empty))
+			emptyFile, err := rule.LoadData(filepath.Join("empty", "BUILD.bazel"), "", []byte(tc.empty))
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
@@ -970,11 +971,11 @@ go_binary(name = "z")
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			genFile, err := rule.LoadData("gen", "", []byte(tc.gen))
+			genFile, err := rule.LoadData(filepath.Join("gen", "BUILD.bazel"), "", []byte(tc.gen))
 			if err != nil {
 				t.Fatal(err)
 			}
-			oldFile, err := rule.LoadData("old", "", []byte(tc.old))
+			oldFile, err := rule.LoadData(filepath.Join("old", "BUILD.bazel"), "", []byte(tc.old))
 			if err != nil {
 				t.Fatal(err)
 			}
