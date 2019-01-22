@@ -1,13 +1,13 @@
-# github.com/bazelbuild/buildtools v0.0.0-20180226164855-80c7f0d45d7e
+# github.com/bazelbuild/buildtools v0.0.0-20190122172533-1f3678932acd
 github.com/bazelbuild/buildtools/build
 github.com/bazelbuild/buildtools/tables
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
-# github.com/pelletier/go-toml v1.0.1
+# github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# golang.org/x/sys v0.0.0-20181004145325-8469e314837c
+# golang.org/x/sys v0.0.0-20190122071731-054c452bb702
 golang.org/x/sys/unix
-# golang.org/x/tools v0.0.0-20170824195420-5d2fd3ccab98
+# golang.org/x/tools v0.0.0-20190122202912-9c309ee22fab
 golang.org/x/tools/go/vcs
