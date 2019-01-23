@@ -22,21 +22,27 @@ package main
 
 import (
 	"bytes"
+	"encoding/xml"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
 var (
-	progName           = filepath.Base(os.Args[0])
-	protoCsvPath       = flag.String("proto_csv", "", "Path to proto.csv to update")
-	googleapisRootPath = flag.String("go_googleapis", "", "Path to @go_googleapis repository root directory")
+	progName                    = filepath.Base(os.Args[0])
+	protoCsvPath                = flag.String("proto_csv", "", "Path to proto.csv to update")
+	goGoogleapisRootPath        = flag.String("go_googleapis", "", "Path to @go_googleapis repository root directory")
+	comGoogleGoogleapisRootPath = flag.String("com_google_googleapis", "", "Path to @com_google_googleapis repository root directory")
+	bazelPath                   = flag.String("bazel", "bazel", "Path to bazel executable")
 )
 
 var prefix = `# This file lists special protos that Gazelle knows how to import. This is used to generate
@@ -66,25 +72,231 @@ func main() {
 	flag.Parse()
 
 	if *protoCsvPath == "" {
-		log.Fatal("-proto must be set")
-	}
-	if *googleapisRootPath == "" {
-		log.Fatal("-go_googleapis must be set")
+		log.Fatal("-proto_csv must be set")
 	}
 
 	protoContent := &bytes.Buffer{}
 	protoContent.WriteString(prefix)
 
-	err := filepath.Walk(*googleapisRootPath, func(path string, info os.FileInfo, err error) error {
+	if *goGoogleapisRootPath != "" {
+		if err := generateFromPath(protoContent, *goGoogleapisRootPath); err != nil {
+			log.Fatal(err)
+		}
+	} else if *comGoogleGoogleapisRootPath != "" {
+		if err := generateFromQuery(protoContent, *bazelPath, *comGoogleGoogleapisRootPath); err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatal("either -com_google_googleapis or -go_googleapis must be set")
+	}
+
+	if err := ioutil.WriteFile(*protoCsvPath, protoContent.Bytes(), 0666); err != nil {
+		log.Fatal(err)
+	}
+}
+
+//
+// Process -com_google_googleapis case
+//
+const repoPrefix = "@com_google_googleapis"
+
+var bazelQuery = []string{
+	`query`,
+	`kind("proto_library rule", //google/...)`,
+	`--output`,
+	`xml`,
+	`--experimental_enable_repo_mapping`,
+}
+
+// Represents the relevant attributes of go_proto_library rules.
+// The "proto" field is used to map to a proto_library rule; it represents either the value of a
+// "proto" attr or an item in "protos" attr.
+type goProtoLibraryInfo struct {
+	name, importpath, proto string
+}
+
+type Query struct {
+	XMLName xml.Name `xml:"query"`
+	Version string   `xml:"version,attr"`
+	Rules   []Rule   `xml:"rule"`
+}
+
+type Rule struct {
+	XMLName xml.Name `xml:"rule"`
+	Class   string   `xml:"class,attr"`
+	Name    string   `xml:"name,attr"`
+	Strings []String `xml:"string"`
+	Labels  []Label  `xml:"label"`
+	Lists   []List   `xml:"list"`
+}
+
+type List struct {
+	XMLName xml.Name `xml:"list"`
+	Name    string   `xml:"name,attr"`
+	Labels  []Label  `xml:"label"`
+}
+
+type Label struct {
+	XMLName xml.Name `xml:"label"`
+	Name    string   `xml:"name,attr"`
+	Value   string   `xml:"value,attr"`
+}
+
+type String struct {
+	XMLName xml.Name `xml:"string"`
+	Name    string   `xml:"name,attr"`
+	Value   string   `xml:"value,attr"`
+}
+
+func generateFromQuery(w io.Writer, bazelPath, workspacePath string) error {
+	xmlData, err := runBazelQuery(bazelPath, workspacePath)
+	if err != nil {
+		return err
+	}
+
+	query, err := readQueryXml(xmlData)
+	if err != nil {
+		return err
+	}
+
+	relPathList, err := processQuery(query)
+	for _, v := range relPathList {
+		if _, err = fmt.Fprintln(w, v); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func runBazelQuery(bazelPath, workspacePath string) ([]byte, error) {
+	cmd := exec.Command(bazelPath, bazelQuery...)
+	cmd.Dir = workspacePath
+	return cmd.Output()
+}
+
+func readQueryXml(xmlData []byte) (Query, error) {
+	if bytes.HasPrefix(xmlData, []byte(`<?xml version="1.1"`)) {
+		copy(xmlData, []byte(`<?xml version="1.0"`))
+	}
+	query := Query{}
+	err := xml.Unmarshal(xmlData, &query)
+	return query, err
+}
+
+func processQuery(query Query) ([]string, error) {
+	protoLabelMap := make(map[string]goProtoLibraryInfo)
+	for _, rule := range query.Rules {
+		if "go_proto_library" == rule.Class {
+			m, err := processGoProtoLibraryRule(rule)
+			if err != nil {
+				continue
+			}
+			for k, v := range m {
+				protoLabelMap[k] = v
+			}
+		}
+	}
+
+	var relPathList []string
+	for _, rule := range query.Rules {
+		if "proto_library" != rule.Class {
+			continue
+		}
+		if protoLibraryInfo, present := protoLabelMap[rule.Name]; present {
+			paths, err := processProtoLibraryRule(rule, protoLibraryInfo)
+			if err != nil {
+				continue
+			}
+			relPathList = append(relPathList, paths...)
+		}
+	}
+
+	sort.Strings(relPathList)
+	return relPathList, nil
+}
+
+func processGoProtoLibraryRule(rule Rule) (map[string]goProtoLibraryInfo, error) {
+	protoLabelMap := make(map[string]goProtoLibraryInfo)
+
+	info := goProtoLibraryInfo{name: repoPrefix + rule.Name}
+	for _, str := range rule.Strings {
+		if "importpath" == str.Name {
+			info.importpath = str.Value
+			break
+		}
+	}
+
+	if info.importpath == "" {
+		// should never happen
+		return protoLabelMap, fmt.Errorf("go_proto_library does not have 'importpath' argument")
+	}
+
+	// "proto" argument case (single value)
+	protoLabel := ""
+	for _, label := range rule.Labels {
+		if "proto" == label.Name {
+			protoLabel = label.Value
+			break
+		}
+	}
+
+	if protoLabel != "" {
+		info.proto = repoPrefix + protoLabel
+		protoLabelMap[protoLabel] = info
+		return protoLabelMap, nil
+	}
+
+	// "protos" argument case (multiple values)
+	for _, list := range rule.Lists {
+		if "protos" == list.Name {
+			for _, label := range list.Labels {
+				info.proto = repoPrefix + label.Value
+				protoLabelMap[label.Value] = info
+			}
+		}
+	}
+
+	return protoLabelMap, nil
+}
+
+func processProtoLibraryRule(rule Rule, info goProtoLibraryInfo) ([]string, error) {
+	extraSuffix := "_with_info"
+
+	var relPathList []string
+
+	for _, list := range rule.Lists {
+		if "srcs" != list.Name {
+			continue
+		}
+		for _, label := range list.Labels {
+			relPath := label.Value
+			if strings.HasSuffix(relPath, extraSuffix) {
+				relPath = relPath[:-len(extraSuffix)]
+			}
+			relPath = strings.Replace(relPath, ":", "/", 1)
+			relPath = strings.Replace(relPath, "//", "", 1)
+			relPathList = append(relPathList, strings.Join([]string{relPath, info.proto, info.importpath, info.name}, ","))
+		}
+	}
+
+	return relPathList, nil
+}
+
+//
+// Process -go_googleapis case
+//
+func generateFromPath(w io.Writer, rootPath string) error {
+	return filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if !strings.HasSuffix(path, ".proto") {
 			return nil
 		}
-		relPath, err := filepath.Rel(*googleapisRootPath, path)
+		relPath, err := filepath.Rel(rootPath, path)
 		if err != nil || strings.HasPrefix(relPath, "..") {
-			log.Panicf("file %q not in googleapisRootPath %q", path, *googleapisRootPath)
+			log.Panicf("file %q not in repository rootPath %q", path, rootPath)
 		}
 		relPath = filepath.ToSlash(relPath)
 
@@ -95,11 +307,11 @@ func main() {
 			// create a build file in experimental.
 			packagePath := "google.golang.org/genproto/googleapis/api"
 			protoLabel, goLabel := protoLabels("google/api/x", "api")
-			fmt.Fprintf(protoContent, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
+			fmt.Fprintf(w, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
 			return nil
 		}
 
-		packagePath, packageName, err := loadGoPackage(path, relPath)
+		packagePath, packageName, err := loadGoPackage(path)
 		if err != nil {
 			log.Print(err)
 			return nil
@@ -107,21 +319,14 @@ func main() {
 
 		protoLabel, goLabel := protoLabels(relPath, packageName)
 
-		fmt.Fprintf(protoContent, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
+		fmt.Fprintf(w, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
 		return nil
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := ioutil.WriteFile(*protoCsvPath, protoContent.Bytes(), 0666); err != nil {
-		log.Fatal(err)
-	}
 }
 
 var goPackageRx = regexp.MustCompile(`option go_package = "([^"]*)"`)
 
-func loadGoPackage(protoPath, relPath string) (packagePath, packageName string, err error) {
+func loadGoPackage(protoPath string) (packagePath, packageName string, err error) {
 	data, err := ioutil.ReadFile(protoPath)
 	if err != nil {
 		return "", "", err
