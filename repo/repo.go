@@ -62,11 +62,13 @@ const (
 	unknownFormat lockFileFormat = iota
 	depFormat
 	moduleFormat
+	godepFormat
 )
 
 var lockFileParsers = map[lockFileFormat]func(string) ([]Repo, error){
 	depFormat:    importRepoRulesDep,
 	moduleFormat: importRepoRulesModules,
+	godepFormat:  importRepoRulesGoDep,
 }
 
 // ImportRepoRules reads the lock file of a vendoring tool and returns
@@ -98,6 +100,8 @@ func getLockFileFormat(filename string) lockFileFormat {
 		return depFormat
 	case "go.mod":
 		return moduleFormat
+	case "Godeps.json":
+		return godepFormat
 	default:
 		return unknownFormat
 	}
