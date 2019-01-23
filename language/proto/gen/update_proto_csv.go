@@ -79,11 +79,11 @@ func main() {
 	protoContent.WriteString(prefix)
 
 	if *goGoogleapisRootPath != "" {
-		if err := generateFromPath(*goGoogleapisRootPath, protoContent); err != nil {
+		if err := generateFromPath(protoContent, *goGoogleapisRootPath); err != nil {
 			log.Fatal(err)
 		}
 	} else if *comGoogleGoogleapisRootPath != "" {
-		if err := generateFromQuery(*bazelPath, *comGoogleGoogleapisRootPath, protoContent); err != nil {
+		if err := generateFromQuery(protoContent, *bazelPath, *comGoogleGoogleapisRootPath); err != nil {
 			log.Fatal(err)
 		}
 	} else {
@@ -106,6 +106,13 @@ var bazelQuery = []string{
 	`--output`,
 	`xml`,
 	`--experimental_enable_repo_mapping`,
+}
+
+// Represents the relevant attributes of go_proto_library rules.
+// The "proto" field is used to map to a proto_library rule; it represents either the value of a
+// "proto" attr or an item in "protos" attr.
+type goProtoLibraryInfo struct {
+	name, importpath, proto string
 }
 
 type Query struct {
@@ -141,7 +148,7 @@ type String struct {
 	Value   string   `xml:"value,attr"`
 }
 
-func generateFromQuery(bazelPath, workspacePath string, protoContent io.Writer) error {
+func generateFromQuery(w io.Writer, bazelPath, workspacePath string) error {
 	xmlData, err := runBazelQuery(bazelPath, workspacePath)
 	if err != nil {
 		return err
@@ -154,7 +161,7 @@ func generateFromQuery(bazelPath, workspacePath string, protoContent io.Writer) 
 
 	relPathList, err := processQuery(query)
 	for _, v := range relPathList {
-		if _, err = fmt.Fprintf(protoContent, "%s\n", v); err != nil {
+		if _, err = fmt.Fprintln(w, v); err != nil {
 			return err
 		}
 	}
@@ -178,7 +185,7 @@ func readQueryXml(xmlData []byte) (Query, error) {
 }
 
 func processQuery(query Query) ([]string, error) {
-	protoLabelMap := make(map[string]string)
+	protoLabelMap := make(map[string]goProtoLibraryInfo)
 	for _, rule := range query.Rules {
 		if "go_proto_library" == rule.Class {
 			m, err := processGoProtoLibraryRule(rule)
@@ -193,8 +200,11 @@ func processQuery(query Query) ([]string, error) {
 
 	var relPathList []string
 	for _, rule := range query.Rules {
-		if "proto_library" == rule.Class {
-			paths, err := processProtoLibraryRule(protoLabelMap[rule.Name], rule)
+		if "proto_library" != rule.Class {
+			continue
+		}
+		if protoLibraryInfo, present := protoLabelMap[rule.Name]; present {
+			paths, err := processProtoLibraryRule(rule, protoLibraryInfo)
 			if err != nil {
 				continue
 			}
@@ -206,18 +216,18 @@ func processQuery(query Query) ([]string, error) {
 	return relPathList, nil
 }
 
-func processGoProtoLibraryRule(rule Rule) (map[string]string, error) {
-	protoLabelMap := make(map[string]string)
+func processGoProtoLibraryRule(rule Rule) (map[string]goProtoLibraryInfo, error) {
+	protoLabelMap := make(map[string]goProtoLibraryInfo)
 
-	packagePath := ""
+	info := goProtoLibraryInfo{name: repoPrefix + rule.Name}
 	for _, str := range rule.Strings {
 		if "importpath" == str.Name {
-			packagePath = str.Value
+			info.importpath = str.Value
 			break
 		}
 	}
 
-	if packagePath == "" {
+	if info.importpath == "" {
 		// should never happen
 		return protoLabelMap, fmt.Errorf("go_proto_library does not have 'importpath' argument")
 	}
@@ -231,9 +241,9 @@ func processGoProtoLibraryRule(rule Rule) (map[string]string, error) {
 		}
 	}
 
-	goLabel := repoPrefix + rule.Name
 	if protoLabel != "" {
-		protoLabelMap[protoLabel] = strings.Join([]string{repoPrefix + protoLabel, packagePath, goLabel}, ",")
+		info.proto = repoPrefix + protoLabel
+		protoLabelMap[protoLabel] = info
 		return protoLabelMap, nil
 	}
 
@@ -241,8 +251,8 @@ func processGoProtoLibraryRule(rule Rule) (map[string]string, error) {
 	for _, list := range rule.Lists {
 		if "protos" == list.Name {
 			for _, label := range list.Labels {
-				protoLabel = label.Value
-				protoLabelMap[protoLabel] = strings.Join([]string{repoPrefix + protoLabel, packagePath, goLabel}, ",")
+				info.proto = repoPrefix + label.Value
+				protoLabelMap[label.Value] = info
 			}
 		}
 	}
@@ -250,14 +260,10 @@ func processGoProtoLibraryRule(rule Rule) (map[string]string, error) {
 	return protoLabelMap, nil
 }
 
-func processProtoLibraryRule(protoLabelInfo string, rule Rule) ([]string, error) {
+func processProtoLibraryRule(rule Rule, info goProtoLibraryInfo) ([]string, error) {
 	extraSuffix := "_with_info"
 
 	var relPathList []string
-
-	if protoLabelInfo == "" {
-		return relPathList, nil
-	}
 
 	for _, list := range rule.Lists {
 		if "srcs" != list.Name {
@@ -270,7 +276,7 @@ func processProtoLibraryRule(protoLabelInfo string, rule Rule) ([]string, error)
 			}
 			relPath = strings.Replace(relPath, ":", "/", 1)
 			relPath = strings.Replace(relPath, "//", "", 1)
-			relPathList = append(relPathList, strings.Join([]string{relPath, protoLabelInfo}, ","))
+			relPathList = append(relPathList, strings.Join([]string{relPath, info.proto, info.importpath, info.name}, ","))
 		}
 	}
 
@@ -280,7 +286,7 @@ func processProtoLibraryRule(protoLabelInfo string, rule Rule) ([]string, error)
 //
 // Process -go_googleapis case
 //
-func generateFromPath(rootPath string, protoContent io.Writer) error {
+func generateFromPath(w io.Writer, rootPath string) error {
 	return filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -301,7 +307,7 @@ func generateFromPath(rootPath string, protoContent io.Writer) error {
 			// create a build file in experimental.
 			packagePath := "google.golang.org/genproto/googleapis/api"
 			protoLabel, goLabel := protoLabels("google/api/x", "api")
-			fmt.Fprintf(protoContent, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
+			fmt.Fprintf(w, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
 			return nil
 		}
 
@@ -313,7 +319,7 @@ func generateFromPath(rootPath string, protoContent io.Writer) error {
 
 		protoLabel, goLabel := protoLabels(relPath, packageName)
 
-		fmt.Fprintf(protoContent, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
+		fmt.Fprintf(w, "%s,%s,%s,%s\n", relPath, protoLabel, packagePath, goLabel)
 		return nil
 	})
 }
