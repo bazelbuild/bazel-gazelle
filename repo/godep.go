@@ -33,12 +33,23 @@ func importRepoRulesGoDep(filename string) ([]Repo, error) {
 	}
 
 	var repos []Repo
+	cache := NewRemoteCache(repos)
+
+	seenRepos := make(map[string]bool)
 	for _, p := range file.Deps {
-		repos = append(repos, Repo{
-			Name:     label.ImportPathToBazelRepoName(p.ImportPath),
-			GoPrefix: p.ImportPath,
-			Commit:   p.Rev,
-		})
+		repoRoot, err := cache.RepoRootForImportPath(p.ImportPath, false)
+		if err != nil {
+			return nil, err
+		}
+		if seen := seenRepos[repoRoot.Root]; !seen {
+
+			repos = append(repos, Repo{
+				Name:     label.ImportPathToBazelRepoName(repoRoot.Root),
+				GoPrefix: repoRoot.Root,
+				Commit:   p.Rev,
+			})
+			seenRepos[repoRoot.Root] = true
+		}
 	}
 	return repos, nil
 }
