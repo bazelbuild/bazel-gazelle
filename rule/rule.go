@@ -252,11 +252,17 @@ func (s byIndex) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
+// identPair represents one symbol, with or without remapping, in a load
+// statement within a build file.
+type identPair struct {
+	to, from *bzl.Ident
+}
+
 // Load represents a load statement within a build file.
 type Load struct {
 	stmt
 	name    string
-	symbols map[string]*bzl.Ident
+	symbols map[string]identPair
 }
 
 // NewLoad creates a new, empty load statement for the given file name.
@@ -269,7 +275,7 @@ func NewLoad(name string) *Load {
 			},
 		},
 		name:    name,
-		symbols: make(map[string]*bzl.Ident),
+		symbols: make(map[string]identPair),
 	}
 }
 
@@ -277,12 +283,11 @@ func loadFromExpr(index int, loadStmt *bzl.LoadStmt) *Load {
 	l := &Load{
 		stmt:    stmt{index: index, expr: loadStmt},
 		name:    loadStmt.Module.Value,
-		symbols: make(map[string]*bzl.Ident),
+		symbols: make(map[string]identPair),
 	}
 	for i := range loadStmt.From {
-		x := loadStmt.To[i]
-		y := loadStmt.From[i]
-		l.symbols[x.Name] = y
+		to, from := loadStmt.To[i], loadStmt.From[i]
+		l.symbols[to.Name] = identPair{to: to, from: from}
 	}
 	return l
 }
@@ -313,7 +318,8 @@ func (l *Load) Has(sym string) bool {
 // doesn't matter.
 func (l *Load) Add(sym string) {
 	if _, ok := l.symbols[sym]; !ok {
-		l.symbols[sym] = &bzl.Ident{Name: sym}
+		i := &bzl.Ident{Name: sym}
+		l.symbols[sym] = identPair{to: i, from: i}
 		l.updated = true
 	}
 }
@@ -349,11 +355,11 @@ func (l *Load) sync() {
 
 	// args1 and args2 are two different sort groups based on whether a remap of the identifier is present.
 	var args1, args2, args []string
-	for x, y := range l.symbols {
-		if x == y.Name {
-			args1 = append(args1, x)
+	for sym, pair := range l.symbols {
+		if pair.from.Name == pair.to.Name {
+			args1 = append(args1, sym)
 		} else {
-			args2 = append(args2, x)
+			args2 = append(args2, sym)
 		}
 	}
 	sort.Strings(args1)
@@ -365,11 +371,11 @@ func (l *Load) sync() {
 	loadStmt.Module.Value = l.name
 	loadStmt.From = make([]*bzl.Ident, 0, len(args))
 	loadStmt.To = make([]*bzl.Ident, 0, len(args))
-	for _, x := range args {
-		y := l.symbols[x]
-		loadStmt.From = append(loadStmt.From, y)
-		loadStmt.To = append(loadStmt.To, &bzl.Ident{Name: x})
-		if y.Name != x {
+	for _, sym := range args {
+		pair := l.symbols[sym]
+		loadStmt.From = append(loadStmt.From, pair.from)
+		loadStmt.To = append(loadStmt.To, pair.to)
+		if pair.from.Name != pair.to.Name {
 			loadStmt.ForceCompact = false
 		}
 	}

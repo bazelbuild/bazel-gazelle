@@ -115,6 +115,44 @@ func TestSymbolsReturnsKeys(t *testing.T) {
 	}
 }
 
+func TestLoadCommentsAreRetained(t *testing.T) {
+	f, err := LoadData(filepath.Join("load", "BUILD.bazel"), "", []byte(`
+load(
+    "a.bzl",
+    # Comment for a symbol that will be deleted.
+    "baz",
+    # Some comment without remapping.
+    "foo",
+    # Some comment with remapping.
+    my_bar = "bar",
+)
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := f.Loads[0]
+	l.Remove("baz")
+	f.Sync()
+	l.Add("new_baz")
+	f.Sync()
+
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+load(
+    "a.bzl",
+    # Some comment without remapping.
+    "foo",
+    "new_baz",
+    # Some comment with remapping.
+    my_bar = "bar",
+)
+`)
+
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
+	}
+}
+
 func TestKeepRule(t *testing.T) {
 	for _, tc := range []struct {
 		desc, src string
