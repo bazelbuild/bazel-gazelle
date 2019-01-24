@@ -110,17 +110,13 @@ func ScanAST(pkg string, bzlFile *bzl.File) *File {
 		Path: bzlFile.Path,
 	}
 	for i, stmt := range f.File.Stmt {
-		switch stmt.(type) {
+		switch stmt := stmt.(type) {
 		case *bzl.LoadStmt:
-			{
-				l := loadFromExpr(i, stmt.(*bzl.LoadStmt))
-				f.Loads = append(f.Loads, l)
-			}
+			l := loadFromExpr(i, stmt)
+			f.Loads = append(f.Loads, l)
 		case *bzl.CallExpr:
-			{
-				if r := ruleFromExpr(i, stmt.(*bzl.CallExpr)); r != nil {
-					f.Rules = append(f.Rules, r)
-				}
+			if r := ruleFromExpr(i, stmt); r != nil {
+				f.Rules = append(f.Rules, r)
 			}
 		}
 	}
