@@ -32,7 +32,7 @@ type depProject struct {
 	Source   string `toml:"source"`
 }
 
-func importRepoRulesDep(filename string) ([]Repo, error) {
+func importRepoRulesDep(filename string, _ *RemoteCache) ([]Repo, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err

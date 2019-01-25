@@ -70,7 +70,7 @@ func toRepoRule(mod module) Repo {
 	}
 }
 
-func importRepoRulesModules(filename string) (repos []Repo, err error) {
+func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err error) {
 	tempDir, err := copyGoModToTemp(filename)
 	if err != nil {
 		return nil, err

@@ -35,7 +35,7 @@ type goDepProject struct {
 	Rev        string
 }
 
-func importRepoRulesGoDep(filename string) ([]Repo, error) {
+func importRepoRulesGoDep(filename string, cache *RemoteCache) ([]Repo, error) {
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,6 @@ func importRepoRulesGoDep(filename string) ([]Repo, error) {
 	}
 
 	var repos []Repo
-	cache := NewRemoteCache(repos)
 
 	seenRepos := make(map[string]bool)
 	for _, p := range file.Deps {

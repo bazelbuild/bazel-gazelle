@@ -252,7 +252,9 @@ go_repository(
 				t.Fatal(err)
 			}
 
-			rules, err := ImportRepoRules(filename)
+			cache := newStubRemoteCache(nil)
+
+			rules, err := ImportRepoRules(filename, cache)
 			if err != nil {
 				t.Fatal(err)
 			}

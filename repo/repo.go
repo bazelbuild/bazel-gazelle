@@ -65,7 +65,7 @@ const (
 	godepFormat
 )
 
-var lockFileParsers = map[lockFileFormat]func(string) ([]Repo, error){
+var lockFileParsers = map[lockFileFormat]func(string, *RemoteCache) ([]Repo, error){
 	depFormat:    importRepoRulesDep,
 	moduleFormat: importRepoRulesModules,
 	godepFormat:  importRepoRulesGoDep,
@@ -75,13 +75,13 @@ var lockFileParsers = map[lockFileFormat]func(string) ([]Repo, error){
 // a list of equivalent repository rules that can be merged into a WORKSPACE
 // file. The format of the file is inferred from its basename. Currently,
 // only Gopkg.lock is supported.
-func ImportRepoRules(filename string) ([]*rule.Rule, error) {
+func ImportRepoRules(filename string, repoCache *RemoteCache) ([]*rule.Rule, error) {
 	format := getLockFileFormat(filename)
 	if format == unknownFormat {
 		return nil, fmt.Errorf(`%s: unrecognized lock file format. Expected "Gopkg.lock"`, filename)
 	}
 	parser := lockFileParsers[format]
-	repos, err := parser(filename)
+	repos, err := parser(filename, repoCache)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing %q: %v", filename, err)
 	}
