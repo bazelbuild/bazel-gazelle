@@ -16,6 +16,7 @@ limitations under the License.
 package rule
 
 import (
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -37,7 +38,7 @@ load("b.bzl", y_library = "y")
 
 y_library(name = "bar")
 `)
-	f, err := LoadData("old", "", old)
+	f, err := LoadData(filepath.Join("old", "BUILD.bazel"), "", old)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +85,7 @@ x_library(name = "foo")
 
 x_library(name = "bar")
 `)
-	f, err := LoadData("old", "", old)
+	f, err := LoadData(filepath.Join("old", "BUILD.bazel"), "", old)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +104,7 @@ x_library(name = "bar")
 }
 
 func TestSymbolsReturnsKeys(t *testing.T) {
-	f, err := LoadData("load", "", []byte(`load("a.bzl", "y", z = "a")`))
+	f, err := LoadData(filepath.Join("load", "BUILD.bazel"), "", []byte(`load("a.bzl", "y", z = "a")`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,6 +112,44 @@ func TestSymbolsReturnsKeys(t *testing.T) {
 	want := []string{"y", "z"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %#v; want %#v", got, want)
+	}
+}
+
+func TestLoadCommentsAreRetained(t *testing.T) {
+	f, err := LoadData(filepath.Join("load", "BUILD.bazel"), "", []byte(`
+load(
+    "a.bzl",
+    # Comment for a symbol that will be deleted.
+    "baz",
+    # Some comment without remapping.
+    "foo",
+    # Some comment with remapping.
+    my_bar = "bar",
+)
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := f.Loads[0]
+	l.Remove("baz")
+	f.Sync()
+	l.Add("new_baz")
+	f.Sync()
+
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+load(
+    "a.bzl",
+    # Some comment without remapping.
+    "foo",
+    "new_baz",
+    # Some comment with remapping.
+    my_bar = "bar",
+)
+`)
+
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
 	}
 }
 
@@ -158,7 +197,7 @@ x_library(name = "x")
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			f, err := LoadData(tc.desc, "", []byte(tc.src))
+			f, err := LoadData(filepath.Join(tc.desc, "BUILD.bazel"), "", []byte(tc.src))
 			if err != nil {
 				t.Fatal(err)
 			}

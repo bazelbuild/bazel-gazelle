@@ -332,7 +332,7 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 
 	uc := getUpdateConfig(c)
 	workspacePath := filepath.Join(c.RepoRoot, "WORKSPACE")
-	if workspace, err := rule.LoadFile(workspacePath, ""); err != nil {
+	if workspace, err := rule.LoadWorkspaceFile(workspacePath, ""); err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
 		}

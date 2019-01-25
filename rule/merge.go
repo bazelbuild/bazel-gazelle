@@ -288,9 +288,9 @@ func SquashRules(src, dst *Rule, filename string) error {
 			}
 		}
 	}
-	dst.call.Comments.Before = append(dst.call.Comments.Before, src.call.Comments.Before...)
-	dst.call.Comments.Suffix = append(dst.call.Comments.Suffix, src.call.Comments.Suffix...)
-	dst.call.Comments.After = append(dst.call.Comments.After, src.call.Comments.After...)
+	dst.expr.Comment().Before = append(dst.expr.Comment().Before, src.expr.Comment().Before...)
+	dst.expr.Comment().Suffix = append(dst.expr.Comment().Suffix, src.expr.Comment().Suffix...)
+	dst.expr.Comment().After = append(dst.expr.Comment().After, src.expr.Comment().After...)
 	return nil
 }
 

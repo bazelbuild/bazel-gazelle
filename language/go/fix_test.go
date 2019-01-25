@@ -16,6 +16,7 @@ limitations under the License.
 package golang
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/merger"
@@ -440,11 +441,6 @@ intercal_library(
 )
 `,
 		}, {
-			desc: "empty Go load",
-			old: `load("@io_bazel_rules_go//go:def.bzl")
-`,
-			want: "",
-		}, {
 			desc: "add and remove loaded symbols",
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
@@ -633,7 +629,7 @@ go_repository(name = "foo")
 }
 
 func testFix(t *testing.T, tc fixTestCase, fix func(*rule.File)) {
-	f, err := rule.LoadData("old", "", []byte(tc.old))
+	f, err := rule.LoadData(filepath.Join("old", "BUILD.bazel"), "", []byte(tc.old))
 	if err != nil {
 		t.Fatalf("%s: parse error: %v", tc.desc, err)
 	}

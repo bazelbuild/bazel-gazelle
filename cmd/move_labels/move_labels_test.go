@@ -33,8 +33,7 @@ func TestMoveLabels(t *testing.T) {
 			to:   "new",
 			files: []testtools.FileSpec{{
 				Path: "new/a/BUILD",
-				Content: `
-load("//old:def.bzl", "x_binary")
+				Content: `load("//old:def.bzl", "x_binary")
 
 x_binary(
     name = "a",
@@ -52,8 +51,7 @@ x_binary(
 			}},
 			want: []testtools.FileSpec{{
 				Path: "new/a/BUILD",
-				Content: `
-load("//new:def.bzl", "x_binary")
+				Content: `load("//new:def.bzl", "x_binary")
 
 x_binary(
     name = "a",

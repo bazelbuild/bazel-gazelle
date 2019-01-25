@@ -66,7 +66,7 @@ func TestCommonConfigurerDirectives(t *testing.T) {
 	c := New()
 	cc := &CommonConfigurer{}
 	buildData := []byte(`# gazelle:build_file_name x,y`)
-	f, err := rule.LoadData("test", "", buildData)
+	f, err := rule.LoadData(filepath.Join("test", "BUILD.bazel"), "", buildData)
 	if err != nil {
 		t.Fatal(err)
 	}
