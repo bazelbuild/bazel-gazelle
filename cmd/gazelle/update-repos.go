@@ -93,7 +93,7 @@ func updateRepos(args []string) error {
 	uc := getUpdateReposConfig(c)
 
 	workspacePath := filepath.Join(c.RepoRoot, "WORKSPACE")
-	f, err := rule.LoadFile(workspacePath, "")
+	f, err := rule.LoadWorkspaceFile(workspacePath, "")
 	if err != nil {
 		return fmt.Errorf("error loading %q: %v", workspacePath, err)
 	}

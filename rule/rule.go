@@ -26,7 +26,6 @@ limitations under the License.
 package rule
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -87,16 +86,33 @@ func LoadFile(path, pkg string) (*File, error) {
 	return LoadData(path, pkg, data)
 }
 
+// LoadWorkspaceFile is similar to LoadFile but parses the file as a WORKSPACE
+// file.
+func LoadWorkspaceFile(path, pkg string) (*File, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return LoadWorkspaceData(path, pkg, data)
+}
+
 // LoadData parses a build file from a byte slice and scans it for rules and
 // load statements. The syntax tree within the returned File will be modified
 // by editing methods.
 func LoadData(path, pkg string, data []byte) (*File, error) {
-	ast, err := bzl.Parse(path, data)
+	ast, err := bzl.ParseBuild(path, data)
 	if err != nil {
 		return nil, err
 	}
-	if ast.Type != bzl.TypeBuild && ast.Type != bzl.TypeWorkspace {
-		return nil, errors.New("gazelle can process only BUILD and WORKSPACE files")
+	return ScanAST(pkg, ast), nil
+}
+
+// LoadWorkspaceData is similar to LoadData but parses the data as a
+// WORKSPACE file.
+func LoadWorkspaceData(path, pkg string, data []byte) (*File, error) {
+	ast, err := bzl.ParseWorkspace(path, data)
+	if err != nil {
+		return nil, err
 	}
 	return ScanAST(pkg, ast), nil
 }
