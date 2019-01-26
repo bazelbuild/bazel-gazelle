@@ -59,14 +59,14 @@ func importRepoRulesGoDep(filename string, cache *RemoteCache) ([]Repo, error) {
 	for _, p := range file.Deps {
 		go func(p goDepProject) {
 			defer wg.Done()
-			rootRepo, err := cache.RepoRootForImportPath(p.ImportPath, false)
+			rootRepo, _, err := cache.Root(p.ImportPath)
 			if err != nil {
 				if errorGroup == nil {
 					errorGroup = &err
 				}
 			} else {
 				updateLock.Lock()
-				roots[p.ImportPath] = rootRepo.Root
+				roots[p.ImportPath] = rootRepo
 				updateLock.Unlock()
 			}
 		}(p)
