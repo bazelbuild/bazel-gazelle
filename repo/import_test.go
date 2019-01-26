@@ -16,7 +16,6 @@ limitations under the License.
 package repo
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -24,7 +23,6 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/rule"
-	"golang.org/x/tools/go/vcs"
 )
 
 func init() {
@@ -255,7 +253,6 @@ go_repository(
 			}
 
 			cache := newStubRemoteCache(nil)
-			cache.RepoRootForImportPath = stubGithubRepoRoot
 
 			rules, err := ImportRepoRules(filename, cache)
 			if err != nil {
@@ -335,20 +332,4 @@ func goListModulesStub(dir string) ([]byte, error) {
 	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/gopkg.in/yaml.v2/@v/v2.2.1.mod"
 }
 `), nil
-}
-
-func stubGithubRepoRoot(importpath string, verbose bool) (*vcs.RepoRoot, error) {
-	if strings.HasPrefix(importpath, "github.com") {
-		parts := strings.Split(importpath, "/")
-		reporoot := fmt.Sprintf("github.com/%s/%s", parts[1], parts[2])
-		return &vcs.RepoRoot{
-			VCS:  vcs.ByCmd("git"),
-			Repo: "https://" + reporoot + ".git",
-			Root: reporoot,
-		}, nil
-
-	}
-
-	return nil, fmt.Errorf("could not resolve import path: %q", importpath)
-
 }
