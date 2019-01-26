@@ -60,12 +60,15 @@ func importRepoRulesGoDep(filename string, cache *RemoteCache) ([]Repo, error) {
 		go func(p goDepProject) {
 			defer wg.Done()
 			rootRepo, err := cache.RepoRootForImportPath(p.ImportPath, false)
-			if err != nil && errorGroup == nil {
-				errorGroup = &err
+			if err != nil {
+				if errorGroup == nil {
+					errorGroup = &err
+				}
+			} else {
+				updateLock.Lock()
+				roots[p.ImportPath] = rootRepo.Root
+				updateLock.Unlock()
 			}
-			updateLock.Lock()
-			roots[p.ImportPath] = rootRepo.Root
-			updateLock.Unlock()
 		}(p)
 	}
 	wg.Wait()
