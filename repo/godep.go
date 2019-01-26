@@ -18,6 +18,7 @@ package repo
 import (
 	"encoding/json"
 	"io/ioutil"
+	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/label"
 )
@@ -47,22 +48,44 @@ func importRepoRulesGoDep(filename string, cache *RemoteCache) ([]Repo, error) {
 		return nil, err
 	}
 
+	var wg sync.WaitGroup
+	var updateLock sync.Mutex
+	var errorGroup *error
+
+	roots := make(map[string]string)
+
+	wg.Add(len(file.Deps))
+	for _, p := range file.Deps {
+		go func(p goDepProject) {
+			defer wg.Done()
+			rootRepo, err := cache.RepoRootForImportPath(p.ImportPath, false)
+			if err != nil && errorGroup == nil {
+				errorGroup = &err
+			}
+			updateLock.Lock()
+			roots[p.ImportPath] = rootRepo.Root
+			updateLock.Unlock()
+		}(p)
+	}
+	wg.Wait()
+
 	var repos []Repo
+	if errorGroup != nil {
+		return repos, nil
+	}
 
 	seenRepos := make(map[string]bool)
+
 	for _, p := range file.Deps {
-		repoRoot, err := cache.RepoRootForImportPath(p.ImportPath, false)
-		if err != nil {
-			return nil, err
-		}
-		if seen := seenRepos[repoRoot.Root]; !seen {
+		repoRoot := roots[p.ImportPath]
+		if seen := seenRepos[repoRoot]; !seen {
 
 			repos = append(repos, Repo{
-				Name:     label.ImportPathToBazelRepoName(repoRoot.Root),
-				GoPrefix: repoRoot.Root,
+				Name:     label.ImportPathToBazelRepoName(repoRoot),
+				GoPrefix: repoRoot,
 				Commit:   p.Rev,
 			})
-			seenRepos[repoRoot.Root] = true
+			seenRepos[repoRoot] = true
 		}
 	}
 	return repos, nil
