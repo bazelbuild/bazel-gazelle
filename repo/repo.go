@@ -73,8 +73,7 @@ var lockFileParsers = map[lockFileFormat]func(string, *RemoteCache) ([]Repo, err
 
 // ImportRepoRules reads the lock file of a vendoring tool and returns
 // a list of equivalent repository rules that can be merged into a WORKSPACE
-// file. The format of the file is inferred from its basename. Currently,
-// only Gopkg.lock is supported.
+// file. The format of the file is inferred from its basename.
 func ImportRepoRules(filename string, repoCache *RemoteCache) ([]*rule.Rule, error) {
 	format := getLockFileFormat(filename)
 	if format == unknownFormat {
