@@ -17,6 +17,7 @@ package repo
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"sync"
 
@@ -71,21 +72,25 @@ func importRepoRulesGoDep(filename string, cache *RemoteCache) ([]Repo, error) {
 
 	var repos []Repo
 	if errorGroup != nil {
-		return repos, nil
+		return nil, *errorGroup
 	}
 
-	seenRepos := make(map[string]bool)
+	seenRepos := make(map[string]string)
 
 	for _, p := range file.Deps {
 		repoRoot := roots[p.ImportPath]
-		if seen := seenRepos[repoRoot]; !seen {
+		if seen := seenRepos[repoRoot]; seen == "" {
 
 			repos = append(repos, Repo{
 				Name:     label.ImportPathToBazelRepoName(repoRoot),
 				GoPrefix: repoRoot,
 				Commit:   p.Rev,
 			})
-			seenRepos[repoRoot] = true
+			seenRepos[repoRoot] = p.Rev
+		} else {
+			if p.Rev != seenRepos[repoRoot] {
+				return nil, fmt.Errorf("Repo %s imported at multiple revisions: %s, %s", repoRoot, p.Rev, seenRepos[repoRoot])
+			}
 		}
 	}
 	return repos, nil
