@@ -77,7 +77,7 @@ var lockFileParsers = map[lockFileFormat]func(string, *RemoteCache) ([]Repo, err
 func ImportRepoRules(filename string, repoCache *RemoteCache) ([]*rule.Rule, error) {
 	format := getLockFileFormat(filename)
 	if format == unknownFormat {
-		return nil, fmt.Errorf(`%s: unrecognized lock file format. Expected "Gopkg.lock"`, filename)
+		return nil, fmt.Errorf(`%s: unrecognized lock file format. Expected "Gopkg.lock", "go.mod", or "Godeps.json"`, filename)
 	}
 	parser := lockFileParsers[format]
 	repos, err := parser(filename, repoCache)
