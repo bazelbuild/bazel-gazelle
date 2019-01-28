@@ -36,7 +36,7 @@ and custom rule sets.
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
 
-.. contents:: **Contents** 
+.. contents:: **Contents**
   :depth: 2
 
 **See also:**
@@ -79,13 +79,13 @@ should look like this:
     go_register_toolchains()
     load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
     gazelle_dependencies()
-      
+
 Add the code below to the BUILD or BUILD.bazel file in the root directory
 of your repository. Replace the string after ``prefix`` with the portion of
 your import path that corresponds to your repository.
 
 .. code:: bzl
-  
+
   load("@bazel_gazelle//:def.bzl", "gazelle")
 
   # gazelle:prefix github.com/example/project
@@ -239,7 +239,7 @@ The following attributes are available on the ``gazelle`` rule.
 ``fix`` and ``update``
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The ``update`` command is the most common way of running Gazelle. Gazelle 
+The ``update`` command is the most common way of running Gazelle. Gazelle
 scans sources in directories throughout the repository, then creates and updates
 build files.
 
@@ -335,6 +335,23 @@ The following flags are accepted:
 | Determines the proto option Gazelle uses to group .proto files into rules                        |
 | when in ``package`` mode. See details in `Directives`_ below.                                    |
 +--------------------------------------------------------------+-----------------------------------+
+| :flag:`-proto_strip_import_prefix example.com/repo`          |                                   |
++--------------------------------------------------------------+-----------------------------------+
+| The prefix to strip from the paths of the .proto files in the proto_library rule.                |
+|                                                                                                  |
+| When set, .proto source files in the srcs attribute of the rule are accessible at their path     |
+| with this prefix cut off. If it's a relative path (not starting with a slash), it's taken as a   |
+| package-relative one. If it's an absolute one, it's understood as a repository-relative path.    |
+| The prefix in the import_prefix attribute is added after this prefix is stripped.                |
++--------------------------------------------------------------+-----------------------------------+
+| :flag:`import_prefix repo`                                   |                                   |
++--------------------------------------------------------------+-----------------------------------+
+| The prefix to add to the paths of the .proto files in the proto_library rule.                    |
+|                                                                                                  |
+| When set, the .proto source files in the srcs attribute of the rule are accessible as the value  |
+| of this attribute prepended to their repository-relative path.                                   |
+| The prefix in the strip_import_prefix attribute is removed before this prefix is added.          |
++--------------------------------------------------------------+-----------------------------------+
 | :flag:`-repo_root dir`                                       |                                   |
 +--------------------------------------------------------------+-----------------------------------+
 | The root directory of the repository. Gazelle normally infers this to be the                     |
@@ -347,7 +364,7 @@ The following flags are accepted:
 ~~~~~~~~~~~~~~~~
 
 The ``update-repos`` command updates repository rules in the WORKSPACE file.
-It can be used to add new repository rules or update existing rules to the 
+It can be used to add new repository rules or update existing rules to the
 latest version. It can also import repository rules from a ``go.mod`` file or
 a ``Gopkg.lock`` file.
 
