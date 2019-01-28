@@ -751,7 +751,7 @@ go_library(
 	}})
 }
 
-func TestAddProtoImportPrefixAndStripImportPrefix(t *testing.T) {
+func TestProtoImportPrefix(t *testing.T) {
 	files := []testtools.FileSpec{
 		{Path: "WORKSPACE"},
 		{
@@ -790,7 +790,7 @@ go_library(
 	defer cleanup()
 
 	args := []string{"update", "-go_prefix", "example.com/repo",
-		"-proto_strip_import_prefix", "/foo", "-proto_import_prefix", "/bar"}
+		"-proto_import_prefix", "/bar"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
@@ -805,7 +805,6 @@ proto_library(
     name = "foo_proto",
     srcs = ["foo.proto"],
     import_prefix = "/bar",
-    strip_import_prefix = "/foo",
     visibility = ["//visibility:public"],
 )
 

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"path"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -184,7 +185,6 @@ func (_ *protoLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config
 	// this is set for compatibility with older versions.
 	fs.Var(&modeFlag{&pc.Mode}, "proto", "default: generates a proto_library rule for one package\n\tpackage: generates a proto_library rule for for each package\n\tdisable: does not touch proto rules\n\tdisable_global: does not touch proto rules and does not use special cases for protos in dependency resolution")
 	fs.StringVar(&pc.groupOption, "proto_group", "", "option name used to group .proto files into proto_library rules")
-	fs.StringVar(&pc.stripImportPrefix, "proto_strip_import_prefix", "", "When set, .proto source files in the srcs attribute of the rule are accessible at their path with this prefix cut off.")
 	fs.StringVar(&pc.importPrefix, "proto_import_prefix", "", "When set, .proto source files in the srcs attribute of the rule are accessible at their path with this prefix appended on.")
 }
 
@@ -215,6 +215,11 @@ func (_ *protoLang) Configure(c *config.Config, rel string, f *rule.File) {
 				pc.groupOption = d.Value
 			case "proto_strip_import_prefix":
 				pc.stripImportPrefix = d.Value
+				if rel != "" {
+					if err := checkStripImportPrefix(pc.stripImportPrefix, rel); err != nil {
+						log.Print(err)
+					}
+				}
 			case "proto_import_prefix":
 				pc.importPrefix = d.Value
 			}
@@ -269,4 +274,11 @@ outer:
 		return
 	}
 	pc.Mode = mode
+}
+
+func checkStripImportPrefix(prefix, rel string) error {
+	if !strings.HasPrefix(prefix, "/") || !strings.HasPrefix(rel, prefix[1:]) {
+		return fmt.Errorf("invalid strip_import_prefix: %q", rel)
+	}
+	return nil
 }

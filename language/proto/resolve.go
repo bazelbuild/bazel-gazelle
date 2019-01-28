@@ -35,22 +35,18 @@ func (_ *protoLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	srcs := r.AttrStrings("srcs")
 	imports := make([]resolve.ImportSpec, len(srcs))
 	pc := GetProtoConfig(c)
+	prefix := rel
+	if pc.stripImportPrefix != "" {
+		prefix = strings.TrimPrefix(rel, pc.stripImportPrefix[1:])
+		if rel == prefix {
+			return nil
+		}
+	}
+	if pc.importPrefix != "" {
+		prefix = path.Join(pc.importPrefix, prefix)
+	}
 	for i, src := range srcs {
-		// If strip_import_prefix is a relative path (not starting with a slash), it's taken as a package-relative one.
-		// If it's an absolute one, it's understood as a repository-relative path.
-		if pc.stripImportPrefix != "" {
-			if pc.stripImportPrefix[0] == '/' {
-				rel = strings.TrimPrefix(rel, pc.stripImportPrefix[1:])
-			} else {
-				packageRel, srcFile := path.Split(src)
-				packageRel = strings.TrimPrefix(packageRel, pc.stripImportPrefix)
-				src = path.Join(packageRel, srcFile)
-			}
-		}
-		if pc.importPrefix != "" {
-			rel = path.Join(pc.importPrefix, rel)
-		}
-		imports[i] = resolve.ImportSpec{Lang: "proto", Imp: path.Join(rel, src)}
+		imports[i] = resolve.ImportSpec{Lang: "proto", Imp: path.Join(prefix, src)}
 	}
 	return imports
 }
