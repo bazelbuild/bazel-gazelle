@@ -781,7 +781,7 @@ go_library(
 )
 `,
 		}, {
-			Path: "foo.proto",
+			Path:    "foo.proto",
 			Content: `syntax = "proto3";`,
 		},
 	}
@@ -789,8 +789,8 @@ go_library(
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	args := []string{"update","-go_prefix", "example.com/repo",
-	"-proto_strip_import_prefix", "/foo", "-proto_import_prefix", "/bar"}
+	args := []string{"update", "-go_prefix", "example.com/repo",
+		"-proto_strip_import_prefix", "/foo", "-proto_import_prefix", "/bar"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
