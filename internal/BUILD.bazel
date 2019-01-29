@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//tests:bazel_tests.bzl", "bazel_test")
 
 _REPOSITORY_RULES_TEST_WORKSPACE = """
-load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
 go_rules_dependencies()
 go_register_toolchains()
 
@@ -15,7 +15,7 @@ register_toolchains(
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 gazelle_dependencies()
 
-load("@bazel_gazelle//:def.bzl", "go_repository", "git_repository", "http_archive")
+load("@bazel_gazelle//:deps.bzl", "go_repository", "git_repository", "http_archive")
 
 go_repository(
     name = "errors_go",
