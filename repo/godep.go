@@ -50,38 +50,35 @@ func importRepoRulesGoDep(filename string, cache *RemoteCache) ([]Repo, error) {
 	}
 
 	var wg sync.WaitGroup
-	var updateLock sync.Mutex
-	var errorGroup *error
 
-	roots := make(map[string]string)
+	roots := make([]string, len(file.Deps))
+	errs := make([]error, len(file.Deps))
 
 	wg.Add(len(file.Deps))
-	for _, p := range file.Deps {
-		go func(p goDepProject) {
+	for i, p := range file.Deps {
+		go func(i int, p goDepProject) {
 			defer wg.Done()
 			rootRepo, _, err := cache.Root(p.ImportPath)
 			if err != nil {
-				if errorGroup == nil {
-					errorGroup = &err
-				}
+				errs[i] = err
 			} else {
-				updateLock.Lock()
-				roots[p.ImportPath] = rootRepo
-				updateLock.Unlock()
+				roots[i] = rootRepo
 			}
-		}(p)
+		}(i, p)
 	}
 	wg.Wait()
 
 	var repos []Repo
-	if errorGroup != nil {
-		return nil, *errorGroup
+	for _, err := range errs {
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	seenRepos := make(map[string]string)
 
-	for _, p := range file.Deps {
-		repoRoot := roots[p.ImportPath]
+	for i, p := range file.Deps {
+		repoRoot := roots[i]
 		if seen := seenRepos[repoRoot]; seen == "" {
 
 			repos = append(repos, Repo{
