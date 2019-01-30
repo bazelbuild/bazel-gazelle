@@ -75,21 +75,20 @@ func importRepoRulesGoDep(filename string, cache *RemoteCache) ([]Repo, error) {
 		}
 	}
 
-	seenRepos := make(map[string]string)
+	repoToRev := make(map[string]string)
 
 	for i, p := range file.Deps {
 		repoRoot := roots[i]
-		if seen := seenRepos[repoRoot]; seen == "" {
-
+		if rev, ok := repoToRev[repoRoot]; !ok {
 			repos = append(repos, Repo{
 				Name:     label.ImportPathToBazelRepoName(repoRoot),
 				GoPrefix: repoRoot,
 				Commit:   p.Rev,
 			})
-			seenRepos[repoRoot] = p.Rev
+			repoToRev[repoRoot] = p.Rev
 		} else {
-			if p.Rev != seenRepos[repoRoot] {
-				return nil, fmt.Errorf("Repo %s imported at multiple revisions: %s, %s", repoRoot, p.Rev, seenRepos[repoRoot])
+			if p.Rev != rev {
+				return nil, fmt.Errorf("Repo %s imported at multiple revisions: %s, %s", repoRoot, p.Rev, rev)
 			}
 		}
 	}
