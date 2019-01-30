@@ -157,6 +157,88 @@ go_repository(
     importpath = "golang.org/x/tools",
 )
 `,
+		}, {
+			desc:     "godep",
+			filename: "Godeps.json",
+			content: `
+{
+  "ImportPath": "github.com/nordstrom/kubelogin",
+  "GoVersion": "go1.8",
+  "GodepVersion": "v79",
+  "Packages": [
+    "./..."
+  ],
+  "Deps": [
+    {
+      "ImportPath": "github.com/beorn7/perks/quantile",
+      "Rev": "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
+    },
+    {
+      "ImportPath": "github.com/coreos/go-oidc",
+      "Rev": "d68c0e2fef598f5bbf15edd34905f4bf551a54ec"
+    },
+    {
+      "ImportPath": "github.com/go-redis/redis",
+      "Comment": "v6.5.6-2-g7a034e1",
+      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
+    },
+    {
+      "ImportPath": "github.com/go-redis/redis/internal",
+      "Comment": "v6.5.6-2-g7a034e1",
+      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
+    },
+    {
+      "ImportPath": "github.com/go-redis/redis/internal/consistenthash",
+      "Comment": "v6.5.6-2-g7a034e1",
+      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
+    },
+    {
+      "ImportPath": "github.com/go-redis/redis/internal/hashtag",
+      "Comment": "v6.5.6-2-g7a034e1",
+      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
+    },
+    {
+      "ImportPath": "github.com/go-redis/redis/internal/pool",
+      "Comment": "v6.5.6-2-g7a034e1",
+      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
+    },
+    {
+      "ImportPath": "github.com/go-redis/redis/internal/proto",
+      "Comment": "v6.5.6-2-g7a034e1",
+      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
+    },
+		{
+      "ImportPath": "github.com/golang/protobuf/proto",
+      "Rev": "748d386b5c1ea99658fd69fe9f03991ce86a90c1"
+    }
+	]
+}
+`,
+			want: `
+go_repository(
+    name = "com_github_beorn7_perks",
+    commit = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9",
+    importpath = "github.com/beorn7/perks",
+)
+
+go_repository(
+    name = "com_github_coreos_go_oidc",
+    commit = "d68c0e2fef598f5bbf15edd34905f4bf551a54ec",
+    importpath = "github.com/coreos/go-oidc",
+)
+
+go_repository(
+    name = "com_github_go_redis_redis",
+    commit = "7a034e1609674d5eb847c3885e5058c54e79a1df",
+    importpath = "github.com/go-redis/redis",
+)
+
+go_repository(
+    name = "com_github_golang_protobuf",
+    commit = "748d386b5c1ea99658fd69fe9f03991ce86a90c1",
+    importpath = "github.com/golang/protobuf",
+)
+`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -170,7 +252,9 @@ go_repository(
 				t.Fatal(err)
 			}
 
-			rules, err := ImportRepoRules(filename)
+			cache := newStubRemoteCache(nil)
+
+			rules, err := ImportRepoRules(filename, cache)
 			if err != nil {
 				t.Fatal(err)
 			}
