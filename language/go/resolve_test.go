@@ -34,10 +34,10 @@ func TestResolveGo(t *testing.T) {
 		rel, content string
 	}
 	type testCase struct {
-		desc  string
-		index []buildFile
-		old   buildFile
-		want  string
+		desc      string
+		index     []buildFile
+		old       buildFile
+		want      string
 		skipIndex bool
 	}
 	for _, tc := range []testCase{
@@ -433,7 +433,7 @@ go_library(
         "github.com/bazelbuild/bazel-gazelle/language",
         "github.com/bazelbuild/rules_go/go/tools/bazel",
     ],
-)        
+)
 `},
 			want: `
 go_library(
@@ -445,7 +445,7 @@ go_library(
 )
 `,
 		}, {
-			desc: "local_unknown",
+			desc:      "local_unknown",
 			skipIndex: true,
 			old: buildFile{content: `
 go_binary(
@@ -873,6 +873,48 @@ go_library(
     importpath = "foo",
 )
 `,
+		}, {
+			desc: "proto_import_prefix_and_strip_import_prefix",
+			index: []buildFile{{
+				rel: "",
+				content: `
+# gazelle:proto_strip_import_prefix /sub
+# gazelle:proto_import_prefix foo/
+`,
+			}, {
+				rel: "sub",
+				content: `
+proto_library(
+    name = "foo_proto",
+    srcs = ["bar.proto"],
+)
+
+go_proto_library(
+    name = "foo_go_proto",
+    importpath = "example.com/foo",
+    proto = ":foo_proto",
+)
+
+go_library(
+    name = "embed",
+    embed = [":foo_go_proto"],
+    importpath = "example.com/foo",
+)
+`,
+			},
+			},
+			old: buildFile{content: `
+go_proto_library(
+    name = "dep_proto",
+    _imports = ["foo/bar.proto"],
+)
+`},
+			want: `
+go_proto_library(
+    name = "dep_proto",
+    deps = ["//sub:embed"],
+)
+`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -1049,10 +1091,10 @@ func TestResolveExternal(t *testing.T) {
 			importpath: "example.com/lib",
 			want:       "@com_example//lib:go_default_library",
 		}, {
-			desc: "same_prefix",
+			desc:       "same_prefix",
 			importpath: "example.com/local/ext",
 			repos: []repo.Repo{{
-				Name: "local_ext",
+				Name:     "local_ext",
 				GoPrefix: "example.com/local/ext",
 			}},
 			want: "@local_ext//:go_default_library",

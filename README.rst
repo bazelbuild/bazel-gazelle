@@ -15,6 +15,8 @@ Gazelle build file generator
 .. _Extending Gazelle: extend.rst
 .. _extended: `Extending Gazelle`_
 .. _gazelle_binary: extend.rst#gazelle_binary
+.. _import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.import_prefix
+.. _strip_import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.strip_import_prefix
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -36,7 +38,7 @@ and custom rule sets.
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
 
-.. contents:: **Contents** 
+.. contents:: **Contents**
   :depth: 2
 
 **See also:**
@@ -79,13 +81,13 @@ should look like this:
     go_register_toolchains()
     load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
     gazelle_dependencies()
-      
+
 Add the code below to the BUILD or BUILD.bazel file in the root directory
 of your repository. Replace the string after ``prefix`` with the portion of
 your import path that corresponds to your repository.
 
 .. code:: bzl
-  
+
   load("@bazel_gazelle//:def.bzl", "gazelle")
 
   # gazelle:prefix github.com/example/project
@@ -239,7 +241,7 @@ The following attributes are available on the ``gazelle`` rule.
 ``fix`` and ``update``
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The ``update`` command is the most common way of running Gazelle. Gazelle 
+The ``update`` command is the most common way of running Gazelle. Gazelle
 scans sources in directories throughout the repository, then creates and updates
 build files.
 
@@ -335,6 +337,11 @@ The following flags are accepted:
 | Determines the proto option Gazelle uses to group .proto files into rules                        |
 | when in ``package`` mode. See details in `Directives`_ below.                                    |
 +--------------------------------------------------------------+-----------------------------------+
+| :flag:`-proto_import_prefix repo`                            |                                   |
++--------------------------------------------------------------+-----------------------------------+
+| Sets the `import_prefix`_ attribute of generated ``proto_library`` rules. This is a prefix       |
+| to add to import paths of .proto files.                                                          |
++--------------------------------------------------------------+-----------------------------------+
 | :flag:`-repo_root dir`                                       |                                   |
 +--------------------------------------------------------------+-----------------------------------+
 | The root directory of the repository. Gazelle normally infers this to be the                     |
@@ -347,7 +354,7 @@ The following flags are accepted:
 ~~~~~~~~~~~~~~~~
 
 The ``update-repos`` command updates repository rules in the WORKSPACE file.
-It can be used to add new repository rules or update existing rules to the 
+It can be used to add new repository rules or update existing rules to the
 latest version. It can also import repository rules from a ``go.mod`` file or
 a ``Gopkg.lock`` file.
 
@@ -419,152 +426,162 @@ set it in a subdirectory, it only affects rules in that subtree.
 
 The following directives are recognized:
 
-+------------------------------------------+-----------------------------------+
-| **Directive**                            | **Default value**                 |
-+==========================================+===================================+
-| :direc:`# gazelle:build_file_name names` | :value:`BUILD.bazel,BUILD`        |
-+------------------------------------------+-----------------------------------+
-| Comma-separated list of file names. Gazelle recognizes these files as Bazel  |
-| build files. New files will use the first name in this list. Use this if     |
-| your project contains non-Bazel files named ``BUILD`` (or ``build`` on       |
-| case-insensitive file systems).                                              |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:build_tags foo,bar`    | none                              |
-+------------------------------------------+-----------------------------------+
-| List of Go build tags Gazelle will consider to be true. Gazelle applies      |
-| constraints when generating Go rules. It assumes certain tags are true on    |
-| certain platforms (for example, ``amd64,linux``). It assumes all Go release  |
-| tags are true (for example, ``go1.8``). It considers other tags to be false  |
-| (for example, ``ignore``). This flag overrides that behavior.                |
-|                                                                              |
-| Bazel may still filter sources with these tags. Use                          |
-| ``bazel build --features gotags=foo,bar`` to set tags at build time.         |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:exclude path`          | n/a                               |
-+------------------------------------------+-----------------------------------+
-| Prevents Gazelle from processing a file or directory. If the path refers to  |
-| a source file, Gazelle won't include it in any rules. If the path refers to  |
-| a directory, Gazelle won't recurse into it. The path may refer to something  |
-| withinin a subdirectory, for example, a testdata directory somewhere in a    |
-| vendor tree. This directive may be repeated to exclude multiple paths, one   |
-| per line.                                                                    |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:follow path`           | n/a                               |
-+------------------------------------------+-----------------------------------+
-| Instructs Gazelle to follow a symbolic link to a directory within the        |
-| repository. Normally, Gazelle does not follow symbolic links unless they     |
-| point outside of the repository root.                                        |
-|                                                                              |
-| Care must be taken to avoid visiting a directory more than once.             |
-| The ``# gazelle:exclude`` directive may be used to prevent Gazelle from      |
-| recursing into a directory.                                                  |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:ignore`                | n/a                               |
-+------------------------------------------+-----------------------------------+
-| Prevents Gazelle from modifying the build file. Gazelle will still read      |
-| rules in the build file and may modify build files in subdirectories.        |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:importmap_prefix path` | See below                         |
-+------------------------------------------+-----------------------------------+
-| A prefix for ``importmap`` attributes in library rules. Gazelle will set     |
-| an ``importmap`` on a ``go_library`` or ``go_proto_library`` by              |
-| concatenating this with the relative path from the directory where the       |
-| prefix is set to the library. For example, if ``importmap_prefix`` is set    |
-| to ``"x/example.com/repo"`` in the build file ``//foo/bar:BUILD.bazel``,     |
-| then a library in ``foo/bar/baz`` will have the ``importmap`` of             |
-| ``"x/example.com/repo/baz"``.                                                |
-|                                                                              |
-| ``importmap`` is not set when it matches ``importpath``.                     |
-|                                                                              |
-| As a special case, when Gazelle enters a directory named ``vendor``, it      |
-| sets ``importmap_prefix`` to a string based on the repository name and the   |
-| location of the vendor directory. If you wish to override this, you'll need  |
-| to set ``importmap_prefix`` explicitly in the vendor directory.              |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:prefix path`           | n/a                               |
-+------------------------------------------+-----------------------------------+
-| A prefix for ``importpath`` attributes on library rules. Gazelle will set    |
-| an ``importpath`` on a ``go_library`` or ``go_proto_library`` by             |
-| concatenating this with the relative path from the directory where the       |
-| prefix is set to the library. Most commonly, ``prefix`` is set to the        |
-| name of a repository in the root directory of a repository. For example,     |
-| in this repository, ``prefix`` is set in ``//:BUILD.bazel`` to               |
-| ``github.com/bazelbuild/bazel-gazelle``. The ``go_library`` in               |
-| ``//cmd/gazelle`` is assigned the ``importpath``                             |
-| ``"github.com/bazelbuild/bazel-gazelle/cmd/gazelle"``.                       |
-|                                                                              |
-| As a special case, when Gazelle enters a directory named ``vendor``, it sets |
-| ``prefix`` to the empty string. This automatically gives vendored libraries  |
-| an intuitive ``importpath``.                                                 |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:proto mode`            | :value:`default`                  |
-+------------------------------------------+-----------------------------------+
-| Tells Gazelle how to generate rules for .proto files. Valid values are:      |
-|                                                                              |
-| * ``default``: ``proto_library``, ``go_proto_library``, and ``go_library``   |
-|   rules are generated using ``@io_bazel_rules_go//proto:def.bzl``. Only one  |
-|   of each rule may be generated per directory. This is the default mode.     |
-| * ``package``: multiple ``proto_library`` and ``go_proto_library`` rules     |
-|   may be generated in the same directory. .proto files are grouped into      |
-|   rules based on their package name or another option (see ``proto_group``). |
-| * ``legacy``: ``filegroup`` rules are generated for use by                   |
-|   ``@io_bazel_rules_go//proto:go_proto_library.bzl``. ``go_proto_library``   |
-|   rules must be written by hand. Gazelle will run in this mode automatically |
-|   if ``go_proto_library.bzl`` is loaded to avoid disrupting existing         |
-|   projects, but this can be overridden with a directive.                     |
-| * ``disable``: .proto files are ignored. Gazelle will run in this mode       |
-|   automatically if ``go_proto_library`` is loaded from any other source,     |
-|   but this can be overridden with a directive.                               |
-| * ``disable_global``: like ``disable`` mode, but also prevents Gazelle from  |
-|   using any special cases in dependency resolution for Well Known Types and  |
-|   Google APIs. Useful for avoiding build-time dependencies on protoc.        |
-|                                                                              |
-| This directive applies to the current directory and subdirectories. As a     |
-| special case, when Gazelle enters a directory named ``vendor``, if the proto |
-| mode isn't set explicitly in a parent directory or on the command line,      |
-| Gazelle will run in ``disable`` mode. Additionally, if the file              |
-| ``@io_bazel_rules_go//proto:go_proto_library.bzl`` is loaded, Gazelle        |
-| will run in ``legacy`` mode.                                                 |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:proto_group option`    | :value:`""`                       |
-+------------------------------------------+-----------------------------------+
-| *This directive is only effective in* ``package`` *mode (see above).*        |
-|                                                                              |
-| Specifies an option that Gazelle can use to group .proto files into rules.   |
-| For example, when set to ``go_package``, .proto files with the same          |
-| ``option go_package`` will be grouped together.                              |
-|                                                                              |
-| When this directive is set to the empty string, Gazelle will group packages  |
-| by their proto package statement.                                            |
-|                                                                              |
-| Rule names are generated based on the last run of identifier characters      |
-| in the package name. For example, if the package is ``"foo/bar/baz"``, the   |
-| ``proto_library`` rule will be named ``baz_proto``.                          |
-+------------------------------------------+-----------------------------------+
-| :direc:`# gazelle:resolve ...`           | n/a                               |
-+------------------------------------------+-----------------------------------+
-| Specifies an explicit mapping from an import string to a label for           |
-| `Dependency resolution`_. The format for a resolve directive is:             |
-|                                                                              |
-| ``# gazelle:resolve source-lang import-lang import-string label``            |
-|                                                                              |
-| * ``source-lang`` is the language of the source code being imported.         |
-| * ``import-lang`` is the language importing the library. This is usually     |
-|   the same as ``source-lang`` but may differ with generated code. For        |
-|   example, when resolving dependencies for a ``go_proto_library``,           |
-|   ``source-lang`` would be ``"proto"`` and ``import-lang`` would be ``"go"``.|
-|   ``import-lang`` may be omitted if it is the same as ``source-lang``.       |
-| * ``import-string`` is the string used in source code to import a library.   |
-| * ``label`` is the Bazel label that Gazelle should write in ``deps``.        |
-|                                                                              |
-| For example:                                                                 |
-|                                                                              |
-| .. code:: bzl                                                                |
-|                                                                              |
-|   # gazelle:resolve go example.com/foo //foo:go_default_library              |
-|   # gazelle:resolve proto go foo/foo.proto //foo:foo_go_proto                |
-|                                                                              |
-+------------------------------------------+-----------------------------------+
++---------------------------------------------------+-----------------------------------+
+| **Directive**                                     | **Default value**                 |
++===================================================+===================================+
+| :direc:`# gazelle:build_file_name names`          | :value:`BUILD.bazel,BUILD`        |
++---------------------------------------------------+-----------------------------------+
+| Comma-separated list of file names. Gazelle recognizes these files as Bazel           |
+| build files. New files will use the first name in this list. Use this if              |
+| your project contains non-Bazel files named ``BUILD`` (or ``build`` on                |
+| case-insensitive file systems).                                                       |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:build_tags foo,bar`             | none                              |
++---------------------------------------------------+-----------------------------------+
+| List of Go build tags Gazelle will consider to be true. Gazelle applies               |
+| constraints when generating Go rules. It assumes certain tags are true on             |
+| certain platforms (for example, ``amd64,linux``). It assumes all Go release           |
+| tags are true (for example, ``go1.8``). It considers other tags to be false           |
+| (for example, ``ignore``). This flag overrides that behavior.                         |
+|                                                                                       |
+| Bazel may still filter sources with these tags. Use                                   |
+| ``bazel build --features gotags=foo,bar`` to set tags at build time.                  |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:exclude path`                   | n/a                               |
++---------------------------------------------------+-----------------------------------+
+| Prevents Gazelle from processing a file or directory. If the path refers to           |
+| a source file, Gazelle won't include it in any rules. If the path refers to           |
+| a directory, Gazelle won't recurse into it. The path may refer to something           |
+| withinin a subdirectory, for example, a testdata directory somewhere in a             |
+| vendor tree. This directive may be repeated to exclude multiple paths, one            |
+| per line.                                                                             |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:follow path`                    | n/a                               |
++---------------------------------------------------+-----------------------------------+
+| Instructs Gazelle to follow a symbolic link to a directory within the                 |
+| repository. Normally, Gazelle does not follow symbolic links unless they              |
+| point outside of the repository root.                                                 |
+|                                                                                       |
+| Care must be taken to avoid visiting a directory more than once.                      |
+| The ``# gazelle:exclude`` directive may be used to prevent Gazelle from               |
+| recursing into a directory.                                                           |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:ignore`                         | n/a                               |
++---------------------------------------------------+-----------------------------------+
+| Prevents Gazelle from modifying the build file. Gazelle will still read               |
+| rules in the build file and may modify build files in subdirectories.                 |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:importmap_prefix path`          | See below                         |
++---------------------------------------------------+-----------------------------------+
+| A prefix for ``importmap`` attributes in library rules. Gazelle will set              |
+| an ``importmap`` on a ``go_library`` or ``go_proto_library`` by                       |
+| concatenating this with the relative path from the directory where the                |
+| prefix is set to the library. For example, if ``importmap_prefix`` is set             |
+| to ``"x/example.com/repo"`` in the build file ``//foo/bar:BUILD.bazel``,              |
+| then a library in ``foo/bar/baz`` will have the ``importmap`` of                      |
+| ``"x/example.com/repo/baz"``.                                                         |
+|                                                                                       |
+| ``importmap`` is not set when it matches ``importpath``.                              |
+|                                                                                       |
+| As a special case, when Gazelle enters a directory named ``vendor``, it               |
+| sets ``importmap_prefix`` to a string based on the repository name and the            |
+| location of the vendor directory. If you wish to override this, you'll need           |
+| to set ``importmap_prefix`` explicitly in the vendor directory.                       |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:prefix path`                    | n/a                               |
++---------------------------------------------------+-----------------------------------+
+| A prefix for ``importpath`` attributes on library rules. Gazelle will set             |
+| an ``importpath`` on a ``go_library`` or ``go_proto_library`` by                      |
+| concatenating this with the relative path from the directory where the                |
+| prefix is set to the library. Most commonly, ``prefix`` is set to the                 |
+| name of a repository in the root directory of a repository. For example,              |
+| in this repository, ``prefix`` is set in ``//:BUILD.bazel`` to                        |
+| ``github.com/bazelbuild/bazel-gazelle``. The ``go_library`` in                        |
+| ``//cmd/gazelle`` is assigned the ``importpath``                                      |
+| ``"github.com/bazelbuild/bazel-gazelle/cmd/gazelle"``.                                |
+|                                                                                       |
+| As a special case, when Gazelle enters a directory named ``vendor``, it sets          |
+| ``prefix`` to the empty string. This automatically gives vendored libraries           |
+| an intuitive ``importpath``.                                                          |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:proto mode`                     | :value:`default`                  |
++---------------------------------------------------+-----------------------------------+
+| Tells Gazelle how to generate rules for .proto files. Valid values are:               |
+|                                                                                       |
+| * ``default``: ``proto_library``, ``go_proto_library``, and ``go_library``            |
+|   rules are generated using ``@io_bazel_rules_go//proto:def.bzl``. Only one           |
+|   of each rule may be generated per directory. This is the default mode.              |
+| * ``package``: multiple ``proto_library`` and ``go_proto_library`` rules              |
+|   may be generated in the same directory. .proto files are grouped into               |
+|   rules based on their package name or another option (see ``proto_group``).          |
+| * ``legacy``: ``filegroup`` rules are generated for use by                            |
+|   ``@io_bazel_rules_go//proto:go_proto_library.bzl``. ``go_proto_library``            |
+|   rules must be written by hand. Gazelle will run in this mode automatically          |
+|   if ``go_proto_library.bzl`` is loaded to avoid disrupting existing                  |
+|   projects, but this can be overridden with a directive.                              |
+| * ``disable``: .proto files are ignored. Gazelle will run in this mode                |
+|   automatically if ``go_proto_library`` is loaded from any other source,              |
+|   but this can be overridden with a directive.                                        |
+| * ``disable_global``: like ``disable`` mode, but also prevents Gazelle from           |
+|   using any special cases in dependency resolution for Well Known Types and           |
+|   Google APIs. Useful for avoiding build-time dependencies on protoc.                 |
+|                                                                                       |
+| This directive applies to the current directory and subdirectories. As a              |
+| special case, when Gazelle enters a directory named ``vendor``, if the proto          |
+| mode isn't set explicitly in a parent directory or on the command line,               |
+| Gazelle will run in ``disable`` mode. Additionally, if the file                       |
+| ``@io_bazel_rules_go//proto:go_proto_library.bzl`` is loaded, Gazelle                 |
+| will run in ``legacy`` mode.                                                          |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:proto_group option`             | :value:`""`                       |
++---------------------------------------------------+-----------------------------------+
+| *This directive is only effective in* ``package`` *mode (see above).*                 |
+|                                                                                       |
+| Specifies an option that Gazelle can use to group .proto files into rules.            |
+| For example, when set to ``go_package``, .proto files with the same                   |
+| ``option go_package`` will be grouped together.                                       |
+|                                                                                       |
+| When this directive is set to the empty string, Gazelle will group packages           |
+| by their proto package statement.                                                     |
+|                                                                                       |
+| Rule names are generated based on the last run of identifier characters               |
+| in the package name. For example, if the package is ``"foo/bar/baz"``, the            |
+| ``proto_library`` rule will be named ``baz_proto``.                                   |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:proto_strip_import_prefix path` | n/a                               |
++---------------------------------------------------+-----------------------------------+
+| Sets the `strip_import_prefix`_ attribute of generated ``proto_library`` rules.       |
+| This is a prefix to strip from the import paths of .proto files.                      |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:proto_import_prefix path`       | n/a                               |
++---------------------------------------------------+-----------------------------------+
+| Sets the `import_prefix`_ attribute of generated ``proto_library`` rules.             |
+| This is a prefix to add to import paths of .proto files.                              |
++---------------------------------------------------+-----------------------------------+
+| :direc:`# gazelle:resolve ...`                    | n/a                               |
++---------------------------------------------------+-----------------------------------+
+| Specifies an explicit mapping from an import string to a label for                    |
+| `Dependency resolution`_. The format for a resolve directive is:                      |
+|                                                                                       |
+| ``# gazelle:resolve source-lang import-lang import-string label``                     |
+|                                                                                       |
+| * ``source-lang`` is the language of the source code being imported.                  |
+| * ``import-lang`` is the language importing the library. This is usually              |
+|   the same as ``source-lang`` but may differ with generated code. For                 |
+|   example, when resolving dependencies for a ``go_proto_library``,                    |
+|   ``source-lang`` would be ``"proto"`` and ``import-lang`` would be ``"go"``.         |
+|   ``import-lang`` may be omitted if it is the same as ``source-lang``.                |
+| * ``import-string`` is the string used in source code to import a library.            |
+| * ``label`` is the Bazel label that Gazelle should write in ``deps``.                 |
+|                                                                                       |
+| For example:                                                                          |
+|                                                                                       |
+| .. code:: bzl                                                                         |
+|                                                                                       |
+|   # gazelle:resolve go example.com/foo //foo:go_default_library                       |
+|   # gazelle:resolve proto go foo/foo.proto //foo:foo_go_proto                         |
+|                                                                                       |
++---------------------------------------------------+-----------------------------------+
 
 Keep comments
 ~~~~~~~~~~~~~

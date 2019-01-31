@@ -1,0 +1,6 @@
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    strip_import_prefix = "/strip_import_prefix",
+    visibility = ["//visibility:public"],
+)
