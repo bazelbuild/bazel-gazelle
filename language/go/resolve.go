@@ -132,6 +132,8 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 		// "go_default_library" versions of these libraries depend on the
 		// pre-generated versions of the proto libraries.
 		switch imp {
+		case "github.com/golang/protobuf/proto":
+			return label.New("com_github_golang_protobuf", "proto", "go_default_library"), nil
 		case "github.com/golang/protobuf/jsonpb":
 			return label.New("com_github_golang_protobuf", "jsonpb", "go_default_library_gen"), nil
 		case "github.com/golang/protobuf/descriptor":
