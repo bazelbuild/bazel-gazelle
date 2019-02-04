@@ -808,6 +808,7 @@ go_library(
 go_library(
     name = "go_default_library",
     _imports = [
+        "github.com/golang/protobuf/proto",
         "github.com/golang/protobuf/jsonpb",
         "github.com/golang/protobuf/descriptor",
         "github.com/golang/protobuf/protoc-gen-go/generator",
@@ -822,6 +823,7 @@ go_library(
     deps = [
         "@com_github_golang_protobuf//descriptor:go_default_library_gen",
         "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
+        "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_golang_protobuf//protoc-gen-go/generator:go_default_library_gen",
         "@com_github_golang_protobuf//ptypes:go_default_library_gen",
         "@org_golang_google_grpc//:go_default_library",
