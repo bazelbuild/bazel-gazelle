@@ -560,6 +560,14 @@ func (in *input) Lex(val *yySymType) int {
 	if k := keywordToken[val.tok]; k != 0 {
 		return k
 	}
+	switch val.tok {
+	case "pass":
+		return _PASS
+	case "break":
+		return _BREAK
+	case "continue":
+		return _CONTINUE
+	}
 	for _, c := range val.tok {
 		if c > '9' || c < '0' {
 			return _IDENT
@@ -641,6 +649,8 @@ func (in *input) order(v Expr) {
 	case *StringExpr:
 		// nothing
 	case *Ident:
+		// nothing
+	case *BranchStmt:
 		// nothing
 	case *DotExpr:
 		in.order(v.X)

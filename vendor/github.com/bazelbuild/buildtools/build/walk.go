@@ -145,6 +145,18 @@ func WalkOnce(v Expr, f func(x *Expr)) {
 		f(&v.Then)
 		f(&v.Test)
 		f(&v.Else)
+	case *LoadStmt:
+		module := (Expr)(v.Module)
+		f(&module)
+		v.Module = module.(*StringExpr)
+		for i := range v.From {
+			from := (Expr)(v.From[i])
+			f(&from)
+			v.From[i] = from.(*Ident)
+			to := (Expr)(v.To[i])
+			f(&to)
+			v.To[i] = to.(*Ident)
+		}
 	case *DefStmt:
 		for i := range v.Params {
 			f(&v.Params[i])

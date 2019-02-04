@@ -19,6 +19,7 @@ package build
 
 import (
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -250,14 +251,19 @@ func fixLabels(f *File, info *RewriteInfo) {
 		editPerformed := false
 
 		if tables.StripLabelLeadingSlashes && strings.HasPrefix(str.Value, "//") {
-			if path.Dir(f.Path) == "." || !strings.HasPrefix(str.Value, "//:") {
+			if filepath.Dir(f.Path) == "." || !strings.HasPrefix(str.Value, "//:") {
 				editPerformed = true
 				str.Value = str.Value[2:]
 			}
 		}
 
 		if tables.ShortenAbsoluteLabelsToRelative {
-			thisPackage := labelPrefix + path.Dir(f.Path)
+			thisPackage := labelPrefix + filepath.Dir(f.Path)
+			// filepath.Dir on Windows uses backslashes as separators, while labels always have slashes.
+			if filepath.Separator != '/' {
+				thisPackage = strings.Replace(thisPackage, string(filepath.Separator), "/", -1)
+			}
+
 			if str.Value == thisPackage {
 				editPerformed = true
 				str.Value = ":" + path.Base(str.Value)

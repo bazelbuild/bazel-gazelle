@@ -394,6 +394,9 @@ func (p *printer) expr(v Expr, outerPrec int) {
 	case *Ident:
 		p.printf("%s", v.Name)
 
+	case *BranchStmt:
+		p.printf("%s", v.Token)
+
 	case *StringExpr:
 		// If the Token is a correct quoting of Value and has double quotes, use it,
 		// also use it if it has single quotes and the value itself contains a double quote symbol.

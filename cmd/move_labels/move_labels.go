@@ -114,11 +114,6 @@ func moveLabelsInDir(c *configuration) ([]*build.File, error) {
 
 func moveLabelsInFile(file *build.File, from, to string) {
 	build.Edit(file, func(x build.Expr, _ []build.Expr) build.Expr {
-		// TODO: Remove special case handling for LoadStmt when build.Edit starts
-		// walking inside it to consider the Module field.
-		if loadStmt, ok := x.(*build.LoadStmt); ok {
-			return moveLabelsInLoadStmt(loadStmt, from, to)
-		}
 		str, ok := x.(*build.StringExpr)
 		if !ok {
 			return nil
@@ -135,12 +130,6 @@ func moveLabelsInFile(file *build.File, from, to string) {
 		}
 		return &build.StringExpr{Value: moved}
 	})
-}
-
-func moveLabelsInLoadStmt(loadStmt *build.LoadStmt, from, to string) *build.LoadStmt {
-	newModule := moveLabel(from, to, loadStmt.Module.Value)
-	loadStmt.Module = &build.StringExpr{Value: newModule}
-	return loadStmt
 }
 
 func moveLabel(from, to, str string) string {
