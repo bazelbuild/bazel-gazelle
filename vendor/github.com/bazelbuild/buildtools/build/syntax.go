@@ -126,6 +126,17 @@ func (x *Ident) Span() (start, end Position) {
 	return x.NamePos, x.NamePos.add(x.Name)
 }
 
+// BranchStmt represents a `pass` statement.
+type BranchStmt struct {
+	Comments
+	Token    string // pass, break, continue
+	TokenPos Position
+}
+
+func (x *BranchStmt) Span() (start, end Position) {
+	return x.TokenPos, x.TokenPos.add(x.Token)
+}
+
 func (x *Ident) asString() *StringExpr {
 	_, end := x.Span()
 	return &StringExpr{

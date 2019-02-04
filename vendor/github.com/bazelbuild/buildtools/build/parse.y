@@ -93,6 +93,9 @@ package build
 %token	<pos>	_STRING  // quoted string
 %token	<pos>	_DEF     // keyword def
 %token	<pos>	_RETURN  // keyword return
+%token	<pos>	_PASS    // keyword pass
+%token	<pos>	_BREAK   // keyword break
+%token	<pos>	_CONTINUE // keyword continue
 %token	<pos>	_INDENT  // indentation
 %token	<pos>	_UNINDENT // unindentation
 
@@ -423,6 +426,27 @@ small_stmt:
 	}
 |	expr '=' expr      { $$ = binary($1, $2, $<tok>2, $3) }
 |	expr _AUGM expr    { $$ = binary($1, $2, $<tok>2, $3) }
+|	_PASS
+	{
+		$$ = &BranchStmt{
+			Token: $<tok>1,
+			TokenPos: $1,
+		}
+	}
+|	_BREAK
+	{
+		$$ = &BranchStmt{
+			Token: $<tok>1,
+			TokenPos: $1,
+		}
+	}
+|	_CONTINUE
+	{
+		$$ = &BranchStmt{
+			Token: $<tok>1,
+			TokenPos: $1,
+		}
+	}
 
 semi_opt:
 |	';'
