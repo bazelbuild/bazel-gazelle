@@ -278,7 +278,7 @@ outer:
 
 func checkStripImportPrefix(prefix, rel string) error {
 	if !strings.HasPrefix(prefix, "/") || !strings.HasPrefix(rel, prefix[1:]) {
-		return fmt.Errorf("invalid strip_import_prefix: %q", rel)
+		return fmt.Errorf("invalid proto_strip_import_prefix %q at %s", prefix, rel)
 	}
 	return nil
 }
