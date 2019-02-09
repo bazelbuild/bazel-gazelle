@@ -1,0 +1,1 @@
+# gazelle:go_grpc_compilers @io_bazel_rules_go//proto:gogofast_grpc

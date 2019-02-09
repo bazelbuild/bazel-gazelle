@@ -59,10 +59,30 @@ type goConfig struct {
 	// depMode determines how imports that are not standard, indexed, or local
 	// (under the current prefix) should be resolved.
 	depMode dependencyMode
+
+	// goProtoCompilers is the protocol buffers compiler(s) to use for go code.
+	goProtoCompilers []string
+
+	// goProtoCompilersSet indicates whether goProtoCompiler was set explicitly.
+	goProtoCompilersSet bool
+
+	// goGrpcCompilers is the gRPC compiler(s) to use for go code.
+	goGrpcCompilers []string
+
+	// goGrpcCompilersSet indicates whether goGrpcCompiler was set explicitly.
+	goGrpcCompilersSet bool
 }
 
+var (
+	defaultGoProtoCompilers = []string{"@io_bazel_rules_go//proto:go_proto"}
+	defaultGoGrpcCompilers  = []string{"@io_bazel_rules_go//proto:go_grpc"}
+)
+
 func newGoConfig() *goConfig {
-	gc := &goConfig{}
+	gc := &goConfig{
+		goProtoCompilers: defaultGoProtoCompilers,
+		goGrpcCompilers:  defaultGoGrpcCompilers,
+	}
 	gc.preprocessTags()
 	return gc
 }
@@ -171,6 +191,8 @@ func (f tagsFlag) String() string {
 func (_ *goLang) KnownDirectives() []string {
 	return []string{
 		"build_tags",
+		"go_grpc_compilers",
+		"go_proto_compilers",
 		"importmap_prefix",
 		"prefix",
 	}
@@ -192,6 +214,14 @@ func (_ *goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			&externalFlag{&gc.depMode},
 			"external",
 			"external: resolve external packages with go_repository\n\tvendored: resolve external packages as packages in vendor/")
+		fs.Var(
+			&gzflag.MultiFlag{Values: &gc.goProtoCompilers, IsSet: &gc.goProtoCompilersSet},
+			"go_proto_compiler",
+			"go_proto_library compiler to use (may be repeated)")
+		fs.Var(
+			&gzflag.MultiFlag{Values: &gc.goGrpcCompilers, IsSet: &gc.goGrpcCompilersSet},
+			"go_grpc_compiler",
+			"go_proto_library compiler to use for gRPC (may be repeated)")
 	}
 	c.Exts[goName] = gc
 }
@@ -243,6 +273,24 @@ func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 				gc.preprocessTags()
 				gc.setBuildTags(d.Value)
+			case "go_grpc_compilers":
+				// Special syntax (empty value) to reset directive.
+				if d.Value == "" {
+					gc.goGrpcCompilersSet = false
+					gc.goGrpcCompilers = defaultGoGrpcCompilers
+				} else {
+					gc.goGrpcCompilersSet = true
+					gc.goGrpcCompilers = splitValue(d.Value)
+				}
+			case "go_proto_compilers":
+				// Special syntax (empty value) to reset directive.
+				if d.Value == "" {
+					gc.goProtoCompilersSet = false
+					gc.goProtoCompilers = defaultGoProtoCompilers
+				} else {
+					gc.goProtoCompilersSet = true
+					gc.goProtoCompilers = splitValue(d.Value)
+				}
 			case "importmap_prefix":
 				gc.importMapPrefix = d.Value
 				gc.importMapPrefixRel = rel
@@ -282,4 +330,15 @@ func checkPrefix(prefix string) error {
 		return fmt.Errorf("invalid prefix: %q", prefix)
 	}
 	return nil
+}
+
+// splitDirective splits a comma-separated directive value into its component
+// parts, trimming each of any whitespace characters.
+func splitValue(value string) []string {
+	parts := strings.Split(value, ",")
+	values := make([]string, 0, len(parts))
+	for _, part := range parts {
+		values = append(values, strings.TrimSpace(part))
+	}
+	return values
 }

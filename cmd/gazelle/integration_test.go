@@ -1607,6 +1607,151 @@ go_library(
 	})
 }
 
+func TestGoGrpcProtoFlag(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		}, {
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_proto_library(
+    name = "foo_go_proto",
+    importpath = "example.com/repo/foo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":foo_go_proto"],
+    importpath = "example.com/repo/foo",
+    visibility = ["//visibility:public"],
+)
+`,
+		}, {
+			Path: "foo.proto",
+			Content: `
+syntax = "proto3";
+
+option go_package = "example.com/repo/foo";
+
+message Bar {};
+`,
+		}, {
+			Path: "service/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_proto_library(
+    name = "service_go_proto",
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "example.com/repo/service",
+    proto = ":service_proto",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "service_proto",
+    srcs = ["service.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":service_go_proto"],
+    importpath = "example.com/repo/service",
+    visibility = ["//visibility:public"],
+)
+`,
+		}, {
+			Path: "service/service.proto",
+			Content: `
+syntax = "proto3";
+
+option go_package = "example.com/repo/service";
+
+service {}
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update", "-go_grpc_compiler", "//foo", "-go_proto_compiler", "//bar"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_proto_library(
+    name = "foo_go_proto",
+    compilers = ["//bar"],
+    importpath = "example.com/repo/foo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":foo_go_proto"],
+    importpath = "example.com/repo/foo",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "service/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_proto_library(
+    name = "service_go_proto",
+    compilers = ["//foo"],
+    importpath = "example.com/repo/service",
+    proto = ":service_proto",
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "service_proto",
+    srcs = ["service.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":service_go_proto"],
+    importpath = "example.com/repo/service",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+	})
+}
+
 // TODO(jayconrod): more tests
 //   run in fix mode in testdata directories to create new files
 //   run in diff mode in testdata directories to update existing files (no change)
