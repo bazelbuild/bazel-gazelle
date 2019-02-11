@@ -217,7 +217,7 @@ func generateProto(pc *ProtoConfig, rel string, pkg *Package, shouldSetVisibilit
 		r.SetPrivateAttr(k, v)
 	}
 	if shouldSetVisibility {
-		vis := checkInternalVisibility(rel, "//visibility:public")
+		vis := rule.CheckInternalVisibility(rel, "//visibility:public")
 		r.SetAttr("visibility", []string{vis})
 	}
 	if pc.stripImportPrefix != "" {
@@ -262,15 +262,4 @@ outer:
 		empty = append(empty, rule.NewRule("proto_library", r.Name()))
 	}
 	return empty
-}
-
-// checkInternalVisibility overrides the given visibility if the package is
-// internal.
-func checkInternalVisibility(rel, visibility string) string {
-	if i := strings.LastIndex(rel, "/internal/"); i >= 0 {
-		visibility = fmt.Sprintf("//%s:__subpackages__", rel[:i])
-	} else if strings.HasPrefix(rel, "internal/") {
-		visibility = "//:__subpackages__"
-	}
-	return visibility
 }

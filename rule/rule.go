@@ -26,6 +26,7 @@ limitations under the License.
 package rule
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -680,6 +681,17 @@ func ShouldKeep(e bzl.Expr) bool {
 		}
 	}
 	return false
+}
+
+// CheckInternalVisibility overrides the given visibility if the package is
+// internal.
+func CheckInternalVisibility(rel, visibility string) string {
+	if i := strings.LastIndex(rel, "/internal/"); i >= 0 {
+		visibility = fmt.Sprintf("//%s:__subpackages__", rel[:i])
+	} else if strings.HasPrefix(rel, "internal/") {
+		visibility = "//:__subpackages__"
+	}
+	return visibility
 }
 
 type byAttrName []KeyValue

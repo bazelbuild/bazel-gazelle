@@ -16,7 +16,6 @@ limitations under the License.
 package golang
 
 import (
-	"fmt"
 	"go/build"
 	"log"
 	"path"
@@ -346,17 +345,6 @@ func defaultPackageName(c *config.Config, rel string) string {
 	return pathtools.RelBaseName(rel, gc.prefix, "")
 }
 
-// checkInternalVisibility overrides the given visibility if the package is
-// internal.
-func checkInternalVisibility(rel, visibility string) string {
-	if i := strings.LastIndex(rel, "/internal/"); i >= 0 {
-		visibility = fmt.Sprintf("//%s:__subpackages__", rel[:i])
-	} else if strings.HasPrefix(rel, "internal/") {
-		visibility = "//:__subpackages__"
-	}
-	return visibility
-}
-
 type generator struct {
 	c                   *config.Config
 	rel                 string
@@ -377,7 +365,7 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 		protoName = proto.RuleName(importPath)
 	}
 	goProtoName := strings.TrimSuffix(protoName, "_proto") + "_go_proto"
-	visibility := []string{checkInternalVisibility(g.rel, "//visibility:public")}
+	visibility := []string{rule.CheckInternalVisibility(g.rel, "//visibility:public")}
 
 	if mode == proto.LegacyMode {
 		filegroup := rule.NewRule("filegroup", filegroupName)
@@ -421,7 +409,7 @@ func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
 		// Libraries made for a go_binary should not be exposed to the public.
 		visibility = "//visibility:private"
 	} else {
-		visibility = checkInternalVisibility(pkg.rel, "//visibility:public")
+		visibility = rule.CheckInternalVisibility(pkg.rel, "//visibility:public")
 	}
 	g.setCommonAttrs(goLibrary, pkg.rel, visibility, pkg.library, embed)
 	g.setImportAttrs(goLibrary, pkg.importPath)
@@ -434,7 +422,7 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
 	if !pkg.isCommand() || pkg.binary.sources.isEmpty() && library == "" {
 		return goBinary // empty
 	}
-	visibility := checkInternalVisibility(pkg.rel, "//visibility:public")
+	visibility := rule.CheckInternalVisibility(pkg.rel, "//visibility:public")
 	g.setCommonAttrs(goBinary, pkg.rel, visibility, pkg.binary, library)
 	return goBinary
 }
