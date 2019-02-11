@@ -143,7 +143,11 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 
 	// Generate rules for proto packages. These should come before the other
 	// Go rules.
-	g := newGenerator(c, args)
+	g := &generator{
+		c: c,
+		rel: args.Rel,
+		shouldSetVisibility: args.File == nil || !args.File.HasDefaultVisibility(),
+	}
 	var res language.GenerateResult
 	var rules []*rule.Rule
 	var protoEmbed string
@@ -360,7 +364,7 @@ type generator struct {
 }
 
 func newGenerator(c *config.Config, args language.GenerateArgs) *generator {
-	shouldSetVisibility := !args.HasDefaultVisibility()
+	shouldSetVisibility := args.File == nil || !args.File.HasDefaultVisibility()
 	return &generator{c: c, rel: args.Rel, shouldSetVisibility: shouldSetVisibility}
 }
 

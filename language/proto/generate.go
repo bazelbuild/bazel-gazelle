@@ -48,7 +48,7 @@ func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 		}
 	}
 	pkgs := buildPackages(pc, args.Dir, args.Rel, regularProtoFiles, genProtoFiles)
-	shouldSetVisibility := !args.HasDefaultVisibility()
+	shouldSetVisibility := args.File == nil || !args.File.HasDefaultVisibility()
 	var res language.GenerateResult
 	for _, pkg := range pkgs {
 		r := generateProto(pc, args.Rel, pkg, shouldSetVisibility)
