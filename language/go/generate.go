@@ -363,11 +363,6 @@ type generator struct {
 	shouldSetVisibility bool
 }
 
-func newGenerator(c *config.Config, args language.GenerateArgs) *generator {
-	shouldSetVisibility := args.File == nil || !args.File.HasDefaultVisibility()
-	return &generator{c: c, rel: args.Rel, shouldSetVisibility: shouldSetVisibility}
-}
-
 func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPath string) (string, []*rule.Rule) {
 	if !mode.ShouldGenerateRules() && mode != proto.LegacyMode {
 		// Don't create or delete proto rules in this mode. Any existing rules
