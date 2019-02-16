@@ -2,7 +2,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
-    srcs = ["fetch_repo.go"],
+    srcs = [
+        "fetch_repo.go",
+        "module.go",
+        "vcs.go",
+    ],
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/fetch_repo",
     visibility = ["//visibility:private"],
     deps = ["//vendor/golang.org/x/tools/go/vcs:go_default_library"],

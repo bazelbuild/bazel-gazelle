@@ -18,9 +18,11 @@ load("@io_bazel_rules_go//go/private:common.bzl", "env_execute", "executable_ext
 _GO_REPOSITORY_TIMEOUT = 86400
 
 def _go_repository_impl(ctx):
+    fetch_repo_args = None
+
     if ctx.attr.urls:
-        # download from explicit source url
-        for key in ("commit", "tag", "vcs", "remote"):
+        # HTTP mode
+        for key in ("commit", "tag", "vcs", "remote", "version", "sum"):
             if getattr(ctx.attr, key):
                 fail("cannot specifiy both urls and %s" % key, key)
         ctx.download_and_extract(
@@ -29,26 +31,46 @@ def _go_repository_impl(ctx):
             stripPrefix = ctx.attr.strip_prefix,
             type = ctx.attr.type,
         )
-    else:
-        # checkout from vcs
-        if ctx.attr.commit and ctx.attr.tag:
-            fail("cannot specify both of commit and tag", "commit")
+    elif ctx.attr.commit or ctx.attr.tag:
+        # repository mode
         if ctx.attr.commit:
             rev = ctx.attr.commit
             rev_key = "commit"
         elif ctx.attr.tag:
             rev = ctx.attr.tag
             rev_key = "tag"
-        else:
-            fail("neither commit or tag is specified", "commit")
-        for key in ("urls", "strip_prefix", "type", "sha256"):
+        for key in ("urls", "strip_prefix", "type", "sha256", "version", "sum"):
             if getattr(ctx.attr, key):
                 fail("cannot specify both %s and %s" % (rev_key, key), key)
 
-        # Using fetch repo
         if ctx.attr.vcs and not ctx.attr.remote:
             fail("if vcs is specified, remote must also be")
 
+        fetch_repo_args = ["-dest", ctx.path(""), "-importpath", ctx.attr.importpath]
+        if ctx.attr.remote:
+            fetch_repo_args.extend(["--remote", ctx.attr.remote])
+        if rev:
+            fetch_repo_args.extend(["--rev", rev])
+        if ctx.attr.vcs:
+            fetch_repo_args.extend(["--vcs", ctx.attr.vcs])
+    elif ctx.attr.version:
+        # module mode
+        for key in ("urls", "strip_prefix", "type", "sha256", "commit", "tag", "vcs", "remote"):
+            if getattr(ctx.attr, key):
+                fail("cannot specify both version and %s", key)
+        if not ctx.attr.sum:
+            fail("if version is specified, sum must also be")
+
+        fetch_repo_args = [
+            "-dest=" + str(ctx.path("")),
+            "-importpath=" + ctx.attr.importpath,
+            "-version=" + ctx.attr.version,
+            "-sum=" + ctx.attr.sum,
+        ]
+    else:
+        fail("one of urls, commit, tag, or importpath must be specified")
+
+    if fetch_repo_args:
         env_keys = [
             "PATH",
             "HOME",
@@ -59,22 +81,18 @@ def _go_repository_impl(ctx):
             "GIT_SSL_CAINFO",
         ]
         fetch_repo_env = {k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ}
+        fetch_repo_env["GOROOT"] = str(ctx.path(ctx.attr._goroot).dirname)
+        fetch_repo_env["GOPATH"] = str(ctx.path(ctx.attr._gopath).dirname)
+        fetch_repo_env["GOCACHE"] = str(ctx.path(ctx.attr._gopath).dirname) + "/.gocache"
 
-        _fetch_repo = "@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx))
-        args = [
-            ctx.path(Label(_fetch_repo)),
-            "--dest",
-            ctx.path(""),
-        ]
-        if ctx.attr.remote:
-            args.extend(["--remote", ctx.attr.remote])
-        if rev:
-            args.extend(["--rev", rev])
-        if ctx.attr.vcs:
-            args.extend(["--vcs", ctx.attr.vcs])
-        if ctx.attr.importpath:
-            args.extend(["--importpath", ctx.attr.importpath])
-        result = env_execute(ctx, args, environment = fetch_repo_env, timeout = _GO_REPOSITORY_TIMEOUT)
+        fetch_repo = "@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx))
+        fetch_repo_args = [str(ctx.path(Label(fetch_repo)))] + fetch_repo_args
+        result = env_execute(
+            ctx,
+            fetch_repo_args,
+            environment = fetch_repo_env,
+            timeout = _GO_REPOSITORY_TIMEOUT,
+        )
         if result.return_code:
             fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
 
@@ -140,11 +158,15 @@ go_repository = repository_rule(
         ),
         "remote": attr.string(),
 
-        # Attributes for a repository that comes from a source blob not a vcs
+        # Attributes for a repository that should be downloaded via HTTP.
         "urls": attr.string_list(),
         "strip_prefix": attr.string(),
         "type": attr.string(),
         "sha256": attr.string(),
+
+        # Attributes for a module that should be downloaded with the Go toolchain.
+        "version": attr.string(),
+        "sum": attr.string(),
 
         # Attributes for a repository that needs automatic build file generation
         "build_external": attr.string(
@@ -181,6 +203,17 @@ go_repository = repository_rule(
         "patch_tool": attr.string(default = "patch"),
         "patch_args": attr.string_list(default = ["-p0"]),
         "patch_cmds": attr.string_list(default = []),
+
+        # File in GOROOT so we can set GOROOT for fetch_repo.
+        # TODO(jayconrod): don't hardcode go_sdk.
+        "_goroot": attr.label(
+            default = "@go_sdk//:ROOT",
+            allow_single_file = True,
+        ),
+        "_gopath": attr.label(
+            default = "@bazel_gazelle_go_repository_tools//:ROOT",
+            allow_single_file = True,
+        ),
     },
 )
 """See repository.rst#go-repository for full documentation."""
@@ -220,9 +253,15 @@ filegroup(
     name = "gazelle",
     srcs = ["bin/gazelle{extension}"],
 )
+
+exports_files(["ROOT"])
 """
 
 def _go_repository_tools_impl(ctx):
+    # TODO(#449): resolve a label for each gazelle and fetch_repo source file
+    # so that the binaries will be rebuilt. Move GOPATH somewhere else so
+    # module downloads don't get trashed whenever this rule is invalidated.
+
     extension = executable_extension(ctx)
     go_root = ctx.path(ctx.attr.go_sdk).dirname
     go_tool = str(go_root) + "/bin/go" + extension
@@ -243,6 +282,8 @@ def _go_repository_tools_impl(ctx):
         # workaround: avoid cgo paths in /tmp leaking into binary
         "CGO_ENABLED": "0",
     }
+    if "GOPROXY" in ctx.os.environ:
+        env["GOPROXY"] = ctx.os.environ["GOPROXY"]
 
     for tool in ("fetch_repo", "gazelle"):
         args = [
@@ -271,6 +312,11 @@ def _go_repository_tools_impl(ctx):
         _GO_REPOSITORY_TOOLS_BUILD_FILE.format(extension = executable_extension(ctx)),
         False,
     )
+    ctx.file(
+        "ROOT",
+        "",
+        False,
+    )
 
 go_repository_tools = repository_rule(
     _go_repository_tools_impl,
@@ -285,7 +331,7 @@ go_repository_tools = repository_rule(
             },
         ),
     },
-    environ = ["TMP"],
+    environ = ["GOPROXY", "TMP"],
 )
 """go_repository_tools is a synthetic repository used by go_repository.
 
