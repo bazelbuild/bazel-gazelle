@@ -90,6 +90,9 @@ type ruleRecord struct {
 	embedded bool
 
 	didCollectEmbeds bool
+
+	// resolver should be used to resolve this rule.
+	resolver Resolver
 }
 
 // NewRuleIndex creates a new index.
@@ -109,9 +112,16 @@ func NewRuleIndex(kindToResolver map[string]Resolver) *RuleIndex {
 //
 // AddRule may only be called before Finish.
 func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
-	var imps []ImportSpec
-	if rslv, ok := ix.kindToResolver[r.Kind()]; ok {
+	var (
+		imps []ImportSpec
+		rslv Resolver
+		ok   bool
+	)
+	if rslv, ok = ix.kindToResolver[r.Kind()]; ok {
 		imps = rslv.Imports(c, r, f)
+	} else if rslv, ok = ix.kindToResolver[c.ReverseMapKind(r.Kind())]; ok {
+		imps = rslv.Imports(c, r, f) // use the resolver for mapped-from kind's language.
+		ix.kindToResolver[r.Kind()] = rslv
 	}
 	// If imps == nil, the rule is not importable. If imps is the empty slice,
 	// it may still be importable if it embeds importable libraries.
@@ -123,6 +133,7 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 		rule:       r,
 		label:      label.New(c.RepoName, f.Pkg, r.Name()),
 		importedAs: imps,
+		resolver:   rslv,
 	}
 	if _, ok := ix.labelMap[record.label]; ok {
 		log.Printf("multiple rules found with label %s", record.label)
@@ -130,6 +141,15 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	}
 	ix.rules = append(ix.rules, record)
 	ix.labelMap[record.label] = record
+}
+
+// Resolver returns the resolver for the given rule.
+// This incorporates kind mappings that were seen in AddRule.
+func (ix *RuleIndex) Resolver(r *rule.Rule) Resolver {
+	if rslv, ok := ix.kindToResolver[r.Kind()]; ok {
+		return rslv
+	}
+	panic("no resolver found: " + r.Kind())
 }
 
 // Finish constructs the import index and performs any other necessary indexing
@@ -150,7 +170,7 @@ func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
 		return
 	}
 	r.didCollectEmbeds = true
-	embedLabels := ix.kindToResolver[r.rule.Kind()].Embeds(r.rule, r.label)
+	embedLabels := r.resolver.Embeds(r.rule, r.label)
 	r.embeds = embedLabels
 	for _, e := range embedLabels {
 		er, ok := ix.findRuleByLabel(e, r.label)
@@ -158,7 +178,7 @@ func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
 			continue
 		}
 		ix.collectEmbeds(er)
-		if ix.kindToResolver[r.rule.Kind()] == ix.kindToResolver[er.rule.Kind()] {
+		if r.resolver == er.resolver {
 			er.embedded = true
 			r.embeds = append(r.embeds, er.embeds...)
 		}

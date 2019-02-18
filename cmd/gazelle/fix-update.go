@@ -195,8 +195,15 @@ func runFixUpdate(cmd command, args []string) error {
 
 	// Visit all directories in the repository.
 	var visits []visitRecord
+	var replKinds = map[config.ReplacementKind]struct{}{} // record all known ReplacementKinds
 	uc := getUpdateConfig(c)
 	walk.Walk(c, cexts, uc.dirs, uc.walkMode, func(dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string) {
+		// Record information from the kind replacements.
+		for fromKind, replKind := range c.KindMap {
+			replKinds[replKind] = struct{}{}           // to update loads, later
+			kinds[replKind.KindName] = kinds[fromKind] // use the same KindInfo for replacements
+		}
+
 		// If this file is ignored or if Gazelle was not asked to update this
 		// directory, just index the build file and move on.
 		if !update {
@@ -274,15 +281,16 @@ func runFixUpdate(cmd command, args []string) error {
 	for _, v := range visits {
 		for i, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
-			kindToResolver[r.Kind()].Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
+			ruleIndex.Resolver(r).Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
 		}
 		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve, kinds)
 	}
 
 	// Emit merged files.
 	var exit error
+	var mappedLoads []rule.LoadInfo = applyKindMappings(replKinds, loads)
 	for _, v := range visits {
-		merger.FixLoads(v.file, loads)
+		merger.FixLoads(v.file, mappedLoads)
 		if err := uc.emit(v.c, v.file); err != nil {
 			if err == exitError {
 				exit = err
@@ -453,4 +461,36 @@ func findOutputPath(c *config.Config, f *rule.File) string {
 		return defaultOutputPath
 	}
 	return outputPath
+}
+
+// applyKindMappings returns a copy of LoadInfo that includes c.KindMap.
+func applyKindMappings(replKinds map[config.ReplacementKind]struct{}, loads []rule.LoadInfo) []rule.LoadInfo {
+	if len(replKinds) == 0 {
+		return loads
+	}
+
+	// Add new RuleInfos or replace existing ones with merged ones.
+	mappedLoads := make([]rule.LoadInfo, len(loads))
+	copy(mappedLoads, loads)
+	for replacement := range replKinds {
+		mappedLoads = appendOrMergeKindMapping(mappedLoads, replacement)
+	}
+	return mappedLoads
+}
+
+// appendOrMergeKindMapping adds LoadInfo for the given replacement.
+func appendOrMergeKindMapping(mappedLoads []rule.LoadInfo, replacement config.ReplacementKind) []rule.LoadInfo {
+	// If replacement.KindLoad already exists in the list, create a merged copy.
+	for _, load := range mappedLoads {
+		if load.Name == replacement.KindLoad {
+			load.Symbols = append(load.Symbols, replacement.KindName)
+			return mappedLoads
+		}
+	}
+
+	// Add a new LoadInfo.
+	return append(mappedLoads, rule.LoadInfo{
+		Name:    replacement.KindLoad,
+		Symbols: []string{replacement.KindName},
+	})
 }
