@@ -44,6 +44,7 @@ type FileSpec struct {
 // to the directory and a function to call to clean up the directory
 // after the test.
 func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
+	t.Helper()
 	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "gazelle_test")
 	if err != nil {
 		t.Fatal(err)
@@ -85,6 +86,7 @@ func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 // in "files". Files not listed in "files" are not tested, so extra files
 // are allowed.
 func CheckFiles(t *testing.T, dir string, files []FileSpec) {
+	t.Helper()
 	for _, f := range files {
 		path := filepath.Join(dir, f.Path)
 		if strings.HasSuffix(f.Path, "/") {
