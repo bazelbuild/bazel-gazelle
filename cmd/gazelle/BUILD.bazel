@@ -62,6 +62,7 @@ go_test(
         "fix_test.go",
         "integration_test.go",
         "langs.go",  # keep
+        "update_repos_test.go",
     ],
     embed = [":go_default_library"],
     deps = [

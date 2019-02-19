@@ -1192,7 +1192,7 @@ http_archive(
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	args := []string{"update-repos", "-from_file", "Gopkg.lock"}
+	args := []string{"update-repos", "-build_file_generation", "off", "-from_file", "Gopkg.lock"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
@@ -1225,6 +1225,7 @@ gazelle_dependencies()
 
 go_repository(
     name = "org_golang_x_net",
+    build_file_generation = "off",
     commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
     importpath = "golang.org/x/net",
 )
@@ -1244,6 +1245,7 @@ http_archive(
 
 go_repository(
     name = "com_github_pkg_errors",
+    build_file_generation = "off",
     commit = "645ef00459ed84a119197bfb8d8205042c6df63d",
     importpath = "github.com/pkg/errors",
 )
