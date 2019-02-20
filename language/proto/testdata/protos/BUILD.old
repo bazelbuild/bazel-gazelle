@@ -1,0 +1,11 @@
+genrule(
+    name = "gen_foo_proto",
+    outs = ["foo_generated.proto"],
+    cmd = """echo 'syntax = "proto2"' > foo_generated.proto""",
+)
+
+genrule(
+    name = "gen_bar_txt",
+    outs = ["bar_generated.txt"],
+    cmd = "echo 12345 > bar_generated.txt",
+)
