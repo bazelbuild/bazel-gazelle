@@ -374,7 +374,9 @@ proto_library(
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			c, lang, cexts := testConfig(t, "testdata")
-			ix := resolve.NewRuleIndex(map[string]resolve.Resolver{"proto_library": lang})
+			mrslv := resolve.NewMetaResolver()
+			mrslv.AddBuiltin("proto_library", lang)
+			ix := resolve.NewRuleIndex(mrslv)
 			rc := (*repo.RemoteCache)(nil)
 			for _, bf := range tc.index {
 				f, err := rule.LoadData(filepath.Join(bf.rel, "BUILD.bazel"), bf.rel, []byte(bf.content))

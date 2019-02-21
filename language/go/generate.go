@@ -41,8 +41,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	protoPackages := make(map[string]proto.Package)
 	protoFileInfo := make(map[string]proto.FileInfo)
 	for _, r := range args.OtherGen {
-		// TODO: Apply kind mapping here (and similar tests below)?
-		if r.Kind() != c.MapKind("proto_library") {
+		if r.Kind() != "proto_library" {
 			continue
 		}
 		pkg := r.PrivateAttr(proto.PackageKey).(proto.Package)
@@ -55,7 +54,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	sort.Strings(protoRuleNames)
 	var emptyProtoRuleNames []string
 	for _, r := range args.OtherEmpty {
-		if r.Kind() == c.MapKind("proto_library") {
+		if r.Kind() == "proto_library" {
 			emptyProtoRuleNames = append(emptyProtoRuleNames, r.Name())
 		}
 	}
@@ -144,8 +143,8 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// Generate rules for proto packages. These should come before the other
 	// Go rules.
 	g := &generator{
-		c:                   c,
-		rel:                 args.Rel,
+		c: c,
+		rel: args.Rel,
 		shouldSetVisibility: args.File == nil || !args.File.HasDefaultVisibility(),
 	}
 	var res language.GenerateResult
@@ -165,7 +164,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 	for _, name := range emptyProtoRuleNames {
 		goProtoName := strings.TrimSuffix(name, "_proto") + "_go_proto"
-		res.Empty = append(res.Empty, g.newRule("go_proto_library", goProtoName))
+		res.Empty = append(res.Empty, rule.NewRule("go_proto_library", goProtoName))
 	}
 	if pkg != nil && pcMode == proto.PackageMode && pkg.firstGoFile() == "" {
 		// In proto package mode, don't generate a go_library embedding a
@@ -218,7 +217,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 		lib := g.generateLib(pkg, protoEmbed)
 		var libName string
-		if !lib.IsEmpty(goKinds[c.ReverseMapKind(lib.Kind())]) {
+		if !lib.IsEmpty(goKinds[lib.Kind()]) {
 			libName = lib.Name()
 		}
 		rules = append(rules, lib)
@@ -228,7 +227,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	for _, r := range rules {
-		if r.IsEmpty(goKinds[c.ReverseMapKind(r.Kind())]) {
+		if r.IsEmpty(goKinds[r.Kind()]) {
 			res.Empty = append(res.Empty, r)
 		} else {
 			res.Gen = append(res.Gen, r)
@@ -370,7 +369,7 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 	visibility := []string{rule.CheckInternalVisibility(g.rel, "//visibility:public")}
 
 	if mode == proto.LegacyMode {
-		filegroup := g.newRule("filegroup", filegroupName)
+		filegroup := rule.NewRule("filegroup", filegroupName)
 		if target.sources.isEmpty() {
 			return "", []*rule.Rule{filegroup}
 		}
@@ -383,12 +382,12 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 
 	if target.sources.isEmpty() {
 		return "", []*rule.Rule{
-			g.newRule("filegroup", filegroupName),
-			g.newRule("go_proto_library", goProtoName),
+			rule.NewRule("filegroup", filegroupName),
+			rule.NewRule("go_proto_library", goProtoName),
 		}
 	}
 
-	goProtoLibrary := g.newRule("go_proto_library", goProtoName)
+	goProtoLibrary := rule.NewRule("go_proto_library", goProtoName)
 	goProtoLibrary.SetAttr("proto", ":"+protoName)
 	g.setImportAttrs(goProtoLibrary, importPath)
 	if target.hasServices {
@@ -404,7 +403,7 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 }
 
 func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
-	goLibrary := g.newRule("go_library", defaultLibName)
+	goLibrary := rule.NewRule("go_library", defaultLibName)
 	if !pkg.library.sources.hasGo() && embed == "" {
 		return goLibrary // empty
 	}
@@ -422,7 +421,7 @@ func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
 
 func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
 	name := pathtools.RelBaseName(pkg.rel, getGoConfig(g.c).prefix, g.c.RepoRoot)
-	goBinary := g.newRule("go_binary", name)
+	goBinary := rule.NewRule("go_binary", name)
 	if !pkg.isCommand() || pkg.binary.sources.isEmpty() && library == "" {
 		return goBinary // empty
 	}
@@ -432,7 +431,7 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
 }
 
 func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
-	goTest := g.newRule("go_test", defaultTestName)
+	goTest := rule.NewRule("go_test", defaultTestName)
 	if !pkg.test.sources.hasGo() {
 		return goTest // empty
 	}
@@ -552,9 +551,4 @@ func escapeOption(opt string) string {
 		"\n", "\\\n",
 		"\r", "\\\r",
 	).Replace(opt)
-}
-
-// newRule returns a new rule, applying any configured kind mappings.
-func (g *generator) newRule(ruleKind, ruleName string) *rule.Rule {
-	return rule.NewRule(g.c.MapKind(ruleKind), ruleName)
 }

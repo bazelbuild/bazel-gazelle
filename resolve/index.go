@@ -64,16 +64,17 @@ type Resolver interface {
 // RuleIndex is a table of rules in a workspace, indexed by label and by
 // import path. Used by Resolver to map import paths to labels.
 type RuleIndex struct {
-	rules          []*ruleRecord
-	labelMap       map[label.Label]*ruleRecord
-	importMap      map[ImportSpec][]*ruleRecord
-	kindToResolver map[string]Resolver
+	rules     []*ruleRecord
+	labelMap  map[label.Label]*ruleRecord
+	importMap map[ImportSpec][]*ruleRecord
+	mrslv     *MetaResolver
 }
 
 // ruleRecord contains information about a rule relevant to import indexing.
 type ruleRecord struct {
 	rule  *rule.Rule
 	label label.Label
+	file  *rule.File
 
 	// importedAs is a list of ImportSpecs by which this rule may be imported.
 	// Used to build a map from ImportSpecs to ruleRecords.
@@ -90,19 +91,16 @@ type ruleRecord struct {
 	embedded bool
 
 	didCollectEmbeds bool
-
-	// resolver should be used to resolve this rule.
-	resolver Resolver
 }
 
 // NewRuleIndex creates a new index.
 //
 // kindToResolver is a map from rule kinds (for example, "go_library") to
 // Resolvers that support those kinds.
-func NewRuleIndex(kindToResolver map[string]Resolver) *RuleIndex {
+func NewRuleIndex(mrslv *MetaResolver) *RuleIndex {
 	return &RuleIndex{
-		labelMap:       make(map[label.Label]*ruleRecord),
-		kindToResolver: kindToResolver,
+		labelMap: make(map[label.Label]*ruleRecord),
+		mrslv:    mrslv,
 	}
 }
 
@@ -112,16 +110,9 @@ func NewRuleIndex(kindToResolver map[string]Resolver) *RuleIndex {
 //
 // AddRule may only be called before Finish.
 func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
-	var (
-		imps []ImportSpec
-		rslv Resolver
-		ok   bool
-	)
-	if rslv, ok = ix.kindToResolver[r.Kind()]; ok {
+	var imps []ImportSpec
+	if rslv := ix.mrslv.Resolver(r, f); rslv != nil {
 		imps = rslv.Imports(c, r, f)
-	} else if rslv, ok = ix.kindToResolver[c.ReverseMapKind(r.Kind())]; ok {
-		imps = rslv.Imports(c, r, f) // use the resolver for mapped-from kind's language.
-		ix.kindToResolver[r.Kind()] = rslv
 	}
 	// If imps == nil, the rule is not importable. If imps is the empty slice,
 	// it may still be importable if it embeds importable libraries.
@@ -132,8 +123,8 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	record := &ruleRecord{
 		rule:       r,
 		label:      label.New(c.RepoName, f.Pkg, r.Name()),
+		file:       f,
 		importedAs: imps,
-		resolver:   rslv,
 	}
 	if _, ok := ix.labelMap[record.label]; ok {
 		log.Printf("multiple rules found with label %s", record.label)
@@ -141,15 +132,6 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	}
 	ix.rules = append(ix.rules, record)
 	ix.labelMap[record.label] = record
-}
-
-// Resolver returns the resolver for the given rule.
-// This incorporates kind mappings that were seen in AddRule.
-func (ix *RuleIndex) Resolver(r *rule.Rule) Resolver {
-	if rslv, ok := ix.kindToResolver[r.Kind()]; ok {
-		return rslv
-	}
-	panic("no resolver found: " + r.Kind())
 }
 
 // Finish constructs the import index and performs any other necessary indexing
@@ -169,8 +151,9 @@ func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
 	if r.didCollectEmbeds {
 		return
 	}
+	resolver := ix.mrslv.Resolver(r.rule, r.file)
 	r.didCollectEmbeds = true
-	embedLabels := r.resolver.Embeds(r.rule, r.label)
+	embedLabels := resolver.Embeds(r.rule, r.label)
 	r.embeds = embedLabels
 	for _, e := range embedLabels {
 		er, ok := ix.findRuleByLabel(e, r.label)
@@ -178,7 +161,7 @@ func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
 			continue
 		}
 		ix.collectEmbeds(er)
-		if r.resolver == er.resolver {
+		if resolver == ix.mrslv.Resolver(er.rule, er.file) {
 			er.embedded = true
 			r.embeds = append(r.embeds, er.embeds...)
 		}
@@ -235,7 +218,7 @@ func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult
 	matches := ix.importMap[imp]
 	results := make([]FindResult, 0, len(matches))
 	for _, m := range matches {
-		if ix.kindToResolver[m.rule.Kind()].Name() != lang {
+		if ix.mrslv.Resolver(m.rule, nil).Name() != lang {
 			continue
 		}
 		results = append(results, FindResult{

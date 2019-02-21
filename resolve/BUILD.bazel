@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "config.go",
+        "metaresolver.go",
         "index.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/resolve",

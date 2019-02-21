@@ -89,7 +89,7 @@ type Config struct {
 
 // ReplacementKind describes a replacement to use for a built-in kind.
 type ReplacementKind struct {
-	KindName, KindLoad string
+	FromKind, KindName, KindLoad string
 }
 
 func New() *Config {
@@ -131,25 +131,6 @@ func (c *Config) IsValidBuildFileName(name string) bool {
 // DefaultBuildFileName returns the base name used to create new build files.
 func (c *Config) DefaultBuildFileName() string {
 	return c.ValidBuildFileNames[0]
-}
-
-// MapKind returns the replacement for the given kind, or kindName if unmapped.
-func (c *Config) MapKind(kindName string) string {
-	if repl, ok := c.KindMap[kindName]; ok {
-		return repl.KindName
-	}
-	return kindName
-}
-
-// ReverseMapKind returns the kind which should be replaced with the given kind,
-// or kindName if unmapped.
-func (c *Config) ReverseMapKind(replacementKindName string) string {
-	for fromKind, repl := range c.KindMap {
-		if repl.KindName == replacementKindName {
-			return fromKind
-		}
-	}
-	return replacementKindName
 }
 
 // Configurer is the interface for language or library-specific configuration
@@ -261,7 +242,7 @@ func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
 				toKind     = vals[1]
 				toKindLoad = vals[2]
 			)
-			c.KindMap[fromKind] = ReplacementKind{KindName: toKind, KindLoad: toKindLoad}
+			c.KindMap[fromKind] = ReplacementKind{FromKind: fromKind, KindName: toKind, KindLoad: toKindLoad}
 		}
 	}
 }
