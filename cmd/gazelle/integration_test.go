@@ -1754,6 +1754,129 @@ go_library(
 	})
 }
 
+// TestMapKind tests these gazelle:map_kind directive scenarios:
+// 1. Disabled: // and //sub2
+// 2. Enabled: //sub1
+// 3. Inherited to a sub-directory: //sub1/sub11
+// 4. Overridden by a sub-directory: //sub1/sub12
+//
+// Verifies #448
+func TestMapKind(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		}, {
+			Path:    "BUILD.bazel",
+			Content: "# gazelle:prefix example.com/mapkind",
+		}, {
+			Path:    "root_lib.go",
+			Content: `package mapkind`,
+		}, {
+			Path:    "sub1/BUILD.bazel",
+			Content: "# gazelle:map_kind go_library my_library //tools/go:def.bzl",
+		}, {
+			Path:    "sub1/sub1_lib.go",
+			Content: `package sub1`,
+		}, {
+			Path: "sub1/sub11/BUILD.bazel",
+		}, {
+			Path:    "sub1/sub11/sub11_lib.go",
+			Content: `package sub11`,
+		}, {
+			Path:    "sub1/sub12/BUILD.bazel",
+			Content: "# gazelle:map_kind go_library sub12_library //tools/sub12:def.bzl",
+		}, {
+			Path:    "sub1/sub12/sub12_lib.go",
+			Content: `package sub12`,
+		}, {
+			Path: "sub2/BUILD.bazel",
+		}, {
+			Path:    "sub2/sub2_lib.go",
+			Content: `package sub2`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"-external=vendored", "-index=false"}); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:prefix example.com/mapkind
+
+go_library(
+    name = "go_default_library",
+    srcs = ["root_lib.go"],
+    importpath = "example.com/mapkind",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "sub1/BUILD.bazel",
+			Content: `
+load("//tools/go:def.bzl", "my_library")
+
+# gazelle:map_kind go_library my_library //tools/go:def.bzl
+
+my_library(
+    name = "go_default_library",
+    srcs = ["sub1_lib.go"],
+    importpath = "example.com/mapkind/sub1",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "sub1/sub11/BUILD.bazel",
+			Content: `
+load("//tools/go:def.bzl", "my_library")
+
+my_library(
+    name = "go_default_library",
+    srcs = ["sub11_lib.go"],
+    importpath = "example.com/mapkind/sub1/sub11",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "sub1/sub12/BUILD.bazel",
+			Content: `
+load("//tools/sub12:def.bzl", "sub12_library")
+
+# gazelle:map_kind go_library sub12_library //tools/sub12:def.bzl
+
+sub12_library(
+    name = "go_default_library",
+    srcs = ["sub12_lib.go"],
+    importpath = "example.com/mapkind/sub1/sub12",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "sub2/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["sub2_lib.go"],
+    importpath = "example.com/mapkind/sub2",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+	})
+}
+
 // TODO(jayconrod): more tests
 //   run in fix mode in testdata directories to create new files
 //   run in diff mode in testdata directories to update existing files (no change)
