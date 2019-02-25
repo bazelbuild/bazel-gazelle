@@ -1754,12 +1754,7 @@ go_library(
 	})
 }
 
-// TestMapKind tests these gazelle:map_kind directive scenarios:
-// 1. Disabled: // and //sub2
-// 2. Enabled: //sub1
-// 3. Inherited to a sub-directory: //sub1/sub11
-// 4. Overridden by a sub-directory: //sub1/sub12
-//
+// TestMapKind tests the gazelle:map_kind directive.
 // Verifies #448
 func TestMapKind(t *testing.T) {
 	files := []testtools.FileSpec{
@@ -1772,27 +1767,62 @@ func TestMapKind(t *testing.T) {
 			Path:    "root_lib.go",
 			Content: `package mapkind`,
 		}, {
-			Path:    "sub1/BUILD.bazel",
+			Path:    "enabled/BUILD.bazel",
 			Content: "# gazelle:map_kind go_library my_library //tools/go:def.bzl",
 		}, {
-			Path:    "sub1/sub1_lib.go",
-			Content: `package sub1`,
+			Path:    "enabled/enabled_lib.go",
+			Content: `package enabled`,
 		}, {
-			Path: "sub1/sub11/BUILD.bazel",
+			Path: "enabled/inherited/BUILD.bazel",
 		}, {
-			Path:    "sub1/sub11/sub11_lib.go",
-			Content: `package sub11`,
+			Path:    "enabled/inherited/inherited_lib.go",
+			Content: `package inherited`,
 		}, {
-			Path:    "sub1/sub12/BUILD.bazel",
-			Content: "# gazelle:map_kind go_library sub12_library //tools/sub12:def.bzl",
+			Path: "enabled/existing_rules/mapped/BUILD.bazel",
+			Content: `
+load("//tools/go:def.bzl", "my_library")
+
+# An existing rule with a mapped type is updated
+my_library(
+    name = "go_default_library",
+    srcs = ["deleted_file.go", "mapped_lib.go"],
+    importpath = "example.com/mapkind/enabled/existing_rules/mapped",
+    visibility = ["//visibility:public"],
+)
+`,
 		}, {
-			Path:    "sub1/sub12/sub12_lib.go",
-			Content: `package sub12`,
+			Path:    "enabled/existing_rules/mapped/mapped_lib.go",
+			Content: `package mapped`,
 		}, {
-			Path: "sub2/BUILD.bazel",
+			Path:    "enabled/existing_rules/mapped/mapped_lib2.go",
+			Content: `package mapped`,
 		}, {
-			Path:    "sub2/sub2_lib.go",
-			Content: `package sub2`,
+			Path: "enabled/existing_rules/unmapped/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# An existing rule with an unmapped type is preserved
+go_library(
+    name = "go_default_library",
+    srcs = ["unmapped_lib.go"],
+    importpath = "example.com/mapkind/enabled/existing_rules",
+    visibility = ["//visibility:public"],
+)
+`,
+		}, {
+			Path:    "enabled/existing_rules/unmapped/unmapped_lib.go",
+			Content: `package unmapped`,
+		}, {
+			Path:    "enabled/overridden/BUILD.bazel",
+			Content: "# gazelle:map_kind go_library overridden_library //tools/overridden:def.bzl",
+		}, {
+			Path:    "enabled/overridden/overridden_lib.go",
+			Content: `package overridden`,
+		}, {
+			Path: "disabled/BUILD.bazel",
+		}, {
+			Path:    "disabled/disabled_lib.go",
+			Content: `package disabled`,
 		},
 	}
 	dir, cleanup := testtools.CreateFiles(t, files)
@@ -1819,7 +1849,7 @@ go_library(
 `,
 		},
 		{
-			Path: "sub1/BUILD.bazel",
+			Path: "enabled/BUILD.bazel",
 			Content: `
 load("//tools/go:def.bzl", "my_library")
 
@@ -1827,49 +1857,80 @@ load("//tools/go:def.bzl", "my_library")
 
 my_library(
     name = "go_default_library",
-    srcs = ["sub1_lib.go"],
-    importpath = "example.com/mapkind/sub1",
+    srcs = ["enabled_lib.go"],
+    importpath = "example.com/mapkind/enabled",
     visibility = ["//visibility:public"],
 )
 `,
 		},
 		{
-			Path: "sub1/sub11/BUILD.bazel",
+			Path: "enabled/inherited/BUILD.bazel",
 			Content: `
 load("//tools/go:def.bzl", "my_library")
 
 my_library(
     name = "go_default_library",
-    srcs = ["sub11_lib.go"],
-    importpath = "example.com/mapkind/sub1/sub11",
+    srcs = ["inherited_lib.go"],
+    importpath = "example.com/mapkind/enabled/inherited",
     visibility = ["//visibility:public"],
 )
 `,
 		},
 		{
-			Path: "sub1/sub12/BUILD.bazel",
+			Path: "enabled/overridden/BUILD.bazel",
 			Content: `
-load("//tools/sub12:def.bzl", "sub12_library")
+load("//tools/overridden:def.bzl", "overridden_library")
 
-# gazelle:map_kind go_library sub12_library //tools/sub12:def.bzl
+# gazelle:map_kind go_library overridden_library //tools/overridden:def.bzl
 
-sub12_library(
+overridden_library(
     name = "go_default_library",
-    srcs = ["sub12_lib.go"],
-    importpath = "example.com/mapkind/sub1/sub12",
+    srcs = ["overridden_lib.go"],
+    importpath = "example.com/mapkind/enabled/overridden",
     visibility = ["//visibility:public"],
 )
 `,
 		},
 		{
-			Path: "sub2/BUILD.bazel",
+			Path: "disabled/BUILD.bazel",
 			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
-    srcs = ["sub2_lib.go"],
-    importpath = "example.com/mapkind/sub2",
+    srcs = ["disabled_lib.go"],
+    importpath = "example.com/mapkind/disabled",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "enabled/existing_rules/mapped/BUILD.bazel",
+			Content: `
+load("//tools/go:def.bzl", "my_library")
+
+# An existing rule with a mapped type is updated
+my_library(
+    name = "go_default_library",
+    srcs = [
+        "mapped_lib.go",
+        "mapped_lib2.go",
+    ],
+    importpath = "example.com/mapkind/enabled/existing_rules/mapped",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "enabled/existing_rules/unmapped/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# An existing rule with an unmapped type is preserved
+go_library(
+    name = "go_default_library",
+    srcs = ["unmapped_lib.go"],
+    importpath = "example.com/mapkind/enabled/existing_rules",
     visibility = ["//visibility:public"],
 )
 `,

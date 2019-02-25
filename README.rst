@@ -557,6 +557,9 @@ The following directives are recognized:
 | ``gazelle:map_kind go_binary go_deployable //tools/go:def.bzl`` would configure Gazelle to |
 | produce rules of kind ``go_deployable`` as loaded from ``//tools/go:def.bzl`` instead of   |
 | ``go_binary``, for this directory or within.                                               |
+|                                                                                            |
+| Existing rules of the old kind will be ignored. To switch your codebase from a builtin     |
+| kind to a mapped kind, use `buildozer`_.                                                      |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:prefix path`                    | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
@@ -652,6 +655,8 @@ The following directives are recognized:
 |   # gazelle:resolve proto go foo/foo.proto //foo:foo_go_proto                              |
 |                                                                                            |
 +---------------------------------------------------+----------------------------------------+
+
+.. _buildozer: https://github.com/bazelbuild/buildtools/tree/master/buildozer
 
 Keep comments
 ~~~~~~~~~~~~~

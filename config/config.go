@@ -78,7 +78,7 @@ type Config struct {
 	// KindMap maps from a kind name to its replacement. It provides a way for
 	// users to customize the kind of rules created by Gazelle, via
 	// # gazelle:map_kind.
-	KindMap map[string]ReplacementKind
+	KindMap map[string]MappedKind
 
 	// Exts is a set of configurable extensions. Generally, each language
 	// has its own set of extensions, but other modules may provide their own
@@ -87,8 +87,8 @@ type Config struct {
 	Exts map[string]interface{}
 }
 
-// ReplacementKind describes a replacement to use for a built-in kind.
-type ReplacementKind struct {
+// MappedKind describes a replacement to use for a built-in kind.
+type MappedKind struct {
 	FromKind, KindName, KindLoad string
 }
 
@@ -108,7 +108,7 @@ func (c *Config) Clone() *Config {
 	for k, v := range c.Exts {
 		cc.Exts[k] = v
 	}
-	cc.KindMap = make(map[string]ReplacementKind)
+	cc.KindMap = make(map[string]MappedKind)
 	for k, v := range c.KindMap {
 		cc.KindMap[k] = v
 	}
@@ -235,14 +235,13 @@ func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
 				continue
 			}
 			if c.KindMap == nil {
-				c.KindMap = make(map[string]ReplacementKind)
+				c.KindMap = make(map[string]MappedKind)
 			}
-			var (
-				fromKind   = vals[0]
-				toKind     = vals[1]
-				toKindLoad = vals[2]
-			)
-			c.KindMap[fromKind] = ReplacementKind{FromKind: fromKind, KindName: toKind, KindLoad: toKindLoad}
+			c.KindMap[vals[0]] = MappedKind{
+				FromKind: vals[0],
+				KindName: vals[1],
+				KindLoad: vals[2],
+			}
 		}
 	}
 }
