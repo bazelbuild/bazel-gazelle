@@ -374,7 +374,9 @@ proto_library(
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			c, lang, cexts := testConfig(t, "testdata")
-			ix := resolve.NewRuleIndex(map[string]resolve.Resolver{"proto_library": lang})
+			mrslv := make(mapResolver)
+			mrslv["proto_library"] = lang
+			ix := resolve.NewRuleIndex(mrslv.Resolver)
 			rc := (*repo.RemoteCache)(nil)
 			for _, bf := range tc.index {
 				f, err := rule.LoadData(filepath.Join(bf.rel, "BUILD.bazel"), bf.rel, []byte(bf.content))
@@ -420,4 +422,10 @@ func convertImportsAttr(r *rule.Rule) interface{} {
 	}
 	r.DelAttr("_imports")
 	return value
+}
+
+type mapResolver map[string]resolve.Resolver
+
+func (mr mapResolver) Resolver(r *rule.Rule, f *rule.File) resolve.Resolver {
+	return mr[r.Kind()]
 }

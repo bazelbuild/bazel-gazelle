@@ -29,6 +29,7 @@ package config
 import (
 	"flag"
 	"fmt"
+	"log"
 	"path/filepath"
 	"strings"
 
@@ -74,11 +75,21 @@ type Config struct {
 	// libraries in the workspace for dependency resolution
 	IndexLibraries bool
 
+	// KindMap maps from a kind name to its replacement. It provides a way for
+	// users to customize the kind of rules created by Gazelle, via
+	// # gazelle:map_kind.
+	KindMap map[string]MappedKind
+
 	// Exts is a set of configurable extensions. Generally, each language
 	// has its own set of extensions, but other modules may provide their own
 	// extensions as well. Values in here may be populated by command line
 	// arguments, directives in build files, or other mechanisms.
 	Exts map[string]interface{}
+}
+
+// MappedKind describes a replacement to use for a built-in kind.
+type MappedKind struct {
+	FromKind, KindName, KindLoad string
 }
 
 func New() *Config {
@@ -96,6 +107,10 @@ func (c *Config) Clone() *Config {
 	cc.Exts = make(map[string]interface{})
 	for k, v := range c.Exts {
 		cc.Exts[k] = v
+	}
+	cc.KindMap = make(map[string]MappedKind)
+	for k, v := range c.KindMap {
+		cc.KindMap[k] = v
 	}
 	return &cc
 }
@@ -156,7 +171,7 @@ type Configurer interface {
 // i.e., those that apply to Config itself and not to Config.Exts.
 type CommonConfigurer struct {
 	repoRoot, buildFileNames, readBuildFilesDir, writeBuildFilesDir string
-	indexLibraries bool
+	indexLibraries                                                  bool
 }
 
 func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Config) {
@@ -201,7 +216,7 @@ func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 }
 
 func (cc *CommonConfigurer) KnownDirectives() []string {
-	return []string{"build_file_name"}
+	return []string{"build_file_name", "map_kind"}
 }
 
 func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
@@ -209,8 +224,24 @@ func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
 		return
 	}
 	for _, d := range f.Directives {
-		if d.Key == "build_file_name" {
+		switch d.Key {
+		case "build_file_name":
 			c.ValidBuildFileNames = strings.Split(d.Value, ",")
+
+		case "map_kind":
+			vals := strings.Fields(d.Value)
+			if len(vals) != 3 {
+				log.Printf("expected three arguments (gazelle:map_kind from_kind to_kind load_file), got %v", vals)
+				continue
+			}
+			if c.KindMap == nil {
+				c.KindMap = make(map[string]MappedKind)
+			}
+			c.KindMap[vals[0]] = MappedKind{
+				FromKind: vals[0],
+				KindName: vals[1],
+				KindLoad: vals[2],
+			}
 		}
 	}
 }
