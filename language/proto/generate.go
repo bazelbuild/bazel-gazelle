@@ -44,7 +44,7 @@ func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 	var genProtoFiles []string
 	for _, name := range args.GenFiles {
 		if strings.HasSuffix(name, ".proto") {
-			genProtoFiles = append(args.GenFiles, name)
+			genProtoFiles = append(genProtoFiles, name)
 		}
 	}
 	pkgs := buildPackages(pc, args.Dir, args.Rel, regularProtoFiles, genProtoFiles)
