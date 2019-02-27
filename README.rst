@@ -73,8 +73,8 @@ should look like this:
     )
     http_archive(
         name = "bazel_gazelle",
-        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.16.0/bazel-gazelle-0.16.0.tar.gz"],
-        sha256 = "7949fc6cc17b5b191103e97481cf8889217263acf52e00b560683413af204fcb",
+        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.17.0/bazel-gazelle-0.17.0.tar.gz"],
+        sha256 = "3c681998538231a2d24d0c07ed5a7658cb72bfb5fd4bf9911157c0e9ac6a2687",
     )
     load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
     go_rules_dependencies()
@@ -167,6 +167,8 @@ you're using a compatible version.
 | 0.15.0              | 0.13.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 | 0.16.0              | 0.13.0                       | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.17.0              | 0.13.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
