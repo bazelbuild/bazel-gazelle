@@ -18,7 +18,7 @@ limitations under the License.
 //
 // In module mode, fetch_repo downloads a module using "go mod download",
 // verifies the contents against a sum, then copies the contents of the module
-// to a target directory. fetch_repo respects GOPATH and GOPROXY.
+// to a target directory. fetch_repo respects GOPATH, GOCACHE, and GOPROXY.
 //
 // In repository mode, fetch_repo clones a repository using a VCS tool.
 // fetch_repo performs import path redirection in this mode.

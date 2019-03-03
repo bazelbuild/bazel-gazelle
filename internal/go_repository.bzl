@@ -71,7 +71,9 @@ def _go_repository_impl(ctx):
         fail("one of urls, commit, tag, or importpath must be specified")
 
     if fetch_repo_args:
+        fetch_repo_env = _read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
         env_keys = [
+            "GOPROXY",
             "PATH",
             "HOME",
             "SSH_AUTH_SOCK",
@@ -80,16 +82,12 @@ def _go_repository_impl(ctx):
             "NO_PROXY",
             "GIT_SSL_CAINFO",
         ]
-        fetch_repo_env = {k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ}
-        fetch_repo_env["GOROOT"] = str(ctx.path(ctx.attr._goroot).dirname)
-        fetch_repo_env["GOPATH"] = str(ctx.path(ctx.attr._gopath).dirname)
-        fetch_repo_env["GOCACHE"] = str(ctx.path(ctx.attr._gopath).dirname) + "/.gocache"
+        fetch_repo_env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
-        fetch_repo = "@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx))
-        fetch_repo_args = [str(ctx.path(Label(fetch_repo)))] + fetch_repo_args
+        fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
         result = env_execute(
             ctx,
-            fetch_repo_args,
+            [fetch_repo] + fetch_repo_args,
             environment = fetch_repo_env,
             timeout = _GO_REPOSITORY_TIMEOUT,
         )
@@ -203,17 +201,6 @@ go_repository = repository_rule(
         "patch_tool": attr.string(default = "patch"),
         "patch_args": attr.string_list(default = ["-p0"]),
         "patch_cmds": attr.string_list(default = []),
-
-        # File in GOROOT so we can set GOROOT for fetch_repo.
-        # TODO(jayconrod): don't hardcode go_sdk.
-        "_goroot": attr.label(
-            default = "@go_sdk//:ROOT",
-            allow_single_file = True,
-        ),
-        "_gopath": attr.label(
-            default = "@bazel_gazelle_go_repository_tools//:ROOT",
-            allow_single_file = True,
-        ),
     },
 )
 """See repository.rst#go-repository for full documentation."""
@@ -241,6 +228,46 @@ def patch(ctx):
             fail("Error applying patch command %s:\n%s%s" %
                  (cmd, st.stdout, st.stderr))
 
+def _go_repository_cache_impl(ctx):
+    env_tpl = """
+GOROOT={goroot}
+GOPATH={gopath}
+GOCACHE={gocache}
+"""
+    env_content = env_tpl.format(
+        goroot = str(ctx.path(ctx.attr.go_sdk).dirname),
+        gopath = str(ctx.path(".")),
+        gocache = str(ctx.path("gocache")),
+    )
+    ctx.file("go.env", env_content)
+    ctx.file("BUILD.bazel", 'exports_files(["go.env"])')
+
+go_repository_cache = repository_rule(
+    _go_repository_cache_impl,
+    attrs = {
+        "go_sdk": attr.label(
+            default = "@go_sdk//:ROOT",
+            allow_single_file = True,
+        ),
+    },
+)
+
+def _read_cache_env(ctx, path):
+    result = ctx.execute(["cat", path])
+    if result.return_code:
+        fail("failed to read cache environment: " + result.stderr)
+    env = {}
+    lines = result.stdout.split("\n")
+    for line in lines:
+        line = line.strip()
+        if line == "" or line.startswith("#"):
+            continue
+        k, sep, v = line.partition("=")
+        if sep == "":
+            fail("failed to parse cache environment")
+        env[k] = v
+    return env
+
 _GO_REPOSITORY_TOOLS_BUILD_FILE = """
 package(default_visibility = ["//visibility:public"])
 
@@ -258,53 +285,58 @@ exports_files(["ROOT"])
 """
 
 def _go_repository_tools_impl(ctx):
-    # TODO(#449): resolve a label for each gazelle and fetch_repo source file
-    # so that the binaries will be rebuilt. Move GOPATH somewhere else so
-    # module downloads don't get trashed whenever this rule is invalidated.
-
+    # Create a link to the gazelle repo. This will be our GOPATH.
+    env = _read_cache_env(ctx, str(ctx.path(ctx.attr.go_cache)))
     extension = executable_extension(ctx)
-    go_root = ctx.path(ctx.attr.go_sdk).dirname
-    go_tool = str(go_root) + "/bin/go" + extension
+    go_tool = env["GOROOT"] + "/bin/go" + extension
 
-    for root_file, prefix in ctx.attr._deps.items():
-        ctx.symlink(ctx.path(root_file).dirname, "src/" + prefix)
+    ctx.symlink(
+        ctx.path(Label("@bazel_gazelle//:WORKSPACE")).dirname,
+        "src/github.com/bazelbuild/bazel-gazelle",
+    )
 
-    env = {
-        "GOROOT": str(go_root),
+    # Resolve a label for each source file so this rule will be re-executed
+    # when they change.
+    list_script = str(ctx.path(Label("@bazel_gazelle//internal:list_repository_tools_srcs.go")))
+    result = ctx.execute([go_tool, "run", list_script])
+    if result.return_code:
+        print("could not resolve gazelle sources: " + result.stderr)
+    else:
+        for line in result.stdout.split("\n"):
+            line = line.strip()
+            if line == "":
+                continue
+            ctx.path(Label(line))
+
+    # Build the tools.
+    env.update({
         "GOPATH": str(ctx.path(".")),
         "GO111MODULE": "off",
-        # GOCACHE is required starting in Go 1.12
-        "GOCACHE": str(ctx.path(".")) + "/.gocache",
         # workaround: to find gcc for go link tool on Arm platform
         "PATH": ctx.os.environ["PATH"],
         # workaround: avoid the Go SDK paths from leaking into the binary
         "GOROOT_FINAL": "GOROOT",
         # workaround: avoid cgo paths in /tmp leaking into binary
         "CGO_ENABLED": "0",
-    }
+    })
     if "GOPROXY" in ctx.os.environ:
         env["GOPROXY"] = ctx.os.environ["GOPROXY"]
 
-    for tool in ("fetch_repo", "gazelle"):
-        args = [
-            go_tool,
-            "install",
-            "-a",
-            "-ldflags",
-            "-w -s",
-            "-gcflags",
-            "all=-trimpath=" + env["GOPATH"],
-            "-asmflags",
-            "all=-trimpath=" + env["GOPATH"],
-            "github.com/bazelbuild/bazel-gazelle/cmd/{}".format(tool),
-        ]
-        result = env_execute(ctx, args, environment = env)
-        if result.return_code:
-            fail("failed to build {}: {}".format(tool, result.stderr))
-
-    result = ctx.execute(["rm", "-rf", ".gocache"])
+    args = [
+        go_tool,
+        "install",
+        "-ldflags",
+        "-w -s",
+        "-gcflags",
+        "all=-trimpath=" + env["GOPATH"],
+        "-asmflags",
+        "all=-trimpath=" + env["GOPATH"],
+        "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
+        "github.com/bazelbuild/bazel-gazelle/cmd/fetch_repo",
+    ]
+    result = env_execute(ctx, args, environment = env)
     if result.return_code:
-        print("failed to remove GOCACHE: {}".format(result.stderr))
+        fail("failed to build tools: " + result.stderr)
 
     # add a build file to export the tools
     ctx.file(
@@ -321,17 +353,12 @@ def _go_repository_tools_impl(ctx):
 go_repository_tools = repository_rule(
     _go_repository_tools_impl,
     attrs = {
-        "go_sdk": attr.label(
-            default = "@go_sdk//:ROOT",
+        "go_cache": attr.label(
+            mandatory = True,
             allow_single_file = True,
         ),
-        "_deps": attr.label_keyed_string_dict(
-            default = {
-                "@bazel_gazelle//:WORKSPACE": "github.com/bazelbuild/bazel-gazelle",
-            },
-        ),
     },
-    environ = ["GOPROXY", "TMP"],
+    environ = ["TMP"],
 )
 """go_repository_tools is a synthetic repository used by go_repository.
 

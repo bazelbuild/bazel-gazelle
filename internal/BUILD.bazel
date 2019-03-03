@@ -48,6 +48,9 @@ bazel_test(
 # TODO(jayconrod): test fetch_repo error cases.
 
 exports_files(
-    ["gazelle.bash.in"],
+    [
+        "gazelle.bash.in",
+        "list_repository_tools_srcs.go",
+    ],
     visibility = ["//visibility:public"],
 )

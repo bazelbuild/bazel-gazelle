@@ -133,6 +133,9 @@ external Go projects.
 | A hash of the module contents. In module mode, ``go_repository`` will verify                            |
 | the downloaded module matches this sum. May only be set when ``version``                                |
 | is also set.                                                                                            |
+|                                                                                                         |
+| A value for ``sum`` may be found in the ``go.sum`` file or by running                                   |
+| ``go mod download -json <module>@<version>``.                                                           |
 +--------------------------------+----------------------+-------------------------------------------------+
 | :param:`commit`                | :type:`string`       | :value:`""`                                     |
 +--------------------------------+----------------------+-------------------------------------------------+
