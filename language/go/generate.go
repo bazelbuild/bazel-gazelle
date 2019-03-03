@@ -143,8 +143,8 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// Generate rules for proto packages. These should come before the other
 	// Go rules.
 	g := &generator{
-		c: c,
-		rel: args.Rel,
+		c:                   c,
+		rel:                 args.Rel,
 		shouldSetVisibility: args.File == nil || !args.File.HasDefaultVisibility(),
 	}
 	var res language.GenerateResult

@@ -68,13 +68,13 @@ should look like this:
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
     http_archive(
         name = "io_bazel_rules_go",
-        urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.17.0/rules_go-0.17.0.tar.gz"],
-        sha256 = "492c3ac68ed9dcf527a07e6a1b2dcbf199c6bf8b35517951467ac32e421c06c1",
+        urls = ["https://github.com/bazelbuild/rules_go/releases/download/0.17.1/rules_go-0.17.1.tar.gz"],
+        sha256 = "6776d68ebb897625dead17ae510eac3d5f6342367327875210df44dbe2aeeb19",
     )
     http_archive(
         name = "bazel_gazelle",
-        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.16.0/bazel-gazelle-0.16.0.tar.gz"],
-        sha256 = "7949fc6cc17b5b191103e97481cf8889217263acf52e00b560683413af204fcb",
+        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.17.0/bazel-gazelle-0.17.0.tar.gz"],
+        sha256 = "3c681998538231a2d24d0c07ed5a7658cb72bfb5fd4bf9911157c0e9ac6a2687",
     )
     load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
     go_rules_dependencies()
@@ -167,6 +167,8 @@ you're using a compatible version.
 | 0.15.0              | 0.13.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 | 0.16.0              | 0.13.0                       | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.17.0              | 0.13.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
@@ -391,24 +393,45 @@ a ``Gopkg.lock`` file.
 
 The following flags are accepted:
 
-+------------------------------+-----------------------------------------------+
-| **Name**                     | **Default value**                             |
-+==============================+===============================================+
-| :flag:`-from_file lock-file` |                                               |
-+------------------------------+-----------------------------------------------+
-| Import repositories from a file as `go_repository`_ rules. These rules will  |
-| be added to the bottom of the WORKSPACE file or merged with existing rules.  |
-|                                                                              |
-| The lock file format is inferred from the file name. ``go.mod`` and          |
-| ``Gopkg.lock`` (the dep lock format) are both supported.                     |
-+------------------------------+-----------------------------------------------+
-| :flag:`-repo_root dir`       |                                               |
-+------------------------------+-----------------------------------------------+
-| The root directory of the repository. Gazelle normally infers this to be the |
-| directory containing the WORKSPACE file.                                     |
-|                                                                              |
-| Gazelle will not process packages outside this directory.                    |
-+------------------------------+-----------------------------------------------+
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| **Name**                                                                                                 | **Default value**                            |
++==========================================================================================================+==============================================+
+| :flag:`-from_file lock-file`                                                                             |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Import repositories from a file as `go_repository`_ rules. These rules will be added to the bottom of the WORKSPACE file or merged with existing rules. |
+|                                                                                                                                                         |
+| The lock file format is inferred from the file name. ``go.mod`` and, ``Gopkg.lock`` (the dep lock format) are both supported.                           |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-repo_root dir`                                                                                   |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| The root directory of the repository. Gazelle normally infers this to be the directory containing the WORKSPACE file.                                   |
+|                                                                                                                                                         |
+| Gazelle will not process packages outside this directory.                                                                                               |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-build_file_names file1,file2,...`                                                                |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Sets the ``build_file_name`` attribute for the generated `go_repository`_ rule(s).                                                                      |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-build_external external|vendored`                                                                |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Sets the ``build_external`` attribute for the generated `go_repository`_ rule(s).                                                                       |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-build_file_generation auto|on|off`                                                               |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Sets the ``build_file_generation`` attribute for the generated `go_repository`_ rule(s).                                                                |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-build_tags tag1,tag2,...`                                                                        |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Sets the ``build_tags`` attribute for the generated `go_repository`_ rule(s).                                                                           |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-build_file_proto_mode default|package|legacy|disable|disable_global`                             |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Sets the ``build_file_proto_mode`` attribute for the generated `go_repository`_ rule(s).                                                                |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-build_extra_args arg1,arg2,...`                                                                  |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Sets the ``build_exra_args attribute`` for the generated `go_repository`_ rule(s).                                                                      |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 
 Directives
 ~~~~~~~~~~
@@ -522,6 +545,23 @@ The following directives are recognized:
 | sets ``importmap_prefix`` to a string based on the repository name and the                 |
 | location of the vendor directory. If you wish to override this, you'll need                |
 | to set ``importmap_prefix`` explicitly in the vendor directory.                            |
++------------------------------------------------------------+-------------------------------+
+| :direc:`# gazelle:map_kind from_kind to_kind to_kind_load` | n/a                           |
++------------------------------------------------------------+-------------------------------+
+| Customizes the kind of rules generated by Gazelle.                                         |
+|                                                                                            |
+| As a separate step after generating rules, any new rules of kind ``from_kind`` have their  |
+| kind replaced with ``to_kind``. This means that ``to_kind`` must accept the same           |
+| parameters and behave similarly.                                                           |
+|                                                                                            |
+| Most commonly, this would be used to replace the rules provided by ``rules_go`` with       |
+| custom macros. For example,                                                                |
+| ``gazelle:map_kind go_binary go_deployable //tools/go:def.bzl`` would configure Gazelle to |
+| produce rules of kind ``go_deployable`` as loaded from ``//tools/go:def.bzl`` instead of   |
+| ``go_binary``, for this directory or within.                                               |
+|                                                                                            |
+| Existing rules of the old kind will be ignored. To switch your codebase from a builtin     |
+| kind to a mapped kind, use `buildozer`_.                                                      |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:prefix path`                    | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
@@ -617,6 +657,8 @@ The following directives are recognized:
 |   # gazelle:resolve proto go foo/foo.proto //foo:foo_go_proto                              |
 |                                                                                            |
 +---------------------------------------------------+----------------------------------------+
+
+.. _buildozer: https://github.com/bazelbuild/buildtools/tree/master/buildozer
 
 Keep comments
 ~~~~~~~~~~~~~

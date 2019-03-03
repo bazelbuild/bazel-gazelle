@@ -30,6 +30,7 @@ go_library(
         "fix.go",
         "fix-update.go",
         "gazelle.go",
+        "metaresolver.go",
         "print.go",
         "update-repos.go",
         "version.go",
@@ -62,6 +63,7 @@ go_test(
         "fix_test.go",
         "integration_test.go",
         "langs.go",  # keep
+        "update_repos_test.go",
     ],
     embed = [":go_default_library"],
     deps = [

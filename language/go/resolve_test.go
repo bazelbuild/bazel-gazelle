@@ -924,13 +924,13 @@ go_proto_library(
 				t,
 				"-go_prefix=example.com/repo/resolve",
 				"-external=vendored", fmt.Sprintf("-index=%v", !tc.skipIndex))
-			kindToResolver := make(map[string]resolve.Resolver)
+			mrslv := make(mapResolver)
 			for _, lang := range langs {
 				for kind := range lang.Kinds() {
-					kindToResolver[kind] = lang
+					mrslv[kind] = lang
 				}
 			}
-			ix := resolve.NewRuleIndex(kindToResolver)
+			ix := resolve.NewRuleIndex(mrslv.Resolver)
 			rc := testRemoteCache(nil)
 
 			for _, bf := range tc.index {
@@ -960,7 +960,7 @@ go_proto_library(
 			}
 			ix.Finish()
 			for i, r := range f.Rules {
-				kindToResolver[r.Kind()].Resolve(c, ix, rc, r, imports[i], label.New("", tc.old.rel, r.Name()))
+				mrslv.Resolver(r, nil).Resolve(c, ix, rc, r, imports[i], label.New("", tc.old.rel, r.Name()))
 			}
 			f.Sync()
 			got := strings.TrimSpace(string(bzl.Format(f.File)))
@@ -1166,4 +1166,10 @@ func convertImportsAttr(r *rule.Rule) interface{} {
 		// proto_library
 		return value
 	}
+}
+
+type mapResolver map[string]resolve.Resolver
+
+func (mr mapResolver) Resolver(r *rule.Rule, f *rule.File) resolve.Resolver {
+	return mr[r.Kind()]
 }

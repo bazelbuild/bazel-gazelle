@@ -1,5 +1,8 @@
 proto_library(
     name = "protos_proto",
-    srcs = ["foo.proto"],
+    srcs = [
+        "foo.proto",
+        "foo_generated.proto",
+    ],
     visibility = ["//visibility:public"],
 )
