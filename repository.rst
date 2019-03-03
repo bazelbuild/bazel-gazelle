@@ -20,9 +20,10 @@ and transform them by applying patches or generating build files.
 
 The Gazelle repository provides three rules:
 
-* `go_repository`_ downloads a Go project over HTTP or using a version control
-  tool like git. It understands Go import path redirection. If build files are
-  not already present, it can generate them with Gazelle.
+* `go_repository`_ downloads a Go project using either ``go mod download``, a
+  version control tool like ``git``, or a direct HTTP download. It understands
+  Go import path redirection. If build files are not already present, it can
+  generate them with Gazelle.
 * `git_repository`_ downloads a project with git. Unlike the native
   ``git_repository``, this rule allows you to specify an "overlay": a set of
   files to be copied into the downloaded project. This may be used to add
@@ -66,6 +67,14 @@ external Go projects.
 
   load("@bazel_gazelle//:deps.bzl", "go_repository")
 
+  # Download using "go mod download"
+  go_repository(
+      name = "com_github_pkg_errors",
+      importpath = "github.com/pkg/errors",
+      sum = "h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=",
+      version = "v0.8.1",
+  )
+
   # Download automatically via git
   go_repository(
       name = "com_github_pkg_errors",
@@ -104,11 +113,29 @@ external Go projects.
 +--------------------------------+----------------------+-------------------------------------------------+
 | :param:`importpath`            | :type:`string`       | |mandatory|                                     |
 +--------------------------------+----------------------+-------------------------------------------------+
-| The Go import path that matches the root directory of this repository. If                               |
-| neither ``urls`` nor ``remote`` are specified, ``go_repository`` will download                          |
-| the repository from this location. This supports import path redirection.                               |
-| If build files are generated, libraries will have ``importpath`` prefixed                               |
-| with this string.                                                                                       |
+| The Go import path that matches the root directory of this repository. In                               |
+| module mode (when ``version`` is set), this must be the module path. If                                 |
+| neither ``urls`` nor ``remote`` is specified, ``go_repository`` will                                    |
+| automatically find the true path of the module, applying import path                                    |
+| redirection.                                                                                            |
+|                                                                                                         |
+| If build files are generated for this repository, libraries will have their                             |
+| ``importpath`` attributes prefixed with this ``importpath`` string.                                     |
++--------------------------------+----------------------+-------------------------------------------------+
+| :param:`version`               | :type:`string`       | :value:`""`                                     |
++--------------------------------+----------------------+-------------------------------------------------+
+| If specified, ``go_repository`` will download the module at this version                                |
+| using ``go mod download``. ``sum`` must also be set. ``commit``, ``tag``,                               |
+| and ``urls`` may not be set.                                                                            |
++--------------------------------+----------------------+-------------------------------------------------+
+| :param:`sum`                   | :type:`string`       | :value:`""`                                     |
++--------------------------------+----------------------+-------------------------------------------------+
+| A hash of the module contents. In module mode, ``go_repository`` will verify                            |
+| the downloaded module matches this sum. May only be set when ``version``                                |
+| is also set.                                                                                            |
+|                                                                                                         |
+| A value for ``sum`` may be found in the ``go.sum`` file or by running                                   |
+| ``go mod download -json <module>@<version>``.                                                           |
 +--------------------------------+----------------------+-------------------------------------------------+
 | :param:`commit`                | :type:`string`       | :value:`""`                                     |
 +--------------------------------+----------------------+-------------------------------------------------+

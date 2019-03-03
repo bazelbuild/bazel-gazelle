@@ -15,6 +15,7 @@
 load(
     "@bazel_gazelle//internal:go_repository.bzl",
     _go_repository = "go_repository",
+    _go_repository_cache = "go_repository_cache",
     _go_repository_tools = "go_repository_tools",
 )
 load(
@@ -33,9 +34,14 @@ load(
 go_repository = _go_repository
 
 def gazelle_dependencies(go_sdk = "@go_sdk//:ROOT"):
+    _go_repository_cache(
+        name = "bazel_gazelle_go_repository_cache",
+        go_sdk = go_sdk,
+    )
+
     _go_repository_tools(
         name = "bazel_gazelle_go_repository_tools",
-        go_sdk = go_sdk,
+        go_cache = "@bazel_gazelle_go_repository_cache//:go.env",
     )
 
     _maybe(
