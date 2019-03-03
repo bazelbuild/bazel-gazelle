@@ -13,30 +13,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repo
+package repo_test
 
 import (
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
 
 func init() {
-	goListModulesFn = goListModulesStub
+	repo.InstallTestStubs()
 }
 
 func TestImports(t *testing.T) {
 	for _, tc := range []struct {
-		desc, filename, content, want string
+		desc, want string
+		files      []testtools.FileSpec
 	}{
 		{
-			desc:     "dep",
-			filename: "Gopkg.lock",
-			content: `
+			desc: "dep",
+			files: []testtools.FileSpec{{
+				Path: "Gopkg.lock",
+				Content: `
 # This is an abbreviated version of dep's Gopkg.lock
 # Retrieved 2017-12-20
 
@@ -72,6 +74,7 @@ func TestImports(t *testing.T) {
   solver-name = "gps-cdcl"
   solver-version = 1
 `,
+			}},
 			want: `
 go_repository(
     name = "com_github_armon_go_radix",
@@ -100,67 +103,115 @@ go_repository(
 )
 `,
 		}, {
-			desc:     "modules",
-			filename: "go.mod",
-			content: `
+			desc: "modules",
+			files: []testtools.FileSpec{
+				{
+					Path: "go.mod",
+					Content: `
 module github.com/bazelbuild/bazel-gazelle
 
 require (
-	github.com/BurntSushi/toml v0.3.0 // indirect
-	github.com/bazelbuild/buildtools v0.0.0-20180226164855-80c7f0d45d7e
-	github.com/davecgh/go-spew v1.1.0 // indirect
-	github.com/pelletier/go-toml v1.0.1
-	golang.org/x/tools v0.0.0-20170824195420-5d2fd3ccab98
-	gopkg.in/yaml.v2 v2.2.1 // indirect
+	github.com/BurntSushi/toml v0.3.1 // indirect
+	github.com/bazelbuild/buildtools v0.0.0-20190202002759-027686e28d67
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/fsnotify/fsnotify v1.4.7
+	github.com/kr/pretty v0.1.0 // indirect
+	github.com/pelletier/go-toml v1.2.0
+	github.com/pmezard/go-difflib v1.0.0
+	golang.org/x/sys v0.0.0-20190122071731-054c452bb702 // indirect
+	golang.org/x/tools v0.0.0-20190122202912-9c309ee22fab
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	gopkg.in/yaml.v2 v2.2.2 // indirect
 )
 `,
+				}, {
+					// Note: the sum for x/tools has been deleted to force a call
+					// to goModDownload.
+					Path: "go.sum",
+					Content: `
+github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
+github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/bazelbuild/buildtools v0.0.0-20190202002759-027686e28d67 h1:zS8p6ZRbNVa7QfK3tpoIRDqGzCA2J0uJffaMTWoneac=
+github.com/bazelbuild/buildtools v0.0.0-20190202002759-027686e28d67/go.mod h1:5JP0TXzWDHXv8qvxRC4InIazwdyDseBDbzESUMKk1yU=
+github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/fsnotify/fsnotify v1.4.7 h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=
+github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
+github.com/kr/pretty v0.1.0 h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=
+github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
+github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
+github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
+github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/pelletier/go-toml v1.2.0 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=
+github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
+github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
+github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+golang.org/x/sys v0.0.0-20190122071731-054c452bb702 h1:Lk4tbZFnlyPgV+sLgTw5yGfzrlOn9kx4vSombi2FFlY=
+golang.org/x/sys v0.0.0-20190122071731-054c452bb702/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
+gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
+gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/yaml.v2 v2.2.2 h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=
+gopkg.in/yaml.v2 v2.2.2/go.mod h1:hI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuI=
+`,
+				},
+			},
 			want: `
 go_repository(
     name = "com_github_bazelbuild_buildtools",
-    commit = "80c7f0d45d7e",
     importpath = "github.com/bazelbuild/buildtools",
+    sum = "h1:zS8p6ZRbNVa7QfK3tpoIRDqGzCA2J0uJffaMTWoneac=",
+    version = "v0.0.0-20180226164855-80c7f0d45d7e",
 )
 
 go_repository(
     name = "com_github_burntsushi_toml",
     importpath = "github.com/BurntSushi/toml",
-    tag = "v0.3.0",
+    sum = "h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=",
+    version = "v0.3.0",
 )
 
 go_repository(
     name = "com_github_davecgh_go_spew",
     importpath = "github.com/davecgh/go-spew",
-    tag = "v1.1.0",
+    sum = "h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=",
+    version = "v1.1.0",
 )
 
 go_repository(
     name = "com_github_pelletier_go_toml",
     importpath = "github.com/pelletier/go-toml",
-    tag = "v1.0.1",
+    sum = "h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=",
+    version = "v1.0.1",
 )
 
 go_repository(
     name = "in_gopkg_check_v1",
-    commit = "20d25e280405",
     importpath = "gopkg.in/check.v1",
+    sum = "h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=",
+    version = "v0.0.0-20161208181325-20d25e280405",
 )
 
 go_repository(
     name = "in_gopkg_yaml_v2",
     importpath = "gopkg.in/yaml.v2",
-    tag = "v2.2.1",
+    sum = "h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=",
+    version = "v2.2.1",
 )
 
 go_repository(
     name = "org_golang_x_tools",
-    commit = "5d2fd3ccab98",
     importpath = "golang.org/x/tools",
+    sum = "h1:FkAkwuYWQw+IArrnmhGlisKHQF4MsZ2Nu/fX4ttW55o=",
+    version = "v0.0.0-20170824195420-5d2fd3ccab98",
 )
 `,
 		}, {
-			desc:     "godep",
-			filename: "Godeps.json",
-			content: `
+			desc: "godep",
+			files: []testtools.FileSpec{{
+				Path: "Godeps.json",
+				Content: `
 {
   "ImportPath": "github.com/nordstrom/kubelogin",
   "GoVersion": "go1.8",
@@ -214,6 +265,7 @@ go_repository(
 	]
 }
 `,
+			}},
 			want: `
 go_repository(
     name = "com_github_beorn7_perks",
@@ -242,19 +294,12 @@ go_repository(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestImports")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
-			filename := filepath.Join(dir, tc.filename)
-			if err := ioutil.WriteFile(filename, []byte(tc.content), 0666); err != nil {
-				t.Fatal(err)
-			}
+			dir, cleanup := testtools.CreateFiles(t, tc.files)
+			defer cleanup()
 
-			cache := newStubRemoteCache(nil)
-
-			rules, err := ImportRepoRules(filename, cache)
+			filename := filepath.Join(dir, tc.files[0].Path)
+			cache := repo.NewStubRemoteCache(nil)
+			rules, err := repo.ImportRepoRules(filename, cache)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -269,67 +314,4 @@ go_repository(
 			}
 		})
 	}
-}
-
-func goListModulesStub(dir string) ([]byte, error) {
-	return []byte(`{
-	"Path": "github.com/bazelbuild/bazel-gazelle",
-	"Main": true,
-	"Dir": "/tmp/tmp.XxZ9HCw1Mq",
-	"GoMod": "/tmp/tmp.XxZ9HCw1Mq/go.mod"
-}
-{
-	"Path": "github.com/BurntSushi/toml",
-	"Version": "v0.3.0",
-	"Time": "2017-03-28T06:15:53Z",
-	"Indirect": true,
-	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/!burnt!sushi/toml@v0.3.0",
-	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/!burnt!sushi/toml/@v/v0.3.0.mod"
-}
-{
-	"Path": "github.com/bazelbuild/buildtools",
-	"Version": "v0.0.0-20180226164855-80c7f0d45d7e",
-	"Time": "2018-02-26T16:48:55Z",
-	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/bazelbuild/buildtools@v0.0.0-20180226164855-80c7f0d45d7e",
-	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/bazelbuild/buildtools/@v/v0.0.0-20180226164855-80c7f0d45d7e.mod"
-}
-{
-	"Path": "github.com/davecgh/go-spew",
-	"Version": "v1.1.0",
-	"Time": "2016-10-29T20:57:26Z",
-	"Indirect": true,
-	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/davecgh/go-spew@v1.1.0",
-	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/davecgh/go-spew/@v/v1.1.0.mod"
-}
-{
-	"Path": "github.com/pelletier/go-toml",
-	"Version": "v1.0.1",
-	"Time": "2017-09-24T18:42:18Z",
-	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/pelletier/go-toml@v1.0.1",
-	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/pelletier/go-toml/@v/v1.0.1.mod"
-}
-{
-	"Path": "golang.org/x/tools",
-	"Version": "v0.0.0-20170824195420-5d2fd3ccab98",
-	"Time": "2017-08-24T19:54:20Z",
-	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/golang.org/x/tools@v0.0.0-20170824195420-5d2fd3ccab98",
-	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/golang.org/x/tools/@v/v0.0.0-20170824195420-5d2fd3ccab98.mod"
-}
-{
-	"Path": "gopkg.in/check.v1",
-	"Version": "v0.0.0-20161208181325-20d25e280405",
-	"Time": "2016-12-08T18:13:25Z",
-	"Indirect": true,
-	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/gopkg.in/check.v1@v0.0.0-20161208181325-20d25e280405",
-	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/gopkg.in/check.v1/@v/v0.0.0-20161208181325-20d25e280405.mod"
-}
-{
-	"Path": "gopkg.in/yaml.v2",
-	"Version": "v2.2.1",
-	"Time": "2018-03-28T19:50:20Z",
-	"Indirect": true,
-	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/gopkg.in/yaml.v2@v2.2.1",
-	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/gopkg.in/yaml.v2/@v/v2.2.1.mod"
-}
-`), nil
 }
