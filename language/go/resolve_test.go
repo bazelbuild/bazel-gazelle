@@ -960,7 +960,7 @@ go_proto_library(
 			}
 			ix.Finish()
 			for i, r := range f.Rules {
-				mrslv.Resolver(r, nil).Resolve(c, ix, rc, r, imports[i], label.New("", tc.old.rel, r.Name()))
+				mrslv.Resolver(r, "").Resolve(c, ix, rc, r, imports[i], label.New("", tc.old.rel, r.Name()))
 			}
 			f.Sync()
 			got := strings.TrimSpace(string(bzl.Format(f.File)))
@@ -1170,6 +1170,6 @@ func convertImportsAttr(r *rule.Rule) interface{} {
 
 type mapResolver map[string]resolve.Resolver
 
-func (mr mapResolver) Resolver(r *rule.Rule, f *rule.File) resolve.Resolver {
+func (mr mapResolver) Resolver(r *rule.Rule, f string) resolve.Resolver {
 	return mr[r.Kind()]
 }
