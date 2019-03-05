@@ -1813,6 +1813,9 @@ go_library(
 			Path:    "enabled/existing_rules/unmapped/unmapped_lib.go",
 			Content: `package unmapped`,
 		}, {
+			Path:    "enabled/existing_rules/nobuild/nobuild_lib.go",
+			Content: `package nobuild`,
+		}, {
 			Path:    "enabled/overridden/BUILD.bazel",
 			Content: "# gazelle:map_kind go_library overridden_library //tools/overridden:def.bzl",
 		}, {
@@ -1931,6 +1934,19 @@ go_library(
     name = "go_default_library",
     srcs = ["unmapped_lib.go"],
     importpath = "example.com/mapkind/enabled/existing_rules",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "enabled/existing_rules/nobuild/BUILD.bazel",
+			Content: `
+load("//tools/go:def.bzl", "my_library")
+
+my_library(
+    name = "go_default_library",
+    srcs = ["nobuild_lib.go"],
+    importpath = "example.com/mapkind/enabled/existing_rules/nobuild",
     visibility = ["//visibility:public"],
 )
 `,

@@ -253,7 +253,7 @@ func runFixUpdate(cmd command, args []string) error {
 			if repl, ok := c.KindMap[r.Kind()]; ok {
 				mappedKindInfo[repl.KindName] = kinds[r.Kind()]
 				mappedKinds = append(mappedKinds, repl)
-				mrslv.MappedKind(f, repl)
+				mrslv.MappedKind(rel, repl)
 				r.SetKind(repl.KindName)
 			}
 		}
@@ -295,7 +295,7 @@ func runFixUpdate(cmd command, args []string) error {
 	for _, v := range visits {
 		for i, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
-			mrslv.Resolver(r, v.file).Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
+			mrslv.Resolver(r, v.pkgRel).Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
 		}
 		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve,
 			unionKindInfoMaps(kinds, v.mappedKindInfo))

@@ -426,6 +426,6 @@ func convertImportsAttr(r *rule.Rule) interface{} {
 
 type mapResolver map[string]resolve.Resolver
 
-func (mr mapResolver) Resolver(r *rule.Rule, f *rule.File) resolve.Resolver {
+func (mr mapResolver) Resolver(r *rule.Rule, f string) resolve.Resolver {
 	return mr[r.Kind()]
 }
