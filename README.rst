@@ -17,6 +17,7 @@ Gazelle build file generator
 .. _gazelle_binary: extend.rst#gazelle_binary
 .. _import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.import_prefix
 .. _strip_import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.strip_import_prefix
+.. _buildozer: https://github.com/bazelbuild/buildtools/tree/master/buildozer
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -561,7 +562,7 @@ The following directives are recognized:
 | ``go_binary``, for this directory or within.                                               |
 |                                                                                            |
 | Existing rules of the old kind will be ignored. To switch your codebase from a builtin     |
-| kind to a mapped kind, use `buildozer`_.                                                      |
+| kind to a mapped kind, use `buildozer`_.                                                   |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:prefix path`                    | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
@@ -658,7 +659,6 @@ The following directives are recognized:
 |                                                                                            |
 +---------------------------------------------------+----------------------------------------+
 
-.. _buildozer: https://github.com/bazelbuild/buildtools/tree/master/buildozer
 
 Keep comments
 ~~~~~~~~~~~~~
