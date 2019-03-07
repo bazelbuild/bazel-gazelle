@@ -200,6 +200,30 @@ gen(
 	}
 }
 
+func TestExcludeSelf(t *testing.T) {
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+		}, {
+			Path:    "sub/BUILD.bazel",
+			Content: "# gazelle:exclude .",
+		}, {
+			Path: "sub/below/BUILD.bazel",
+		},
+	})
+	defer cleanup()
+
+	c, cexts := testConfig(t, dir)
+	var buildRels []string
+	Walk(c, cexts, []string{dir}, VisitAllUpdateDirsMode, func(_ string, rel string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
+		buildRels = append(buildRels, rel)
+	})
+
+	if len(buildRels) != 1 || buildRels[0] != "" {
+		t.Errorf("Walk: got %#v; want %#v", buildRels, []string{""})
+	}
+}
+
 func TestGeneratedFiles(t *testing.T) {
 	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
 		{
