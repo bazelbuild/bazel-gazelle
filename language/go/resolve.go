@@ -227,7 +227,8 @@ func resolveWithIndexGo(ix *resolve.RuleIndex, imp string, from label.Label) (la
 			// Current match is worse
 		} else {
 			// Match is ambiguous
-			matchError = fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", bestMatch.Label, m.Label, imp, from)
+			// TODO: consider listing all the ambiguous rules here.
+			matchError = fmt.Errorf("rule %s imports %q which matches multiple rules: %s and %s. # gazelle:resolve may be used to disambiguate", from, imp, bestMatch.Label, m.Label)
 		}
 	}
 	if matchError != nil {
