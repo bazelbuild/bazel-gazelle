@@ -36,6 +36,7 @@ func TestCommandLine(t *testing.T) {
 	c, _ := testConfig(
 		t,
 		"-from_file=Gopkg.lock",
+		"-to_macro=repositories.bzl%go_repositories",
 		"-build_file_names=BUILD",
 		"-build_external=external",
 		"-build_file_generation=on",
@@ -46,6 +47,9 @@ func TestCommandLine(t *testing.T) {
 	uc := getUpdateReposConfig(c)
 	if uc.lockFilename != "Gopkg.lock" {
 		t.Errorf(`got from_file %q; want "Gopkg.lock"`, uc.lockFilename)
+	}
+	if uc.macroFileName != "repositories.bzl" || uc.macroDefName != "go_repositories" {
+		t.Errorf(`got to_macro filename:%q function:%q; want filename:repositories.bzl function:go_repositories`, uc.macroFileName, uc.macroDefName)
 	}
 	if uc.buildFileNamesAttr != "BUILD" {
 		t.Errorf(`got build_file_name %q; want "BUILD"`, uc.buildFileNamesAttr)

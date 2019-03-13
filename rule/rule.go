@@ -45,6 +45,11 @@ type File struct {
 	// may modify this, but editing is not complete until Sync() is called.
 	File *bzl.File
 
+	// function is the underlying syntax tree of a bzl file function.
+	// This is used for editing the bzl file function specified by the
+	// update-repos -to_macro option.
+	function *bzl.Function
+
 	// Pkg is the Bazel package this build file defines.
 	Pkg string
 
@@ -97,6 +102,16 @@ func LoadWorkspaceFile(path, pkg string) (*File, error) {
 	return LoadWorkspaceData(path, pkg, data)
 }
 
+// LoadMacroFile is similar to LoadFile but parses the file as a bzl
+// file.
+func LoadMacroFile(path, pkg, function string) (*File, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return LoadMacroData(path, pkg, function, data)
+}
+
 // LoadData parses a build file from a byte slice and scans it for rules and
 // load statements. The syntax tree within the returned File will be modified
 // by editing methods.
@@ -105,7 +120,7 @@ func LoadData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanAST(pkg, ast), nil
+	return ScanAST(pkg, ast, ast.Stmt), nil
 }
 
 // LoadWorkspaceData is similar to LoadData but parses the data as a
@@ -115,30 +130,58 @@ func LoadWorkspaceData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanAST(pkg, ast), nil
+	return ScanAST(pkg, ast, ast.Stmt), nil
+}
+
+// LoadMacroData is similar to LoadData but parses the data as a
+// bzl file.
+func LoadMacroData(path, pkg, defName string, data []byte) (*File, error) {
+	ast, err := bzl.ParseDefault(path, data)
+	if err != nil {
+		return nil, err
+	}
+	defStmt := scanForDef(ast.Stmt, defName)
+	if defStmt == nil {
+		return nil, fmt.Errorf("Could not find function name in .bzl file %s", defName)
+	}
+	f := ScanAST(pkg, ast, defStmt.Body)
+	f.function = defStmt
+	return f, nil
 }
 
 // ScanAST creates a File wrapped around the given syntax tree. This tree
 // will be modified by editing methods.
-func ScanAST(pkg string, bzlFile *bzl.File) *File {
+func ScanAST(pkg string, bzlFile *bzl.File, stmt []bzl.Expr) *File {
 	f := &File{
 		File: bzlFile,
 		Pkg:  pkg,
 		Path: bzlFile.Path,
 	}
-	for i, stmt := range f.File.Stmt {
-		switch stmt := stmt.(type) {
+	for i, expr := range stmt {
+		switch expr := expr.(type) {
 		case *bzl.LoadStmt:
-			l := loadFromExpr(i, stmt)
+			l := loadFromExpr(i, expr)
 			f.Loads = append(f.Loads, l)
 		case *bzl.CallExpr:
-			if r := ruleFromExpr(i, stmt); r != nil {
+			if r := ruleFromExpr(i, expr); r != nil {
 				f.Rules = append(f.Rules, r)
 			}
 		}
 	}
 	f.Directives = ParseDirectives(bzlFile)
 	return f
+}
+
+func scanForDef(stmt []bzl.Expr, defName string) *bzl.Function {
+	for _, expr := range stmt {
+		switch expr := expr.(type) {
+		case *bzl.DefStmt:
+			if expr.Name == defName {
+				return &expr.Function
+			}
+		}
+	}
+	return nil
 }
 
 // MatchBuildFileName looks for a file in files that has a name from names.
@@ -199,13 +242,18 @@ func (f *File) Sync() {
 	sort.Stable(byIndex(inserts))
 	sort.Stable(byIndex(stmts))
 
-	oldStmt := f.File.Stmt
-	f.File.Stmt = make([]bzl.Expr, 0, len(oldStmt)-len(deletes)+len(inserts))
+	var oldStmt []bzl.Expr
+	if f.function == nil {
+		oldStmt = f.File.Stmt
+	} else {
+		oldStmt = f.function.Body
+	}
+	newStmt := make([]bzl.Expr, 0, len(oldStmt)-len(deletes)+len(inserts))
 	var ii, di, si int
 	for i, stmt := range oldStmt {
 		for ii < len(inserts) && inserts[ii].index == i {
-			inserts[ii].index = len(f.File.Stmt)
-			f.File.Stmt = append(f.File.Stmt, inserts[ii].expr)
+			inserts[ii].index = len(newStmt)
+			newStmt = append(newStmt, inserts[ii].expr)
 			ii++
 		}
 		if di < len(deletes) && deletes[di].index == i {
@@ -213,15 +261,20 @@ func (f *File) Sync() {
 			continue
 		}
 		if si < len(stmts) && stmts[si].expr == stmt {
-			stmts[si].index = len(f.File.Stmt)
+			stmts[si].index = len(newStmt)
 			si++
 		}
-		f.File.Stmt = append(f.File.Stmt, stmt)
+		newStmt = append(newStmt, stmt)
 	}
 	for ii < len(inserts) {
-		inserts[ii].index = len(f.File.Stmt)
-		f.File.Stmt = append(f.File.Stmt, inserts[ii].expr)
+		inserts[ii].index = len(newStmt)
+		newStmt = append(newStmt, inserts[ii].expr)
 		ii++
+	}
+	if f.function == nil {
+		f.File.Stmt = newStmt
+	} else {
+		f.function.Body = newStmt
 	}
 }
 
@@ -616,7 +669,13 @@ func (r *Rule) Args() []bzl.Expr {
 func (r *Rule) Insert(f *File) {
 	// TODO(jayconrod): should rules always be inserted at the end? Should there
 	// be some sort order?
-	r.index = len(f.File.Stmt)
+	var stmt []bzl.Expr
+	if f.function == nil {
+		stmt = f.File.Stmt
+	} else {
+		stmt = f.function.Body
+	}
+	r.index = len(stmt)
 	r.inserted = true
 	f.Rules = append(f.Rules, r)
 }
