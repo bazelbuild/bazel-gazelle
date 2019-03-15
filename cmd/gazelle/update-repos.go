@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -239,6 +240,7 @@ func applyBuildAttributes(c *updateReposConfig, r *rule.Rule) {
 		r.SetAttr("build_file_proto_mode", c.buildFileProtoModeAttr)
 	}
 	if c.buildExtraArgsAttr != "" {
-		r.SetAttr("build_extra_args", c.buildExtraArgsAttr)
+		extraArgs := strings.Split(c.buildExtraArgsAttr, ",")
+		r.SetAttr("build_extra_args", extraArgs)
 	}
 }

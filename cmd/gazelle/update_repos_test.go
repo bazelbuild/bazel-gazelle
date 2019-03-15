@@ -16,6 +16,8 @@ limitations under the License.
 package main
 
 import (
+	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/buildtools/build"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -65,4 +67,15 @@ func TestCommandLine(t *testing.T) {
 	if uc.buildExtraArgsAttr != "-exclude=vendor" {
 		t.Errorf(`got build_file_proto_mode %q; want "-exclude=vendor"`, uc.buildExtraArgsAttr)
 	}
+}
+
+func TestApplyBuildAttributes(t *testing.T)  {
+	config := updateReposConfig{buildExtraArgsAttr: "-exclude=vendor"}
+	r := rule.NewRule("go_repository", "uber_repo")
+	applyBuildAttributes(&config, r)
+	extraArgs := r.Attr("build_extra_args")
+	if _, ok := extraArgs.(*build.ListExpr); !ok {
+		t.Errorf("build_extra_args should be a list, got %q", extraArgs)
+	}
+
 }
