@@ -138,7 +138,11 @@ func updateRepos(args []string) error {
 		f, err = rule.LoadWorkspaceFile(path, "")
 	} else {
 		path = uc.macroFileName
-		f, err = rule.LoadMacroFile(path, "", uc.macroDefName)
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			f, err = rule.EmptyMacroFile(path, "", uc.macroDefName)
+		} else {
+			f, err = rule.LoadMacroFile(path, "", uc.macroDefName)
+		}
 	}
 	if err != nil {
 		return fmt.Errorf("error loading %q: %v", path, err)
@@ -152,8 +156,8 @@ func updateRepos(args []string) error {
 		return err
 	}
 
+	merger.FixLoads(f, loads)
 	if uc.macroFileName == "" {
-		merger.FixLoads(f, loads)
 		if err := merger.CheckGazelleLoaded(f); err != nil {
 			return err
 		}

@@ -102,14 +102,28 @@ func LoadWorkspaceFile(path, pkg string) (*File, error) {
 	return LoadWorkspaceData(path, pkg, data)
 }
 
-// LoadMacroFile is similar to LoadFile but parses the file as a bzl
-// file.
-func LoadMacroFile(path, pkg, function string) (*File, error) {
+// LoadMacroFile loads a bzl file from disk, parses it, then scans for the load
+// statements and the rules called from the given Starlark function. If there is
+// no matching function name, then a new function with that name will be created.
+// The function's syntax tree will be returned within File and can be modified by
+// Sync and Save calls.
+func LoadMacroFile(path, pkg, defName string) (*File, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	return LoadMacroData(path, pkg, function, data)
+	return LoadMacroData(path, pkg, defName, data, false)
+}
+
+// EmptyMacroFile creates a bzl file at the given path and within the file creates
+// a Starlark function with the provided name. The function can then be modified
+// by Sync and Save calls.
+func EmptyMacroFile(path, pkg, defName string) (*File, error) {
+ _, err := os.Create(path)
+ if err != nil {
+	 return nil, err
+ }
+ return LoadMacroData(path, pkg, defName, nil, true)
 }
 
 // LoadData parses a build file from a byte slice and scans it for rules and
@@ -120,7 +134,7 @@ func LoadData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanAST(pkg, ast, ast.Stmt), nil
+	return ScanAST(pkg, ast), nil
 }
 
 // LoadWorkspaceData is similar to LoadData but parses the data as a
@@ -130,58 +144,70 @@ func LoadWorkspaceData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanAST(pkg, ast, ast.Stmt), nil
+	return ScanAST(pkg, ast), nil
 }
 
-// LoadMacroData is similar to LoadData but parses the data as a
-// bzl file.
-func LoadMacroData(path, pkg, defName string, data []byte) (*File, error) {
+// LoadMacroData parses a bzl file from a byte slice and scans for the load
+// statements and the rules called from the given Starlark function. If there is
+// no matching function name, then a new function with that name will be created.
+// The function's syntax tree will be returned within File and can be modified by
+// Sync and Save calls.
+func LoadMacroData(path, pkg, defName string, data []byte, isEmpty bool) (*File, error) {
 	ast, err := bzl.ParseDefault(path, data)
 	if err != nil {
 		return nil, err
 	}
-	defStmt := scanForDef(ast.Stmt, defName)
-	if defStmt == nil {
-		return nil, fmt.Errorf("Could not find function name in .bzl file %s", defName)
+	f := &File{
+		File: ast,
+		Pkg:  pkg,
+		Path: ast.Path,
 	}
-	f := ScanAST(pkg, ast, defStmt.Body)
-	f.function = defStmt
+	if !isEmpty {
+		_, f.Loads, f.function = ScanASTBody(defName, ast.Stmt)
+	}
+	if f.function == nil {
+		defStmt := bzl.DefStmt{Name: defName}
+		ast.Stmt = append(ast.Stmt, &defStmt)
+		f.function = &defStmt.Function
+	} else {
+		f.Rules, _, _ = ScanASTBody("", f.function.Body)
+	}
 	return f, nil
 }
 
 // ScanAST creates a File wrapped around the given syntax tree. This tree
 // will be modified by editing methods.
-func ScanAST(pkg string, bzlFile *bzl.File, stmt []bzl.Expr) *File {
+func ScanAST(pkg string, bzlFile *bzl.File) *File {
 	f := &File{
 		File: bzlFile,
 		Pkg:  pkg,
 		Path: bzlFile.Path,
 	}
-	for i, expr := range stmt {
-		switch expr := expr.(type) {
-		case *bzl.LoadStmt:
-			l := loadFromExpr(i, expr)
-			f.Loads = append(f.Loads, l)
-		case *bzl.CallExpr:
-			if r := ruleFromExpr(i, expr); r != nil {
-				f.Rules = append(f.Rules, r)
-			}
-		}
-	}
+	f.Rules, f.Loads, _ = ScanASTBody("", bzlFile.Stmt)
 	f.Directives = ParseDirectives(bzlFile)
 	return f
 }
 
-func scanForDef(stmt []bzl.Expr, defName string) *bzl.Function {
-	for _, expr := range stmt {
+// ScanASTBody scans a list of Starlark expressions and returns the rules,
+// loads and if a defName is supplied it will try to return a function
+// matching that name. This data can be wrapped by a File and later modified.
+func ScanASTBody(defName string, stmt []bzl.Expr) (rules []*Rule, loads []*Load, fn *bzl.Function) {
+	for i, expr := range stmt {
 		switch expr := expr.(type) {
+		case *bzl.LoadStmt:
+			l := loadFromExpr(i, expr)
+			loads = append(loads, l)
+		case *bzl.CallExpr:
+			if r := ruleFromExpr(i, expr); r != nil {
+				rules = append(rules, r)
+			}
 		case *bzl.DefStmt:
 			if expr.Name == defName {
-				return &expr.Function
+				fn = &expr.Function
 			}
 		}
 	}
-	return nil
+	return rules, loads, fn
 }
 
 // MatchBuildFileName looks for a file in files that has a name from names.
@@ -202,55 +228,62 @@ func MatchBuildFileName(dir string, names []string, files []os.FileInfo) string 
 // Sync writes all changes back to the wrapped syntax tree. This should be
 // called after editing operations, before reading the syntax tree again.
 func (f *File) Sync() {
-	var inserts, deletes, stmts []*stmt
+	var loadInserts, loadDeletes, loadStmts []*stmt
 	var r, w int
 	for r, w = 0, 0; r < len(f.Loads); r++ {
 		s := f.Loads[r]
 		s.sync()
 		if s.deleted {
-			deletes = append(deletes, &s.stmt)
+			loadDeletes = append(loadDeletes, &s.stmt)
 			continue
 		}
 		if s.inserted {
-			inserts = append(inserts, &s.stmt)
+			loadInserts = append(loadInserts, &s.stmt)
 			s.inserted = false
 		} else {
-			stmts = append(stmts, &s.stmt)
+			loadStmts = append(loadStmts, &s.stmt)
 		}
 		f.Loads[w] = s
 		w++
 	}
 	f.Loads = f.Loads[:w]
+	var ruleInserts, ruleDeletes, ruleStmts []*stmt
 	for r, w = 0, 0; r < len(f.Rules); r++ {
 		s := f.Rules[r]
 		s.sync()
 		if s.deleted {
-			deletes = append(deletes, &s.stmt)
+			ruleDeletes = append(ruleDeletes, &s.stmt)
 			continue
 		}
 		if s.inserted {
-			inserts = append(inserts, &s.stmt)
+			ruleInserts = append(ruleInserts, &s.stmt)
 			s.inserted = false
 		} else {
-			stmts = append(stmts, &s.stmt)
+			ruleStmts = append(ruleStmts, &s.stmt)
 		}
 		f.Rules[w] = s
 		w++
 	}
 	f.Rules = f.Rules[:w]
+
+	if f.function == nil {
+		deletes := append(ruleDeletes, loadDeletes...)
+		inserts := append(ruleInserts, loadInserts...)
+		stmts := append(ruleStmts, loadStmts...)
+		updateStmt(&f.File.Stmt, inserts, deletes, stmts)
+	} else {
+		updateStmt(&f.File.Stmt, loadInserts, loadDeletes, loadStmts)
+		updateStmt(&f.function.Body, ruleInserts, ruleDeletes, ruleStmts)
+	}
+}
+
+func updateStmt(oldStmt *[]bzl.Expr, inserts, deletes, stmts []*stmt) {
 	sort.Stable(byIndex(deletes))
 	sort.Stable(byIndex(inserts))
 	sort.Stable(byIndex(stmts))
-
-	var oldStmt []bzl.Expr
-	if f.function == nil {
-		oldStmt = f.File.Stmt
-	} else {
-		oldStmt = f.function.Body
-	}
-	newStmt := make([]bzl.Expr, 0, len(oldStmt)-len(deletes)+len(inserts))
+	newStmt := make([]bzl.Expr, 0, len(*oldStmt)-len(deletes)+len(inserts))
 	var ii, di, si int
-	for i, stmt := range oldStmt {
+	for i, stmt := range *oldStmt {
 		for ii < len(inserts) && inserts[ii].index == i {
 			inserts[ii].index = len(newStmt)
 			newStmt = append(newStmt, inserts[ii].expr)
@@ -271,11 +304,7 @@ func (f *File) Sync() {
 		newStmt = append(newStmt, inserts[ii].expr)
 		ii++
 	}
-	if f.function == nil {
-		f.File.Stmt = newStmt
-	} else {
-		f.function.Body = newStmt
-	}
+	*oldStmt = newStmt
 }
 
 // Format formats the build file in a form that can be written to disk.
@@ -709,6 +738,9 @@ func (r *Rule) sync() {
 
 	call := r.expr.(*bzl.CallExpr)
 	call.X.(*bzl.Ident).Name = r.kind
+	if len(r.attrs) > 1 {
+		call.ForceMultiLine = true
+	}
 
 	list := make([]bzl.Expr, 0, len(r.args)+len(r.attrs))
 	list = append(list, r.args...)
