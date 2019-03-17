@@ -291,7 +291,8 @@ func runFixUpdate(cmd command, args []string) error {
 	ruleIndex.Finish()
 
 	// Resolve dependencies.
-	rc := repo.NewRemoteCache(uc.repos)
+	rc, cleanupRc := repo.NewRemoteCache(uc.repos)
+	defer cleanupRc()
 	for _, v := range visits {
 		for i, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())

@@ -172,3 +172,50 @@ func TestHead(t *testing.T) {
 		})
 	}
 }
+
+func TestMod(t *testing.T) {
+	for _, tc := range []struct {
+		desc, importPath      string
+		repos                 []Repo
+		wantModPath, wantName string
+		wantErr               bool
+	}{
+		{
+			desc:       "no_special_cases",
+			importPath: "golang.org/x/exp",
+			wantErr:    true,
+		}, {
+			desc:       "known",
+			importPath: "example.com/known/v2/foo",
+			repos: []Repo{{
+				Name:     "known",
+				GoPrefix: "example.com/known",
+			}},
+			wantModPath: "example.com/known",
+			wantName:    "known",
+		}, {
+			desc:        "lookup",
+			importPath:  "example.com/stub/v2/foo",
+			wantModPath: "example.com/stub/v2",
+			wantName:    "com_example_stub_v2",
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			rc := NewStubRemoteCache(tc.repos)
+			modPath, name, err := rc.Mod(tc.importPath)
+			if err != nil && tc.wantErr {
+				return
+			} else if err == nil && tc.wantErr {
+				t.Error("want error; got success")
+			} else if err != nil {
+				t.Fatal(err)
+			}
+			if modPath != tc.wantModPath {
+				t.Errorf("modPath: got %s; want %s", modPath, tc.wantModPath)
+			}
+			if name != tc.wantName {
+				t.Errorf("name: got %s; want %s", name, tc.wantName)
+			}
+		})
+	}
+}

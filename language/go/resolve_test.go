@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -1060,12 +1061,14 @@ func TestResolveExternal(t *testing.T) {
 	c, langs, _ := testConfig(
 		t,
 		"-go_prefix=example.com/local")
+	gc := getGoConfig(c)
 	ix := resolve.NewRuleIndex(nil)
 	ix.Finish()
 	gl := langs[1].(*goLang)
 	for _, tc := range []struct {
 		desc, importpath string
 		repos            []repo.Repo
+		moduleMode       bool
 		want             string
 	}{
 		{
@@ -1100,9 +1103,24 @@ func TestResolveExternal(t *testing.T) {
 				GoPrefix: "example.com/local/ext",
 			}},
 			want: "@local_ext//:go_default_library",
+		}, {
+			desc:       "module_mode_unknown",
+			importpath: "example.com/repo/v2/foo",
+			moduleMode: true,
+			want:       "@com_example_repo_v2//foo:go_default_library",
+		}, {
+			desc:       "module_mode_known",
+			importpath: "example.com/repo/v2/foo",
+			repos: []repo.Repo{{
+				Name:     "custom_repo",
+				GoPrefix: "example.com/repo",
+			}},
+			moduleMode: true,
+			want:       "@custom_repo//v2/foo:go_default_library",
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
+			gc.moduleMode = tc.moduleMode
 			rc := testRemoteCache(tc.repos)
 			r := rule.NewRule("go_library", "x")
 			imports := rule.PlatformStrings{Generic: []string{tc.importpath}}
@@ -1119,17 +1137,18 @@ func TestResolveExternal(t *testing.T) {
 }
 
 func testRemoteCache(knownRepos []repo.Repo) *repo.RemoteCache {
-	rc := repo.NewRemoteCache(knownRepos)
+	rc, _ := repo.NewRemoteCache(knownRepos)
 	rc.RepoRootForImportPath = stubRepoRootForImportPath
-	rc.HeadCmd = func(remote, vcs string) (string, error) {
+	rc.HeadCmd = func(_, _ string) (string, error) {
 		return "", fmt.Errorf("HeadCmd not supported in test")
 	}
+	rc.ModInfo = stubModInfo
 	return rc
 }
 
 // stubRepoRootForImportPath is a stub implementation of vcs.RepoRootForImportPath
-func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, error) {
-	if strings.HasPrefix(importpath, "example.com/repo.git") {
+func stubRepoRootForImportPath(importPath string, verbose bool) (*vcs.RepoRoot, error) {
+	if pathtools.HasPrefix(importPath, "example.com/repo.git") {
 		return &vcs.RepoRoot{
 			VCS:  vcs.ByCmd("git"),
 			Repo: "https://example.com/repo.git",
@@ -1137,7 +1156,7 @@ func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, 
 		}, nil
 	}
 
-	if strings.HasPrefix(importpath, "example.com/repo") {
+	if pathtools.HasPrefix(importPath, "example.com/repo") {
 		return &vcs.RepoRoot{
 			VCS:  vcs.ByCmd("git"),
 			Repo: "https://example.com/repo.git",
@@ -1145,7 +1164,7 @@ func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, 
 		}, nil
 	}
 
-	if strings.HasPrefix(importpath, "example.com") {
+	if pathtools.HasPrefix(importPath, "example.com") {
 		return &vcs.RepoRoot{
 			VCS:  vcs.ByCmd("git"),
 			Repo: "https://example.com",
@@ -1153,7 +1172,18 @@ func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, 
 		}, nil
 	}
 
-	return nil, fmt.Errorf("could not resolve import path: %q", importpath)
+	return nil, fmt.Errorf("could not resolve import path: %q", importPath)
+}
+
+// stubModInfo is a stub implementation of RemoteCache.ModInfo.
+func stubModInfo(importPath string) (string, error) {
+	if pathtools.HasPrefix(importPath, "example.com/repo/v2") {
+		return "example.com/repo/v2", nil
+	}
+	if pathtools.HasPrefix(importPath, "example.com/repo") {
+		return "example.com/repo", nil
+	}
+	return "", fmt.Errorf("could not find module for import path: %q", importPath)
 }
 
 func convertImportsAttr(r *rule.Rule) interface{} {

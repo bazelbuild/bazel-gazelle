@@ -176,7 +176,8 @@ FLAGS:
 
 func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
 	rs := repo.ListRepositories(f)
-	rc := repo.NewRemoteCache(rs)
+	rc, cleanupRc := repo.NewRemoteCache(rs)
+	defer cleanupRc()
 
 	genRules := make([]*rule.Rule, len(c.importPaths))
 	errs := make([]error, len(c.importPaths))
@@ -210,7 +211,8 @@ func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule
 
 func importFromLockFile(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
 	rs := repo.ListRepositories(f)
-	rc := repo.NewRemoteCache(rs)
+	rc, cleanupRc := repo.NewRemoteCache(rs)
+	defer cleanupRc()
 	genRules, err := repo.ImportRepoRules(c.lockFilename, rc)
 	if err != nil {
 		return err

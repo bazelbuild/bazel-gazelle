@@ -70,8 +70,16 @@ def _go_repository_impl(ctx):
     else:
         fail("one of urls, commit, tag, or importpath must be specified")
 
-    if fetch_repo_args:
-        fetch_repo_env = _read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
+    generate = ctx.attr.build_file_generation == "on"
+    if ctx.attr.build_file_generation == "auto":
+        generate = True
+        for name in ["BUILD", "BUILD.bazel", ctx.attr.build_file_name]:
+            path = ctx.path(name)
+            if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
+                generate = False
+                break
+    if fetch_repo_args or generate:
+        env = _read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
         env_keys = [
             "GOPROXY",
             "PATH",
@@ -82,50 +90,45 @@ def _go_repository_impl(ctx):
             "NO_PROXY",
             "GIT_SSL_CAINFO",
         ]
-        fetch_repo_env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
+        env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
+    if fetch_repo_args:
         fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
         result = env_execute(
             ctx,
             [fetch_repo] + fetch_repo_args,
-            environment = fetch_repo_env,
+            environment = env,
             timeout = _GO_REPOSITORY_TIMEOUT,
         )
         if result.return_code:
             fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
 
-    generate = ctx.attr.build_file_generation == "on"
-    if ctx.attr.build_file_generation == "auto":
-        generate = True
-        for name in ["BUILD", "BUILD.bazel", ctx.attr.build_file_name]:
-            path = ctx.path(name)
-            if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
-                generate = False
-                break
     if generate:
         # Build file generation is needed
         _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
         gazelle = ctx.path(Label(_gazelle))
         cmd = [
             gazelle,
-            "--go_prefix",
+            "-go_prefix",
             ctx.attr.importpath,
-            "--mode",
+            "-mode",
             "fix",
-            "--repo_root",
+            "-repo_root",
             ctx.path(""),
         ]
+        if ctx.attr.version:
+            cmd.append("-go_experimental_module_mode")
         if ctx.attr.build_file_name:
-            cmd.extend(["--build_file_name", ctx.attr.build_file_name])
+            cmd.extend(["-build_file_name", ctx.attr.build_file_name])
         if ctx.attr.build_tags:
-            cmd.extend(["--build_tags", ",".join(ctx.attr.build_tags)])
+            cmd.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
         if ctx.attr.build_external:
-            cmd.extend(["--external", ctx.attr.build_external])
+            cmd.extend(["-external", ctx.attr.build_external])
         if ctx.attr.build_file_proto_mode:
-            cmd.extend(["--proto", ctx.attr.build_file_proto_mode])
+            cmd.extend(["-proto", ctx.attr.build_file_proto_mode])
         cmd.extend(ctx.attr.build_extra_args)
         cmd.append(ctx.path(""))
-        result = env_execute(ctx, cmd)
+        result = env_execute(ctx, cmd, environment = env, timeout = _GO_REPOSITORY_TIMEOUT)
         if result.return_code:
             fail("failed to generate BUILD files for %s: %s" % (
                 ctx.attr.importpath,

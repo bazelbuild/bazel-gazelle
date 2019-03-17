@@ -15,8 +15,11 @@ limitations under the License.
 package repo
 
 import (
+	"errors"
 	"fmt"
-	"strings"
+	"os"
+
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 
 	"golang.org/x/tools/go/vcs"
 )
@@ -106,15 +109,18 @@ func goModDownloadStub(dir string, args []string) ([]byte, error) {
 }
 
 func NewStubRemoteCache(rs []Repo) *RemoteCache {
-	rc := NewRemoteCache(rs)
+	rc, _ := NewRemoteCache(rs)
+	rc.tmpDir = os.DevNull
+	rc.tmpErr = errors.New("stub remote cache cannot use temp dir")
 	rc.RepoRootForImportPath = stubRepoRootForImportPath
 	rc.HeadCmd = stubHeadCmd
+	rc.ModInfo = stubModInfo
 	return rc
 }
 
 // stubRepoRootForImportPath is a stub implementation of vcs.RepoRootForImportPath
-func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, error) {
-	if strings.HasPrefix(importpath, "example.com/repo.git") {
+func stubRepoRootForImportPath(importPath string, verbose bool) (*vcs.RepoRoot, error) {
+	if pathtools.HasPrefix(importPath, "example.com/repo.git") {
 		return &vcs.RepoRoot{
 			VCS:  vcs.ByCmd("git"),
 			Repo: "https://example.com/repo.git",
@@ -122,7 +128,7 @@ func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, 
 		}, nil
 	}
 
-	if strings.HasPrefix(importpath, "example.com/repo") {
+	if pathtools.HasPrefix(importPath, "example.com/repo") {
 		return &vcs.RepoRoot{
 			VCS:  vcs.ByCmd("git"),
 			Repo: "https://example.com/repo.git",
@@ -130,7 +136,7 @@ func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, 
 		}, nil
 	}
 
-	if strings.HasPrefix(importpath, "example.com") {
+	if pathtools.HasPrefix(importPath, "example.com") {
 		return &vcs.RepoRoot{
 			VCS:  vcs.ByCmd("git"),
 			Repo: "https://example.com",
@@ -138,7 +144,7 @@ func stubRepoRootForImportPath(importpath string, verbose bool) (*vcs.RepoRoot, 
 		}, nil
 	}
 
-	return nil, fmt.Errorf("could not resolve import path: %q", importpath)
+	return nil, fmt.Errorf("could not resolve import path: %q", importPath)
 }
 
 func stubHeadCmd(remote, vcs string) (string, error) {
@@ -146,4 +152,14 @@ func stubHeadCmd(remote, vcs string) (string, error) {
 		return "abcdef", nil
 	}
 	return "", fmt.Errorf("could not resolve remote: %q", remote)
+}
+
+func stubModInfo(importPath string) (string, error) {
+	if pathtools.HasPrefix(importPath, "example.com/stub/v2") {
+		return "example.com/stub/v2", nil
+	}
+	if pathtools.HasPrefix(importPath, "example.com/stub") {
+		return "example.com/stub", nil
+	}
+	return "", fmt.Errorf("could not find module path for %s", importPath)
 }
