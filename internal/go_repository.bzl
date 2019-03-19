@@ -88,6 +88,9 @@ def _go_repository_impl(ctx):
             "HTTP_PROXY",
             "HTTPS_PROXY",
             "NO_PROXY",
+            "http_proxy",
+            "https_proxy",
+            "no_proxy",
             "GIT_SSL_CAINFO",
         ]
         env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
