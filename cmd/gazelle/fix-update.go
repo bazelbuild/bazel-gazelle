@@ -364,7 +364,10 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 			return nil, err
 		}
 		c.RepoName = findWorkspaceName(workspace)
-		uc.repos = repo.ListRepositories(workspace)
+		uc.repos, err = repo.ListRepositories(workspace)
+		if err != nil {
+			return nil, err
+		}
 	}
 	repoPrefixes := make(map[string]bool)
 	for _, r := range uc.repos {

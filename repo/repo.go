@@ -26,7 +26,7 @@ import (
 )
 
 // Repo describes an external repository rule declared in a Bazel
-// WORKSPACE file.
+// WORKSPACE file or macro file.
 type Repo struct {
 	// Name is the value of the "name" attribute of the repository rule.
 	Name string
@@ -55,6 +55,9 @@ type Repo struct {
 
 	// Sum is the hash of the module to be verified after download.
 	Sum string
+
+	// File is a pointer to the file where the repository rule was defined.
+	File *rule.File
 }
 
 type byName []Repo
@@ -62,6 +65,12 @@ type byName []Repo
 func (s byName) Len() int           { return len(s) }
 func (s byName) Less(i, j int) bool { return s[i].Name < s[j].Name }
 func (s byName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+type byRuleName []*rule.Rule
+
+func (s byRuleName) Len() int           { return len(s) }
+func (s byRuleName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
+func (s byRuleName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 type lockFileFormat int
 
@@ -98,6 +107,40 @@ func ImportRepoRules(filename string, repoCache *RemoteCache) ([]*rule.Rule, err
 		rules = append(rules, GenerateRule(repo))
 	}
 	return rules, nil
+}
+
+// FilterRulesByFile filters a list of generated repo rules by the file where
+// the rule should be written. This is done by comparing the generated
+// rules with the current list of repo rules declared in the repository. If
+// the generated rule matches a rule already in the repo, then it inherits the
+// file where the rule was defined. Else its file is set as the destFile parameter.
+func FilterRulesByFile(before []Repo, after []*rule.Rule, destFile *rule.File) map[*rule.File][]*rule.Rule {
+	sort.Stable(byName(before))
+	sort.Stable(byRuleName(after))
+
+	res := make(map[*rule.File][]*rule.Rule)
+	var i, j int
+	for i, j = 0, 0; i < len(before) && j < len(after); {
+		if before[i].Name == after[j].Name() {
+			if before[i].File != nil {
+				res[before[i].File] = append(res[before[i].File], after[j])
+			} else {
+				res[destFile] = append(res[destFile], after[j])
+			}
+			i++
+			j++
+		} else if before[i].Name > after[j].Name() {
+			res[destFile] = append(res[destFile], after[j])
+			j++
+		} else {
+			i++
+		}
+	}
+	for j < len(after) {
+		res[destFile] = append(res[destFile], after[j])
+		j++
+	}
+	return res
 }
 
 func getLockFileFormat(filename string) lockFileFormat {
@@ -167,13 +210,30 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 }
 
 // ListRepositories extracts metadata about repositories declared in a
-// WORKSPACE file.
-//
-// The set of repositories returned is necessarily incomplete, since we don't
-// evaluate the file, and repositories may be declared in macros in other files.
-func ListRepositories(workspace *rule.File) []Repo {
-	var repos []Repo
-	for _, r := range workspace.Rules {
+// file.
+func ListRepositories(workspace *rule.File) (repos []Repo, err error) {
+	repos = getRepos(workspace.Rules, workspace)
+
+	for _, d := range workspace.Directives {
+		switch d.Key {
+		case "repository_macro":
+			vals := strings.Split(d.Value, "%")
+			if len(vals) != 2 {
+				return nil, fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", d.Value)
+			}
+			macroFile, err := rule.LoadMacroFile(vals[0], "", vals[1])
+			if err != nil {
+				return nil, err
+			}
+			repos = append(repos, getRepos(macroFile.Rules, macroFile)...)
+		}
+	}
+
+	return repos, nil
+}
+
+func getRepos(rules []*rule.Rule, file *rule.File) (repos []Repo) {
+	for _, r := range rules {
 		name := r.Name()
 		if name == "" {
 			continue
@@ -197,6 +257,7 @@ func ListRepositories(workspace *rule.File) []Repo {
 				Commit:   revision,
 				Remote:   remote,
 				VCS:      vcs,
+				File:     file,
 			}
 
 			// TODO(jayconrod): infer from {new_,}git_repository, {new_,}http_archive,
@@ -207,9 +268,5 @@ func ListRepositories(workspace *rule.File) []Repo {
 		}
 		repos = append(repos, repo)
 	}
-
-	// TODO(jayconrod): look for directives that describe repositories that
-	// aren't declared in the top-level of WORKSPACE (e.g., behind a macro).
-
 	return repos
 }

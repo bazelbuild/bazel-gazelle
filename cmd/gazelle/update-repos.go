@@ -31,7 +31,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-type updateReposFn func(c *updateReposConfig, oldFile *rule.File, kinds map[string]rule.KindInfo) error
+type updateReposFn func(c *updateReposConfig, workspace *rule.File, oldFile *rule.File, kinds map[string]rule.KindInfo) error
 
 type updateReposConfig struct {
 	fn                      updateReposFn
@@ -131,40 +131,42 @@ func updateRepos(args []string) error {
 	}
 	uc := getUpdateReposConfig(c)
 
-	var f *rule.File
-	var path string
-	if uc.macroFileName == "" {
-		path = filepath.Join(c.RepoRoot, "WORKSPACE")
-		f, err = rule.LoadWorkspaceFile(path, "")
-	} else {
-		path = uc.macroFileName
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			f, err = rule.EmptyMacroFile(path, "", uc.macroDefName)
-		} else {
-			f, err = rule.LoadMacroFile(path, "", uc.macroDefName)
-		}
-	}
+	path := filepath.Join(c.RepoRoot, "WORKSPACE")
+	workspace, err := rule.LoadWorkspaceFile(path, "")
 	if err != nil {
 		return fmt.Errorf("error loading %q: %v", path, err)
 	}
-
+	var destFile *rule.File
 	if uc.macroFileName == "" {
-		merger.FixWorkspace(f)
+		destFile = workspace
+	} else {
+		if _, err := os.Stat(uc.macroFileName); os.IsNotExist(err) {
+			destFile, err = rule.EmptyMacroFile(uc.macroFileName, "", uc.macroDefName)
+		} else {
+			destFile, err = rule.LoadMacroFile(uc.macroFileName, "", uc.macroDefName)
+		}
+		if err != nil {
+			return fmt.Errorf("error loading %q: %v", uc.macroFileName, err)
+		}
 	}
 
-	if err := uc.fn(uc, f, kinds); err != nil {
+	if uc.macroFileName == "" {
+		merger.FixWorkspace(destFile)
+	}
+
+	if err := uc.fn(uc, workspace, destFile, kinds); err != nil {
 		return err
 	}
 
-	merger.FixLoads(f, loads)
+	merger.FixLoads(destFile, loads)
 	if uc.macroFileName == "" {
-		if err := merger.CheckGazelleLoaded(f); err != nil {
+		if err := merger.CheckGazelleLoaded(destFile); err != nil {
 			return err
 		}
 	}
 
-	if err := f.Save(f.Path); err != nil {
-		return fmt.Errorf("error writing %q: %v", f.Path, err)
+	if err := destFile.Save(destFile.Path); err != nil {
+		return fmt.Errorf("error writing %q: %v", destFile.Path, err)
 	}
 	return nil
 }
@@ -214,9 +216,12 @@ FLAGS:
 	fs.PrintDefaults()
 }
 
-func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
-	rs := repo.ListRepositories(f)
-	rc, cleanupRc := repo.NewRemoteCache(rs)
+func updateImportPaths(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) error {
+	repos, err := repo.ListRepositories(workspace)
+	if err != nil {
+		return err
+	}
+	rc, cleanupRc := repo.NewRemoteCache(repos)
 	defer cleanupRc()
 
 	genRules := make([]*rule.Rule, len(c.importPaths))
@@ -245,23 +250,37 @@ func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule
 			return err
 		}
 	}
-	merger.MergeFile(f, nil, genRules, merger.PreResolve, kinds)
+	rulesByFile := repo.FilterRulesByFile(repos, genRules, destFile)
+	for f, rules := range rulesByFile {
+		merger.MergeFile(f, nil, rules, merger.PreResolve, kinds)
+		if err := f.Save(f.Path); err != nil {
+			return fmt.Errorf("error writing %q: %v", f.Path, err)
+		}
+	}
 	return nil
 }
 
-func importFromLockFile(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
-	rs := repo.ListRepositories(f)
-	rc, cleanupRc := repo.NewRemoteCache(rs)
+func importFromLockFile(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) error {
+	repos, err := repo.ListRepositories(workspace)
+	if err != nil {
+		return err
+	}
+	rc, cleanupRc := repo.NewRemoteCache(repos)
 	defer cleanupRc()
 	genRules, err := repo.ImportRepoRules(c.lockFilename, rc)
 	if err != nil {
 		return err
 	}
-	for i := range genRules {
-		applyBuildAttributes(c, genRules[i])
+	rulesByFile := repo.FilterRulesByFile(repos, genRules, destFile)
+	for f, rules := range rulesByFile {
+		for i := range rules {
+			applyBuildAttributes(c, rules[i])
+		}
+		merger.MergeFile(f, nil, rules, merger.PreResolve, kinds)
+		if err := f.Save(f.Path); err != nil {
+			return fmt.Errorf("error writing %q: %v", f.Path, err)
+		}
 	}
-
-	merger.MergeFile(f, nil, genRules, merger.PreResolve, kinds)
 	return nil
 }
 
