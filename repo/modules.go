@@ -52,6 +52,7 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 		}
 	}
 	pathToModule := map[string]*module{}
+	replacePathToModule := map[string]*module{}
 	data, err := goListModules(tempDir)
 	if err != nil {
 		return nil, err
@@ -71,7 +72,7 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 					mod.Replace.Path)
 				continue
 			}
-			pathToModule[mod.Replace.Path] = mod
+			replacePathToModule[mod.Replace.Path] = mod
 		} else {
 			pathToModule[mod.Path] = mod
 		}
@@ -94,17 +95,21 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 		if mod, ok := pathToModule[path]; ok {
 			mod.Sum = sum
 		}
+		if mod, ok := replacePathToModule[path]; ok {
+			mod.Sum = sum
+		}
 	}
 
 	// If sums are missing, run go mod download to get them.
 	var missingSumArgs []string
 	for _, mod := range pathToModule {
 		if mod.Sum == "" {
-			if mod.Replace != nil {
-				missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Replace.Path, mod.Replace.Version))
-			} else {
-				missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Path, mod.Version))
-			}
+			missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Path, mod.Version))
+		}
+	}
+	for _, mod := range replacePathToModule {
+		if mod.Sum == "" {
+			missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Replace.Path, mod.Replace.Version))
 		}
 	}
 	if len(missingSumArgs) > 0 {
@@ -127,7 +132,7 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 	}
 
 	// Translate to repo metadata.
-	repos = make([]Repo, 0, len(pathToModule))
+	repos = make([]Repo, 0, len(pathToModule)+len(replacePathToModule))
 	for _, mod := range pathToModule {
 		if mod.Sum == "" {
 			log.Printf("could not determine sum for module %s", mod.Path)
@@ -139,9 +144,19 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			Version:  mod.Version,
 			Sum:      mod.Sum,
 		}
-		if mod.Replace != nil {
-			repo.Replace = mod.Replace.Path
-			repo.Version = mod.Replace.Version
+		repos = append(repos, repo)
+	}
+	for _, mod := range replacePathToModule {
+		if mod.Sum == "" {
+			log.Printf("could not determine sum for module %s", mod.Path)
+			continue
+		}
+		repo := Repo{
+			Name:     label.ImportPathToBazelRepoName(mod.Path),
+			GoPrefix: mod.Path,
+			Version:  mod.Replace.Version,
+			Sum:      mod.Sum,
+			Replace:  mod.Replace.Path,
 		}
 		repos = append(repos, repo)
 	}
