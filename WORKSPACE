@@ -21,3 +21,8 @@ gazelle_dependencies()
 load("@io_bazel_rules_go//tests:bazel_tests.bzl", "test_environment")
 
 test_environment()
+
+load("//third_party:repos.bzl", "go_repositories")
+
+# gazelle:repository_macro third_party/repos.bzl%go_repositories
+go_repositories()
