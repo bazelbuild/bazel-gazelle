@@ -266,10 +266,28 @@ GOROOT={goroot}
 GOPATH={gopath}
 GOCACHE={gocache}
 """
+    go_path = str(ctx.path("."))
+    go_cache = str(ctx.path("gocache"))
+    if ctx.os.environ.get("GO_REPOSITORY_USE_HOST_CACHE", "") == "1":
+        extension = executable_extension(ctx)
+        go_tool = str(ctx.path(go_sdk_label).dirname) + "/bin/go" + extension
+        res = ctx.execute([go_tool, "env", "GOPATH"])
+        if res.return_code:
+            fail('failed to read go environment: ' + res.stderr)
+        if not res.stdout:
+            fail('GOPATH must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.')
+        go_path = res.stdout
+        res = ctx.execute([go_tool, "env", "GOCACHE"])
+        if res.return_code:
+            fail('failed to read go environment: ' + res.stderr)
+        if not res.stdout:
+            fail('GOCACHE must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.')    
+        go_cache = res.stdout
+
     env_content = env_tpl.format(
         goroot = str(ctx.path(go_sdk_label).dirname),
-        gopath = str(ctx.path(".")),
-        gocache = str(ctx.path("gocache")),
+        gopath = go_path,
+        gocache = go_cache,
     )
     ctx.file("go.env", env_content)
     ctx.file("BUILD.bazel", 'exports_files(["go.env"])')
