@@ -18,7 +18,6 @@ package repo
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"go/build"
 	"io"
 	"io/ioutil"
@@ -51,8 +50,8 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			Path, Version string
 		}
 	}
+	// path@version can be used as a unique identifier for looking up sums
 	pathToModule := map[string]*module{}
-	replacePathToModule := map[string]*module{}
 	data, err := goListModules(tempDir)
 	if err != nil {
 		return nil, err
@@ -72,12 +71,11 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 					mod.Replace.Path)
 				continue
 			}
-			replacePathToModule[mod.Replace.Path] = mod
+			pathToModule[mod.Replace.Path + "@" + mod.Replace.Version] = mod
 		} else {
-			pathToModule[mod.Path] = mod
+			pathToModule[mod.Path + "@" + mod.Version] = mod
 		}
 	}
-
 	// Load sums from go.sum. Ideally, they're all there.
 	goSumPath := filepath.Join(filepath.Dir(filename), "go.sum")
 	data, _ = ioutil.ReadFile(goSumPath)
@@ -92,24 +90,15 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 		if strings.HasSuffix(version, "/go.mod") {
 			continue
 		}
-		if mod, ok := pathToModule[path]; ok {
-			mod.Sum = sum
-		}
-		if mod, ok := replacePathToModule[path]; ok {
+		if mod, ok := pathToModule[path + "@" + version]; ok {
 			mod.Sum = sum
 		}
 	}
-
 	// If sums are missing, run go mod download to get them.
 	var missingSumArgs []string
-	for _, mod := range pathToModule {
+	for pathVer, mod := range pathToModule {
 		if mod.Sum == "" {
-			missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Path, mod.Version))
-		}
-	}
-	for _, mod := range replacePathToModule {
-		if mod.Sum == "" {
-			missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Replace.Path, mod.Replace.Version))
+			missingSumArgs = append(missingSumArgs, pathVer)
 		}
 	}
 	if len(missingSumArgs) > 0 {
@@ -123,20 +112,16 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			if err := dec.Decode(&dl); err != nil {
 				return nil, err
 			}
-			if mod, ok := pathToModule[dl.Path]; ok {
-				mod.Sum = dl.Sum
-			}
-			if mod, ok := replacePathToModule[dl.Path]; ok {
+			if mod, ok := pathToModule[dl.Path + "@" + dl.Version]; ok {
 				mod.Sum = dl.Sum
 			}
 		}
 	}
-
 	// Translate to repo metadata.
-	repos = make([]Repo, 0, len(pathToModule)+len(replacePathToModule))
-	for _, mod := range pathToModule {
+	repos = make([]Repo, 0, len(pathToModule))
+	for pathVer, mod := range pathToModule {
 		if mod.Sum == "" {
-			log.Printf("could not determine sum for module %s", mod.Path)
+			log.Printf("could not determine sum for module %s", pathVer)
 			continue
 		}
 		repo := Repo{
@@ -145,19 +130,9 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			Version:  mod.Version,
 			Sum:      mod.Sum,
 		}
-		repos = append(repos, repo)
-	}
-	for _, mod := range replacePathToModule {
-		if mod.Sum == "" {
-			log.Printf("could not determine sum for module %s", mod.Path)
-			continue
-		}
-		repo := Repo{
-			Name:     label.ImportPathToBazelRepoName(mod.Path),
-			GoPrefix: mod.Path,
-			Version:  mod.Replace.Version,
-			Sum:      mod.Sum,
-			Replace:  mod.Replace.Path,
+		if mod.Replace != nil {
+			repo.Replace = mod.Replace.Path
+			repo.Version = mod.Replace.Version
 		}
 		repos = append(repos, repo)
 	}

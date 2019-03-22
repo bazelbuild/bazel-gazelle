@@ -114,6 +114,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/bazelbuild/buildtools v0.0.0-20190202002759-027686e28d67
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/fork/go-toml v0.0.0-20190116191733-b6c0e53d7304
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/pelletier/go-toml v1.0.1
@@ -146,6 +147,8 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/fork/go-toml v0.0.0-20190116191733-b6c0e53d7304 h1:5+8j8FTpnFV4nEImW/ofkzEt8VoOiLXxdYIDsB73T38=
+github.com/fork/go-toml v0.0.0-20190116191733-b6c0e53d7304/go.mod h1:ZiWeW+zYFKm7srdB9IoDzzZXaJaI5eL9QjNiN/DMA2s=
 github.com/fork/go-toml v0.0.0-20190425002759-70bc0436ed16 h1:T5zMGML61Wp+FlcbWjRDT7yAxhJNAiPPLOFECq181zc=
 github.com/fork/go-toml v0.0.0-20190425002759-70bc0436ed16/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
@@ -166,21 +169,28 @@ go_repository(
     name = "com_github_bazelbuild_buildtools",
     importpath = "github.com/bazelbuild/buildtools",
     sum = "h1:zS8p6ZRbNVa7QfK3tpoIRDqGzCA2J0uJffaMTWoneac=",
-    version = "v0.0.0-20180226164855-80c7f0d45d7e",
+    version = "v0.0.0-20190202002759-027686e28d67",
 )
 
 go_repository(
     name = "com_github_burntsushi_toml",
     importpath = "github.com/BurntSushi/toml",
     sum = "h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=",
-    version = "v0.3.0",
+    version = "v0.3.1",
 )
 
 go_repository(
     name = "com_github_davecgh_go_spew",
     importpath = "github.com/davecgh/go-spew",
     sum = "h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=",
-    version = "v1.1.0",
+    version = "v1.1.1",
+)
+
+go_repository(
+    name = "com_github_fork_go_toml",
+    importpath = "github.com/fork/go-toml",
+    sum = "h1:5+8j8FTpnFV4nEImW/ofkzEt8VoOiLXxdYIDsB73T38=",
+    version = "v0.0.0-20190116191733-b6c0e53d7304",
 )
 
 go_repository(
@@ -195,21 +205,21 @@ go_repository(
     name = "in_gopkg_check_v1",
     importpath = "gopkg.in/check.v1",
     sum = "h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=",
-    version = "v0.0.0-20161208181325-20d25e280405",
+    version = "v1.0.0-20180628173108-788fd7840127",
 )
 
 go_repository(
     name = "in_gopkg_yaml_v2",
     importpath = "gopkg.in/yaml.v2",
     sum = "h1:ZCJp+EgiOT7lHqUV2J862kp8Qj64Jo6az82+3Td9dZw=",
-    version = "v2.2.1",
+    version = "v2.2.2",
 )
 
 go_repository(
     name = "org_golang_x_tools",
     importpath = "golang.org/x/tools",
     sum = "h1:FkAkwuYWQw+IArrnmhGlisKHQF4MsZ2Nu/fX4ttW55o=",
-    version = "v0.0.0-20170824195420-5d2fd3ccab98",
+    version = "v0.0.0-20190122202912-9c309ee22fab",
 )
 `,
 		}, {
