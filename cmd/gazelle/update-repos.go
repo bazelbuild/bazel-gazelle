@@ -93,7 +93,7 @@ func (_ *updateReposConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *c
 	fs.Var(&gzflag.AllowedStringFlag{Value: &uc.buildFileProtoModeAttr, Allowed: validBuildFileProtoModeAttr}, "build_file_proto_mode", "Sets the build_file_proto_mode attribute for the generated go_repository rule(s).")
 	fs.StringVar(&uc.buildExtraArgsAttr, "build_extra_args", "", "Sets the build_extra_args attribute for the generated go_repository rule(s).")
 	fs.Var(macroFlag{macroFileName: &uc.macroFileName, macroDefName: &uc.macroDefName}, "to_macro", "Tells Gazelle to write repository rules into a .bzl macro function rather than the WORKSPACE file. . The expected format is: macroFile%defName")
-	fs.BoolVar(&uc.pruneRules, "prune", false, "When enabled, Gazelle will remove rules that no longer have equivalent repos in the Gopkg.lock/go.mod file.")
+	fs.BoolVar(&uc.pruneRules, "prune", false, "When enabled, Gazelle will remove rules that no longer have equivalent repos in the Gopkg.lock/go.mod file. Can only used with -from_file.")
 }
 
 func (_ *updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -108,6 +108,9 @@ func (_ *updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) e
 	default:
 		if len(fs.Args()) == 0 {
 			return fmt.Errorf("No repositories specified\nTry -help for more information.")
+		}
+		if uc.pruneRules {
+			return fmt.Errorf("The -prune option can only be used with -from_file.")
 		}
 		uc.fn = updateImportPaths
 		uc.importPaths = fs.Args()
@@ -255,11 +258,7 @@ func updateImportPaths(c *updateReposConfig, workspace *rule.File, destFile *rul
 			return nil, err
 		}
 	}
-	var emptyRules []*rule.Rule
-	if c.pruneRules {
-		emptyRules = repo.GetRulesToPrune(genRules, repos)
-	}
-	files := repo.MergeRules(genRules, emptyRules, reposByFile, destFile, kinds)
+	files := repo.MergeRules(genRules, reposByFile, destFile, kinds, false)
 	return files, nil
 }
 
@@ -277,11 +276,7 @@ func importFromLockFile(c *updateReposConfig, workspace *rule.File, destFile *ru
 	for i := range genRules {
 		applyBuildAttributes(c, genRules[i])
 	}
-	var emptyRules []*rule.Rule
-	if c.pruneRules {
-		emptyRules = repo.GetRulesToPrune(genRules, repos)
-	}
-	files := repo.MergeRules(genRules, emptyRules, reposByFile, destFile, kinds)
+	files := repo.MergeRules(genRules, reposByFile, destFile, kinds, c.pruneRules)
 	return files, nil
 }
 
