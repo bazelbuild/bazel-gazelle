@@ -123,11 +123,12 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			if err := dec.Decode(&dl); err != nil {
 				return nil, err
 			}
-			mod := pathToModule[dl.Path]
-			if mod == nil {
-				continue
+			if mod, ok := pathToModule[dl.Path]; ok {
+				mod.Sum = dl.Sum
 			}
-			mod.Sum = dl.Sum
+			if mod, ok := replacePathToModule[dl.Path]; ok {
+				mod.Sum = dl.Sum
+			}
 		}
 	}
 
