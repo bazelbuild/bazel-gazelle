@@ -319,7 +319,11 @@ func defaultHeadCmd(remote, vcs string) (string, error) {
 		cmd := exec.Command("git", "ls-remote", remote, "HEAD")
 		out, err := cmd.Output()
 		if err != nil {
-			return "", fmt.Errorf("git ls-remote for %s : %v : %s", remote, err, err.(*exec.ExitError).Stderr)
+			var stdErr []byte
+			if e, ok := err.(*exec.ExitError); ok {
+				stdErr = e.Stderr
+			}
+			return "", fmt.Errorf("git ls-remote for %s : %v : %s", remote, err, stdErr)
 		}
 		ix := bytes.IndexByte(out, '\t')
 		if ix < 0 {
@@ -405,7 +409,11 @@ func defaultModInfo(rc *RemoteCache, importPath string) (modPath string, err err
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("finding module path for import %s: %v: %s", importPath, err, err.(*exec.ExitError).Stderr)
+		var stdErr []byte
+		if e, ok := err.(*exec.ExitError); ok {
+			stdErr = e.Stderr
+		}
+		return "", fmt.Errorf("finding module path for import %s: %v: %s", importPath, err, stdErr)
 	}
 	return strings.TrimSpace(string(out)), nil
 }
