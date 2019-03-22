@@ -416,6 +416,8 @@ The following flags are accepted:
 | :flag:`-to_macro macroFile%defName`                                                                      |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Tells Gazelle to write repository rules into a .bzl macro function rather than the WORKSPACE file.                                                      |
+| Currently, Gazelle won't see repositories declared in the macro when updating build files. This means that it won't use custom repository names, and it |
+| will go out to the network when trying to determine repository roots.                                                                                   |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-build_file_names file1,file2,...`                                                                |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+

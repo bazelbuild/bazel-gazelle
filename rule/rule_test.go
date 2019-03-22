@@ -77,6 +77,81 @@ z_library(name = "baz")
 	}
 }
 
+func TestPassInserted(t *testing.T) {
+	old := []byte(`
+load("a.bzl", "baz")
+
+def foo():
+    go_repository(name = "bar")
+`)
+	f, err := LoadMacroData(filepath.Join("old", "repo.bzl"), "", "foo", old)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f.Rules[0].Delete()
+	f.Sync()
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+load("a.bzl", "baz")
+
+def foo():
+    pass
+`)
+
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
+	}
+}
+
+func TestPassRemoved(t *testing.T) {
+	old := []byte(`
+load("a.bzl", "baz")
+
+def foo():
+    pass
+`)
+	f, err := LoadMacroData(filepath.Join("old", "repo.bzl"), "", "foo", old)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bar := NewRule("go_repository", "bar")
+	bar.Insert(f)
+	f.Sync()
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+load("a.bzl", "baz")
+
+def foo():
+    go_repository(name = "bar")
+`)
+
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
+	}
+}
+
+func TestFunctionInserted(t *testing.T) {
+	f, err := LoadMacroData(filepath.Join("old", "repo.bzl"), "", "foo", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bar := NewRule("go_repository", "bar")
+	bar.Insert(f)
+	f.Sync()
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+def foo():
+    go_repository(name = "bar")
+`)
+
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
+	}
+}
+
 func TestDeleteSyncDelete(t *testing.T) {
 	old := []byte(`
 x_library(name = "foo")

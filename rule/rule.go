@@ -48,7 +48,7 @@ type File struct {
 	// function is the underlying syntax tree of a bzl file function.
 	// This is used for editing the bzl file function specified by the
 	// update-repos -to_macro option.
-	function *bzl.Function
+	function *function
 
 	// Pkg is the Bazel package this build file defines.
 	Pkg string
@@ -112,18 +112,18 @@ func LoadMacroFile(path, pkg, defName string) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return LoadMacroData(path, pkg, defName, data, false)
+	return LoadMacroData(path, pkg, defName, data)
 }
 
 // EmptyMacroFile creates a bzl file at the given path and within the file creates
 // a Starlark function with the provided name. The function can then be modified
 // by Sync and Save calls.
 func EmptyMacroFile(path, pkg, defName string) (*File, error) {
- _, err := os.Create(path)
- if err != nil {
-	 return nil, err
- }
- return LoadMacroData(path, pkg, defName, nil, true)
+	_, err := os.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	return LoadMacroData(path, pkg, defName, nil)
 }
 
 // LoadData parses a build file from a byte slice and scans it for rules and
@@ -149,49 +149,62 @@ func LoadWorkspaceData(path, pkg string, data []byte) (*File, error) {
 
 // LoadMacroData parses a bzl file from a byte slice and scans for the load
 // statements and the rules called from the given Starlark function. If there is
-// no matching function name, then a new function with that name will be created.
-// The function's syntax tree will be returned within File and can be modified by
-// Sync and Save calls.
-func LoadMacroData(path, pkg, defName string, data []byte, isEmpty bool) (*File, error) {
+// no matching function name, then a new function will be created, and added to the
+// File the next time Sync is called. The function's syntax tree will be returned
+// within File and can be modified by Sync and Save calls.
+func LoadMacroData(path, pkg, defName string, data []byte) (*File, error) {
 	ast, err := bzl.ParseDefault(path, data)
 	if err != nil {
 		return nil, err
 	}
-	f := &File{
-		File: ast,
-		Pkg:  pkg,
-		Path: ast.Path,
-	}
-	if !isEmpty {
-		_, f.Loads, f.function = ScanASTBody(defName, ast.Stmt)
-	}
-	if f.function == nil {
-		defStmt := bzl.DefStmt{Name: defName}
-		ast.Stmt = append(ast.Stmt, &defStmt)
-		f.function = &defStmt.Function
-	} else {
-		f.Rules, _, _ = ScanASTBody("", f.function.Body)
-	}
-	return f, nil
+	return ScanASTBody(pkg, defName, ast), nil
 }
 
 // ScanAST creates a File wrapped around the given syntax tree. This tree
 // will be modified by editing methods.
 func ScanAST(pkg string, bzlFile *bzl.File) *File {
+	return ScanASTBody(pkg, "", bzlFile)
+}
+
+type function struct {
+	stmt              *bzl.DefStmt
+	inserted, hasPass bool
+}
+
+// ScanASTBody creates a File wrapped around the given syntax tree. It will also
+// scan the AST for a function matching the given defName, and if the function
+// does not exist it will create a new one and mark it to be added to the File
+// the next time Sync is called.
+func ScanASTBody(pkg, defName string, bzlFile *bzl.File) *File {
 	f := &File{
 		File: bzlFile,
 		Pkg:  pkg,
 		Path: bzlFile.Path,
 	}
-	f.Rules, f.Loads, _ = ScanASTBody("", bzlFile.Stmt)
+	var defStmt *bzl.DefStmt
+	f.Rules, f.Loads, defStmt = scanExprs(defName, bzlFile.Stmt)
+	if defStmt != nil {
+		f.Rules, _, _ = scanExprs("", defStmt.Body)
+		f.function = &function{
+			stmt:     defStmt,
+			inserted: true,
+		}
+		if len(defStmt.Body) == 1 {
+			if v, ok := defStmt.Body[0].(*bzl.BranchStmt); ok && v.Token == "pass" {
+				f.function.hasPass = true
+			}
+		}
+	} else if defName != "" {
+		f.function = &function{
+			stmt:     &bzl.DefStmt{Name: defName},
+			inserted: false,
+		}
+	}
 	f.Directives = ParseDirectives(bzlFile)
 	return f
 }
 
-// ScanASTBody scans a list of Starlark expressions and returns the rules,
-// loads and if a defName is supplied it will try to return a function
-// matching that name. This data can be wrapped by a File and later modified.
-func ScanASTBody(defName string, stmt []bzl.Expr) (rules []*Rule, loads []*Load, fn *bzl.Function) {
+func scanExprs(defName string, stmt []bzl.Expr) (rules []*Rule, loads []*Load, fn *bzl.DefStmt) {
 	for i, expr := range stmt {
 		switch expr := expr.(type) {
 		case *bzl.LoadStmt:
@@ -203,7 +216,7 @@ func ScanASTBody(defName string, stmt []bzl.Expr) (rules []*Rule, loads []*Load,
 			}
 		case *bzl.DefStmt:
 			if expr.Name == defName {
-				fn = &expr.Function
+				fn = expr
 			}
 		}
 	}
@@ -273,7 +286,19 @@ func (f *File) Sync() {
 		updateStmt(&f.File.Stmt, inserts, deletes, stmts)
 	} else {
 		updateStmt(&f.File.Stmt, loadInserts, loadDeletes, loadStmts)
-		updateStmt(&f.function.Body, ruleInserts, ruleDeletes, ruleStmts)
+		if f.function.hasPass && len(ruleInserts) > 0 {
+			f.function.stmt.Body = []bzl.Expr{}
+			f.function.hasPass = false
+		}
+		updateStmt(&f.function.stmt.Body, ruleInserts, ruleDeletes, ruleStmts)
+		if len(f.function.stmt.Body) == 0 {
+			f.function.stmt.Body = append(f.function.stmt.Body, &bzl.BranchStmt{Token: "pass"})
+			f.function.hasPass = true
+		}
+		if !f.function.inserted {
+			f.File.Stmt = append(f.File.Stmt, f.function.stmt)
+			f.function.inserted = true
+		}
 	}
 }
 
@@ -702,7 +727,7 @@ func (r *Rule) Insert(f *File) {
 	if f.function == nil {
 		stmt = f.File.Stmt
 	} else {
-		stmt = f.function.Body
+		stmt = f.function.stmt.Body
 	}
 	r.index = len(stmt)
 	r.inserted = true
