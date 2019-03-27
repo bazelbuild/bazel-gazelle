@@ -371,7 +371,8 @@ The following flags are accepted:
 ``update-repos``
 ~~~~~~~~~~~~~~~~
 
-The ``update-repos`` command updates repository rules in the WORKSPACE file.
+The ``update-repos`` command updates repository rules.
+It can write the rules to either the WORKSPACE (by default) or a .bzl file macro function.
 It can be used to add new repository rules or update existing rules to the
 latest version. It can also import repository rules from a ``go.mod`` file or
 a ``Gopkg.lock`` file.
@@ -383,6 +384,9 @@ a ``Gopkg.lock`` file.
 
   # Import repositories from go.mod
   $ gazelle update-repos -from_file=go.mod
+
+  # Import repositories from go.mod and update macro
+  $ gazelle update-repos -from_file=go.mod -to_macro=repositories.bzl%go_repositories
 
 :Note: ``update-repos`` is not directly supported by the ``gazelle`` rule.
   You can run it through the ``gazelle`` rule by passing extra arguments after
@@ -408,6 +412,12 @@ The following flags are accepted:
 | The root directory of the repository. Gazelle normally infers this to be the directory containing the WORKSPACE file.                                   |
 |                                                                                                                                                         |
 | Gazelle will not process packages outside this directory.                                                                                               |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-to_macro macroFile%defName`                                                                      |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Tells Gazelle to write repository rules into a .bzl macro function rather than the WORKSPACE file.                                                      |
+| Currently, Gazelle won't see repositories declared in the macro when updating build files. This means that it won't use custom repository names, and it |
+| will go out to the network when trying to determine repository roots.                                                                                   |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-build_file_names file1,file2,...`                                                                |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
