@@ -77,6 +77,7 @@ go_test(
         "//language:go_default_library",
         "//language/proto:go_default_library",
         "//merger:go_default_library",
+        "//pathtools:go_default_library",
         "//repo:go_default_library",
         "//resolve:go_default_library",
         "//rule:go_default_library",

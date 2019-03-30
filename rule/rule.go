@@ -72,7 +72,7 @@ type File struct {
 // EmptyFile creates a File wrapped around an empty syntax tree.
 func EmptyFile(path, pkg string) *File {
 	return &File{
-		File: &bzl.File{Path: path},
+		File: &bzl.File{Path: path, Type: bzl.TypeBuild},
 		Path: path,
 		Pkg:  pkg,
 	}
@@ -522,16 +522,16 @@ type Rule struct {
 	stmt
 	kind    string
 	args    []bzl.Expr
-	attrs   map[string]*bzl.BinaryExpr
+	attrs   map[string]*bzl.AssignExpr
 	private map[string]interface{}
 }
 
 // NewRule creates a new, empty rule with the given kind and name.
 func NewRule(kind, name string) *Rule {
-	nameAttr := &bzl.BinaryExpr{
-		X:  &bzl.Ident{Name: "name"},
-		Y:  &bzl.StringExpr{Value: name},
-		Op: "=",
+	nameAttr := &bzl.AssignExpr{
+		LHS: &bzl.Ident{Name: "name"},
+		RHS: &bzl.StringExpr{Value: name},
+		Op:  "=",
 	}
 	r := &Rule{
 		stmt: stmt{
@@ -541,7 +541,7 @@ func NewRule(kind, name string) *Rule {
 			},
 		},
 		kind:    kind,
-		attrs:   map[string]*bzl.BinaryExpr{"name": nameAttr},
+		attrs:   map[string]*bzl.AssignExpr{"name": nameAttr},
 		private: map[string]interface{}{},
 	}
 	return r
@@ -558,11 +558,10 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 	}
 	kind := x.Name
 	var args []bzl.Expr
-	attrs := make(map[string]*bzl.BinaryExpr)
+	attrs := make(map[string]*bzl.AssignExpr)
 	for _, arg := range call.List {
-		attr, ok := arg.(*bzl.BinaryExpr)
-		if ok && attr.Op == "=" {
-			key := attr.X.(*bzl.Ident) // required by parser
+		if attr, ok := arg.(*bzl.AssignExpr); ok {
+			key := attr.LHS.(*bzl.Ident) // required by parser
 			attrs[key.Name] = attr
 		} else {
 			args = append(args, arg)
@@ -631,7 +630,7 @@ func (r *Rule) Attr(key string) bzl.Expr {
 	if !ok {
 		return nil
 	}
-	return attr.Y
+	return attr.RHS
 }
 
 // AttrString returns the value of the named attribute if it is a scalar string.
@@ -641,7 +640,7 @@ func (r *Rule) AttrString(key string) string {
 	if !ok {
 		return ""
 	}
-	str, ok := attr.Y.(*bzl.StringExpr)
+	str, ok := attr.RHS.(*bzl.StringExpr)
 	if !ok {
 		return ""
 	}
@@ -656,7 +655,7 @@ func (r *Rule) AttrStrings(key string) []string {
 	if !ok {
 		return nil
 	}
-	list, ok := attr.Y.(*bzl.ListExpr)
+	list, ok := attr.RHS.(*bzl.ListExpr)
 	if !ok {
 		return nil
 	}
@@ -678,14 +677,14 @@ func (r *Rule) DelAttr(key string) {
 // SetAttr adds or replaces the named attribute with an expression produced
 // by ExprFromValue.
 func (r *Rule) SetAttr(key string, value interface{}) {
-	y := ExprFromValue(value)
+	rhs := ExprFromValue(value)
 	if attr, ok := r.attrs[key]; ok {
-		attr.Y = y
+		attr.RHS = rhs
 	} else {
-		r.attrs[key] = &bzl.BinaryExpr{
-			X:  &bzl.Ident{Name: key},
-			Y:  y,
-			Op: "=",
+		r.attrs[key] = &bzl.AssignExpr{
+			LHS: &bzl.Ident{Name: key},
+			RHS: rhs,
+			Op:  "=",
 		}
 	}
 	r.updated = true
@@ -757,7 +756,7 @@ func (r *Rule) sync() {
 
 	for _, k := range []string{"srcs", "deps"} {
 		if attr, ok := r.attrs[k]; ok {
-			bzl.Walk(attr.Y, sortExprLabels)
+			bzl.Walk(attr.RHS, sortExprLabels)
 		}
 	}
 
@@ -773,7 +772,7 @@ func (r *Rule) sync() {
 		list = append(list, attr)
 	}
 	sortedAttrs := list[len(r.args):]
-	key := func(e bzl.Expr) string { return e.(*bzl.BinaryExpr).X.(*bzl.Ident).Name }
+	key := func(e bzl.Expr) string { return e.(*bzl.AssignExpr).LHS.(*bzl.Ident).Name }
 	sort.SliceStable(sortedAttrs, func(i, j int) bool {
 		ki := key(sortedAttrs[i])
 		kj := key(sortedAttrs[j])
