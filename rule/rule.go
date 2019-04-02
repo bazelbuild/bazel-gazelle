@@ -153,7 +153,7 @@ func LoadWorkspaceData(path, pkg string, data []byte) (*File, error) {
 // File the next time Sync is called. The function's syntax tree will be returned
 // within File and can be modified by Sync and Save calls.
 func LoadMacroData(path, pkg, defName string, data []byte) (*File, error) {
-	ast, err := bzl.ParseDefault(path, data)
+	ast, err := bzl.ParseBzl(path, data)
 	if err != nil {
 		return nil, err
 	}
