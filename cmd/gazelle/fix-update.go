@@ -360,12 +360,21 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 			return nil, err
 		}
 	} else {
-		if err := fixWorkspace(c, workspace, loads); err != nil {
+		c.RepoName = findWorkspaceName(workspace)
+		var reposFiles map[*rule.File][]string
+		uc.repos, reposFiles, err = repo.ListRepositories(workspace)
+		if err != nil {
 			return nil, err
 		}
-		c.RepoName = findWorkspaceName(workspace)
-		uc.repos, err = repo.ListRepositories(workspace)
-		if err != nil {
+		files := make([]*rule.File, 0, len(reposFiles))
+		visited := make(map[string]bool)
+		for f := range reposFiles {
+			if !visited[f.Path] {
+				files = append(files, f)
+				visited[f.Path] = true
+			}
+		}
+		if err := fixRepoFiles(c, files, loads); err != nil {
 			return nil, err
 		}
 	}
@@ -416,7 +425,7 @@ FLAGS:
 	fs.PrintDefaults()
 }
 
-func fixWorkspace(c *config.Config, workspace *rule.File, loads []rule.LoadInfo) error {
+func fixRepoFiles(c *config.Config, files []*rule.File, loads []rule.LoadInfo) error {
 	uc := getUpdateConfig(c)
 	if !c.ShouldFix {
 		return nil
@@ -431,12 +440,19 @@ func fixWorkspace(c *config.Config, workspace *rule.File, loads []rule.LoadInfo)
 		return nil
 	}
 
-	merger.FixWorkspace(workspace)
-	merger.FixLoads(workspace, loads)
-	if err := merger.CheckGazelleLoaded(workspace); err != nil {
-		return err
+	for _, f := range files {
+		merger.FixLoads(f, loads)
+		if f.Path == filepath.Join(c.RepoRoot, "WORKSPACE") {
+			merger.FixWorkspace(f)
+			if err := merger.CheckGazelleLoaded(f); err != nil {
+				return err
+			}
+		}
+		if err := uc.emit(c, f); err != nil {
+			return err
+		}
 	}
-	return uc.emit(c, workspace)
+	return nil
 }
 
 func findWorkspaceName(f *rule.File) string {

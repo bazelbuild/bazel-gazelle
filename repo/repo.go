@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -55,9 +56,6 @@ type Repo struct {
 
 	// Sum is the hash of the module to be verified after download.
 	Sum string
-
-	// File is a pointer to the file where the repository rule was defined.
-	File *rule.File
 }
 
 type byName []Repo
@@ -109,38 +107,53 @@ func ImportRepoRules(filename string, repoCache *RemoteCache) ([]*rule.Rule, err
 	return rules, nil
 }
 
-// FilterRulesByFile filters a list of generated repo rules by the file where
-// the rule should be written. This is done by comparing the generated
-// rules with the current list of repo rules declared in the repository. If
-// the generated rule matches a rule already in the repo, then it inherits the
-// file where the rule was defined. Else its file is set as the destFile parameter.
-func FilterRulesByFile(before []Repo, after []*rule.Rule, destFile *rule.File) map[*rule.File][]*rule.Rule {
-	sort.Stable(byName(before))
-	sort.Stable(byRuleName(after))
+// MergeRules merges a list of generated repo rules with the already defined repo rules,
+// and then updates each rule's underlying file. If the generated rule matches an existing
+// one, then it inherits the file where the existing rule was defined. If the rule is new then
+// its file is set as the destFile parameter. A list of the updated files is returned.
+func MergeRules(genRules []*rule.Rule, existingRules map[*rule.File][]string, destFile *rule.File, kinds map[string]rule.KindInfo) []*rule.File {
+	sort.Stable(byRuleName(genRules))
 
-	res := make(map[*rule.File][]*rule.Rule)
-	var i, j int
-	for i, j = 0, 0; i < len(before) && j < len(after); {
-		if before[i].Name == after[j].Name() {
-			if before[i].File != nil {
-				res[before[i].File] = append(res[before[i].File], after[j])
-			} else {
-				res[destFile] = append(res[destFile], after[j])
-			}
-			i++
-			j++
-		} else if before[i].Name > after[j].Name() {
-			res[destFile] = append(res[destFile], after[j])
-			j++
-		} else {
-			i++
+	rulesByFile := make(map[*rule.File][]*rule.Rule)
+	for file, repoNames := range existingRules {
+		sort.Strings(repoNames)
+		if file.Path == destFile.Path && file.MacroName() != "" && file.MacroName() == destFile.MacroName() {
+			file = destFile
 		}
+		k := 0
+		for i, j := 0, 0; j < len(genRules); {
+			if i == len(repoNames) || repoNames[i] > genRules[j].Name() {
+				genRules[k] = genRules[j]
+				j++
+				k++
+			} else if repoNames[i] == genRules[j].Name() {
+				rulesByFile[file] = append(rulesByFile[file], genRules[j])
+				i++
+				j++
+			} else {
+				i++
+			}
+		}
+		genRules = genRules[:k]
 	}
-	for j < len(after) {
-		res[destFile] = append(res[destFile], after[j])
-		j++
+	for _, r := range genRules {
+		rulesByFile[destFile] = append(rulesByFile[destFile], r)
 	}
-	return res
+
+	updatedFiles := make(map[string]*rule.File)
+	for f, rules := range rulesByFile {
+		if uf, ok := updatedFiles[f.Path]; ok {
+			f.SyncMacroFile(uf)
+		}
+		merger.MergeFile(f, nil, rules, merger.PreResolve, kinds)
+		f.Sync()
+		updatedFiles[f.Path] = f
+	}
+	files := make([]*rule.File, 0, len(updatedFiles))
+	for _, f := range updatedFiles {
+		files = append(files, f)
+	}
+	return files
 }
 
 func getLockFileFormat(filename string) lockFileFormat {
@@ -211,28 +224,31 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 
 // ListRepositories extracts metadata about repositories declared in a
 // file.
-func ListRepositories(workspace *rule.File) (repos []Repo, err error) {
-	repos = getRepos(workspace.Rules, workspace)
+func ListRepositories(workspace *rule.File) (repos []Repo, repoNamesByFile map[*rule.File][]string, err error) {
+	repoNamesByFile = make(map[*rule.File][]string)
+	repos, repoNamesByFile[workspace] = getRepos(workspace.Rules)
 
 	for _, d := range workspace.Directives {
 		switch d.Key {
 		case "repository_macro":
 			vals := strings.Split(d.Value, "%")
 			if len(vals) != 2 {
-				return nil, fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", d.Value)
+				return nil, nil, fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", d.Value)
 			}
 			macroFile, err := rule.LoadMacroFile(vals[0], "", vals[1])
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
-			repos = append(repos, getRepos(macroFile.Rules, macroFile)...)
+			currRepos, names := getRepos(macroFile.Rules)
+			repoNamesByFile[macroFile] = names
+			repos = append(repos, currRepos...)
 		}
 	}
 
-	return repos, nil
+	return repos, repoNamesByFile, nil
 }
 
-func getRepos(rules []*rule.Rule, file *rule.File) (repos []Repo) {
+func getRepos(rules []*rule.Rule) (repos []Repo, names []string) {
 	for _, r := range rules {
 		name := r.Name()
 		if name == "" {
@@ -257,7 +273,6 @@ func getRepos(rules []*rule.Rule, file *rule.File) (repos []Repo) {
 				Commit:   revision,
 				Remote:   remote,
 				VCS:      vcs,
-				File:     file,
 			}
 
 			// TODO(jayconrod): infer from {new_,}git_repository, {new_,}http_archive,
@@ -267,6 +282,7 @@ func getRepos(rules []*rule.Rule, file *rule.File) (repos []Repo) {
 			continue
 		}
 		repos = append(repos, repo)
+		names = append(names, repo.Name)
 	}
-	return repos
+	return repos, names
 }

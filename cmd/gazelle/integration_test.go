@@ -1280,6 +1280,8 @@ http_archive(
 	urls = ["https://example.com/yaml.tar.gz"],
 	sha256 = "1234",
 )
+
+# gazelle:repository_macro repositories.bzl%go_repositories
 `,
 		}, {
 			Path: "repositories.bzl",
@@ -1341,15 +1343,6 @@ def go_repositories():
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	f, err := os.OpenFile(dir+"/WORKSPACE", os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		t.Fatal(err)
-	}
-	directive := "# gazelle:repository_macro " + dir + "/repositories.bzl%go_repositories"
-	if _, err = f.WriteString(directive); err != nil {
-		t.Fatal(err)
-	}
-
 	args := []string{"update-repos", "-build_file_generation", "off", "-from_file", "Gopkg.lock"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
@@ -1386,8 +1379,8 @@ http_archive(
     urls = ["https://example.com/yaml.tar.gz"],
     sha256 = "1234",
 )
-` + directive +
-				`
+
+# gazelle:repository_macro repositories.bzl%go_repositories
 
 go_repository(
     name = "com_github_pkg_errors",
@@ -1454,11 +1447,8 @@ http_archive(
     sha256 = "1234",
 )
 
-go_repository(
-    name = "org_golang_x_net",
-    importpath = "golang.org/x/net",
-    tag = "1.2",
-)
+# gazelle:repository_macro repositories.bzl%go_repositories
+# gazelle:repository_macro repositories.bzl%foo_repositories
 `,
 		}, {
 			Path: "repositories.bzl",
@@ -1466,11 +1456,17 @@ go_repository(
 load("@bazel_gazelle//:deps.bzl", "go_repository")
 
 def go_repositories():
-    # keep
     go_repository(
         name = "org_golang_x_sys",
         importpath = "golang.org/x/sys",
         remote = "https://github.com/golang/sys",
+    )
+
+def foo_repositories():
+    go_repository(
+        name = "org_golang_x_net",
+        importpath = "golang.org/x/net",
+        tag = "1.2",
     )
 `,
 		}, {
@@ -1508,16 +1504,7 @@ def go_repositories():
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	f, err := os.OpenFile(dir+"/WORKSPACE", os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		t.Fatal(err)
-	}
-	directive := "# gazelle:repository_macro " + dir + "/repositories.bzl%go_repositories"
-	if _, err = f.WriteString(directive); err != nil {
-		t.Fatal(err)
-	}
-
-	args := []string{"update-repos", "-build_file_generation", "off", "-from_file", "Gopkg.lock", "-to_macro", "repositories.bzl%go_repositories"}
+	args := []string{"update-repos", "-build_file_generation", "off", "-from_file", "Gopkg.lock", "-to_macro", "repositories.bzl%foo_repositories"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
@@ -1554,24 +1541,28 @@ http_archive(
     sha256 = "1234",
 )
 
-go_repository(
-    name = "org_golang_x_net",
-    build_file_generation = "off",
-    commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
-    importpath = "golang.org/x/net",
-)
-` + directive,
+# gazelle:repository_macro repositories.bzl%go_repositories
+# gazelle:repository_macro repositories.bzl%foo_repositories
+`,
 		}, {
 			Path: "repositories.bzl",
 			Content: `
 load("@bazel_gazelle//:deps.bzl", "go_repository")
 
 def go_repositories():
-    # keep
     go_repository(
         name = "org_golang_x_sys",
+        build_file_generation = "off",
+        commit = "bb24a47a89eac6c1227fbcb2ae37a8b9ed323366",
         importpath = "golang.org/x/sys",
-        remote = "https://github.com/golang/sys",
+    )
+
+def foo_repositories():
+    go_repository(
+        name = "org_golang_x_net",
+        build_file_generation = "off",
+        commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
+        importpath = "golang.org/x/net",
     )
     go_repository(
         name = "com_github_pkg_errors",

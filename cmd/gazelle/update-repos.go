@@ -31,7 +31,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-type updateReposFn func(c *updateReposConfig, workspace *rule.File, oldFile *rule.File, kinds map[string]rule.KindInfo) error
+type updateReposFn func(c *updateReposConfig, workspace *rule.File, oldFile *rule.File, kinds map[string]rule.KindInfo) ([]*rule.File, error)
 
 type updateReposConfig struct {
 	fn                      updateReposFn
@@ -140,7 +140,7 @@ func updateRepos(args []string) error {
 	if uc.macroFileName == "" {
 		destFile = workspace
 	} else {
-		if _, err := os.Stat(uc.macroFileName); os.IsNotExist(err) {
+		if _, err = os.Stat(uc.macroFileName); os.IsNotExist(err) {
 			destFile, err = rule.EmptyMacroFile(uc.macroFileName, "", uc.macroDefName)
 		} else {
 			destFile, err = rule.LoadMacroFile(uc.macroFileName, "", uc.macroDefName)
@@ -150,23 +150,22 @@ func updateRepos(args []string) error {
 		}
 	}
 
-	if uc.macroFileName == "" {
-		merger.FixWorkspace(destFile)
-	}
+	merger.FixWorkspace(workspace)
 
-	if err := uc.fn(uc, workspace, destFile, kinds); err != nil {
+	files, err := uc.fn(uc, workspace, destFile, kinds)
+	if err != nil {
 		return err
 	}
-
-	merger.FixLoads(destFile, loads)
-	if uc.macroFileName == "" {
-		if err := merger.CheckGazelleLoaded(destFile); err != nil {
+	for _, f := range files {
+		merger.FixLoads(f, loads)
+		if f.Path == workspace.Path {
+			if err := merger.CheckGazelleLoaded(workspace); err != nil {
+				return err
+			}
+		}
+		if err := f.Save(f.Path); err != nil {
 			return err
 		}
-	}
-
-	if err := destFile.Save(destFile.Path); err != nil {
-		return fmt.Errorf("error writing %q: %v", destFile.Path, err)
 	}
 	return nil
 }
@@ -216,10 +215,10 @@ FLAGS:
 	fs.PrintDefaults()
 }
 
-func updateImportPaths(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) error {
-	repos, err := repo.ListRepositories(workspace)
+func updateImportPaths(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) ([]*rule.File, error) {
+	repos, reposByFile, err := repo.ListRepositories(workspace)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	rc, cleanupRc := repo.NewRemoteCache(repos)
 	defer cleanupRc()
@@ -247,41 +246,30 @@ func updateImportPaths(c *updateReposConfig, workspace *rule.File, destFile *rul
 
 	for _, err := range errs {
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	rulesByFile := repo.FilterRulesByFile(repos, genRules, destFile)
-	for f, rules := range rulesByFile {
-		merger.MergeFile(f, nil, rules, merger.PreResolve, kinds)
-		if err := f.Save(f.Path); err != nil {
-			return fmt.Errorf("error writing %q: %v", f.Path, err)
-		}
-	}
-	return nil
+	files := repo.MergeRules(genRules, reposByFile, destFile, kinds)
+	return files, nil
 }
 
-func importFromLockFile(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) error {
-	repos, err := repo.ListRepositories(workspace)
+// duplicate files if destFile is not new... ListRepositories recalls LoadMacroFile
+func importFromLockFile(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) ([]*rule.File, error) {
+	repos, reposByFile, err := repo.ListRepositories(workspace)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	rc, cleanupRc := repo.NewRemoteCache(repos)
 	defer cleanupRc()
 	genRules, err := repo.ImportRepoRules(c.lockFilename, rc)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	rulesByFile := repo.FilterRulesByFile(repos, genRules, destFile)
-	for f, rules := range rulesByFile {
-		for i := range rules {
-			applyBuildAttributes(c, rules[i])
-		}
-		merger.MergeFile(f, nil, rules, merger.PreResolve, kinds)
-		if err := f.Save(f.Path); err != nil {
-			return fmt.Errorf("error writing %q: %v", f.Path, err)
-		}
+	for i := range genRules {
+		applyBuildAttributes(c, genRules[i])
 	}
-	return nil
+	files := repo.MergeRules(genRules, reposByFile, destFile, kinds)
+	return files, nil
 }
 
 func applyBuildAttributes(c *updateReposConfig, r *rule.Rule) {

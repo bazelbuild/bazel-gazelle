@@ -117,12 +117,11 @@ go_repository(
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := repo.ListRepositories(workspace)
+			got, _, err := repo.ListRepositories(workspace)
 			if err != nil {
 				t.Fatal(err)
 			}
 			for i := range tc.want {
-				tc.want[i].File = got[i].File
 				if !reflect.DeepEqual(got[i], tc.want[i]) {
 					t.Errorf("got %#v ; want %#v", got, tc.want)
 				}
@@ -180,7 +179,7 @@ def baz_repositories():
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := repo.ListRepositories(workspace)
+	got, _, err := repo.ListRepositories(workspace)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +200,6 @@ def baz_repositories():
 		Commit:   "123456",
 	}}
 	for i := range want {
-		want[i].File = got[i].File
 		if !reflect.DeepEqual(got[i], want[i]) {
 			t.Errorf("got %#v ; want %#v", got, want)
 		}
