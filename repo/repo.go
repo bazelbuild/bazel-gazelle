@@ -114,40 +114,34 @@ func ImportRepoRules(filename string, repoCache *RemoteCache) ([]*rule.Rule, err
 func MergeRules(genRules []*rule.Rule, existingRules map[*rule.File][]string, destFile *rule.File, kinds map[string]rule.KindInfo) []*rule.File {
 	sort.Stable(byRuleName(genRules))
 
-	rulesByFile := make(map[*rule.File][]*rule.Rule)
+	repoMap := make(map[string]*rule.File)
 	for file, repoNames := range existingRules {
-		sort.Strings(repoNames)
 		if file.Path == destFile.Path && file.MacroName() != "" && file.MacroName() == destFile.MacroName() {
 			file = destFile
 		}
-		k := 0
-		for i, j := 0, 0; j < len(genRules); {
-			if i == len(repoNames) || repoNames[i] > genRules[j].Name() {
-				genRules[k] = genRules[j]
-				j++
-				k++
-			} else if repoNames[i] == genRules[j].Name() {
-				rulesByFile[file] = append(rulesByFile[file], genRules[j])
-				i++
-				j++
-			} else {
-				i++
-			}
+		for _, name := range repoNames {
+			repoMap[name] = file
 		}
-		genRules = genRules[:k]
 	}
-	for _, r := range genRules {
-		rulesByFile[destFile] = append(rulesByFile[destFile], r)
+
+	rulesByFile := make(map[*rule.File][]*rule.Rule)
+	for _, rule := range genRules {
+		dest := destFile
+		if file, ok := repoMap[rule.Name()]; ok {
+			dest = file
+		}
+		rulesByFile[dest] = append(rulesByFile[dest], rule)
 	}
 
 	updatedFiles := make(map[string]*rule.File)
 	for f, rules := range rulesByFile {
-		if uf, ok := updatedFiles[f.Path]; ok {
-			f.SyncMacroFile(uf)
-		}
 		merger.MergeFile(f, nil, rules, merger.PreResolve, kinds)
 		f.Sync()
-		updatedFiles[f.Path] = f
+		if uf, ok := updatedFiles[f.Path]; ok {
+			uf.SyncMacroFile(f)
+		} else {
+			updatedFiles[f.Path] = f
+		}
 	}
 	files := make([]*rule.File, 0, len(updatedFiles))
 	for _, f := range updatedFiles {
@@ -227,15 +221,15 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 func ListRepositories(workspace *rule.File) (repos []Repo, repoNamesByFile map[*rule.File][]string, err error) {
 	repoNamesByFile = make(map[*rule.File][]string)
 	repos, repoNamesByFile[workspace] = getRepos(workspace.Rules)
-
 	for _, d := range workspace.Directives {
 		switch d.Key {
 		case "repository_macro":
-			vals := strings.Split(d.Value, "%")
-			if len(vals) != 2 {
-				return nil, nil, fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", d.Value)
+			f, defName, err := parseRepositoryMacroDirective(d.Value)
+			if err != nil {
+				return nil, nil, err
 			}
-			macroFile, err := rule.LoadMacroFile(vals[0], "", vals[1])
+			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
+			macroFile, err := rule.LoadMacroFile(f, "", defName)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -246,6 +240,18 @@ func ListRepositories(workspace *rule.File) (repos []Repo, repoNamesByFile map[*
 	}
 
 	return repos, repoNamesByFile, nil
+}
+
+func parseRepositoryMacroDirective(directive string) (string, string, error) {
+	vals := strings.Split(directive, "%")
+	if len(vals) != 2 {
+		return "", "", fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", directive)
+	}
+	f := vals[0]
+	if strings.HasPrefix(f, "..") {
+		return "", "", fmt.Errorf("Failure parsing repository_macro: %s, macro file path %s should not start with \"..\"", directive, f)
+	}
+	return f, vals[1], nil
 }
 
 func getRepos(rules []*rule.Rule) (repos []Repo, names []string) {

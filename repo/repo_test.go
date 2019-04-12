@@ -16,7 +16,6 @@ limitations under the License.
 package repo_test
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -170,12 +169,12 @@ def baz_repositories():
 `}}
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
-	workspaceString := fmt.Sprintf(`
-# gazelle:repository_macro %[1]s/repos1.bzl%%go_repositories
-# gazelle:repository_macro %[1]s/repos1.bzl%%foo_repositories
-# gazelle:repository_macro %[1]s/repos2.bzl%%bar_repositories
-`, dir)
-	workspace, err := rule.LoadData("WORKSPACE", "", []byte(workspaceString))
+	workspaceString := `
+# gazelle:repository_macro repos1.bzl%go_repositories
+# gazelle:repository_macro repos1.bzl%foo_repositories
+# gazelle:repository_macro repos2.bzl%bar_repositories
+`
+	workspace, err := rule.LoadData(dir + "/WORKSPACE", "", []byte(workspaceString))
 	if err != nil {
 		t.Fatal(err)
 	}

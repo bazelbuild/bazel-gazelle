@@ -69,6 +69,9 @@ func (f macroFlag) Set(value string) error {
 	if len(args) != 2 {
 		return fmt.Errorf("Failure parsing to_macro: %s, expected format is macroFile%%defName", value)
 	}
+	if strings.HasPrefix(args[0], "..") {
+		return fmt.Errorf("Failure parsing to_macro: %s, macro file path %s should not start with \"..\"", value, args[0])
+	}
 	*f.macroFileName = args[0]
 	*f.macroDefName = args[1]
 	return nil
@@ -140,13 +143,14 @@ func updateRepos(args []string) error {
 	if uc.macroFileName == "" {
 		destFile = workspace
 	} else {
-		if _, err = os.Stat(uc.macroFileName); os.IsNotExist(err) {
-			destFile, err = rule.EmptyMacroFile(uc.macroFileName, "", uc.macroDefName)
+		macroPath := filepath.Join(c.RepoRoot, filepath.Clean(uc.macroFileName))
+		if _, err = os.Stat(macroPath); os.IsNotExist(err) {
+			destFile, err = rule.EmptyMacroFile(macroPath, "", uc.macroDefName)
 		} else {
-			destFile, err = rule.LoadMacroFile(uc.macroFileName, "", uc.macroDefName)
+			destFile, err = rule.LoadMacroFile(macroPath, "", uc.macroDefName)
 		}
 		if err != nil {
-			return fmt.Errorf("error loading %q: %v", uc.macroFileName, err)
+			return fmt.Errorf("error loading %q: %v", macroPath, err)
 		}
 	}
 
@@ -253,7 +257,6 @@ func updateImportPaths(c *updateReposConfig, workspace *rule.File, destFile *rul
 	return files, nil
 }
 
-// duplicate files if destFile is not new... ListRepositories recalls LoadMacroFile
 func importFromLockFile(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) ([]*rule.File, error) {
 	repos, reposByFile, err := repo.ListRepositories(workspace)
 	if err != nil {

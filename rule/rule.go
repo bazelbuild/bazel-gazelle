@@ -241,10 +241,12 @@ func MatchBuildFileName(dir string, names []string, files []os.FileInfo) string 
 // SyncMacroFile syncs the file's syntax tree with another file's. This is
 // useful for keeping multiple macro definitions from the same .bzl file in sync.
 func (f *File) SyncMacroFile(from *File) {
-	f.File.Stmt = from.File.Stmt
-	if f.function != nil && f.function.inserted {
-		_, f.Loads, f.function.stmt = scanExprs(f.function.stmt.Name, f.File.Stmt)
-		f.Rules, _, _ = scanExprs("", f.function.stmt.Body)
+	fromFunc := *from.function.stmt
+	_, _, toFunc := scanExprs(from.function.stmt.Name, f.File.Stmt)
+	if toFunc != nil {
+		*toFunc = fromFunc
+	} else {
+		f.File.Stmt = append(f.File.Stmt, &fromFunc)
 	}
 }
 

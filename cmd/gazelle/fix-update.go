@@ -367,11 +367,11 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 			return nil, err
 		}
 		files := make([]*rule.File, 0, len(reposFiles))
-		visited := make(map[string]bool)
+		seen := make(map[string]bool)
 		for f := range reposFiles {
-			if !visited[f.Path] {
+			if !seen[f.Path] {
 				files = append(files, f)
-				visited[f.Path] = true
+				seen[f.Path] = true
 			}
 		}
 		if err := fixRepoFiles(c, files, loads); err != nil {
