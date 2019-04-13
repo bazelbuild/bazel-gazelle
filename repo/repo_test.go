@@ -174,7 +174,7 @@ def baz_repositories():
 # gazelle:repository_macro repos1.bzl%foo_repositories
 # gazelle:repository_macro repos2.bzl%bar_repositories
 `
-	workspace, err := rule.LoadData(dir + "/WORKSPACE", "", []byte(workspaceString))
+	workspace, err := rule.LoadData(dir+"/WORKSPACE", "", []byte(workspaceString))
 	if err != nil {
 		t.Fatal(err)
 	}
