@@ -31,7 +31,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-type updateReposFn func(c *updateReposConfig, oldFile *rule.File, kinds map[string]rule.KindInfo) error
+type updateReposFn func(c *updateReposConfig, workspace *rule.File, oldFile *rule.File, kinds map[string]rule.KindInfo) ([]*rule.File, error)
 
 type updateReposConfig struct {
 	fn                      updateReposFn
@@ -68,6 +68,9 @@ func (f macroFlag) Set(value string) error {
 	args := strings.Split(value, "%")
 	if len(args) != 2 {
 		return fmt.Errorf("Failure parsing to_macro: %s, expected format is macroFile%%defName", value)
+	}
+	if strings.HasPrefix(args[0], "..") {
+		return fmt.Errorf("Failure parsing to_macro: %s, macro file path %s should not start with \"..\"", value, args[0])
 	}
 	*f.macroFileName = args[0]
 	*f.macroDefName = args[1]
@@ -131,40 +134,42 @@ func updateRepos(args []string) error {
 	}
 	uc := getUpdateReposConfig(c)
 
-	var f *rule.File
-	var path string
-	if uc.macroFileName == "" {
-		path = filepath.Join(c.RepoRoot, "WORKSPACE")
-		f, err = rule.LoadWorkspaceFile(path, "")
-	} else {
-		path = uc.macroFileName
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			f, err = rule.EmptyMacroFile(path, "", uc.macroDefName)
-		} else {
-			f, err = rule.LoadMacroFile(path, "", uc.macroDefName)
-		}
-	}
+	path := filepath.Join(c.RepoRoot, "WORKSPACE")
+	workspace, err := rule.LoadWorkspaceFile(path, "")
 	if err != nil {
 		return fmt.Errorf("error loading %q: %v", path, err)
 	}
-
+	var destFile *rule.File
 	if uc.macroFileName == "" {
-		merger.FixWorkspace(f)
-	}
-
-	if err := uc.fn(uc, f, kinds); err != nil {
-		return err
-	}
-
-	merger.FixLoads(f, loads)
-	if uc.macroFileName == "" {
-		if err := merger.CheckGazelleLoaded(f); err != nil {
-			return err
+		destFile = workspace
+	} else {
+		macroPath := filepath.Join(c.RepoRoot, filepath.Clean(uc.macroFileName))
+		if _, err = os.Stat(macroPath); os.IsNotExist(err) {
+			destFile, err = rule.EmptyMacroFile(macroPath, "", uc.macroDefName)
+		} else {
+			destFile, err = rule.LoadMacroFile(macroPath, "", uc.macroDefName)
+		}
+		if err != nil {
+			return fmt.Errorf("error loading %q: %v", macroPath, err)
 		}
 	}
 
-	if err := f.Save(f.Path); err != nil {
-		return fmt.Errorf("error writing %q: %v", f.Path, err)
+	merger.FixWorkspace(workspace)
+
+	files, err := uc.fn(uc, workspace, destFile, kinds)
+	if err != nil {
+		return err
+	}
+	for _, f := range files {
+		merger.FixLoads(f, loads)
+		if f.Path == workspace.Path {
+			if err := merger.CheckGazelleLoaded(workspace); err != nil {
+				return err
+			}
+		}
+		if err := f.Save(f.Path); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -214,9 +219,12 @@ FLAGS:
 	fs.PrintDefaults()
 }
 
-func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
-	rs := repo.ListRepositories(f)
-	rc, cleanupRc := repo.NewRemoteCache(rs)
+func updateImportPaths(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) ([]*rule.File, error) {
+	repos, reposByFile, err := repo.ListRepositories(workspace)
+	if err != nil {
+		return nil, err
+	}
+	rc, cleanupRc := repo.NewRemoteCache(repos)
 	defer cleanupRc()
 
 	genRules := make([]*rule.Rule, len(c.importPaths))
@@ -242,27 +250,29 @@ func updateImportPaths(c *updateReposConfig, f *rule.File, kinds map[string]rule
 
 	for _, err := range errs {
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	merger.MergeFile(f, nil, genRules, merger.PreResolve, kinds)
-	return nil
+	files := repo.MergeRules(genRules, reposByFile, destFile, kinds)
+	return files, nil
 }
 
-func importFromLockFile(c *updateReposConfig, f *rule.File, kinds map[string]rule.KindInfo) error {
-	rs := repo.ListRepositories(f)
-	rc, cleanupRc := repo.NewRemoteCache(rs)
+func importFromLockFile(c *updateReposConfig, workspace *rule.File, destFile *rule.File, kinds map[string]rule.KindInfo) ([]*rule.File, error) {
+	repos, reposByFile, err := repo.ListRepositories(workspace)
+	if err != nil {
+		return nil, err
+	}
+	rc, cleanupRc := repo.NewRemoteCache(repos)
 	defer cleanupRc()
 	genRules, err := repo.ImportRepoRules(c.lockFilename, rc)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for i := range genRules {
 		applyBuildAttributes(c, genRules[i])
 	}
-
-	merger.MergeFile(f, nil, genRules, merger.PreResolve, kinds)
-	return nil
+	files := repo.MergeRules(genRules, reposByFile, destFile, kinds)
+	return files, nil
 }
 
 func applyBuildAttributes(c *updateReposConfig, r *rule.Rule) {

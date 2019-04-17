@@ -238,6 +238,27 @@ func MatchBuildFileName(dir string, names []string, files []os.FileInfo) string 
 	return ""
 }
 
+// SyncMacroFile syncs the file's syntax tree with another file's. This is
+// useful for keeping multiple macro definitions from the same .bzl file in sync.
+func (f *File) SyncMacroFile(from *File) {
+	fromFunc := *from.function.stmt
+	_, _, toFunc := scanExprs(from.function.stmt.Name, f.File.Stmt)
+	if toFunc != nil {
+		*toFunc = fromFunc
+	} else {
+		f.File.Stmt = append(f.File.Stmt, &fromFunc)
+	}
+}
+
+// MacroName returns the name of the macro function that this file is editing,
+// or an empty string if a macro function is not being edited.
+func (f *File) MacroName() string {
+	if f.function != nil && f.function.stmt != nil {
+		return f.function.stmt.Name
+	}
+	return ""
+}
+
 // Sync writes all changes back to the wrapped syntax tree. This should be
 // called after editing operations, before reading the syntax tree again.
 func (f *File) Sync() {

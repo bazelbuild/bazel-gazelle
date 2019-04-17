@@ -1253,10 +1253,37 @@ go_repository(
 		}})
 }
 
-func TestImportReposFromDepToMacro(t *testing.T) {
+func TestImportReposFromDepToWorkspaceWithMacro(t *testing.T) {
 	files := []testtools.FileSpec{
-		{Path: "WORKSPACE"},
 		{
+			Path: "WORKSPACE",
+			Content: `
+http_archive(
+    name = "io_bazel_rules_go",
+    url = "https://github.com/bazelbuild/rules_go/releases/download/0.10.1/rules_go-0.10.1.tar.gz",
+    sha256 = "4b14d8dd31c6dbaf3ff871adcd03f28c3274e42abc855cb8fb4d01233c0154dc",
+)
+http_archive(
+    name = "bazel_gazelle",
+    url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.10.0/bazel-gazelle-0.10.0.tar.gz",
+    sha256 = "6228d9618ab9536892aa69082c063207c91e777e51bd3c5544c9c060cafe1bd8",
+)
+load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains", "go_repository")
+go_rules_dependencies()
+go_register_toolchains()
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+gazelle_dependencies()
+
+http_archive(
+	name = "com_github_go_yaml_yaml",
+	urls = ["https://example.com/yaml.tar.gz"],
+	sha256 = "1234",
+)
+
+# gazelle:repository_macro repositories.bzl%go_repositories
+`,
+		}, {
 			Path: "repositories.bzl",
 			Content: `
 load("@bazel_gazelle//:deps.bzl", "go_repository")
@@ -1273,12 +1300,6 @@ def go_repositories():
         name = "org_golang_x_sys",
         importpath = "golang.org/x/sys",
         remote = "https://github.com/golang/sys",
-    )
-
-    http_archive(
-        name = "com_github_go_yaml_yaml",
-        urls = ["https://example.com/yaml.tar.gz"],
-        sha256 = "1234",
     )
 `,
 		}, {
@@ -1322,13 +1343,53 @@ def go_repositories():
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	args := []string{"update-repos", "-build_file_generation", "off", "-from_file", "Gopkg.lock", "-to_macro", "repositories.bzl%go_repositories"}
+	args := []string{"update-repos", "-build_file_generation", "off", "-from_file", "Gopkg.lock"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
 
 	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
+			Path: "WORKSPACE",
+			Content: `
+http_archive(
+    name = "io_bazel_rules_go",
+    url = "https://github.com/bazelbuild/rules_go/releases/download/0.10.1/rules_go-0.10.1.tar.gz",
+    sha256 = "4b14d8dd31c6dbaf3ff871adcd03f28c3274e42abc855cb8fb4d01233c0154dc",
+)
+
+http_archive(
+    name = "bazel_gazelle",
+    url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.10.0/bazel-gazelle-0.10.0.tar.gz",
+    sha256 = "6228d9618ab9536892aa69082c063207c91e777e51bd3c5544c9c060cafe1bd8",
+)
+
+load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+go_register_toolchains()
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
+gazelle_dependencies()
+
+http_archive(
+    name = "com_github_go_yaml_yaml",
+    urls = ["https://example.com/yaml.tar.gz"],
+    sha256 = "1234",
+)
+
+# gazelle:repository_macro repositories.bzl%go_repositories
+
+go_repository(
+    name = "com_github_pkg_errors",
+    build_file_generation = "off",
+    commit = "645ef00459ed84a119197bfb8d8205042c6df63d",
+    importpath = "github.com/pkg/errors",
+)
+`,
+		}, {
 			Path: "repositories.bzl",
 			Content: `
 load("@bazel_gazelle//:deps.bzl", "go_repository")
@@ -1348,10 +1409,160 @@ def go_repositories():
         remote = "https://github.com/golang/sys",
     )
 
-    http_archive(
-        name = "com_github_go_yaml_yaml",
-        urls = ["https://example.com/yaml.tar.gz"],
-        sha256 = "1234",
+`,
+		},
+	})
+}
+
+func TestImportReposFromDepToMacroWithWorkspace(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+			Content: `
+http_archive(
+    name = "io_bazel_rules_go",
+    url = "https://github.com/bazelbuild/rules_go/releases/download/0.10.1/rules_go-0.10.1.tar.gz",
+    sha256 = "4b14d8dd31c6dbaf3ff871adcd03f28c3274e42abc855cb8fb4d01233c0154dc",
+)
+
+http_archive(
+    name = "bazel_gazelle",
+    url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.10.0/bazel-gazelle-0.10.0.tar.gz",
+    sha256 = "6228d9618ab9536892aa69082c063207c91e777e51bd3c5544c9c060cafe1bd8",
+)
+
+load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+go_register_toolchains()
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
+gazelle_dependencies()
+
+http_archive(
+    name = "com_github_go_yaml_yaml",
+    urls = ["https://example.com/yaml.tar.gz"],
+    sha256 = "1234",
+)
+
+# gazelle:repository_macro repositories.bzl%go_repositories
+# gazelle:repository_macro repositories.bzl%foo_repositories
+`,
+		}, {
+			Path: "repositories.bzl",
+			Content: `
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+def go_repositories():
+    go_repository(
+        name = "org_golang_x_sys",
+        importpath = "golang.org/x/sys",
+        remote = "https://github.com/golang/sys",
+    )
+
+def foo_repositories():
+    go_repository(
+        name = "org_golang_x_net",
+        importpath = "golang.org/x/net",
+        tag = "1.2",
+    )
+`,
+		}, {
+			Path: "Gopkg.lock",
+			Content: `# This file is autogenerated, do not edit; changes may be undone by the next 'dep ensure'.
+
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  revision = "66aacef3dd8a676686c7ae3716979581e8b03c47"
+
+[[projects]]
+  branch = "master"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  revision = "bb24a47a89eac6c1227fbcb2ae37a8b9ed323366"
+
+[solve-meta]
+  analyzer-name = "dep"
+  analyzer-version = 1
+  inputs-digest = "05c1cd69be2c917c0cc4b32942830c2acfa044d8200fdc94716aae48a8083702"
+  solver-name = "gps-cdcl"
+  solver-version = 1
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update-repos", "-build_file_generation", "off", "-from_file", "Gopkg.lock", "-to_macro", "repositories.bzl%foo_repositories"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+			Content: `
+http_archive(
+    name = "io_bazel_rules_go",
+    url = "https://github.com/bazelbuild/rules_go/releases/download/0.10.1/rules_go-0.10.1.tar.gz",
+    sha256 = "4b14d8dd31c6dbaf3ff871adcd03f28c3274e42abc855cb8fb4d01233c0154dc",
+)
+
+http_archive(
+    name = "bazel_gazelle",
+    url = "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.10.0/bazel-gazelle-0.10.0.tar.gz",
+    sha256 = "6228d9618ab9536892aa69082c063207c91e777e51bd3c5544c9c060cafe1bd8",
+)
+
+load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
+
+go_rules_dependencies()
+
+go_register_toolchains()
+
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
+gazelle_dependencies()
+
+http_archive(
+    name = "com_github_go_yaml_yaml",
+    urls = ["https://example.com/yaml.tar.gz"],
+    sha256 = "1234",
+)
+
+# gazelle:repository_macro repositories.bzl%go_repositories
+# gazelle:repository_macro repositories.bzl%foo_repositories
+`,
+		}, {
+			Path: "repositories.bzl",
+			Content: `
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+def go_repositories():
+    go_repository(
+        name = "org_golang_x_sys",
+        build_file_generation = "off",
+        commit = "bb24a47a89eac6c1227fbcb2ae37a8b9ed323366",
+        importpath = "golang.org/x/sys",
+    )
+
+def foo_repositories():
+    go_repository(
+        name = "org_golang_x_net",
+        build_file_generation = "off",
+        commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
+        importpath = "golang.org/x/net",
     )
     go_repository(
         name = "com_github_pkg_errors",
@@ -1360,7 +1571,8 @@ def go_repositories():
         importpath = "github.com/pkg/errors",
     )
 `,
-		}})
+		},
+	})
 }
 
 func TestImportReposFromDepToEmptyMacro(t *testing.T) {

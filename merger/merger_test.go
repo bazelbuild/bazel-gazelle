@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package merger
+package merger_test
 
 import (
 	"path/filepath"
@@ -22,6 +22,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/language/go"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
+	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -883,8 +884,8 @@ func TestMergeFile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			MergeFile(f, emptyFile.Rules, genFile.Rules, PreResolve, testKinds)
-			FixLoads(f, testLoads)
+			merger.MergeFile(f, emptyFile.Rules, genFile.Rules, merger.PreResolve, testKinds)
+			merger.FixLoads(f, testLoads)
 
 			want := tc.expected
 			if len(want) > 0 && want[0] == '\n' {
@@ -981,7 +982,7 @@ go_binary(name = "z")
 			}
 			r := genFile.Rules[0]
 			info := testKinds[r.Kind()]
-			if got, gotErr := match(oldFile.Rules, r, info); gotErr != nil {
+			if got, gotErr := merger.Match(oldFile.Rules, r, info); gotErr != nil {
 				if !tc.wantError {
 					t.Errorf("unexpected error: %v", gotErr)
 				}

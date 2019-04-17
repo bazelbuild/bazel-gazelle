@@ -22,11 +22,12 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 // Repo describes an external repository rule declared in a Bazel
-// WORKSPACE file.
+// WORKSPACE file or macro file.
 type Repo struct {
 	// Name is the value of the "name" attribute of the repository rule.
 	Name string
@@ -63,6 +64,12 @@ func (s byName) Len() int           { return len(s) }
 func (s byName) Less(i, j int) bool { return s[i].Name < s[j].Name }
 func (s byName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
+type byRuleName []*rule.Rule
+
+func (s byRuleName) Len() int           { return len(s) }
+func (s byRuleName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
+func (s byRuleName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 type lockFileFormat int
 
 const (
@@ -98,6 +105,49 @@ func ImportRepoRules(filename string, repoCache *RemoteCache) ([]*rule.Rule, err
 		rules = append(rules, GenerateRule(repo))
 	}
 	return rules, nil
+}
+
+// MergeRules merges a list of generated repo rules with the already defined repo rules,
+// and then updates each rule's underlying file. If the generated rule matches an existing
+// one, then it inherits the file where the existing rule was defined. If the rule is new then
+// its file is set as the destFile parameter. A list of the updated files is returned.
+func MergeRules(genRules []*rule.Rule, existingRules map[*rule.File][]string, destFile *rule.File, kinds map[string]rule.KindInfo) []*rule.File {
+	sort.Stable(byRuleName(genRules))
+
+	repoMap := make(map[string]*rule.File)
+	for file, repoNames := range existingRules {
+		if file.Path == destFile.Path && file.MacroName() != "" && file.MacroName() == destFile.MacroName() {
+			file = destFile
+		}
+		for _, name := range repoNames {
+			repoMap[name] = file
+		}
+	}
+
+	rulesByFile := make(map[*rule.File][]*rule.Rule)
+	for _, rule := range genRules {
+		dest := destFile
+		if file, ok := repoMap[rule.Name()]; ok {
+			dest = file
+		}
+		rulesByFile[dest] = append(rulesByFile[dest], rule)
+	}
+
+	updatedFiles := make(map[string]*rule.File)
+	for f, rules := range rulesByFile {
+		merger.MergeFile(f, nil, rules, merger.PreResolve, kinds)
+		f.Sync()
+		if uf, ok := updatedFiles[f.Path]; ok {
+			uf.SyncMacroFile(f)
+		} else {
+			updatedFiles[f.Path] = f
+		}
+	}
+	files := make([]*rule.File, 0, len(updatedFiles))
+	for _, f := range updatedFiles {
+		files = append(files, f)
+	}
+	return files
 }
 
 func getLockFileFormat(filename string) lockFileFormat {
@@ -167,13 +217,45 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 }
 
 // ListRepositories extracts metadata about repositories declared in a
-// WORKSPACE file.
-//
-// The set of repositories returned is necessarily incomplete, since we don't
-// evaluate the file, and repositories may be declared in macros in other files.
-func ListRepositories(workspace *rule.File) []Repo {
-	var repos []Repo
-	for _, r := range workspace.Rules {
+// file.
+func ListRepositories(workspace *rule.File) (repos []Repo, repoNamesByFile map[*rule.File][]string, err error) {
+	repoNamesByFile = make(map[*rule.File][]string)
+	repos, repoNamesByFile[workspace] = getRepos(workspace.Rules)
+	for _, d := range workspace.Directives {
+		switch d.Key {
+		case "repository_macro":
+			f, defName, err := parseRepositoryMacroDirective(d.Value)
+			if err != nil {
+				return nil, nil, err
+			}
+			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
+			macroFile, err := rule.LoadMacroFile(f, "", defName)
+			if err != nil {
+				return nil, nil, err
+			}
+			currRepos, names := getRepos(macroFile.Rules)
+			repoNamesByFile[macroFile] = names
+			repos = append(repos, currRepos...)
+		}
+	}
+
+	return repos, repoNamesByFile, nil
+}
+
+func parseRepositoryMacroDirective(directive string) (string, string, error) {
+	vals := strings.Split(directive, "%")
+	if len(vals) != 2 {
+		return "", "", fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", directive)
+	}
+	f := vals[0]
+	if strings.HasPrefix(f, "..") {
+		return "", "", fmt.Errorf("Failure parsing repository_macro: %s, macro file path %s should not start with \"..\"", directive, f)
+	}
+	return f, vals[1], nil
+}
+
+func getRepos(rules []*rule.Rule) (repos []Repo, names []string) {
+	for _, r := range rules {
 		name := r.Name()
 		if name == "" {
 			continue
@@ -206,10 +288,7 @@ func ListRepositories(workspace *rule.File) []Repo {
 			continue
 		}
 		repos = append(repos, repo)
+		names = append(names, repo.Name)
 	}
-
-	// TODO(jayconrod): look for directives that describe repositories that
-	// aren't declared in the top-level of WORKSPACE (e.g., behind a macro).
-
-	return repos
+	return repos, names
 }
