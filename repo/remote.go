@@ -399,7 +399,8 @@ func defaultModInfo(rc *RemoteCache, importPath string) (modPath string, err err
 		return "", rc.tmpErr
 	}
 
-	cmd := exec.Command("go", "list", "-find", "-f", "{{.Module.Path}}", "--", importPath)
+	goTool := findGoTool()
+	cmd := exec.Command(goTool, "list", "-find", "-f", "{{.Module.Path}}", "--", importPath)
 	cmd.Dir = rc.tmpDir
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	out, err := cmd.Output()
