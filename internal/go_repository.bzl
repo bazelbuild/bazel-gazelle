@@ -22,7 +22,7 @@ def _go_repository_impl(ctx):
 
     if ctx.attr.urls:
         # HTTP mode
-        for key in ("commit", "tag", "vcs", "remote", "version", "sum"):
+        for key in ("commit", "tag", "vcs", "remote", "version", "sum", "replace"):
             if getattr(ctx.attr, key):
                 fail("cannot specifiy both urls and %s" % key, key)
         ctx.download_and_extract(
@@ -39,7 +39,7 @@ def _go_repository_impl(ctx):
         elif ctx.attr.tag:
             rev = ctx.attr.tag
             rev_key = "tag"
-        for key in ("urls", "strip_prefix", "type", "sha256", "version", "sum"):
+        for key in ("urls", "strip_prefix", "type", "sha256", "version", "sum", "replace"):
             if getattr(ctx.attr, key):
                 fail("cannot specify both %s and %s" % (rev_key, key), key)
 
@@ -61,9 +61,10 @@ def _go_repository_impl(ctx):
         if not ctx.attr.sum:
             fail("if version is specified, sum must also be")
 
+        fetch_path = ctx.attr.replace if ctx.attr.replace else ctx.attr.importpath
         fetch_repo_args = [
             "-dest=" + str(ctx.path("")),
-            "-importpath=" + ctx.attr.importpath,
+            "-importpath=" + fetch_path,
             "-version=" + ctx.attr.version,
             "-sum=" + ctx.attr.sum,
         ]
@@ -171,6 +172,7 @@ go_repository = repository_rule(
         # Attributes for a module that should be downloaded with the Go toolchain.
         "version": attr.string(),
         "sum": attr.string(),
+        "replace": attr.string(),
 
         # Attributes for a repository that needs automatic build file generation
         "build_external": attr.string(
