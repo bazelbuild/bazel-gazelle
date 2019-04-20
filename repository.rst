@@ -137,6 +137,14 @@ external Go projects.
 | A value for ``sum`` may be found in the ``go.sum`` file or by running                                   |
 | ``go mod download -json <module>@<version>``.                                                           |
 +--------------------------------+----------------------+-------------------------------------------------+
+| :param:`replace`               | :type:`string`       | :value:`""`                                     |
++--------------------------------+----------------------+-------------------------------------------------+
+| A replacement for the module named by ``importpath``. The module named by                               |
+| ``replace`` will be downloaded at ``version`` and verified with ``sum``.                                |
+|                                                                                                         |
+| NOTE: There is no ``go_repository`` equivalent to file path ``replace``                                 |
+| directives. Use ``local_repository`` instead.                                                           |
++--------------------------------+----------------------+-------------------------------------------------+
 | :param:`commit`                | :type:`string`       | :value:`""`                                     |
 +--------------------------------+----------------------+-------------------------------------------------+
 | If the repository is downloaded using a version control tool, this is the                               |
