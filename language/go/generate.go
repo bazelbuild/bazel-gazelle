@@ -145,6 +145,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	g := &generator{
 		c:                   c,
 		rel:                 args.Rel,
+		noGoProtoLibrary:    gc.noGoProtoLibrary,
 		shouldSetVisibility: args.File == nil || !args.File.HasDefaultVisibility(),
 	}
 	var res language.GenerateResult
@@ -348,6 +349,7 @@ func defaultPackageName(c *config.Config, rel string) string {
 type generator struct {
 	c                   *config.Config
 	rel                 string
+	noGoProtoLibrary    bool
 	shouldSetVisibility bool
 }
 
@@ -355,6 +357,12 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 	if !mode.ShouldGenerateRules() && mode != proto.LegacyMode {
 		// Don't create or delete proto rules in this mode. Any existing rules
 		// are likely hand-written.
+		return "", nil
+	}
+
+	if g.noGoProtoLibrary {
+		// Don't create or delete proto rules in this mode, because the user
+		// specified that nothing should be done with the proto_library rule.
 		return "", nil
 	}
 

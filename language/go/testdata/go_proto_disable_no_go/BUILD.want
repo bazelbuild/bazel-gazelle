@@ -1,0 +1,9 @@
+proto_library(
+    name = "go_proto_disable_proto",
+    srcs = ["foo.proto"],
+    _gazelle_imports = [
+        "google/protobuf/any.proto",
+        "protos/sub/sub.proto",
+    ],
+    visibility = ["//visibility:public"],
+)

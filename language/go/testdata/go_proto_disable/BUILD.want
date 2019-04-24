@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+proto_library(
+    name = "go_proto_disable_proto",
+    srcs = ["foo.proto"],
+    _gazelle_imports = [
+        "google/protobuf/any.proto",
+        "protos/sub/sub.proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["extra.go"],
+    _gazelle_imports = [],
+    importpath = "example.com/repo/go_proto_disable",
+    visibility = ["//visibility:public"],
+)

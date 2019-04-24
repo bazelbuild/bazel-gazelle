@@ -74,6 +74,10 @@ type goConfig struct {
 	// goGrpcCompilersSet indicates whether goGrpcCompiler was set explicitly.
 	goGrpcCompilersSet bool
 
+	// noGoProtoLibrary indicates whether go_proto_library rules should be
+	// generated.
+	noGoProtoLibrary bool
+
 	// moduleMode is true if external dependencies should be resolved as modules.
 	// TODO(jayconrod): this should be the only mode in the future.
 	moduleMode bool
@@ -199,6 +203,7 @@ func (_ *goLang) KnownDirectives() []string {
 		"build_tags",
 		"go_grpc_compilers",
 		"go_proto_compilers",
+		"go_proto",
 		"importmap_prefix",
 		"prefix",
 	}
@@ -313,6 +318,10 @@ func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
 				} else {
 					gc.goProtoCompilersSet = true
 					gc.goProtoCompilers = splitValue(d.Value)
+				}
+			case "go_proto":
+				if d.Value == "disable" {
+					gc.noGoProtoLibrary = true
 				}
 			case "importmap_prefix":
 				gc.importMapPrefix = d.Value
