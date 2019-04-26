@@ -66,6 +66,13 @@ func goListModulesStub(dir string) ([]byte, error) {
 	"Version": "v1.0.1",
 	"Time": "2017-09-24T18:42:18Z",
 	"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/pelletier/go-toml@v1.0.1",
+	"Replace": {
+		"Path": "github.com/fork/go-toml",
+		"Version": "v0.0.0-20190425002759-70bc0436ed16",
+		"Time": "2017-04-06T11:16:28Z",
+		"Dir": "/usr/local/google/home/jayconrod/go/pkg/mod/github.com/fork/!go-toml@v1.0.1",
+        "GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/fork/go-toml@v/v1.0.1.mod"
+	},
 	"GoMod": "/usr/local/google/home/jayconrod/go/pkg/mod/cache/download/github.com/pelletier/go-toml/@v/v1.0.1.mod"
 }
 {

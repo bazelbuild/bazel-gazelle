@@ -56,6 +56,10 @@ type Repo struct {
 
 	// Sum is the hash of the module to be verified after download.
 	Sum string
+
+	// Replace is the Go import path of the module configured by the replace
+	// directive in go.mod.
+	Replace string
 }
 
 type byName []Repo
@@ -185,6 +189,9 @@ func GenerateRule(repo Repo) *rule.Rule {
 	}
 	if repo.Sum != "" {
 		r.SetAttr("sum", repo.Sum)
+	}
+	if repo.Replace != "" {
+		r.SetAttr("replace", repo.Replace)
 	}
 	return r
 }

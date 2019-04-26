@@ -46,8 +46,12 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 	type module struct {
 		Path, Version, Sum string
 		Main               bool
+		Replace            *struct {
+			Path, Version string
+		}
 	}
 	pathToModule := map[string]*module{}
+	replacePathToModule := map[string]*module{}
 	data, err := goListModules(tempDir)
 	if err != nil {
 		return nil, err
@@ -62,6 +66,9 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			continue
 		}
 		pathToModule[mod.Path] = mod
+		if mod.Replace != nil {
+			replacePathToModule[mod.Replace.Path] = mod
+		}
 	}
 
 	// Load sums from go.sum. Ideally, they're all there.
@@ -79,6 +86,9 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			continue
 		}
 		if mod, ok := pathToModule[path]; ok {
+			mod.Sum = sum
+		}
+		if mod, ok := replacePathToModule[path]; ok {
 			mod.Sum = sum
 		}
 	}
@@ -116,12 +126,17 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			log.Printf("could not determine sum for module %s", mod.Path)
 			continue
 		}
-		repos = append(repos, Repo{
+		repo := Repo{
 			Name:     label.ImportPathToBazelRepoName(mod.Path),
 			GoPrefix: mod.Path,
 			Version:  mod.Version,
 			Sum:      mod.Sum,
-		})
+		}
+		if mod.Replace != nil {
+			repo.Replace = mod.Replace.Path
+			repo.Version = mod.Replace.Version
+		}
+		repos = append(repos, repo)
 	}
 	sort.Slice(repos, func(i, j int) bool { return repos[i].Name < repos[j].Name })
 	return repos, nil
