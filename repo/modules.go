@@ -94,7 +94,11 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 	var missingSumArgs []string
 	for _, mod := range pathToModule {
 		if mod.Sum == "" {
-			missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Path, mod.Version))
+			if mod.Replace != nil {
+				missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Replace.Path, mod.Replace.Version))
+			} else {
+				missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Path, mod.Version))
+			}
 		}
 	}
 	if len(missingSumArgs) > 0 {
