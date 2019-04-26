@@ -51,7 +51,6 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 		}
 	}
 	pathToModule := map[string]*module{}
-	replacePathToModule := map[string]*module{}
 	data, err := goListModules(tempDir)
 	if err != nil {
 		return nil, err
@@ -65,9 +64,10 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 		if mod.Main {
 			continue
 		}
-		pathToModule[mod.Path] = mod
 		if mod.Replace != nil {
-			replacePathToModule[mod.Replace.Path] = mod
+			pathToModule[mod.Replace.Path] = mod
+		} else {
+			pathToModule[mod.Path] = mod
 		}
 	}
 
@@ -86,9 +86,6 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			continue
 		}
 		if mod, ok := pathToModule[path]; ok {
-			mod.Sum = sum
-		}
-		if mod, ok := replacePathToModule[path]; ok {
 			mod.Sum = sum
 		}
 	}
