@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/build"
 	"io"
 	"io/ioutil"
 	"log"
@@ -65,6 +66,11 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			continue
 		}
 		if mod.Replace != nil {
+			if filepath.IsAbs(mod.Replace.Path) || build.IsLocalImport(mod.Replace.Path) {
+				log.Printf("go_repository does not support file path replacements for %s -> %s", mod.Path,
+					mod.Replace.Path)
+				continue
+			}
 			pathToModule[mod.Replace.Path] = mod
 		} else {
 			pathToModule[mod.Path] = mod

@@ -89,6 +89,7 @@ var goKinds = map[string]rule.KindInfo{
 			"commit":       true,
 			"importpath":   true,
 			"remote":       true,
+			"replace":      true,
 			"sha256":       true,
 			"strip_prefix": true,
 			"sum":          true,
