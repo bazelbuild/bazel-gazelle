@@ -83,8 +83,10 @@ var goKinds = map[string]rule.KindInfo{
 		ResolveAttrs: map[string]bool{"deps": true},
 	},
 	"go_repository": {
-		MatchAttrs:    []string{"importpath"},
-		NonEmptyAttrs: nil, // never empty
+		MatchAttrs: []string{"importpath"},
+		NonEmptyAttrs: map[string]bool{
+			"importpath": true,
+		},
 		MergeableAttrs: map[string]bool{
 			"commit":       true,
 			"importpath":   true,

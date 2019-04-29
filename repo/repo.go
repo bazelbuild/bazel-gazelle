@@ -107,15 +107,34 @@ func ImportRepoRules(filename string, repoCache *RemoteCache) ([]*rule.Rule, err
 	return rules, nil
 }
 
+// GetRulesToPrune returns a list of empty repo rules that can be pruned from the repo.
+// The list is determined by finding repo rules defined in the repository that no longer
+// have an equivalent repo defined in the Gopkg.lock/go.mod file.
+func GetRulesToPrune(rules []*rule.Rule, repos []Repo) []*rule.Rule {
+	ruleMap := make(map[string]bool)
+	for _, r := range rules {
+		ruleMap[r.Name()] = true
+	}
+
+	emptyRules := make([]*rule.Rule, 0)
+	for _, repo := range repos {
+		if !ruleMap[repo.Name] {
+			emptyRules = append(emptyRules, rule.NewRule("go_repository", repo.Name))
+		}
+	}
+	return emptyRules
+}
+
 // MergeRules merges a list of generated repo rules with the already defined repo rules,
 // and then updates each rule's underlying file. If the generated rule matches an existing
 // one, then it inherits the file where the existing rule was defined. If the rule is new then
 // its file is set as the destFile parameter. A list of the updated files is returned.
-func MergeRules(genRules []*rule.Rule, existingRules map[*rule.File][]string, destFile *rule.File, kinds map[string]rule.KindInfo) []*rule.File {
+func MergeRules(genRules, emptyRules []*rule.Rule, existingRules map[*rule.File][]string, destFile *rule.File, kinds map[string]rule.KindInfo) []*rule.File {
 	sort.Stable(byRuleName(genRules))
 
 	repoMap := make(map[string]*rule.File)
 	for file, repoNames := range existingRules {
+		// Avoid writing to the same file by matching destFile with its definition in existingRules
 		if file.Path == destFile.Path && file.MacroName() != "" && file.MacroName() == destFile.MacroName() {
 			file = destFile
 		}
@@ -132,10 +151,17 @@ func MergeRules(genRules []*rule.Rule, existingRules map[*rule.File][]string, de
 		}
 		rulesByFile[dest] = append(rulesByFile[dest], rule)
 	}
+	emptyRulesByFile := make(map[*rule.File][]*rule.Rule)
+	for _, rule := range emptyRules {
+		if file, ok := repoMap[rule.Name()]; ok {
+			emptyRulesByFile[file] = append(emptyRulesByFile[file], rule)
+		}
+	}
 
 	updatedFiles := make(map[string]*rule.File)
 	for f, rules := range rulesByFile {
-		merger.MergeFile(f, nil, rules, merger.PreResolve, kinds)
+		merger.MergeFile(f, emptyRulesByFile[f], rules, merger.PreResolve, kinds)
+		delete(emptyRulesByFile, f)
 		f.Sync()
 		if uf, ok := updatedFiles[f.Path]; ok {
 			uf.SyncMacroFile(f)
@@ -143,6 +169,17 @@ func MergeRules(genRules []*rule.Rule, existingRules map[*rule.File][]string, de
 			updatedFiles[f.Path] = f
 		}
 	}
+	// Merge the remaining files that have empty rules, but no genRules
+	for f, rules := range emptyRulesByFile {
+		merger.MergeFile(f, rules, nil, merger.PreResolve, kinds)
+		f.Sync()
+		if uf, ok := updatedFiles[f.Path]; ok {
+			uf.SyncMacroFile(f)
+		} else {
+			updatedFiles[f.Path] = f
+		}
+	}
+
 	files := make([]*rule.File, 0, len(updatedFiles))
 	for _, f := range updatedFiles {
 		files = append(files, f)

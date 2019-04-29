@@ -45,6 +45,7 @@ type updateReposConfig struct {
 	buildTagsAttr           string
 	buildFileProtoModeAttr  string
 	buildExtraArgsAttr      string
+	pruneRules              bool
 }
 
 var validBuildExternalAttr = []string{"external", "vendored"}
@@ -92,6 +93,7 @@ func (_ *updateReposConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *c
 	fs.Var(&gzflag.AllowedStringFlag{Value: &uc.buildFileProtoModeAttr, Allowed: validBuildFileProtoModeAttr}, "build_file_proto_mode", "Sets the build_file_proto_mode attribute for the generated go_repository rule(s).")
 	fs.StringVar(&uc.buildExtraArgsAttr, "build_extra_args", "", "Sets the build_extra_args attribute for the generated go_repository rule(s).")
 	fs.Var(macroFlag{macroFileName: &uc.macroFileName, macroDefName: &uc.macroDefName}, "to_macro", "Tells Gazelle to write repository rules into a .bzl macro function rather than the WORKSPACE file. . The expected format is: macroFile%defName")
+	fs.BoolVar(&uc.pruneRules, "prune", false, "When enabled, Gazelle will remove rules that no longer have equivalent repos in the Gopkg.lock/go.mod file.")
 }
 
 func (_ *updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -253,7 +255,11 @@ func updateImportPaths(c *updateReposConfig, workspace *rule.File, destFile *rul
 			return nil, err
 		}
 	}
-	files := repo.MergeRules(genRules, reposByFile, destFile, kinds)
+	var emptyRules []*rule.Rule
+	if c.pruneRules {
+		emptyRules = repo.GetRulesToPrune(genRules, repos)
+	}
+	files := repo.MergeRules(genRules, emptyRules, reposByFile, destFile, kinds)
 	return files, nil
 }
 
@@ -271,7 +277,11 @@ func importFromLockFile(c *updateReposConfig, workspace *rule.File, destFile *ru
 	for i := range genRules {
 		applyBuildAttributes(c, genRules[i])
 	}
-	files := repo.MergeRules(genRules, reposByFile, destFile, kinds)
+	var emptyRules []*rule.Rule
+	if c.pruneRules {
+		emptyRules = repo.GetRulesToPrune(genRules, repos)
+	}
+	files := repo.MergeRules(genRules, emptyRules, reposByFile, destFile, kinds)
 	return files, nil
 }
 
