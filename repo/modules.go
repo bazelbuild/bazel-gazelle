@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/build"
 	"io"
 	"io/ioutil"
 	"log"
@@ -46,6 +47,9 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 	type module struct {
 		Path, Version, Sum string
 		Main               bool
+		Replace            *struct {
+			Path, Version string
+		}
 	}
 	pathToModule := map[string]*module{}
 	data, err := goListModules(tempDir)
@@ -61,7 +65,16 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 		if mod.Main {
 			continue
 		}
-		pathToModule[mod.Path] = mod
+		if mod.Replace != nil {
+			if filepath.IsAbs(mod.Replace.Path) || build.IsLocalImport(mod.Replace.Path) {
+				log.Printf("go_repository does not support file path replacements for %s -> %s", mod.Path,
+					mod.Replace.Path)
+				continue
+			}
+			pathToModule[mod.Replace.Path] = mod
+		} else {
+			pathToModule[mod.Path] = mod
+		}
 	}
 
 	// Load sums from go.sum. Ideally, they're all there.
@@ -87,7 +100,11 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 	var missingSumArgs []string
 	for _, mod := range pathToModule {
 		if mod.Sum == "" {
-			missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Path, mod.Version))
+			if mod.Replace != nil {
+				missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Replace.Path, mod.Replace.Version))
+			} else {
+				missingSumArgs = append(missingSumArgs, fmt.Sprintf("%s@%s", mod.Path, mod.Version))
+			}
 		}
 	}
 	if len(missingSumArgs) > 0 {
@@ -116,12 +133,17 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			log.Printf("could not determine sum for module %s", mod.Path)
 			continue
 		}
-		repos = append(repos, Repo{
+		repo := Repo{
 			Name:     label.ImportPathToBazelRepoName(mod.Path),
 			GoPrefix: mod.Path,
 			Version:  mod.Version,
 			Sum:      mod.Sum,
-		})
+		}
+		if mod.Replace != nil {
+			repo.Replace = mod.Replace.Path
+			repo.Version = mod.Replace.Version
+		}
+		repos = append(repos, repo)
 	}
 	sort.Slice(repos, func(i, j int) bool { return repos[i].Name < repos[j].Name })
 	return repos, nil
