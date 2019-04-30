@@ -19,6 +19,7 @@ _GO_REPOSITORY_TIMEOUT = 86400
 
 def _go_repository_impl(ctx):
     fetch_repo_args = None
+    fetch_path = ctx.attr.replace or ctx.attr.importpath
 
     if ctx.attr.urls:
         # HTTP mode
@@ -39,14 +40,14 @@ def _go_repository_impl(ctx):
         elif ctx.attr.tag:
             rev = ctx.attr.tag
             rev_key = "tag"
-        for key in ("urls", "strip_prefix", "type", "sha256", "version", "sum", "replace"):
+        for key in ("urls", "strip_prefix", "type", "sha256", "version", "sum"):
             if getattr(ctx.attr, key):
                 fail("cannot specify both %s and %s" % (rev_key, key), key)
 
         if ctx.attr.vcs and not ctx.attr.remote:
             fail("if vcs is specified, remote must also be")
 
-        fetch_repo_args = ["-dest", ctx.path(""), "-importpath", ctx.attr.importpath]
+        fetch_repo_args = ["-dest", ctx.path(""), "-importpath", fetch_path]
         if ctx.attr.remote:
             fetch_repo_args.extend(["--remote", ctx.attr.remote])
         if rev:
@@ -61,7 +62,6 @@ def _go_repository_impl(ctx):
         if not ctx.attr.sum:
             fail("if version is specified, sum must also be")
 
-        fetch_path = ctx.attr.replace if ctx.attr.replace else ctx.attr.importpath
         fetch_repo_args = [
             "-dest=" + str(ctx.path("")),
             "-importpath=" + fetch_path,
