@@ -74,9 +74,9 @@ type goConfig struct {
 	// goGrpcCompilersSet indicates whether goGrpcCompiler was set explicitly.
 	goGrpcCompilersSet bool
 
-	// noGoProtoLibrary indicates whether go_proto_library rules should be
-	// generated.
-	noGoProtoLibrary bool
+	// goProtoMode indicates how go_proto_library rules should be
+	// generated. Set with # gazelle:go_proto.
+	goProtoMode goProtoMode
 
 	// moduleMode is true if external dependencies should be resolved as modules.
 	// TODO(jayconrod): this should be the only mode in the future.
@@ -143,6 +143,27 @@ func getProtoMode(c *config.Config) proto.Mode {
 	}
 }
 
+func (gc *goConfig) ShouldGenerateGoProtoRules(mode proto.Mode) bool {
+	if gc.goProtoMode == disableMode {
+		return false
+	}
+	return mode.ShouldGenerateRules()
+}
+
+func (gc *goConfig) ShouldIncludePregeneratedProtoFiles(mode proto.Mode) bool {
+	if gc.goProtoMode == disableMode {
+		return false
+	}
+	return mode.ShouldIncludePregeneratedFiles()
+}
+
+func (gc *goConfig) ShouldUseKnownImports(mode proto.Mode) bool {
+	// If gc.goProtoMode == disableMode, there are no go_proto_library rules to
+	// resolve imports for. This is used for resolving imports in go_library
+	// rules only.
+	return mode.ShouldUseKnownImports()
+}
+
 // dependencyMode determines how imports of packages outside of the prefix
 // are resolved.
 type dependencyMode int
@@ -162,6 +183,24 @@ func (m dependencyMode) String() string {
 		return "external"
 	} else {
 		return "vendored"
+	}
+}
+
+// goProtoMode determines how go_proto_library rules should be generated.
+type goProtoMode int
+
+const (
+	// defaultMode generates go_proto_library rules with proto_library rules.
+	defaultMode goProtoMode = iota
+	// disableMode does not generate go_proto_library rules with proto_library rules.
+	disableMode
+)
+
+func (m goProtoMode) String() string {
+	if m == disableMode {
+		return "disable"
+	} else {
+		return "default"
 	}
 }
 
@@ -320,8 +359,10 @@ func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
 					gc.goProtoCompilers = splitValue(d.Value)
 				}
 			case "go_proto":
-				if d.Value == "disable" {
-					gc.noGoProtoLibrary = true
+				if d.Value == "default" {
+					gc.goProtoMode = defaultMode
+				} else if d.Value == "disable" {
+					gc.goProtoMode = disableMode
 				}
 			case "importmap_prefix":
 				gc.importMapPrefix = d.Value

@@ -63,7 +63,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// to any .proto files present.
 	regularFiles := append([]string{}, args.RegularFiles...)
 	genFiles := append([]string{}, args.GenFiles...)
-	if !pcMode.ShouldIncludePregeneratedFiles() {
+	if !gc.ShouldIncludePregeneratedProtoFiles(pcMode) {
 		keep := func(f string) bool {
 			if strings.HasSuffix(f, ".pb.go") {
 				_, ok := protoFileInfo[strings.TrimSuffix(f, ".pb.go")+".proto"]
@@ -145,7 +145,6 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	g := &generator{
 		c:                   c,
 		rel:                 args.Rel,
-		noGoProtoLibrary:    gc.noGoProtoLibrary,
 		shouldSetVisibility: args.File == nil || !args.File.HasDefaultVisibility(),
 	}
 	var res language.GenerateResult
@@ -349,24 +348,17 @@ func defaultPackageName(c *config.Config, rel string) string {
 type generator struct {
 	c                   *config.Config
 	rel                 string
-	noGoProtoLibrary    bool
 	shouldSetVisibility bool
 }
 
 func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPath string) (string, []*rule.Rule) {
-	if !mode.ShouldGenerateRules() && mode != proto.LegacyMode {
+	gc := getGoConfig(g.c)
+	if !gc.ShouldGenerateGoProtoRules(mode) && mode != proto.LegacyMode {
 		// Don't create or delete proto rules in this mode. Any existing rules
 		// are likely hand-written.
 		return "", nil
 	}
 
-	if g.noGoProtoLibrary {
-		// Don't create or delete proto rules in this mode, because the user
-		// specified that nothing should be done with the proto_library rule.
-		return "", nil
-	}
-
-	gc := getGoConfig(g.c)
 	filegroupName := legacyProtoFilegroupName
 	protoName := target.name
 	if protoName == "" {

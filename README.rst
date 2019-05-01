@@ -619,6 +619,19 @@ The following directives are recognized:
 | ``@io_bazel_rules_go//proto:go_proto_library.bzl`` is loaded, Gazelle                      |
 | will run in ``legacy`` mode.                                                               |
 +---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_proto mode`                  | :value:`default`                       |
++---------------------------------------------------+----------------------------------------+
+| Tells Gazelle how to generate ``go_proto_library`` rules for .proto files.                 |
+| Valid values are:                                                                          |
+|                                                                                            |
+| * ``default``: .proto file rules are generated using the mode specified by the             |
+|   ``proto`` gazelle directive. This is the default mode.                                   |
+| * ``disable``: ``go_proto_library`` rules are not generated. ``go_proto_library`` rules    |
+|   should be handwritten or generated via a custom gazelle plugin. Pregenerated .pb.go      |
+|   files are also ignored.                                                                  |
+|                                                                                            |
+| This directive applies to the current directory and subdirectories.                        |
++---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:proto_group option`             | :value:`""`                            |
 +---------------------------------------------------+----------------------------------------+
 | *This directive is only effective in* ``package`` *mode (see above).*                      |

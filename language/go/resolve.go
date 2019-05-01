@@ -125,7 +125,7 @@ func resolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r 
 		return l, nil
 	}
 
-	if pcMode.ShouldUseKnownImports() {
+	if gc.ShouldUseKnownImports(pcMode) {
 		// These are commonly used libraries that depend on Well Known Types.
 		// They depend on the generated versions of these protos to avoid conflicts.
 		// However, since protoc-gen-go depends on these libraries, we generate
@@ -283,6 +283,7 @@ func resolveVendored(rc *repo.RemoteCache, imp string) (label.Label, error) {
 }
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
+	gc := getGoConfig(c)
 	pcMode := getProtoMode(c)
 
 	if wellKnownProtos[imp] {
@@ -293,7 +294,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 		return l, nil
 	}
 
-	if l, ok := knownProtoImports[imp]; ok && pcMode.ShouldUseKnownImports() {
+	if l, ok := knownProtoImports[imp]; ok && gc.ShouldUseKnownImports(pcMode) {
 		if l.Equal(from) {
 			return label.NoLabel, skipImportError
 		} else {

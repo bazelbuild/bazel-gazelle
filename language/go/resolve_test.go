@@ -918,6 +918,43 @@ go_proto_library(
     deps = ["//sub:embed"],
 )
 `,
+		}, {
+			desc: "go_proto_disable_resolve_well_known_types",
+			index: []buildFile{{
+				rel: "",
+				content: `
+# gazelle:go_proto disable
+`,
+			},
+			},
+			old: buildFile{content: `
+go_library(
+    name = "go_default_library",
+    _imports = [
+        "github.com/golang/protobuf/proto",
+        "github.com/golang/protobuf/jsonpb",
+        "github.com/golang/protobuf/descriptor",
+        "github.com/golang/protobuf/protoc-gen-go/generator",
+        "github.com/golang/protobuf/ptypes",
+        "google.golang.org/genproto/protobuf/ptype",
+        "google.golang.org/grpc",
+    ],
+)
+`},
+			want: `
+go_library(
+    name = "go_default_library",
+    deps = [
+        "@com_github_golang_protobuf//descriptor:go_default_library_gen",
+        "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@com_github_golang_protobuf//protoc-gen-go/generator:go_default_library_gen",
+        "@com_github_golang_protobuf//ptypes:go_default_library_gen",
+        "@io_bazel_rules_go//proto/wkt:type_go_proto",
+        "@org_golang_google_grpc//:go_default_library",
+    ],
+)
+`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
