@@ -328,7 +328,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 var wellKnownProtos = map[string]bool{
 	"google/protobuf/any.proto":             true,
 	"google/protobuf/api.proto":             true,
-	"google/protobuf/compiler_plugin.proto": true,
+	"google/protobuf/compiler/plugin.proto": true,
 	"google/protobuf/descriptor.proto":      true,
 	"google/protobuf/duration.proto":        true,
 	"google/protobuf/empty.proto":           true,
