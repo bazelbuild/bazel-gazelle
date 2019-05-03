@@ -735,7 +735,7 @@ go_proto_library(
     _imports = [
         "google/protobuf/any.proto",
         "google/protobuf/api.proto",
-        "google/protobuf/compiler_plugin.proto",
+        "google/protobuf/compiler/plugin.proto",
         "google/protobuf/descriptor.proto",
         "google/protobuf/duration.proto",
         "google/protobuf/empty.proto",
