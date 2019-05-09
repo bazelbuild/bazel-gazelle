@@ -419,6 +419,12 @@ The following flags are accepted:
 |                                                                                                                                                         |
 | The ``repository_macro`` directive should be added to the WORKSPACE in order for future Gazelle calls to recognize the repos defined in the macro file. |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-prune true|false`                                                                                | :value:`false`                               |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| When true, Gazelle will remove `go_repository`_ rules that no longer have equivalent repos in the ``Gopkg.lock``/``go.mod`` file.                       |
+|                                                                                                                                                         |
+| This flag can only be used with ``-from_file``.                                                                                                         |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-build_file_names file1,file2,...`                                                                |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Sets the ``build_file_name`` attribute for the generated `go_repository`_ rule(s).                                                                      |
