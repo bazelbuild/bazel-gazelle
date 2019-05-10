@@ -13,6 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package repo provides functionality for managing Go repository rules.
+//
+// UNSTABLE: The exported APIs in this package may change. In the future,
+// language extensions should implement an interface for repository
+// rule management. The update-repos command will call interface methods,
+// and most if this package's functionality will move to language/go.
+// Moving this package to an internal directory would break existing
+// extensions, since RemoteCache is referenced through the resolve.Resolver
+// interface, which extensions are required to implement.
 package repo
 
 import (
