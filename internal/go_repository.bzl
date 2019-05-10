@@ -108,6 +108,8 @@ def _go_repository_impl(ctx):
         )
         if result.return_code:
             fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
+        if result.stderr:
+            print("fetch_repo: " + result.stderr)
 
     if generate:
         # Build file generation is needed
@@ -140,6 +142,8 @@ def _go_repository_impl(ctx):
                 ctx.attr.importpath,
                 result.stderr,
             ))
+        if result.stderr:
+            print("gazelle: " + result.stderr)
 
     # Apply patches if necessary.
     patch(ctx)
