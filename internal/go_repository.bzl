@@ -243,13 +243,31 @@ def patch(ctx):
                  (cmd, st.stdout, st.stderr))
 
 def _go_repository_cache_impl(ctx):
+    if ctx.attr.go_sdk_name:
+        go_sdk_name = ctx.attr.go_sdk_name
+    else:
+        host_platform = _detect_host_platform(ctx)
+        matches = [
+            name
+            for name, platform in ctx.attr.go_sdk_info.items()
+            if host_platform == platform or platform == "host"
+        ]
+        if len(matches) > 1:
+            fail('gazelle found more than one suitable Go SDK ({}). Specify which one to use with gazelle_dependencies(go_sdk = "go_sdk").'.format(", ".join(matches)))
+        if len(matches) == 0:
+            fail('gazelle could not find a Go SDK. Specify which one to use with gazelle_dependencies(go_sdk = "go_sdk").')
+        if len(matches) == 1:
+            go_sdk_name = matches[0]
+
+    go_sdk_label = Label("@" + go_sdk_name + "//:ROOT")
+
     env_tpl = """
 GOROOT={goroot}
 GOPATH={gopath}
 GOCACHE={gocache}
 """
     env_content = env_tpl.format(
-        goroot = str(ctx.path(ctx.attr.go_sdk).dirname),
+        goroot = str(ctx.path(go_sdk_label).dirname),
         gopath = str(ctx.path(".")),
         gocache = str(ctx.path("gocache")),
     )
@@ -259,10 +277,8 @@ GOCACHE={gocache}
 go_repository_cache = repository_rule(
     _go_repository_cache_impl,
     attrs = {
-        "go_sdk": attr.label(
-            default = "@go_sdk//:ROOT",
-            allow_single_file = True,
-        ),
+        "go_sdk_name": attr.string(),
+        "go_sdk_info": attr.string_dict(),
     },
 )
 
@@ -381,3 +397,42 @@ build these with Bazel inside a repository rule, and we don't want to manage
 prebuilt binaries, so we build them in here with go build, using whichever
 SDK rules_go is using.
 """
+
+# copied from rules_go. Keep in sync.
+def _detect_host_platform(ctx):
+    if ctx.os.name == "linux":
+        host = "linux_amd64"
+        res = ctx.execute(["uname", "-p"])
+        if res.return_code == 0:
+            uname = res.stdout.strip()
+            if uname == "s390x":
+                host = "linux_s390x"
+            elif uname == "i686":
+                host = "linux_386"
+
+        # uname -p is not working on Aarch64 boards
+        # or for ppc64le on some distros
+        res = ctx.execute(["uname", "-m"])
+        if res.return_code == 0:
+            uname = res.stdout.strip()
+            if uname == "aarch64":
+                host = "linux_arm64"
+            elif uname == "armv6l":
+                host = "linux_arm"
+            elif uname == "armv7l":
+                host = "linux_arm"
+            elif uname == "ppc64le":
+                host = "linux_ppc64le"
+
+        # Default to amd64 when uname doesn't return a known value.
+
+    elif ctx.os.name == "mac os x":
+        host = "darwin_amd64"
+    elif ctx.os.name.startswith("windows"):
+        host = "windows_amd64"
+    elif ctx.os.name == "freebsd":
+        host = "freebsd_amd64"
+    else:
+        fail("Unsupported operating system: " + ctx.os.name)
+
+    return host
