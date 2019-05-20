@@ -34,26 +34,28 @@ load(
 go_repository = _go_repository
 
 def gazelle_dependencies(go_sdk = ""):
-    go_sdk_info = {}
-    if not go_sdk:
+    if go_sdk:
+        _go_repository_cache(
+            name = "bazel_gazelle_go_repository_cache",
+            go_sdk_name = go_sdk,
+        )
+    else:
+        go_sdk_info = {}
         for name, r in native.existing_rules().items():
-            # avoid referencing _go_download_sdk in case the internal rules
-            # are renamed (removing leading "_") or more rules are added.
-            if "go_" not in r["kind"] or "_sdk" not in r["kind"]:
+            # match internal rule names but don't reference them directly.
+            # New rules may be added in the future, and they might be
+            # renamed (_go_download_sdk => go_download_sdk).
+            if name != "go_sdk" and ("go_" not in r["kind"] or "_sdk" not in r["kind"]):
                 continue
-            if "goos" in r and "goarch" in r:
+            if r.get("goos", "") and r.get("goarch", ""):
                 platform = r["goos"] + "_" + r["goarch"]
-            elif "go_host_sdk" in r["kind"]:
-                platform = "host"
             else:
-                platform = "unknown"
+                platform = "host"
             go_sdk_info[name] = platform
-
-    _go_repository_cache(
-        name = "bazel_gazelle_go_repository_cache",
-        go_sdk_name = go_sdk,
-        go_sdk_info = go_sdk_info,
-    )
+        _go_repository_cache(
+            name = "bazel_gazelle_go_repository_cache",
+            go_sdk_info = go_sdk_info,
+        )
 
     _go_repository_tools(
         name = "bazel_gazelle_go_repository_tools",
