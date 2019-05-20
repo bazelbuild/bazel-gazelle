@@ -33,11 +33,29 @@ load(
 # Re-export go_repository . Users should get it from this file.
 go_repository = _go_repository
 
-def gazelle_dependencies(go_sdk = "@go_sdk//:ROOT"):
-    _go_repository_cache(
-        name = "bazel_gazelle_go_repository_cache",
-        go_sdk = go_sdk,
-    )
+def gazelle_dependencies(go_sdk = ""):
+    if go_sdk:
+        _go_repository_cache(
+            name = "bazel_gazelle_go_repository_cache",
+            go_sdk_name = go_sdk,
+        )
+    else:
+        go_sdk_info = {}
+        for name, r in native.existing_rules().items():
+            # match internal rule names but don't reference them directly.
+            # New rules may be added in the future, and they might be
+            # renamed (_go_download_sdk => go_download_sdk).
+            if name != "go_sdk" and ("go_" not in r["kind"] or "_sdk" not in r["kind"]):
+                continue
+            if r.get("goos", "") and r.get("goarch", ""):
+                platform = r["goos"] + "_" + r["goarch"]
+            else:
+                platform = "host"
+            go_sdk_info[name] = platform
+        _go_repository_cache(
+            name = "bazel_gazelle_go_repository_cache",
+            go_sdk_info = go_sdk_info,
+        )
 
     _go_repository_tools(
         name = "bazel_gazelle_go_repository_tools",

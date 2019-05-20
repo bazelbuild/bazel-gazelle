@@ -48,7 +48,8 @@ func getRepoRoot(remote, cmd, importpath string) (*vcs.RepoRoot, error) {
 
 	// User did not give us complete information for VCS / Remote.
 	// Try to figure out the information from the import path.
-	r, err := repoRootForImportPath(importpath, true)
+	verbose := false
+	r, err := repoRootForImportPath(importpath, verbose)
 	if err != nil {
 		return nil, err
 	}
