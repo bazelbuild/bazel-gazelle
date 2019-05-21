@@ -186,63 +186,37 @@ go_test(name = "go_default_test")
 	}
 }
 
-func TestGenerateRulesPrebuiltGoProtoRulesDefault(t *testing.T) {
-	c, langs, _ := testConfig(t, "-proto=default")
-	goLang := langs[len(langs)-1].(*goLang)
+func TestGenerateRulesPrebuiltGoProtoRules(t *testing.T) {
+	for _, protoFlag := range []string{
+		"-proto=default",
+		"-proto=package",
+	} {
+		t.Run("with flag: "+protoFlag, func(t *testing.T) {
+			c, langs, _ := testConfig(t, protoFlag)
+			goLang := langs[len(langs)-1].(*goLang)
 
-	res := goLang.GenerateRules(language.GenerateArgs{
-		Config:   c,
-		Dir:      "./foo",
-		Rel:      "foo",
-		OtherGen: prebuiltProtoRules(),
-	})
+			res := goLang.GenerateRules(language.GenerateArgs{
+				Config:   c,
+				Dir:      "./foo",
+				Rel:      "foo",
+				OtherGen: prebuiltProtoRules(),
+			})
 
-	if len(res.Gen) != 1 {
-		t.Errorf("got %d generated rules; want 1", len(res.Gen))
-	}
-	f := rule.EmptyFile("test", "")
-	for _, r := range res.Gen {
-		r.Insert(f)
-	}
-	f.Sync()
-	got := strings.TrimSpace(string(bzl.Format(f.File)))
-	want := strings.TrimSpace(`
-go_library(
-    name = "go_default_library",
-    embed = [":foo_go_proto"],
-    importpath = "hello/world/foo",
-    visibility = ["//visibility:public"],
-)
-`)
-	if got != want {
-		t.Errorf("got:\n%s\nwant:\n%s", got, want)
-	}
-}
-
-func TestGenerateRulesPrebuiltGoProtoRulesPackage(t *testing.T) {
-	c, langs, _ := testConfig(t, "-proto=package")
-	goLang := langs[len(langs)-1].(*goLang)
-
-	res := goLang.GenerateRules(language.GenerateArgs{
-		Config:   c,
-		Dir:      "./foo",
-		Rel:      "foo",
-		OtherGen: prebuiltProtoRules(),
-	})
-
-	if len(res.Gen) != 0 {
-		t.Errorf("got %d generated rules; want 0", len(res.Gen))
-	}
-	f := rule.EmptyFile("test", "")
-	for _, r := range res.Gen {
-		r.Insert(f)
-	}
-	f.Sync()
-	got := strings.TrimSpace(string(bzl.Format(f.File)))
-	want := strings.TrimSpace(`
-`)
-	if got != want {
-		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+			if len(res.Gen) != 0 {
+				t.Errorf("got %d generated rules; want 0", len(res.Gen))
+			}
+			f := rule.EmptyFile("test", "")
+			for _, r := range res.Gen {
+				r.Insert(f)
+			}
+			f.Sync()
+			got := strings.TrimSpace(string(bzl.Format(f.File)))
+			want := strings.TrimSpace(`
+		`)
+			if got != want {
+				t.Errorf("got:\n%s\nwant:\n%s", got, want)
+			}
+		})
 	}
 }
 
