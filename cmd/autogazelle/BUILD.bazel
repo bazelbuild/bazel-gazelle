@@ -11,28 +11,28 @@ go_library(
     visibility = ["//visibility:private"],
     deps = select({
         "@io_bazel_rules_go//go/platform:darwin": [
-            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+            "@com_github_fsnotify_fsnotify//:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:dragonfly": [
-            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+            "@com_github_fsnotify_fsnotify//:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:freebsd": [
-            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+            "@com_github_fsnotify_fsnotify//:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:linux": [
-            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+            "@com_github_fsnotify_fsnotify//:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:nacl": [
-            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+            "@com_github_fsnotify_fsnotify//:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:netbsd": [
-            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+            "@com_github_fsnotify_fsnotify//:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:openbsd": [
-            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+            "@com_github_fsnotify_fsnotify//:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:solaris": [
-            "//vendor/github.com/fsnotify/fsnotify:go_default_library",
+            "@com_github_fsnotify_fsnotify//:go_default_library",
         ],
         "//conditions:default": [],
     }),

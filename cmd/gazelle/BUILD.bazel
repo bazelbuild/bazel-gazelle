@@ -50,8 +50,8 @@ go_library(
         "//repo:go_default_library",
         "//resolve:go_default_library",
         "//rule:go_default_library",
-        "//vendor/github.com/pmezard/go-difflib/difflib:go_default_library",
         "//walk:go_default_library",
+        "@com_github_pmezard_go_difflib//difflib:go_default_library",
     ],
 )
 
@@ -71,6 +71,6 @@ go_test(
         "//internal/wspace:go_default_library",
         "//rule:go_default_library",
         "//testtools:go_default_library",
-        "//vendor/github.com/bazelbuild/buildtools/build:go_default_library",
+        "@com_github_bazelbuild_buildtools//build:go_default_library",
     ],
 )
