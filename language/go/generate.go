@@ -37,10 +37,26 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	c := args.Config
 	gc := getGoConfig(c)
 	pcMode := getProtoMode(c)
+
+	// This is a collection of proto_library rule names that have a corresponding
+	// go_proto_library rule already generated.
+	goProtoRules := make(map[string]struct{})
+
 	var protoRuleNames []string
 	protoPackages := make(map[string]proto.Package)
 	protoFileInfo := make(map[string]proto.FileInfo)
 	for _, r := range args.OtherGen {
+		if r.Kind() == "go_proto_library" {
+			if proto := r.AttrString("proto"); proto != "" {
+				goProtoRules[proto] = struct{}{}
+			}
+			if protos := r.AttrStrings("protos"); protos != nil {
+				for _, proto := range protos {
+					goProtoRules[proto] = struct{}{}
+				}
+			}
+
+		}
 		if r.Kind() != "proto_library" {
 			continue
 		}
@@ -107,6 +123,13 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		if _, ok := err.(*build.NoGoError); ok {
 			if len(protoPackages) == 1 {
 				for name, ppkg := range protoPackages {
+					if _, ok := goProtoRules[":"+name]; ok {
+						// if a go_proto_library rule already exists for this
+						// proto package, treat it as if the proto package
+						// doesn't exist.
+						pkg = emptyPackage(c, args.Dir, args.Rel)
+						break
+					}
 					pkg = &goPackage{
 						name:       goProtoPackageName(ppkg),
 						importPath: goProtoImportPath(gc, ppkg, args.Rel),
@@ -151,6 +174,13 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	var rules []*rule.Rule
 	var protoEmbed string
 	for _, name := range protoRuleNames {
+		if _, ok := goProtoRules[":"+name]; ok {
+			// if a go_proto_library rule exists for this proto_library rule
+			// already, skip creating another go_proto_library for it, assuming
+			// that a different gazelle extension is responsible for
+			// go_proto_library rule generation.
+			continue
+		}
 		ppkg := protoPackages[name]
 		var rs []*rule.Rule
 		if name == protoName {

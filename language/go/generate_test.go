@@ -23,6 +23,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/walk"
@@ -183,6 +184,64 @@ go_test(name = "go_default_test")
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
+}
+
+func TestGenerateRulesPrebuiltGoProtoRules(t *testing.T) {
+	for _, protoFlag := range []string{
+		"-proto=default",
+		"-proto=package",
+	} {
+		t.Run("with flag: "+protoFlag, func(t *testing.T) {
+			c, langs, _ := testConfig(t, protoFlag)
+			goLang := langs[len(langs)-1].(*goLang)
+
+			res := goLang.GenerateRules(language.GenerateArgs{
+				Config:   c,
+				Dir:      "./foo",
+				Rel:      "foo",
+				OtherGen: prebuiltProtoRules(),
+			})
+
+			if len(res.Gen) != 0 {
+				t.Errorf("got %d generated rules; want 0", len(res.Gen))
+			}
+			f := rule.EmptyFile("test", "")
+			for _, r := range res.Gen {
+				r.Insert(f)
+			}
+			f.Sync()
+			got := strings.TrimSpace(string(bzl.Format(f.File)))
+			want := strings.TrimSpace(`
+		`)
+			if got != want {
+				t.Errorf("got:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
+
+func prebuiltProtoRules() []*rule.Rule {
+	protoRule := rule.NewRule("proto_library", "foo_proto")
+	protoRule.SetAttr("srcs", []string{"foo.proto"})
+	protoRule.SetAttr("visibility", []string{"//visibility:public"})
+	protoRule.SetPrivateAttr(proto.PackageKey,
+		proto.Package{
+			Name: "foo",
+			Files: map[string]proto.FileInfo{
+				"foo.proto": proto.FileInfo{},
+			},
+			Imports: map[string]bool{},
+			Options: map[string]string{},
+		},
+	)
+
+	goProtoRule := rule.NewRule("go_proto_library", "foo_go_proto")
+	goProtoRule.SetAttr("compilers", []string{"@io_bazel_rules_go//proto:go_proto"})
+	goProtoRule.SetAttr("importpath", "hello/world/foo")
+	goProtoRule.SetAttr("proto", ":foo_proto")
+	protoRule.SetAttr("visibility", []string{"//visibility:public"})
+
+	return []*rule.Rule{protoRule, goProtoRule}
 }
 
 // convertImportsAttrs copies private attributes to regular attributes, which
