@@ -261,31 +261,32 @@ def _go_repository_cache_impl(ctx):
 
     go_sdk_label = Label("@" + go_sdk_name + "//:ROOT")
 
-    env_tpl = """
-GOROOT={goroot}
-GOPATH={gopath}
-GOCACHE={gocache}
-"""
+    go_root = str(ctx.path(go_sdk_label).dirname)
     go_path = str(ctx.path("."))
     go_cache = str(ctx.path("gocache"))
     if ctx.os.environ.get("GO_REPOSITORY_USE_HOST_CACHE", "") == "1":
         extension = executable_extension(ctx)
-        go_tool = str(ctx.path(go_sdk_label).dirname) + "/bin/go" + extension
+        go_tool = go_root + "/bin/go" + extension
         res = ctx.execute([go_tool, "env", "GOPATH"])
         if res.return_code:
-            fail('failed to read go environment: ' + res.stderr)
+            fail("failed to read go environment: " + res.stderr)
         if not res.stdout:
-            fail('GOPATH must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.')
-        go_path = res.stdout
+            fail("GOPATH must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.")
+        go_path = res.stdout.strip()
         res = ctx.execute([go_tool, "env", "GOCACHE"])
         if res.return_code:
-            fail('failed to read go environment: ' + res.stderr)
+            fail("failed to read go environment: " + res.stderr)
         if not res.stdout:
-            fail('GOCACHE must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.')    
-        go_cache = res.stdout
+            fail("GOCACHE must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.")
+        go_cache = res.stdout.strip()
 
+    env_tpl = """
+GOROOT='{goroot}'
+GOPATH='{gopath}'
+GOCACHE='{gocache}'
+"""
     env_content = env_tpl.format(
-        goroot = str(ctx.path(go_sdk_label).dirname),
+        goroot = go_root,
         gopath = go_path,
         gocache = go_cache,
     )
@@ -313,7 +314,7 @@ def _read_cache_env(ctx, path):
         k, sep, v = line.partition("=")
         if sep == "":
             fail("failed to parse cache environment")
-        env[k] = v
+        env[k] = v.strip("'")
     return env
 
 _GO_REPOSITORY_TOOLS_BUILD_FILE = """
@@ -406,7 +407,12 @@ go_repository_tools = repository_rule(
             allow_single_file = True,
         ),
     },
-    environ = ["TMP"],
+    environ = [
+        "GOCACHE",
+        "GOPATH",
+        "GO_REPOSITORY_USE_HOST_CACHE",
+        "TMP",
+    ],
 )
 """go_repository_tools is a synthetic repository used by go_repository.
 
