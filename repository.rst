@@ -61,6 +61,12 @@ go_repository
 if they are not already present. This is the simplest way to depend on
 external Go projects.
 
+When ``go_repository`` is in module mode, it saves downloaded modules in a shared,
+internal cache within Bazel's cache. It may be cleared with ``bazel clean --expunge``.
+By setting the environment variable ``GO_REPOSITORY_USE_HOST_CACHE=1``, you can
+force ``go_repository`` to use the module cache on the host system in the location
+returned by ``go env GOPATH``.
+
 **Example**
 
 .. code:: bzl
