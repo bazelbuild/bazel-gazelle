@@ -71,14 +71,6 @@ def _go_repository_impl(ctx):
     else:
         fail("one of urls, commit, tag, or importpath must be specified")
 
-    generate = ctx.attr.build_file_generation == "on"
-    if ctx.attr.build_file_generation == "auto":
-        generate = True
-        for name in ["BUILD", "BUILD.bazel", ctx.attr.build_file_name]:
-            path = ctx.path(name)
-            if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
-                generate = False
-                break
     if fetch_repo_args or generate:
         env = _read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
         env_keys = [
@@ -110,6 +102,15 @@ def _go_repository_impl(ctx):
             fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
         if result.stderr:
             print("fetch_repo: " + result.stderr)
+
+    generate = ctx.attr.build_file_generation == "on"
+    if ctx.attr.build_file_generation == "auto":
+        generate = True
+        for name in ["BUILD", "BUILD.bazel", ctx.attr.build_file_name]:
+            path = ctx.path(name)
+            if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
+                generate = False
+                break
 
     if generate:
         # Build file generation is needed
