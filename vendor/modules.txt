@@ -3,6 +3,8 @@ github.com/bazelbuild/buildtools/build
 github.com/bazelbuild/buildtools/tables
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
+# github.com/bmatcuk/doublestar 85a78806aa1b4707d1dbace9be592cf1ece91ab3
+github.com/bmatcuk/doublestar
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
 # github.com/pmezard/go-difflib v1.0.0
