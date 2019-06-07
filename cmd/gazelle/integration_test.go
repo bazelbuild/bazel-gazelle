@@ -2020,6 +2020,15 @@ go_library(
 		}, {
 			Path:    "disabled/disabled_lib.go",
 			Content: `package disabled`,
+		}, {
+			Path: "enabled/multiple_mappings/BUILD.bazel",
+			Content: `
+# gazelle:map_kind go_binary go_binary //tools/go:def.bzl
+# gazelle:map_kind go_library go_library //tools/go:def.bzl
+`,
+		}, {
+			Path:    "enabled/multiple_mappings/multiple_mappings.go",
+			Content: `package main`,
 		},
 	}
 	dir, cleanup := testtools.CreateFiles(t, files)
@@ -2141,6 +2150,28 @@ my_library(
     name = "go_default_library",
     srcs = ["nobuild_lib.go"],
     importpath = "example.com/mapkind/enabled/existing_rules/nobuild",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "enabled/multiple_mappings/BUILD.bazel",
+			Content: `
+load("//tools/go:def.bzl", "go_binary", "go_library")
+
+# gazelle:map_kind go_binary go_binary //tools/go:def.bzl
+# gazelle:map_kind go_library go_library //tools/go:def.bzl
+
+go_library(
+    name = "go_default_library",
+    srcs = ["multiple_mappings.go"],
+    importpath = "example.com/mapkind/enabled/multiple_mappings",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "multiple_mappings",
+    embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )
 `,

@@ -512,9 +512,9 @@ func applyKindMappings(mappedKinds []config.MappedKind, loads []rule.LoadInfo) [
 // appendOrMergeKindMapping adds LoadInfo for the given replacement.
 func appendOrMergeKindMapping(mappedLoads []rule.LoadInfo, mappedKind config.MappedKind) []rule.LoadInfo {
 	// If mappedKind.KindLoad already exists in the list, create a merged copy.
-	for _, load := range mappedLoads {
+	for i, load := range mappedLoads {
 		if load.Name == mappedKind.KindLoad {
-			load.Symbols = append(load.Symbols, mappedKind.KindName)
+			mappedLoads[i].Symbols = append(load.Symbols, mappedKind.KindName)
 			return mappedLoads
 		}
 	}
