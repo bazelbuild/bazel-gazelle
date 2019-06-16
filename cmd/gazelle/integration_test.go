@@ -1064,7 +1064,7 @@ go_library(
 	})
 }
 
-func TestCustomRepoNames(t *testing.T) {
+func TestCustomRepoNamesMain(t *testing.T) {
 	files := []testtools.FileSpec{
 		{
 			Path: "WORKSPACE",
@@ -1095,6 +1095,60 @@ import _ "example.com/bar"
 	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
 			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+    deps = ["@custom_repo//:go_default_library"],
+)
+`,
+		},
+	})
+}
+
+func TestCustomRepoNamesExternal(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "main/WORKSPACE",
+			Content: `go_repository(
+    name = "custom_repo",
+    importpath = "example.com/bar",
+    commit = "123456",
+)
+`,
+		}, {
+			Path:    "ext/WORKSPACE",
+			Content: "",
+		}, {
+			Path: "ext/foo.go",
+			Content: `
+package foo
+
+import _ "example.com/bar"
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	extDir := filepath.Join(dir, "ext")
+	args := []string{
+		"-go_prefix=example.com/foo",
+		"-mode=fix",
+		"-repo_root=" + extDir,
+		"-repo_config=" + filepath.Join(dir, "main", "WORKSPACE"),
+	}
+	if err := runGazelle(extDir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "ext/BUILD.bazel",
 			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 

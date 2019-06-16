@@ -63,8 +63,10 @@ func getUpdateConfig(c *config.Config) *updateConfig {
 }
 
 type updateConfigurer struct {
-	mode      string
-	recursive bool
+	mode           string
+	recursive      bool
+	knownImports   []string
+	repoConfigPath string
 }
 
 func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
@@ -76,6 +78,8 @@ func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *conf
 	fs.StringVar(&ucr.mode, "mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
 	fs.BoolVar(&ucr.recursive, "r", true, "when true, gazelle will update subdirectories recursively")
 	fs.StringVar(&uc.patchPath, "patch", "", "when set with -mode=diff, gazelle will write to a file instead of stdout")
+	fs.Var(&gzflag.MultiFlag{Values: &ucr.knownImports}, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
+	fs.StringVar(&ucr.repoConfigPath, "repo_config", "", "file where Gazelle should load repository configuration. Defaults to WORKSPACE.")
 }
 
 func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -116,6 +120,34 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		uc.walkMode = walk.VisitAllUpdateDirsMode
 	} else {
 		uc.walkMode = walk.UpdateDirsMode
+	}
+
+	if ucr.repoConfigPath == "" {
+		ucr.repoConfigPath = filepath.Join(c.RepoRoot, "WORKSPACE")
+	}
+	if repoConfigFile, err := rule.LoadWorkspaceFile(ucr.repoConfigPath, ""); err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	} else {
+		uc.repos, _, err = repo.ListRepositories(repoConfigFile)
+		if err != nil {
+			return err
+		}
+	}
+	repoPrefixes := make(map[string]bool)
+	for _, r := range uc.repos {
+		repoPrefixes[r.GoPrefix] = true
+	}
+	for _, imp := range ucr.knownImports {
+		if repoPrefixes[imp] {
+			continue
+		}
+		repo := repo.Repo{
+			Name:     label.ImportPathToBazelRepoName(imp),
+			GoPrefix: imp,
+		}
+		uc.repos = append(uc.repos, repo)
 	}
 
 	return nil
@@ -331,9 +363,6 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 	// -h or -help were passed explicitly.
 	fs.Usage = func() {}
 
-	var knownImports []string
-	fs.Var(&gzflag.MultiFlag{Values: &knownImports}, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
-
 	for _, cext := range cexts {
 		cext.RegisterFlags(fs, cmd.String(), c)
 	}
@@ -353,7 +382,6 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 		}
 	}
 
-	uc := getUpdateConfig(c)
 	workspacePath := filepath.Join(c.RepoRoot, "WORKSPACE")
 	if workspace, err := rule.LoadWorkspaceFile(workspacePath, ""); err != nil {
 		if !os.IsNotExist(err) {
@@ -362,7 +390,7 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 	} else {
 		c.RepoName = findWorkspaceName(workspace)
 		var reposFiles map[*rule.File][]string
-		uc.repos, reposFiles, err = repo.ListRepositories(workspace)
+		_, reposFiles, err = repo.ListRepositories(workspace)
 		if err != nil {
 			return nil, err
 		}
@@ -377,20 +405,6 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 		if err := fixRepoFiles(c, files, loads); err != nil {
 			return nil, err
 		}
-	}
-	repoPrefixes := make(map[string]bool)
-	for _, r := range uc.repos {
-		repoPrefixes[r.GoPrefix] = true
-	}
-	for _, imp := range knownImports {
-		if repoPrefixes[imp] {
-			continue
-		}
-		repo := repo.Repo{
-			Name:     label.ImportPathToBazelRepoName(imp),
-			GoPrefix: imp,
-		}
-		uc.repos = append(uc.repos, repo)
 	}
 
 	return c, nil

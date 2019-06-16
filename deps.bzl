@@ -15,8 +15,14 @@
 load(
     "@bazel_gazelle//internal:go_repository.bzl",
     _go_repository = "go_repository",
-    _go_repository_cache = "go_repository_cache",
-    _go_repository_tools = "go_repository_tools",
+)
+load(
+    "@bazel_gazelle//internal:go_repository_cache.bzl",
+    "go_repository_cache",
+)
+load(
+    "@bazel_gazelle//internal:go_repository_tools.bzl",
+    "go_repository_tools",
 )
 load(
     "@bazel_gazelle//internal:overlay_repository.bzl",
@@ -35,7 +41,7 @@ go_repository = _go_repository
 
 def gazelle_dependencies(go_sdk = ""):
     if go_sdk:
-        _go_repository_cache(
+        go_repository_cache(
             name = "bazel_gazelle_go_repository_cache",
             go_sdk_name = go_sdk,
         )
@@ -52,12 +58,12 @@ def gazelle_dependencies(go_sdk = ""):
             else:
                 platform = "host"
             go_sdk_info[name] = platform
-        _go_repository_cache(
+        go_repository_cache(
             name = "bazel_gazelle_go_repository_cache",
             go_sdk_info = go_sdk_info,
         )
 
-    _go_repository_tools(
+    go_repository_tools(
         name = "bazel_gazelle_go_repository_tools",
         go_cache = "@bazel_gazelle_go_repository_cache//:go.env",
     )
@@ -74,7 +80,7 @@ def gazelle_dependencies(go_sdk = ""):
         name = "com_github_bazelbuild_buildtools",
         importpath = "github.com/bazelbuild/buildtools",
         sum = "h1:KLCFP96KTydy03EMRwdGnngaD76gt34BBWK4g7TChgk=",
-        version = "v0.0.0-20190329162354-3f7be923c4b0",        
+        version = "v0.0.0-20190329162354-3f7be923c4b0",
     )
 
     _maybe(
@@ -82,7 +88,7 @@ def gazelle_dependencies(go_sdk = ""):
         name = "com_github_fsnotify_fsnotify",
         importpath = "github.com/fsnotify/fsnotify",
         sum = "h1:IXs+QLmnXW2CcXuY+8Mzv/fWEsPGWxqefPtCP5CnV9I=",
-        version = "v1.4.7",      
+        version = "v1.4.7",
     )
 
     _maybe(
