@@ -223,7 +223,7 @@ The following attributes are available on the ``gazelle`` rule.
 +----------------------+---------------------+--------------------------------------+
 | :param:`build_tags`  | :type:`string_list` | :value:`[]`                          |
 +----------------------+---------------------+--------------------------------------+
-| The last of Go build tags that Gazelle should consider to always be true.         |
+| The list of Go build tags that Gazelle should consider to always be true.         |
 +----------------------+---------------------+--------------------------------------+
 | :param:`prefix`      | :type:`string`      | :value:`""`                          |
 +----------------------+---------------------+--------------------------------------+
