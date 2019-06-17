@@ -13,6 +13,7 @@ Gazelle build file generator
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
 .. _gazelle rule: #bazel-rule
 .. _Extending Gazelle: extend.rst
+.. _Supported languages: extend.rst#supported-languages
 .. _extended: `Extending Gazelle`_
 .. _gazelle_binary: extend.rst#gazelle_binary
 .. _import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.import_prefix
@@ -52,6 +53,7 @@ may change. Gazelle is not an official Google product.*
   * `http_archive`_ (deprecated)
 
 * `Extending Gazelle`_
+* `Supported languages`_
 * `Avoiding conflicts with proto rules`_
 
 Setup
