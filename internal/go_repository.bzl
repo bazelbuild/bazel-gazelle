@@ -13,11 +13,23 @@
 # limitations under the License.
 
 load("@io_bazel_rules_go//go/private:common.bzl", "env_execute", "executable_extension")
+load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
 
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
 
 def _go_repository_impl(ctx):
+    # Locate and resolve configuration files. Gazelle reads directives and
+    # known repositories from these files. Resolving them here forces
+    # go_repository rules to be invalidated when they change. Gazelle's cache
+    # should NOT be invalidated, so we shouldn't need to download these again.
+    # TODO(#549): vcs repositories are not cached and still need to be fetched.
+    workspace_label = Label("@//:WORKSPACE")
+    workspace_path = ctx.path(workspace_label)
+    for label in _find_macro_file_labels(ctx, workspace_label):
+        ctx.path(label)
+
+    # Download the repository or module.
     fetch_repo_args = None
 
     if ctx.attr.urls:
@@ -72,7 +84,7 @@ def _go_repository_impl(ctx):
         fail("one of urls, commit, tag, or importpath must be specified")
 
     if fetch_repo_args or generate:
-        env = _read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
+        env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
         env_keys = [
             "GOPROXY",
             "PATH",
@@ -103,6 +115,7 @@ def _go_repository_impl(ctx):
         if result.stderr:
             print("fetch_repo: " + result.stderr)
 
+    # Generate build files if needed.
     generate = ctx.attr.build_file_generation == "on"
     if ctx.attr.build_file_generation == "auto":
         generate = True
@@ -124,6 +137,8 @@ def _go_repository_impl(ctx):
             "fix",
             "-repo_root",
             ctx.path(""),
+            "-repo_config",
+            str(workspace_path),
         ]
         if ctx.attr.version:
             cmd.append("-go_experimental_module_mode")
@@ -243,221 +258,51 @@ def patch(ctx):
             fail("Error applying patch command %s:\n%s%s" %
                  (cmd, st.stdout, st.stderr))
 
-def _go_repository_cache_impl(ctx):
-    if ctx.attr.go_sdk_name:
-        go_sdk_name = ctx.attr.go_sdk_name
+def _find_macro_file_labels(ctx, label):
+    """Returns a list of labels for configuration files that Gazelle may read.
+
+    The list is gathered by reading '# gazelle:repository_macro' directives
+    from the file named by label (which is not included in the returned list).
+    """
+    seen = {}
+    files = []
+
+    if "read" in dir(ctx):
+        # TODO(jayconrod): not supported in Bazel 0.23.0. Use directly when
+        # minimum version of Bazel supports this.
+        content = ctx.read(label)
     else:
-        host_platform = _detect_host_platform(ctx)
-        matches = [
-            name
-            for name, platform in ctx.attr.go_sdk_info.items()
-            if host_platform == platform or platform == "host"
-        ]
-        if len(matches) > 1:
-            fail('gazelle found more than one suitable Go SDK ({}). Specify which one to use with gazelle_dependencies(go_sdk = "go_sdk").'.format(", ".join(matches)))
-        if len(matches) == 0:
-            fail('gazelle could not find a Go SDK. Specify which one to use with gazelle_dependencies(go_sdk = "go_sdk").')
-        if len(matches) == 1:
-            go_sdk_name = matches[0]
+        result = ctx.execute(["cat", str(ctx.path(label))])
+        if result.return_code == 0:
+            content = result.stdout
+        else:
+            # TODO(jayconrod): "type" might work on Windows, but I think
+            # it's a shell builtin, and I'm not sure if ctx.execute will work.
+            content = ""
 
-    go_sdk_label = Label("@" + go_sdk_name + "//:ROOT")
-
-    go_root = str(ctx.path(go_sdk_label).dirname)
-    go_path = str(ctx.path("."))
-    go_cache = str(ctx.path("gocache"))
-    if ctx.os.environ.get("GO_REPOSITORY_USE_HOST_CACHE", "") == "1":
-        extension = executable_extension(ctx)
-        go_tool = go_root + "/bin/go" + extension
-        res = ctx.execute([go_tool, "env", "GOPATH"])
-        if res.return_code:
-            fail("failed to read go environment: " + res.stderr)
-        if not res.stdout:
-            fail("GOPATH must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.")
-        go_path = res.stdout.strip()
-        res = ctx.execute([go_tool, "env", "GOCACHE"])
-        if res.return_code:
-            fail("failed to read go environment: " + res.stderr)
-        if not res.stdout:
-            fail("GOCACHE must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.")
-        go_cache = res.stdout.strip()
-
-    env_tpl = """
-GOROOT='{goroot}'
-GOPATH='{gopath}'
-GOCACHE='{gocache}'
-"""
-    env_content = env_tpl.format(
-        goroot = go_root,
-        gopath = go_path,
-        gocache = go_cache,
-    )
-    ctx.file("go.env", env_content)
-    ctx.file("BUILD.bazel", 'exports_files(["go.env"])')
-
-go_repository_cache = repository_rule(
-    _go_repository_cache_impl,
-    attrs = {
-        "go_sdk_name": attr.string(),
-        "go_sdk_info": attr.string_dict(),
-    },
-)
-
-def _read_cache_env(ctx, path):
-    result = ctx.execute(["cat", path])
-    if result.return_code:
-        fail("failed to read cache environment: " + result.stderr)
-    env = {}
-    lines = result.stdout.split("\n")
+    lines = content.split("\n")
     for line in lines:
-        line = line.strip()
-        if line == "" or line.startswith("#"):
+        i = line.find("#")
+        if i < 0:
             continue
-        k, sep, v = line.partition("=")
-        if sep == "":
-            fail("failed to parse cache environment")
-        env[k] = v.strip("'")
-    return env
+        line = line[i + len("#"):]
+        i = line.find("gazelle:")
+        if i < 0 or not line[:i].isspace():
+            continue
+        line = line[i + len("gazelle:"):]
+        i = line.find("repository_macro")
+        if i < 0 or (i > 0 and not line[:i].isspace()):
+            continue
+        line = line[i + len("repository_macro"):]
+        if len(line) == 0 or not line[0].isspace():
+            continue
+        i = line.rfind("%")
+        if i < 0:
+            continue
+        line = line[:i].lstrip()
+        macro_label = Label("@//:" + line)
+        if macro_label not in seen:
+            seen[macro_label] = None
+            files.append(macro_label)
 
-_GO_REPOSITORY_TOOLS_BUILD_FILE = """
-package(default_visibility = ["//visibility:public"])
-
-filegroup(
-    name = "fetch_repo",
-    srcs = ["bin/fetch_repo{extension}"],
-)
-
-filegroup(
-    name = "gazelle",
-    srcs = ["bin/gazelle{extension}"],
-)
-
-exports_files(["ROOT"])
-"""
-
-def _go_repository_tools_impl(ctx):
-    # Create a link to the gazelle repo. This will be our GOPATH.
-    env = _read_cache_env(ctx, str(ctx.path(ctx.attr.go_cache)))
-    extension = executable_extension(ctx)
-    go_tool = env["GOROOT"] + "/bin/go" + extension
-
-    ctx.symlink(
-        ctx.path(Label("@bazel_gazelle//:WORKSPACE")).dirname,
-        "src/github.com/bazelbuild/bazel-gazelle",
-    )
-
-    # Resolve a label for each source file so this rule will be re-executed
-    # when they change.
-    list_script = str(ctx.path(Label("@bazel_gazelle//internal:list_repository_tools_srcs.go")))
-    result = ctx.execute([go_tool, "run", list_script])
-    if result.return_code:
-        print("could not resolve gazelle sources: " + result.stderr)
-    else:
-        for line in result.stdout.split("\n"):
-            line = line.strip()
-            if line == "":
-                continue
-            ctx.path(Label(line))
-
-    # Build the tools.
-    env.update({
-        "GOPATH": str(ctx.path(".")),
-        "GO111MODULE": "off",
-        # workaround: to find gcc for go link tool on Arm platform
-        "PATH": ctx.os.environ["PATH"],
-        # workaround: avoid the Go SDK paths from leaking into the binary
-        "GOROOT_FINAL": "GOROOT",
-        # workaround: avoid cgo paths in /tmp leaking into binary
-        "CGO_ENABLED": "0",
-    })
-    if "GOPROXY" in ctx.os.environ:
-        env["GOPROXY"] = ctx.os.environ["GOPROXY"]
-
-    args = [
-        go_tool,
-        "install",
-        "-ldflags",
-        "-w -s",
-        "-gcflags",
-        "all=-trimpath=" + env["GOPATH"],
-        "-asmflags",
-        "all=-trimpath=" + env["GOPATH"],
-        "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
-        "github.com/bazelbuild/bazel-gazelle/cmd/fetch_repo",
-    ]
-    result = env_execute(ctx, args, environment = env)
-    if result.return_code:
-        fail("failed to build tools: " + result.stderr)
-
-    # add a build file to export the tools
-    ctx.file(
-        "BUILD.bazel",
-        _GO_REPOSITORY_TOOLS_BUILD_FILE.format(extension = executable_extension(ctx)),
-        False,
-    )
-    ctx.file(
-        "ROOT",
-        "",
-        False,
-    )
-
-go_repository_tools = repository_rule(
-    _go_repository_tools_impl,
-    attrs = {
-        "go_cache": attr.label(
-            mandatory = True,
-            allow_single_file = True,
-        ),
-    },
-    environ = [
-        "GOCACHE",
-        "GOPATH",
-        "GO_REPOSITORY_USE_HOST_CACHE",
-        "TMP",
-    ],
-)
-"""go_repository_tools is a synthetic repository used by go_repository.
-
-go_repository depends on two Go binaries: fetch_repo and gazelle. We can't
-build these with Bazel inside a repository rule, and we don't want to manage
-prebuilt binaries, so we build them in here with go build, using whichever
-SDK rules_go is using.
-"""
-
-# copied from rules_go. Keep in sync.
-def _detect_host_platform(ctx):
-    if ctx.os.name == "linux":
-        host = "linux_amd64"
-        res = ctx.execute(["uname", "-p"])
-        if res.return_code == 0:
-            uname = res.stdout.strip()
-            if uname == "s390x":
-                host = "linux_s390x"
-            elif uname == "i686":
-                host = "linux_386"
-
-        # uname -p is not working on Aarch64 boards
-        # or for ppc64le on some distros
-        res = ctx.execute(["uname", "-m"])
-        if res.return_code == 0:
-            uname = res.stdout.strip()
-            if uname == "aarch64":
-                host = "linux_arm64"
-            elif uname == "armv6l":
-                host = "linux_arm"
-            elif uname == "armv7l":
-                host = "linux_arm"
-            elif uname == "ppc64le":
-                host = "linux_ppc64le"
-
-        # Default to amd64 when uname doesn't return a known value.
-
-    elif ctx.os.name == "mac os x":
-        host = "darwin_amd64"
-    elif ctx.os.name.startswith("windows"):
-        host = "windows_amd64"
-    elif ctx.os.name == "freebsd":
-        host = "freebsd_amd64"
-    else:
-        fail("Unsupported operating system: " + ctx.os.name)
-
-    return host
+    return files
