@@ -11,6 +11,8 @@ addons:
     packages:
       - wget
       - pkg-config
+      - libjpeg-dev
+      - libpng-dev
 
 before_install:
   - |

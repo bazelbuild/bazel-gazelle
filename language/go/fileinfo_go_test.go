@@ -18,6 +18,7 @@ package golang
 import (
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -187,6 +188,91 @@ func TestGoFileInfoFailure(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %#v ; want %#v", got, want)
+	}
+}
+func TestCgoPkgConfig(t *testing.T) {
+	pkgOutput, err := exec.Command("pkg-config", "--cflags", "libpng").Output()
+	if err != nil {
+		t.Skip("Unable to find libpng. Skipping pkg-config test")
+	}
+	_, err = exec.Command("pkg-config", "--cflags", "libjpeg").Output()
+	if err != nil {
+		t.Skip("Unable to find libpng. Skipping pkg-config test")
+	}
+	libpngCopts := strings.TrimSpace(string(pkgOutput))
+	for _, tc := range []struct {
+		desc, source string
+		want         fileInfo
+	}{
+		{
+			"pkg-config works",
+			`package foo
+
+/*
+#cgo pkg-config: libpng
+#cgo pkg-config: libpng libjpeg
+*/
+import ("C")
+`,
+			fileInfo{
+				isCgo: true,
+				copts: []taggedOpts{
+					{opts: libpngCopts},
+					{opts: libpngCopts},
+				},
+				clinkopts: []taggedOpts{
+					{opts: "-lpng16 -lz"},
+					{opts: "-lpng16 -lz -ljpeg"},
+				},
+			},
+		},
+		{
+			"pkg-config with conditions",
+			`package foo
+
+/*
+#cgo foo bar,!baz pkg-config: libpng
+*/
+import "C"
+`,
+			fileInfo{
+				isCgo: true,
+				copts: []taggedOpts{
+					{
+						tags: tagLine{{"foo"}, {"bar", "!baz"}},
+						opts: libpngCopts,
+					},
+				},
+				clinkopts: []taggedOpts{
+					{
+						tags: tagLine{{"foo"}, {"bar", "!baz"}},
+						opts: "-lpng16 -lz",
+					},
+				},
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestCgo")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(dir)
+			name := "TestCgo.go"
+			path := filepath.Join(dir, name)
+			if err := ioutil.WriteFile(path, []byte(tc.source), 0600); err != nil {
+				t.Fatal(err)
+			}
+
+			got := goFileInfo(path, "")
+
+			// Clear fields we don't care about for testing.
+			got = fileInfo{isCgo: got.isCgo, copts: got.copts, clinkopts: got.clinkopts}
+
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("case %q: got %#v; want %#v", tc.desc, got, tc.want)
+			}
+		})
 	}
 }
 

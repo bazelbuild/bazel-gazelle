@@ -35,6 +35,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"os/exec"
 )
 
 // fileInfo holds information used to decide how to build a file. This
@@ -333,6 +334,29 @@ func goFileInfo(path, rel string) fileInfo {
 	return info
 }
 
+func resolvePkgConfig(pkgs []string) (clinkopts, copts string, err error) {
+	clinkopts, err = resolvePkgConfigForMode("--libs", pkgs)
+	if err != nil {
+		return
+	}
+	copts, err = resolvePkgConfigForMode("--cflags", pkgs)
+	return
+}
+
+// resolvePkgConfigForMode runs pkg-config for with the given mode for the given set of packages
+func resolvePkgConfigForMode(mode string, pkgs []string) (string, error) {
+	cmd := exec.Command("pkg-config", append([]string{mode}, pkgs...)...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		s := fmt.Sprintf("%s failed: %v", strings.Join(cmd.Args, " "), err)
+		if len(out) > 0 {
+			s = fmt.Sprintf("%s: %s", s, out)
+		}
+		return "", errors.New(s)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
 // saveCgo extracts CFLAGS, CPPFLAGS, CXXFLAGS, and LDFLAGS directives
 // from a comment above a "C" import. This is intended to match logic in
 // go/build.Context.saveCgo.
@@ -386,7 +410,12 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 		case "LDFLAGS":
 			info.clinkopts = append(info.clinkopts, taggedOpts{tags, joinedStr})
 		case "pkg-config":
-			return fmt.Errorf("%s: pkg-config not supported: %s", info.path, orig)
+			clinkopts, copts, err := resolvePkgConfig(opts)
+			if err != nil {
+				return fmt.Errorf("%s: error when resolving pkg-config: %s", info.path, orig)
+			}
+			info.clinkopts = append(info.clinkopts, taggedOpts{tags, clinkopts})
+			info.copts = append(info.copts, taggedOpts{tags, copts})
 		default:
 			return fmt.Errorf("%s: invalid #cgo verb: %s", info.path, orig)
 		}
