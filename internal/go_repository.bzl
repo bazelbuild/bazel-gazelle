@@ -24,10 +24,11 @@ def _go_repository_impl(ctx):
     # go_repository rules to be invalidated when they change. Gazelle's cache
     # should NOT be invalidated, so we shouldn't need to download these again.
     # TODO(#549): vcs repositories are not cached and still need to be fetched.
-    workspace_label = Label("@//:WORKSPACE")
-    workspace_path = ctx.path(workspace_label)
-    for label in _find_macro_file_labels(ctx, workspace_label):
-        ctx.path(label)
+    config_path = None
+    if ctx.attr.build_config:
+        config_path = ctx.path(ctx.attr.build_config)
+        for label in _find_macro_file_labels(ctx, ctx.attr.build_config):
+            ctx.path(label)
 
     # Download the repository or module.
     fetch_repo_args = None
@@ -137,9 +138,9 @@ def _go_repository_impl(ctx):
             "fix",
             "-repo_root",
             ctx.path(""),
-            "-repo_config",
-            str(workspace_path),
         ]
+        if config_path:
+            cmd.extend(["-repo_config", str(config_path)])
         if ctx.attr.version:
             cmd.append("-go_experimental_module_mode")
         if ctx.attr.build_file_name:
@@ -225,6 +226,7 @@ go_repository = repository_rule(
             ],
         ),
         "build_extra_args": attr.string_list(),
+        "build_config": attr.label(default = "@//:WORKSPACE"),
 
         # Patches to apply after running gazelle.
         "patches": attr.label_list(),
@@ -267,18 +269,13 @@ def _find_macro_file_labels(ctx, label):
     seen = {}
     files = []
 
-    if "read" in dir(ctx):
-        # TODO(jayconrod): not supported in Bazel 0.23.0. Use directly when
-        # minimum version of Bazel supports this.
-        content = ctx.read(label)
+    result = ctx.execute(["cat", str(ctx.path(label))])
+    if result.return_code == 0:
+        content = result.stdout
     else:
-        result = ctx.execute(["cat", str(ctx.path(label))])
-        if result.return_code == 0:
-            content = result.stdout
-        else:
-            # TODO(jayconrod): "type" might work on Windows, but I think
-            # it's a shell builtin, and I'm not sure if ctx.execute will work.
-            content = ""
+        # TODO(jayconrod): "type" might work on Windows, but I think
+        # it's a shell builtin, and I'm not sure if ctx.execute will work.
+        content = ""
 
     lines = content.split("\n")
     for line in lines:
@@ -300,7 +297,7 @@ def _find_macro_file_labels(ctx, label):
         if i < 0:
             continue
         line = line[:i].lstrip()
-        macro_label = Label("@//:" + line)
+        macro_label = Label("@" + label.workspace_name + "//:" + line)
         if macro_label not in seen:
             seen[macro_label] = None
             files.append(macro_label)

@@ -39,7 +39,9 @@ load(
 # Re-export go_repository . Users should get it from this file.
 go_repository = _go_repository
 
-def gazelle_dependencies(go_sdk = ""):
+def gazelle_dependencies(
+        go_sdk = "",
+        go_repository_default_config = "@//:WORKSPACE"):
     if go_sdk:
         go_repository_cache(
             name = "bazel_gazelle_go_repository_cache",

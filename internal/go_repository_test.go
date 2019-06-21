@@ -21,24 +21,11 @@ import (
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
 )
 
-const mainWorkspace = `
--- WORKSPACE --
-local_repository(
-    name = "io_bazel_rules_go",
-    path = "../io_bazel_rules_go",
-)
-
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
-
-go_rules_dependencies()
-
-go_register_toolchains(go_version = "host")
-
-local_repository(
-    name = "bazel_gazelle",
-    path = "../bazel_gazelle",
-)
-
+var testArgs = bazel_testing.Args{
+	Main: `
+-- BUILD.bazel --
+`,
+	WorkspaceSuffix: `
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
 gazelle_dependencies()
@@ -57,12 +44,11 @@ go_repository(
     version = "v0.8.1",
     sum ="h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=",
 )
-
--- BUILD.bazel --
-`
+`,
+}
 
 func TestMain(m *testing.M) {
-	bazel_testing.TestMain(m, bazel_testing.Args{Main: mainWorkspace})
+	bazel_testing.TestMain(m, testArgs)
 }
 
 func TestBuild(t *testing.T) {
