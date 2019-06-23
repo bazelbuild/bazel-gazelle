@@ -214,6 +214,21 @@ returned by ``go env GOPATH``.
 | mode, Gazelle will run if there is no build file in the repository root                                 |
 | directory.                                                                                              |
 +--------------------------------+----------------------+-------------------------------------------------+
+| :param:`build_config`          | :type:`label`        | :value:`@//:WORKSPACE`                          |
++--------------------------------+----------------------+-------------------------------------------------+
+| A file that Gazelle should read to learn about external repositories before                             |
+| generating build files. This is useful for dependency resolution. For example,                          |
+| a ``go_repository`` rule in this file establishes a mapping between a                                   |
+| repository name like ``golang.org/x/tools`` and a workspace name like                                   |
+| ``org_golang_x_tools``. Workspace directives like                                                       |
+| ``# gazelle:repository_macro`` are recognized.                                                          |
+|                                                                                                         |
+| By default, Gazelle reads the WORKSPACE file in the main workspace. This                                |
+| means that ``go_repository`` rules are re-evaluated when WORKSPACE changes.                             |
+| Their content should still be fetched from a local cache, but build files                               |
+| will be regenerated. If this is not desirable, ``build_config`` may be set                              |
+| to a less frequently updated file or ``None`` to disable this functionality.                            |
++--------------------------------+----------------------+-------------------------------------------------+
 | :param:`build_file_name`       | :type:`string`       | :value:`BUILD.bazel,BUILD`                      |
 +--------------------------------+----------------------+-------------------------------------------------+
 | Comma-separated list of names Gazelle will consider to be build files.                                  |

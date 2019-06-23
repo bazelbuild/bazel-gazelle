@@ -16,6 +16,7 @@ exports_files(
     [
         "gazelle.bash.in",
         "list_repository_tools_srcs.go",
+        "repository_rules_test_errors.patch",
     ],
     visibility = ["//visibility:public"],
 )
@@ -28,6 +29,8 @@ filegroup(
         "gazelle.bash.in",
         "gazelle_binary.bzl",
         "go_repository.bzl",
+        "go_repository_cache.bzl",
+        "go_repository_tools.bzl",
         "list_repository_tools_srcs.go",
         "overlay_repository.bzl",
         "repository_rules_test_errors.patch",

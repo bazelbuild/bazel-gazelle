@@ -73,7 +73,7 @@ func (*testFilegroupLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *r
 var kinds = map[string]rule.KindInfo{
 	"filegroup": {
 		NonEmptyAttrs:  map[string]bool{"srcs": true, "deps": true},
-		MergeableAttrs: map[string]bool{"deps": true},
+		MergeableAttrs: map[string]bool{"srcs": true},
 	},
 }
 
