@@ -1,46 +1,13 @@
-load("@io_bazel_rules_go//tests:bazel_tests.bzl", "bazel_test")
+load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
-_REPOSITORY_RULES_TEST_WORKSPACE = """
-load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
-go_rules_dependencies()
-go_register_toolchains()
-
-# TODO(jayconrod): fix bazel_test so this isn't necessary
-register_toolchains(
-    "@go_sdk//:go_darwin_amd64",
-    "@go_sdk//:go_linux_amd64",
-    "@go_sdk//:go_windows_amd64",
-)
-
-load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
-gazelle_dependencies(go_sdk = "go_sdk")
-
-go_repository(
-    name = "errors_go_git",
-    importpath = "github.com/pkg/errors",
-    commit = "30136e27e2ac8d167177e8a583aa4c3fea5be833",
-    patches = ["@bazel_gazelle//internal:repository_rules_test_errors.patch"],
-    patch_args = ["-p1"],
-)
-
-go_repository(
-    name = "errors_go_mod",
-    importpath = "github.com/pkg/errors",
-    version = "v0.8.1",
-    sum ="h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=",
-)
-"""
-
-bazel_test(
-    name = "repository_rules_test",
-    command = "build",
-    externals = ["@bazel_gazelle//:WORKSPACE"],
-    extra_files = ["repository_rules_test_errors.patch"],
-    targets = [
-        "@errors_go_git//:errors",
-        "@errors_go_mod//:go_default_library",
+# gazelle:exclude go_repository_test.go
+go_bazel_test(
+    name = "go_repository_test",
+    srcs = ["go_repository_test.go"],
+    rule_files = [
+        "@bazel_gazelle//:all_files",
+        "@io_bazel_rules_go//:all_files",
     ],
-    workspace = _REPOSITORY_RULES_TEST_WORKSPACE,
 )
 
 # TODO(jayconrod): test fetch_repo error cases.

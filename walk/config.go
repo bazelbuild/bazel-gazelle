@@ -41,6 +41,9 @@ func getWalkConfig(c *config.Config) *walkConfig {
 }
 
 func (wc *walkConfig) isExcluded(rel, base string) bool {
+	if base == ".git" {
+		return true
+	}
 	f := path.Join(rel, base)
 	for _, x := range wc.excludes {
 		if f == x {

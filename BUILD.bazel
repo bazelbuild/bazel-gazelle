@@ -31,7 +31,7 @@ filegroup(
     name = "all_files",
     testonly = True,
     # keep
-    srcs = [
+    srcs = glob(["vendor/**"]) + [
         ".bazelrc",
         ".gitignore",
         ".travis.yml",
