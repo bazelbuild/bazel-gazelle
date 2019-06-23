@@ -1,8 +1,12 @@
 workspace(name = "bazel_gazelle")
 
-local_repository(
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
+git_repository(
     name = "io_bazel_rules_go",
-    path = "../rules_go",
+    commit = "fabf03c1cd31bcf15fb945d932cef322b242be3a",
+    remote = "https://github.com/bazelbuild/rules_go",
+    shallow_since = "1561303606 -0400",
 )
 
 load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
