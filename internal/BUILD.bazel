@@ -52,3 +52,22 @@ exports_files(
     ],
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "gazelle.bash.in",
+        "gazelle_binary.bzl",
+        "go_repository.bzl",
+        "list_repository_tools_srcs.go",
+        "overlay_repository.bzl",
+        "repository_rules_test_errors.patch",
+        "//internal/gazellebinarytest:all_files",
+        "//internal/language:all_files",
+        "//internal/version:all_files",
+        "//internal/wspace:all_files",
+    ],
+    visibility = ["//visibility:public"],
+)

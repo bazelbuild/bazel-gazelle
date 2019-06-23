@@ -23,3 +23,15 @@ go_test(
         "//rule:go_default_library",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "fix.go",
+        "merger.go",
+        "merger_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)

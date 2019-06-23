@@ -1,0 +1,6 @@
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = ["//internal/language/test_filegroup:all_files"],
+    visibility = ["//visibility:public"],
+)

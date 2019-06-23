@@ -26,3 +26,15 @@ go_test(
         "//testtools:go_default_library",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "config.go",
+        "walk.go",
+        "walk_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)

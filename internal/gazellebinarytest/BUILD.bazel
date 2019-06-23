@@ -34,3 +34,14 @@ go_test(
     rundir = ".",
     deps = ["//testtools:go_default_library"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "gazellebinary_test.go",
+        "xlang.go",
+    ],
+    visibility = ["//visibility:public"],
+)

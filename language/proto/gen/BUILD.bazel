@@ -13,3 +13,14 @@ go_binary(
     embed = [":go_default_library"],
     visibility = ["//:__subpackages__"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "gen_known_imports.go",
+        "update_proto_csv.go",
+    ],
+    visibility = ["//visibility:public"],
+)

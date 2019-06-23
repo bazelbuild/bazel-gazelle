@@ -24,3 +24,14 @@ go_test(
     embed = [":go_default_library"],
     deps = ["//testtools:go_default_library"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "move_labels.go",
+        "move_labels_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)

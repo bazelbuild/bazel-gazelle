@@ -11,3 +11,15 @@ go_library(
         "//rule:go_default_library",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "lang.go",
+        "//language/go:all_files",
+        "//language/proto:all_files",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -15,3 +15,14 @@ go_library(
         "//rule:go_default_library",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "config.go",
+        "index.go",
+    ],
+    visibility = ["//visibility:public"],
+)

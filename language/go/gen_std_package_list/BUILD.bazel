@@ -12,3 +12,13 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/language/go/gen_std_package_list",
     visibility = ["//visibility:private"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "gen_std_package_list.go",
+    ],
+    visibility = ["//visibility:public"],
+)

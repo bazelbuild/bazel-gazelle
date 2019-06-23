@@ -20,3 +20,15 @@ go_test(
     embed = [":go_default_library"],
     deps = ["//rule:go_default_library"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "config.go",
+        "config_test.go",
+        "constants.go",
+    ],
+    visibility = ["//visibility:public"],
+)

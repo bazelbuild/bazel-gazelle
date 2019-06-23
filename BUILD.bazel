@@ -7,7 +7,7 @@ load("//:def.bzl", "gazelle", "gazelle_binary")
 gazelle(
     name = "gazelle",
     command = "fix",
-    # gazelle = ":gazelle_local",
+    gazelle = ":gazelle_local",
 )
 
 gazelle_binary(
@@ -26,3 +26,43 @@ nogo(
 )
 
 exports_files(["WORKSPACE"])
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    # keep
+    srcs = [
+        ".bazelrc",
+        ".gitignore",
+        ".travis.yml",
+        "AUTHORS",
+        "BUILD.bazel",
+        "CODEOWNERS",
+        "CONTRIBUTING.md",
+        "CONTRIBUTORS",
+        "Design.rst",
+        "LICENSE",
+        "README.rst",
+        "WORKSPACE",
+        "def.bzl",
+        "deps.bzl",
+        "extend.rst",
+        "go.mod",
+        "go.sum",
+        "repository.rst",
+        "//cmd:all_files",
+        "//config:all_files",
+        "//flag:all_files",
+        "//internal:all_files",
+        "//label:all_files",
+        "//language:all_files",
+        "//merger:all_files",
+        "//pathtools:all_files",
+        "//repo:all_files",
+        "//resolve:all_files",
+        "//rule:all_files",
+        "//testtools:all_files",
+        "//walk:all_files",
+    ],
+    visibility = ["//visibility:public"],
+)

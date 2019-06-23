@@ -24,3 +24,16 @@ go_test(
     embed = [":go_default_library"],
     deps = ["@org_golang_x_tools//go/vcs:go_default_library"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "fetch_repo.go",
+        "fetch_repo_test.go",
+        "module.go",
+        "vcs.go",
+    ],
+    visibility = ["//visibility:public"],
+)

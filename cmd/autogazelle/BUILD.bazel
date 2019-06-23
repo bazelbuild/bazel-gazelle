@@ -43,3 +43,17 @@ go_binary(
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "README.rst",
+        "autogazelle.bash",
+        "autogazelle.go",
+        "client_unix.go",
+        "server_unix.go",
+    ],
+    visibility = ["//visibility:public"],
+)
