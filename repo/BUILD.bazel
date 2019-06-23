@@ -37,3 +37,21 @@ go_test(
         "@org_golang_x_tools//go/vcs:go_default_library",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "dep.go",
+        "godep.go",
+        "import_test.go",
+        "modules.go",
+        "remote.go",
+        "remote_test.go",
+        "repo.go",
+        "repo_test.go",
+        "stubs_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -14,3 +14,14 @@ go_library(
         "//language:go_default_library",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "config.go",
+        "files.go",
+    ],
+    visibility = ["//visibility:public"],
+)

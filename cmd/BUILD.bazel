@@ -1,0 +1,11 @@
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "//cmd/autogazelle:all_files",
+        "//cmd/fetch_repo:all_files",
+        "//cmd/gazelle:all_files",
+        "//cmd/move_labels:all_files",
+    ],
+    visibility = ["//visibility:public"],
+)

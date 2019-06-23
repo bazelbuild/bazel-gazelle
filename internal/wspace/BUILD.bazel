@@ -13,3 +13,14 @@ go_test(
     srcs = ["finder_test.go"],
     embed = [":go_default_library"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "finder.go",
+        "finder_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)

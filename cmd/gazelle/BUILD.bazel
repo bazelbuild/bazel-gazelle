@@ -74,3 +74,25 @@ go_test(
         "@com_github_bazelbuild_buildtools//build:go_default_library",
     ],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "diff.go",
+        "diff_test.go",
+        "fix.go",
+        "fix-update.go",
+        "fix_test.go",
+        "gazelle.go",
+        "integration_test.go",
+        "langs.go",
+        "metaresolver.go",
+        "print.go",
+        "update-repos.go",
+        "update_repos_test.go",
+        "version.go",
+    ],
+    visibility = ["//visibility:public"],
+)

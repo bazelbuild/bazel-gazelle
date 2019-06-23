@@ -61,3 +61,28 @@ go_test(
 )
 
 exports_files(["proto.csv"])
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "config.go",
+        "config_test.go",
+        "constants.go",
+        "fileinfo.go",
+        "fileinfo_test.go",
+        "fix.go",
+        "generate.go",
+        "generate_test.go",
+        "kinds.go",
+        "known_imports.go",
+        "lang.go",
+        "package.go",
+        "proto.csv",
+        "resolve.go",
+        "resolve_test.go",
+        "//language/proto/gen:all_files",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -13,3 +13,14 @@ go_test(
     srcs = ["label_test.go"],
     embed = [":go_default_library"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "label.go",
+        "label_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)
