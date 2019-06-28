@@ -256,7 +256,7 @@ func resolveExternal(moduleMode bool, rc *repo.RemoteCache, imp string) (label.L
 	// and not the common case, especially when known repositories aren't
 	// listed in WORKSPACE (which is currently the case within go_repository).
 	if !moduleMode {
-		moduleMode = modMajorRex.FindStringIndex(imp) != nil
+		moduleMode = pathWithoutSemver(imp) != ""
 	}
 
 	var prefix, repo string
@@ -271,8 +271,12 @@ func resolveExternal(moduleMode bool, rc *repo.RemoteCache, imp string) (label.L
 	}
 
 	var pkg string
-	if imp != prefix {
+	if pathtools.HasPrefix(imp, prefix) {
 		pkg = pathtools.TrimPrefix(imp, prefix)
+	} else if impWithoutSemver := pathWithoutSemver(imp); pathtools.HasPrefix(impWithoutSemver, prefix) {
+		// We may have used minimal module compatibility to resolve a path
+		// without a semantic import version suffix to a repository that has one.
+		pkg = pathtools.TrimPrefix(impWithoutSemver, prefix)
 	}
 
 	return label.New(repo, pkg, defaultLibName), nil

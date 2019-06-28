@@ -23,6 +23,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -40,12 +41,13 @@ import (
 // update commands. This includes everything in config.Config, but it also
 // includes some additional fields that aren't relevant to other packages.
 type updateConfig struct {
-	dirs        []string
-	emit        emitFunc
-	repos       []repo.Repo
-	walkMode    walk.Mode
-	patchPath   string
-	patchBuffer bytes.Buffer
+	dirs           []string
+	emit           emitFunc
+	repos          []repo.Repo
+	workspaceFiles []*rule.File
+	walkMode       walk.Mode
+	patchPath      string
+	patchBuffer    bytes.Buffer
 }
 
 type emitFunc func(c *config.Config, f *rule.File) error
@@ -122,15 +124,21 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		uc.walkMode = walk.UpdateDirsMode
 	}
 
+	// Load the repo configuration file (WORKSPACE by default) to find out
+	// names and prefixes of other go_repositories. This affects external
+	// dependency resolution for Go.
+	// TODO(jayconrod): this should be moved to language/go.
+	var repoFileMap map[*rule.File][]string
 	if ucr.repoConfigPath == "" {
 		ucr.repoConfigPath = filepath.Join(c.RepoRoot, "WORKSPACE")
 	}
-	if repoConfigFile, err := rule.LoadWorkspaceFile(ucr.repoConfigPath, ""); err != nil {
+	repoConfigFile, err := rule.LoadWorkspaceFile(ucr.repoConfigPath, "")
+	if err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
 	} else {
-		uc.repos, _, err = repo.ListRepositories(repoConfigFile)
+		uc.repos, repoFileMap, err = repo.ListRepositories(repoConfigFile)
 		if err != nil {
 			return err
 		}
@@ -148,6 +156,39 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 			GoPrefix: imp,
 		}
 		uc.repos = append(uc.repos, repo)
+	}
+
+	// If the repo configuration file is not WORKSPACE, also load WORKSPACE
+	// so we can apply any necessary fixes.
+	workspacePath := filepath.Join(c.RepoRoot, "WORKSPACE")
+	var workspace *rule.File
+	if ucr.repoConfigPath == workspacePath {
+		workspace = repoConfigFile
+	} else {
+		workspace, err = rule.LoadWorkspaceFile(workspacePath, "")
+		if err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		if workspace != nil {
+			_, repoFileMap, err = repo.ListRepositories(workspace)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	if workspace != nil {
+		c.RepoName = findWorkspaceName(workspace)
+		uc.workspaceFiles = make([]*rule.File, 0, len(repoFileMap))
+		seen := make(map[string]bool)
+		for f := range repoFileMap {
+			if !seen[f.Path] {
+				uc.workspaceFiles = append(uc.workspaceFiles, f)
+				seen[f.Path] = true
+			}
+		}
+		sort.Slice(uc.workspaceFiles, func(i, j int) bool {
+			return uc.workspaceFiles[i].Path < uc.workspaceFiles[j].Path
+		})
 	}
 
 	return nil
@@ -382,29 +423,9 @@ func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Config
 		}
 	}
 
-	workspacePath := filepath.Join(c.RepoRoot, "WORKSPACE")
-	if workspace, err := rule.LoadWorkspaceFile(workspacePath, ""); err != nil {
-		if !os.IsNotExist(err) {
-			return nil, err
-		}
-	} else {
-		c.RepoName = findWorkspaceName(workspace)
-		var reposFiles map[*rule.File][]string
-		_, reposFiles, err = repo.ListRepositories(workspace)
-		if err != nil {
-			return nil, err
-		}
-		files := make([]*rule.File, 0, len(reposFiles))
-		seen := make(map[string]bool)
-		for f := range reposFiles {
-			if !seen[f.Path] {
-				files = append(files, f)
-				seen[f.Path] = true
-			}
-		}
-		if err := fixRepoFiles(c, files, loads); err != nil {
-			return nil, err
-		}
+	uc := getUpdateConfig(c)
+	if err := fixRepoFiles(c, uc.workspaceFiles, loads); err != nil {
+		return nil, err
 	}
 
 	return c, nil

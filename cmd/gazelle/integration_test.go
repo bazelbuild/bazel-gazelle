@@ -2643,6 +2643,62 @@ go_binary(
 	})
 }
 
+// TestMinimalModuleCompatibilityAliases checks that importpath_aliases
+// are emitted for go_libraries when needed. This can't easily be checked
+// in language/go because the generator tests don't support running at
+// the repository root or with additional flags, both of which are required.
+func TestMinimalModuleCompatibilityAliases(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path:    "go.mod",
+			Content: "module example.com/foo/v2",
+		}, {
+			Path:    "foo.go",
+			Content: "package foo",
+		}, {
+			Path:    "bar/bar.go",
+			Content: "package bar",
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update", "-repo_root", dir, "-go_prefix", "example.com/foo/v2", "-go_repository_mode", "-go_repository_module_mode"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo/v2",
+    importpath_aliases = ["example.com/foo"],
+    visibility = ["//visibility:public"],
+)
+`,
+		}, {
+			Path: "bar/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["bar.go"],
+    importpath = "example.com/foo/v2/bar",
+    importpath_aliases = ["example.com/foo/bar"],
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+	})
+}
+
 // TODO(jayconrod): more tests
 //   run in fix mode in testdata directories to create new files
 //   run in diff mode in testdata directories to update existing files (no change)

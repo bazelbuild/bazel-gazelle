@@ -1117,6 +1117,29 @@ func TestResolveExternal(t *testing.T) {
 			}},
 			moduleMode: true,
 			want:       "@custom_repo//v2/foo:go_default_library",
+		}, {
+			desc:       "min_module_compat",
+			importpath: "example.com/foo",
+			repos: []repo.Repo{{
+				Name:     "com_example_foo_v2",
+				GoPrefix: "example.com/foo/v2",
+			}},
+			moduleMode: true,
+			want:       "@com_example_foo_v2//:go_default_library",
+		}, {
+			desc:       "min_module_compat_both",
+			importpath: "example.com/foo",
+			repos: []repo.Repo{
+				{
+					Name:     "com_example_foo",
+					GoPrefix: "example.com/foo",
+				}, {
+					Name:     "com_example_foo_v2",
+					GoPrefix: "example.com/foo/v2",
+				},
+			},
+			moduleMode: true,
+			want:       "@com_example_foo//:go_default_library",
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

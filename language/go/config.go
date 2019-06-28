@@ -74,8 +74,14 @@ type goConfig struct {
 	// goGrpcCompilersSet indicates whether goGrpcCompiler was set explicitly.
 	goGrpcCompilersSet bool
 
-	// moduleMode is true if external dependencies should be resolved as modules.
-	// TODO(jayconrod): this should be the only mode in the future.
+	// goRepositoryMode is true if Gazelle was invoked by a go_repository rule.
+	// In this mode, we won't go out to the network to resolve external deps.
+	goRepositoryMode bool
+
+	// moduleMode is true if the current directory is intended to be built
+	// as part of a module. Minimal module compatibility won't be supported
+	// if this is true in the root directory. External dependencies may be
+	// resolved differently (also depending on goRepositoryMode).
 	moduleMode bool
 }
 
@@ -228,16 +234,16 @@ func (_ *goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			&gzflag.MultiFlag{Values: &gc.goGrpcCompilers, IsSet: &gc.goGrpcCompilersSet},
 			"go_grpc_compiler",
 			"go_proto_library compiler to use for gRPC (may be repeated)")
-		// TODO(jayconrod): remove this flag when gazelle within go_repository
-		// automatically has a list of repositories from the main WORKSPACE.
-		// Enabling module mode without this will make go_repository slower,
-		// since we'd be going out to the network much more often.
+		fs.BoolVar(
+			&gc.goRepositoryMode,
+			"go_repository_mode",
+			false,
+			"set when gazelle is invoked by go_repository")
 		fs.BoolVar(
 			&gc.moduleMode,
-			"go_experimental_module_mode",
+			"go_repository_module_mode",
 			false,
-			"when enabled, external Go imports will be resolved as modules",
-		)
+			"set when gazelle is invoked by go_repository in module mode")
 	}
 	c.Exts[goName] = gc
 }
