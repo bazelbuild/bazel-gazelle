@@ -87,29 +87,28 @@ type Config struct {
 	Exts map[string]interface{}
 }
 
+// ConfigureArgs contains arguments for config.Configure. Arguments are
+// passed in a struct value so that new fields may be added in the future
+// without breaking existing implementations.
 type ConfigureArgs struct {
-	// Config is the configuration for the directory where rules are being
-	// generated.
+	// Config is the configuration for the current directory. It starts out as a copy
+	// of the configuration for the parent directory.
 	Config *Config
 
-	// Rel is the slash-separated path to the directory, relative to the
-	// repository root ("" for the root directory itself). This may be used
-	// as the package name in labels.
+	// Rel is the slash-separated relative path from the repository root to
+	// the current directory. It is "" for the root directory itself.
 	Rel string
 
-	// File is the build file for the directory. File is nil if there is
-	// no existing build file.
+	// File is the build file for the current directory or nil if there is no
+	// existing build file.
 	File *rule.File
 
 	// Subdirs is a list of subdirectories in the directory, including
-	// symbolic links to directories that Gazelle will follow.
+	// symbolic links to directories.
 	// RegularFiles is a list of regular files including other symbolic
 	// links.
-	// GeneratedFiles is a list of generated files in the directory
-	// (usually these are mentioned as "out" or "outs" attributes in rules).
 	Subdirs, RegularFiles []string
 }
-
 
 // MappedKind describes a replacement to use for a built-in kind.
 type MappedKind struct {
@@ -180,14 +179,9 @@ type Configurer interface {
 	// Configure modifies the configuration using directives and other information
 	// extracted from a build file. Configure is called in each directory.
 	//
-	// c is the configuration for the current directory. It starts out as a copy
-	// of the configuration for the parent directory.
-	//
-	// rel is the slash-separated relative path from the repository root to
-	// the current directory. It is "" for the root directory itself.
-	//
-	// f is the build file for the current directory or nil if there is no
-	// existing build file.
+	// args contains the arguments for Configure. This is passed as a
+	// struct to avoid breaking implementations in the future when new
+	// fields are added.
 	Configure(args ConfigureArgs)
 }
 
