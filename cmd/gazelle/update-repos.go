@@ -120,7 +120,7 @@ func (_ *updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) e
 
 func (_ *updateReposConfigurer) KnownDirectives() []string { return nil }
 
-func (_ *updateReposConfigurer) Configure(c *config.Config, rel string, f *rule.File) {}
+func (_ *updateReposConfigurer) Configure(args config.ConfigureArgs) {}
 
 func updateRepos(args []string) error {
 	cexts := make([]config.Configurer, 0, 2)

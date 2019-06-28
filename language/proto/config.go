@@ -196,12 +196,12 @@ func (_ *protoLang) KnownDirectives() []string {
 	return []string{"proto", "proto_group", "proto_strip_import_prefix", "proto_import_prefix"}
 }
 
-func (_ *protoLang) Configure(c *config.Config, rel string, f *rule.File) {
+func (_ *protoLang) Configure(args config.ConfigureArgs) {
 	pc := &ProtoConfig{}
-	*pc = *GetProtoConfig(c)
-	c.Exts[protoName] = pc
-	if f != nil {
-		for _, d := range f.Directives {
+	*pc = *GetProtoConfig(args.Config)
+	args.Config.Exts[protoName] = pc
+	if args.File != nil {
+		for _, d := range args.File.Directives {
 			switch d.Key {
 			case "proto":
 				mode, err := ModeFromString(d.Value)
@@ -215,8 +215,8 @@ func (_ *protoLang) Configure(c *config.Config, rel string, f *rule.File) {
 				pc.groupOption = d.Value
 			case "proto_strip_import_prefix":
 				pc.stripImportPrefix = d.Value
-				if rel != "" {
-					if err := checkStripImportPrefix(pc.stripImportPrefix, rel); err != nil {
+				if args.Rel != "" {
+					if err := checkStripImportPrefix(pc.stripImportPrefix, args.Rel); err != nil {
 						log.Print(err)
 					}
 				}
@@ -225,7 +225,7 @@ func (_ *protoLang) Configure(c *config.Config, rel string, f *rule.File) {
 			}
 		}
 	}
-	inferProtoMode(c, rel, f)
+	inferProtoMode(args.Config, args.Rel, args.File)
 }
 
 // inferProtoMode sets ProtoConfig.Mode based on the directory name and the

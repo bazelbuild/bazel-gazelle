@@ -21,7 +21,6 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
-	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 // TODO(#472): store location information to validate each exclude. They
@@ -67,24 +66,24 @@ func (_ *Configurer) KnownDirectives() []string {
 	return []string{"exclude", "follow", "ignore"}
 }
 
-func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
-	wc := getWalkConfig(c)
+func (_ *Configurer) Configure(args config.ConfigureArgs) {
+	wc := getWalkConfig(args.Config)
 	wcCopy := &walkConfig{}
 	*wcCopy = *wc
 	wcCopy.ignore = false
 
-	if f != nil {
-		for _, d := range f.Directives {
+	if args.File != nil {
+		for _, d := range args.File.Directives {
 			switch d.Key {
 			case "exclude":
-				wcCopy.excludes = append(wcCopy.excludes, path.Join(rel, d.Value))
+				wcCopy.excludes = append(wcCopy.excludes, path.Join(args.Rel, d.Value))
 			case "follow":
-				wcCopy.follow = append(wcCopy.follow, path.Join(rel, d.Value))
+				wcCopy.follow = append(wcCopy.follow, path.Join(args.Rel, d.Value))
 			case "ignore":
 				wcCopy.ignore = true
 			}
 		}
 	}
 
-	c.Exts[walkName] = wcCopy
+	args.Config.Exts[walkName] = wcCopy
 }

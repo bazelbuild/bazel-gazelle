@@ -133,14 +133,30 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 			haveError = true
 		}
 
-		c = configure(cexts, knownDirectives, c, rel, f)
+		var subdirs, regularFiles []string
+		for _, fi := range files {
+			base := fi.Name()
+			switch {
+			case base == "":
+				continue
+
+			case fi.IsDir():
+				subdirs = append(subdirs, base)
+
+			default:
+				regularFiles = append(regularFiles, base)
+			}
+		}
+
+		c = configure(cexts, knownDirectives, c, rel, f, subdirs, regularFiles)
 		wc := getWalkConfig(c)
 
 		if wc.isExcluded(rel, ".") {
 			return
 		}
 
-		var subdirs, regularFiles []string
+		subdirs = subdirs[:0]
+		regularFiles = regularFiles[:0]
 		for _, fi := range files {
 			base := fi.Name()
 			switch {
@@ -244,7 +260,7 @@ func loadBuildFile(c *config.Config, pkg, dir string, files []os.FileInfo) (*rul
 	return rule.LoadFile(path, pkg)
 }
 
-func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *config.Config, rel string, f *rule.File) *config.Config {
+func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *config.Config, rel string, f *rule.File, subdirs, regularFiles []string) *config.Config {
 	if rel != "" {
 		c = c.Clone()
 	}
@@ -256,7 +272,13 @@ func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *co
 		}
 	}
 	for _, cext := range cexts {
-		cext.Configure(c, rel, f)
+		cext.Configure(config.ConfigureArgs{
+			Config: c,
+			File: f,
+			Rel: rel,
+			Subdirs: subdirs,
+			RegularFiles: regularFiles,
+		})
 	}
 	return c
 }

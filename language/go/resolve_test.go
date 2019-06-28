@@ -17,6 +17,7 @@ package golang
 
 import (
 	"fmt"
+	"github.com/bazelbuild/bazel-gazelle/config"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -942,7 +943,11 @@ go_proto_library(
 				}
 				if bf.rel == "" {
 					for _, cext := range cexts {
-						cext.Configure(c, "", f)
+						cext.Configure(config.ConfigureArgs{
+							Config: c,
+							File: f,
+							Rel: "",
+						})
 					}
 				}
 				for _, r := range f.Rules {

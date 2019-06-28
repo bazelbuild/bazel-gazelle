@@ -20,15 +20,12 @@ import (
 	"fmt"
 	"go/build"
 	"log"
-	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
-	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
@@ -254,30 +251,32 @@ func (_ *goLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	return nil
 }
 
-func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
+func (_ *goLang) Configure(args config.ConfigureArgs) {
 	var gc *goConfig
-	if raw, ok := c.Exts[goName]; !ok {
+	if raw, ok := args.Config.Exts[goName]; !ok {
 		gc = newGoConfig()
 	} else {
 		gc = raw.(*goConfig).clone()
 	}
-	c.Exts[goName] = gc
+	args.Config.Exts[goName] = gc
 
-	if !gc.moduleMode {
-		st, err := os.Stat(filepath.Join(c.RepoRoot, filepath.FromSlash(rel), "go.mod"))
-		if err == nil && !st.IsDir() {
-			gc.moduleMode = true
+	if !gc.moduleMode && args.RegularFiles != nil {
+		for _, file := range args.RegularFiles {
+			if file == "go.mod"{
+				gc.moduleMode = true
+				break;
+			}
 		}
 	}
 
-	if path.Base(rel) == "vendor" {
-		gc.importMapPrefix = inferImportPath(gc, rel)
-		gc.importMapPrefixRel = rel
+	if path.Base(args.Rel) == "vendor" {
+		gc.importMapPrefix = inferImportPath(gc, args.Rel)
+		gc.importMapPrefixRel = args.Rel
 		gc.prefix = ""
-		gc.prefixRel = rel
+		gc.prefixRel = args.Rel
 	}
 
-	if f != nil {
+	if args.File != nil {
 		setPrefix := func(prefix string) {
 			if err := checkPrefix(prefix); err != nil {
 				log.Print(err)
@@ -285,9 +284,9 @@ func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
 			}
 			gc.prefix = prefix
 			gc.prefixSet = true
-			gc.prefixRel = rel
+			gc.prefixRel = args.Rel
 		}
-		for _, d := range f.Directives {
+		for _, d := range args.File.Directives {
 			switch d.Key {
 			case "build_tags":
 				if err := gc.setBuildTags(d.Value); err != nil {
@@ -316,13 +315,13 @@ func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 			case "importmap_prefix":
 				gc.importMapPrefix = d.Value
-				gc.importMapPrefixRel = rel
+				gc.importMapPrefixRel = args.Rel
 			case "prefix":
 				setPrefix(d.Value)
 			}
 		}
 		if !gc.prefixSet {
-			for _, r := range f.Rules {
+			for _, r := range args.File.Rules {
 				switch r.Kind() {
 				case "go_prefix":
 					args := r.Args()

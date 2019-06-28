@@ -87,6 +87,30 @@ type Config struct {
 	Exts map[string]interface{}
 }
 
+type ConfigureArgs struct {
+	// Config is the configuration for the directory where rules are being
+	// generated.
+	Config *Config
+
+	// Rel is the slash-separated path to the directory, relative to the
+	// repository root ("" for the root directory itself). This may be used
+	// as the package name in labels.
+	Rel string
+
+	// File is the build file for the directory. File is nil if there is
+	// no existing build file.
+	File *rule.File
+
+	// Subdirs is a list of subdirectories in the directory, including
+	// symbolic links to directories that Gazelle will follow.
+	// RegularFiles is a list of regular files including other symbolic
+	// links.
+	// GeneratedFiles is a list of generated files in the directory
+	// (usually these are mentioned as "out" or "outs" attributes in rules).
+	Subdirs, RegularFiles []string
+}
+
+
 // MappedKind describes a replacement to use for a built-in kind.
 type MappedKind struct {
 	FromKind, KindName, KindLoad string
@@ -164,7 +188,7 @@ type Configurer interface {
 	//
 	// f is the build file for the current directory or nil if there is no
 	// existing build file.
-	Configure(c *Config, rel string, f *rule.File)
+	Configure(args ConfigureArgs)
 }
 
 // CommonConfigurer handles language-agnostic command-line flags and directives,
@@ -219,14 +243,14 @@ func (cc *CommonConfigurer) KnownDirectives() []string {
 	return []string{"build_file_name", "map_kind"}
 }
 
-func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
-	if f == nil {
+func (cc *CommonConfigurer) Configure(args ConfigureArgs) {
+	if args.File == nil {
 		return
 	}
-	for _, d := range f.Directives {
+	for _, d := range args.File.Directives {
 		switch d.Key {
 		case "build_file_name":
-			c.ValidBuildFileNames = strings.Split(d.Value, ",")
+			args.Config.ValidBuildFileNames = strings.Split(d.Value, ",")
 
 		case "map_kind":
 			vals := strings.Fields(d.Value)
@@ -234,10 +258,10 @@ func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
 				log.Printf("expected three arguments (gazelle:map_kind from_kind to_kind load_file), got %v", vals)
 				continue
 			}
-			if c.KindMap == nil {
-				c.KindMap = make(map[string]MappedKind)
+			if args.Config.KindMap == nil {
+				args.Config.KindMap = make(map[string]MappedKind)
 			}
-			c.KindMap[vals[0]] = MappedKind{
+			args.Config.KindMap[vals[0]] = MappedKind{
 				FromKind: vals[0],
 				KindName: vals[1],
 				KindLoad: vals[2],

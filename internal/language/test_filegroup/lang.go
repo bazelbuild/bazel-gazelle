@@ -51,7 +51,7 @@ func (*testFilegroupLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 
 func (*testFilegroupLang) KnownDirectives() []string { return nil }
 
-func (*testFilegroupLang) Configure(c *config.Config, rel string, f *rule.File) {}
+func (*testFilegroupLang) Configure(args config.ConfigureArgs) {}
 
 func (*testFilegroupLang) Kinds() map[string]rule.KindInfo {
 	return kinds

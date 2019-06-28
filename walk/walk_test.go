@@ -430,6 +430,6 @@ func (_ *testConfigurer) CheckFlags(_ *flag.FlagSet, _ *config.Config) error { r
 
 func (_ *testConfigurer) KnownDirectives() []string { return nil }
 
-func (tc *testConfigurer) Configure(c *config.Config, rel string, f *rule.File) {
-	tc.configure(c, rel, f)
+func (tc *testConfigurer) Configure(args config.ConfigureArgs) {
+	tc.configure(args.Config, args.Rel, args.File)
 }

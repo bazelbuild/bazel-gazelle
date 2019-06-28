@@ -60,7 +60,7 @@ func (x *xlang) KnownDirectives() []string {
 	return nil
 }
 
-func (x *xlang) Configure(c *config.Config, rel string, f *rule.File) {
+func (x *xlang) Configure(args config.ConfigureArgs) {
 }
 
 func (x *xlang) GenerateRules(args language.GenerateArgs) language.GenerateResult {

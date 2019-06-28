@@ -22,7 +22,6 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
-	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 // FindRuleWithOverride searches the current configuration for user-specified
@@ -74,14 +73,14 @@ func (_ *Configurer) KnownDirectives() []string {
 	return []string{"resolve"}
 }
 
-func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
-	rc := getResolveConfig(c)
+func (_ *Configurer) Configure(args config.ConfigureArgs) {
+	rc := getResolveConfig(args.Config)
 	rcCopy := &resolveConfig{
 		overrides: rc.overrides[:],
 	}
 
-	if f != nil {
-		for _, d := range f.Directives {
+	if args.File != nil {
+		for _, d := range args.File.Directives {
 			if d.Key == "resolve" {
 				parts := strings.Fields(d.Value)
 				o := overrideSpec{}
@@ -105,11 +104,11 @@ func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					log.Printf("gazelle:resolve %s: %v", d.Value, err)
 					continue
 				}
-				o.dep = o.dep.Abs("", rel)
+				o.dep = o.dep.Abs("", args.Rel)
 				rcCopy.overrides = append(rcCopy.overrides, o)
 			}
 		}
 	}
 
-	c.Exts[resolveName] = rcCopy
+	args.Config.Exts[resolveName] = rcCopy
 }
