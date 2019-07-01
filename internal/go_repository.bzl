@@ -132,6 +132,7 @@ def _go_repository_impl(ctx):
         gazelle = ctx.path(Label(_gazelle))
         cmd = [
             gazelle,
+            "-go_repository_mode",
             "-go_prefix",
             ctx.attr.importpath,
             "-mode",
@@ -142,7 +143,7 @@ def _go_repository_impl(ctx):
         if config_path:
             cmd.extend(["-repo_config", str(config_path)])
         if ctx.attr.version:
-            cmd.append("-go_experimental_module_mode")
+            cmd.append("-go_repository_module_mode")
         if ctx.attr.build_file_name:
             cmd.extend(["-build_file_name", ctx.attr.build_file_name])
         if ctx.attr.build_tags:

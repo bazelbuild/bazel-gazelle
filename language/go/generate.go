@@ -495,11 +495,22 @@ func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel, visibility string, targ
 }
 
 func (g *generator) setImportAttrs(r *rule.Rule, importPath string) {
+	gc := getGoConfig(g.c)
 	r.SetAttr("importpath", importPath)
-	goConf := getGoConfig(g.c)
-	if goConf.importMapPrefix != "" {
-		fromPrefixRel := pathtools.TrimPrefix(g.rel, goConf.importMapPrefixRel)
-		importMap := path.Join(goConf.importMapPrefix, fromPrefixRel)
+
+	// Set importpath_aliases if we need minimal module compatibility.
+	// If a package is part of a module with a v2+ semantic import version
+	// suffix, packages that are not part of modules may import it without
+	// the suffix.
+	if gc.goRepositoryMode && gc.moduleMode && pathtools.HasPrefix(importPath, gc.prefix) && gc.prefixRel == "" {
+		if mmcImportPath := pathWithoutSemver(importPath); mmcImportPath != "" {
+			r.SetAttr("importpath_aliases", []string{mmcImportPath})
+		}
+	}
+
+	if gc.importMapPrefix != "" {
+		fromPrefixRel := pathtools.TrimPrefix(g.rel, gc.importMapPrefixRel)
+		importMap := path.Join(gc.importMapPrefix, fromPrefixRel)
 		if importMap != importPath {
 			r.SetAttr("importmap", importMap)
 		}

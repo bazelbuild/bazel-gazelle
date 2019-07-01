@@ -171,6 +171,27 @@ func NewRemoteCache(knownRepos []Repo) (r *RemoteCache, cleanup func() error) {
 			},
 		}
 	}
+
+	// Augment knownRepos with additional prefixes for
+	// minimal module compatibility. For example, if repo "com_example_foo_v2"
+	// has prefix "example.com/foo/v2", map "example.com/foo" to the same
+	// entry.
+	// TODO(jayconrod): there should probably be some control over whether
+	// callers can use these mappings: packages within modules should not be
+	// allowed to use them. However, we'll return the same result nearly all
+	// the time, and simpler is better.
+	for _, repo := range knownRepos {
+		path := pathWithoutSemver(repo.GoPrefix)
+		if path == "" || r.root.cache[path] != nil {
+			continue
+		}
+		r.root.cache[path] = r.root.cache[repo.GoPrefix]
+		if e := r.remote.cache[repo.GoPrefix]; e != nil {
+			r.remote.cache[path] = e
+		}
+		r.mod.cache[path] = r.mod.cache[repo.GoPrefix]
+	}
+
 	return r, r.cleanup
 }
 
@@ -454,4 +475,24 @@ func (m *remoteCacheMap) ensure(key string, load func() (interface{}, error)) (i
 		}
 	}
 	return e.value, e.err
+}
+
+var semverRex = regexp.MustCompile(`^.*?(/v\d+)(?:/.*)?$`)
+
+// pathWithoutSemver removes a semantic version suffix from path.
+// For example, if path is "example.com/foo/v2/bar", pathWithoutSemver
+// will return "example.com/foo/bar". If there is no semantic version suffix,
+// "" will be returned.
+// TODO(jayconrod): copied from language/go. This whole type should be
+// migrated there.
+func pathWithoutSemver(path string) string {
+	m := semverRex.FindStringSubmatchIndex(path)
+	if m == nil {
+		return ""
+	}
+	v := path[m[2]+2 : m[3]]
+	if v == "0" || v == "1" {
+		return ""
+	}
+	return path[:m[2]] + path[m[3]:]
 }
