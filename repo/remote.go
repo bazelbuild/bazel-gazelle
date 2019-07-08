@@ -17,6 +17,7 @@ package repo
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -39,28 +40,17 @@ import (
 // Depending on how the RemoteCache was initialized and used earlier, some
 // information may already be locally available. Frequently though, information
 // will be fetched over the network, so this function may be slow.
-func UpdateRepo(rc *RemoteCache, importPath string) (Repo, error) {
-	root, name, err := rc.Root(importPath)
+func UpdateRepo(rc *RemoteCache, modPath string) (Repo, error) {
+	name, version, sum, err := rc.ModVersion(modPath, "latest")
 	if err != nil {
 		return Repo{}, err
 	}
-	remote, vcs, err := rc.Remote(root)
-	if err != nil {
-		return Repo{}, err
-	}
-	commit, tag, err := rc.Head(remote, vcs)
-	if err != nil {
-		return Repo{}, err
-	}
-	repo := Repo{
+	return Repo{
 		Name:     name,
-		GoPrefix: root,
-		Commit:   commit,
-		Tag:      tag,
-		Remote:   remote,
-		VCS:      vcs,
-	}
-	return repo, nil
+		GoPrefix: modPath,
+		Version:  version,
+		Sum:      sum,
+	}, nil
 }
 
 // RemoteCache stores information about external repositories. The cache may
@@ -70,6 +60,9 @@ func UpdateRepo(rc *RemoteCache, importPath string) (Repo, error) {
 //
 // Public methods of RemoteCache may be slow in cases where a network fetch
 // is needed. Public methods may be called concurrently.
+//
+// TODO(jayconrod): this is very Go-centric. It should be moved to language/go.
+// Unfortunately, doing so would break the resolve.Resolver interface.
 type RemoteCache struct {
 	// RepoRootForImportPath is vcs.RepoRootForImportPath by default. It may
 	// be overridden so that tests may avoid accessing the network.
@@ -84,7 +77,12 @@ type RemoteCache struct {
 	// out for tests.
 	ModInfo func(importPath string) (modPath string, err error)
 
-	root, remote, head, mod remoteCacheMap
+	// ModVersionInfo returns the module path, true version, and sum for
+	// the module that provides the package with the given import path.
+	// This is used by ModVersion. It may be stubbed out for tests.
+	ModVersionInfo func(modPath, query string) (version, sum string, err error)
+
+	root, remote, head, mod, modVersion remoteCacheMap
 
 	tmpOnce sync.Once
 	tmpDir  string
@@ -127,6 +125,10 @@ type modValue struct {
 	known      bool
 }
 
+type modVersionValue struct {
+	path, name, version, sum string
+}
+
 // NewRemoteCache creates a new RemoteCache with a set of known repositories.
 // The Root and Remote methods will return information about repositories listed
 // here without accessing the network. However, the Head method will still
@@ -144,9 +146,13 @@ func NewRemoteCache(knownRepos []Repo) (r *RemoteCache, cleanup func() error) {
 		remote:                remoteCacheMap{cache: make(map[string]*remoteCacheEntry)},
 		head:                  remoteCacheMap{cache: make(map[string]*remoteCacheEntry)},
 		mod:                   remoteCacheMap{cache: make(map[string]*remoteCacheEntry)},
+		modVersion:            remoteCacheMap{cache: make(map[string]*remoteCacheEntry)},
 	}
 	r.ModInfo = func(importPath string) (string, error) {
 		return defaultModInfo(r, importPath)
+	}
+	r.ModVersionInfo = func(modPath, query string) (string, string, error) {
+		return defaultModVersionInfo(r, modPath, query)
 	}
 	for _, repo := range knownRepos {
 		r.root.cache[repo.GoPrefix] = &remoteCacheEntry{
@@ -413,13 +419,7 @@ func (r *RemoteCache) Mod(importPath string) (modPath, name string, err error) {
 }
 
 func defaultModInfo(rc *RemoteCache, importPath string) (modPath string, err error) {
-	rc.tmpOnce.Do(func() {
-		rc.tmpDir, rc.tmpErr = ioutil.TempDir("", "gazelle-remotecache-")
-		if rc.tmpErr != nil {
-			return
-		}
-		rc.tmpErr = ioutil.WriteFile(filepath.Join(rc.tmpDir, "go.mod"), []byte(`module gazelle_remote_cache__\n`), 0666)
-	})
+	rc.initTmp()
 	if rc.tmpErr != nil {
 		return "", rc.tmpErr
 	}
@@ -437,6 +437,70 @@ func defaultModInfo(rc *RemoteCache, importPath string) (modPath string, err err
 		return "", fmt.Errorf("finding module path for import %s: %v: %s", importPath, err, stdErr)
 	}
 	return strings.TrimSpace(string(out)), nil
+}
+
+// ModVersion looks up information about a module at a given version.
+// The path must be the module path, not a package within the module.
+// The version may be a canonical semantic version, a query like "latest",
+// or a branch, tag, or revision name. ModVersion returns the name of
+// the repository rule providing the module (if any), the true version,
+// and the sum.
+func (r *RemoteCache) ModVersion(modPath, query string) (name, version, sum string, err error) {
+	// Ask "go list".
+	arg := modPath + "@" + query
+	v, err := r.modVersion.ensure(arg, func() (interface{}, error) {
+		version, sum, err := r.ModVersionInfo(modPath, query)
+		if err != nil {
+			return nil, err
+		}
+		return modVersionValue{
+			path:    modPath,
+			version: version,
+			sum:     sum,
+		}, nil
+	})
+	if err != nil {
+		return "", "", "", err
+	}
+	value := v.(modVersionValue)
+
+	// Try to find the repository name for the module, if there's already
+	// a repository rule that provides it.
+	v, ok, err := r.mod.get(modPath)
+	if ok && err == nil {
+		name = v.(modValue).name
+	} else {
+		name = label.ImportPathToBazelRepoName(modPath)
+	}
+
+	return name, value.version, value.sum, nil
+}
+
+func defaultModVersionInfo(rc *RemoteCache, modPath, query string) (version, sum string, err error) {
+	rc.initTmp()
+	if rc.tmpErr != nil {
+		return "", "", rc.tmpErr
+	}
+
+	goTool := findGoTool()
+	cmd := exec.Command(goTool, "mod", "download", "-json", "--", modPath+"@"+query)
+	cmd.Dir = rc.tmpDir
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	out, err := cmd.Output()
+	if err != nil {
+		var stdErr []byte
+		if e, ok := err.(*exec.ExitError); ok {
+			stdErr = e.Stderr
+		}
+		return "", "", fmt.Errorf("finding module version and sum for %s@%s: %v: %s", modPath, query, err, stdErr)
+	}
+
+	var result struct{ Version, Sum string }
+	if err := json.Unmarshal(out, &result); err != nil {
+		fmt.Println(out)
+		return "", "", fmt.Errorf("finding module version and sum for %s@%s: invalid output from 'go mod download': %v", modPath, query, err)
+	}
+	return result.Version, result.Sum, nil
 }
 
 // get retrieves a value associated with the given key from the cache. ok will
@@ -475,6 +539,16 @@ func (m *remoteCacheMap) ensure(key string, load func() (interface{}, error)) (i
 		}
 	}
 	return e.value, e.err
+}
+
+func (rc *RemoteCache) initTmp() {
+	rc.tmpOnce.Do(func() {
+		rc.tmpDir, rc.tmpErr = ioutil.TempDir("", "gazelle-remotecache-")
+		if rc.tmpErr != nil {
+			return
+		}
+		rc.tmpErr = ioutil.WriteFile(filepath.Join(rc.tmpDir, "go.mod"), []byte(`module gazelle_remote_cache__\n`), 0666)
+	})
 }
 
 var semverRex = regexp.MustCompile(`^.*?(/v\d+)(?:/.*)?$`)

@@ -43,7 +43,6 @@ def _go_repository_tools_impl(ctx):
         "src/github.com/bazelbuild/bazel-gazelle",
     )
 
-    # Build the tools.
     env.update({
         "GOPATH": str(ctx.path(".")),
         "GO111MODULE": "off",
@@ -75,6 +74,7 @@ def _go_repository_tools_impl(ctx):
     if result.return_code:
         fail("list_repository_tools_srcs: " + result.stderr)
 
+    # Build the tools.
     args = [
         go_tool,
         "install",

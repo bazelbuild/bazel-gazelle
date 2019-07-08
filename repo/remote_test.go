@@ -219,3 +219,48 @@ func TestMod(t *testing.T) {
 		})
 	}
 }
+
+func TestModVersion(t *testing.T) {
+	for _, tc := range []struct {
+		desc, modPath, query           string
+		repos                          []Repo
+		wantName, wantVersion, wantSum string
+	}{
+		{
+			desc:    "known",
+			modPath: "example.com/known",
+			query:   "latest",
+			repos: []Repo{{
+				Name:     "known",
+				GoPrefix: "example.com/known",
+			}},
+			wantName:    "known",
+			wantVersion: "v1.2.3",
+			wantSum:     "h1:abcdef",
+		}, {
+			desc:        "unknown",
+			modPath:     "example.com/unknown",
+			query:       "latest",
+			wantName:    "com_example_unknown",
+			wantVersion: "v1.2.3",
+			wantSum:     "h1:abcdef",
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			rc := NewStubRemoteCache(tc.repos)
+			name, version, sum, err := rc.ModVersion(tc.modPath, tc.query)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if name != tc.wantName {
+				t.Errorf("name: got %q; want %q", name, tc.wantName)
+			}
+			if version != tc.wantVersion {
+				t.Errorf("version: got %q; want %q", version, tc.wantVersion)
+			}
+			if sum != tc.wantSum {
+				t.Errorf("sum: got %q; want %q", sum, tc.wantSum)
+			}
+		})
+	}
+}
