@@ -129,6 +129,7 @@ func NewStubRemoteCache(rs []Repo) *RemoteCache {
 	rc.RepoRootForImportPath = stubRepoRootForImportPath
 	rc.HeadCmd = stubHeadCmd
 	rc.ModInfo = stubModInfo
+	rc.ModVersionInfo = stubModVersionInfo
 	return rc
 }
 
@@ -176,4 +177,11 @@ func stubModInfo(importPath string) (string, error) {
 		return "example.com/stub", nil
 	}
 	return "", fmt.Errorf("could not find module path for %s", importPath)
+}
+
+func stubModVersionInfo(modPath, query string) (version, sum string, err error) {
+	if modPath == "example.com/known" || modPath == "example.com/unknown" {
+		return "v1.2.3", "h1:abcdef", nil
+	}
+	return "", "", fmt.Errorf("no such module: %s", modPath)
 }
