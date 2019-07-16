@@ -14,6 +14,7 @@
 
 load("@io_bazel_rules_go//go/private:common.bzl", "env_execute", "executable_extension")
 load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
+load("@bazel_gazelle//internal:go_repository_tools_srcs.bzl", "GO_REPOSITORY_TOOLS_SRCS")
 
 _GO_REPOSITORY_TOOLS_BUILD_FILE = """
 package(default_visibility = ["//visibility:public"])
@@ -42,19 +43,6 @@ def _go_repository_tools_impl(ctx):
         "src/github.com/bazelbuild/bazel-gazelle",
     )
 
-    # Resolve a label for each source file so this rule will be re-executed
-    # when they change.
-    list_script = str(ctx.path(Label("@bazel_gazelle//internal:list_repository_tools_srcs.go")))
-    result = ctx.execute([go_tool, "run", list_script])
-    if result.return_code:
-        print("could not resolve gazelle sources: " + result.stderr)
-    else:
-        for line in result.stdout.split("\n"):
-            line = line.strip()
-            if line == "":
-                continue
-            ctx.path(Label(line))
-
     # Build the tools.
     env.update({
         "GOPATH": str(ctx.path(".")),
@@ -68,6 +56,24 @@ def _go_repository_tools_impl(ctx):
     })
     if "GOPROXY" in ctx.os.environ:
         env["GOPROXY"] = ctx.os.environ["GOPROXY"]
+
+    # Run the script to make sure the list of srcs is up to date.
+    # We don't want to run the script, then resolve each source file it returns.
+    # If many of the sources changed even slightly, Bazel would restart this
+    # rule each time. Compiling the script is relatively slow.
+    result = env_execute(
+        ctx,
+        [
+            go_tool,
+            "run",
+            ctx.path(ctx.attr._list_repository_tools_srcs),
+            "-dir", "src/github.com/bazelbuild/bazel-gazelle",
+            "-check", "internal/go_repository_tools_srcs.bzl",
+        ],
+        environment = env,
+    )
+    if result.return_code:
+        fail("list_repository_tools_srcs: " + result.stderr)
 
     args = [
         go_tool,
@@ -103,6 +109,12 @@ go_repository_tools = repository_rule(
         "go_cache": attr.label(
             mandatory = True,
             allow_single_file = True,
+        ),
+        "_go_repository_tools_srcs": attr.label_list(
+            default = GO_REPOSITORY_TOOLS_SRCS,
+        ),
+        "_list_repository_tools_srcs": attr.label(
+            default = "@bazel_gazelle//internal:list_repository_tools_srcs.go",
         ),
     },
     environ = [
