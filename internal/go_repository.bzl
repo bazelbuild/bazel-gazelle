@@ -97,9 +97,24 @@ def _go_repository_impl(ctx):
     if fetch_repo_args or generate:
         env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
         env_keys = [
+            # Respect user proxy and sumdb settings for privacy.
+            # TODO(jayconrod): gazelle in go_repository mode should probably
+            # not go out to the network at all. This means *the build*
+            # goes out to the network. We tolerate this for downloading
+            # archives, but finding module roots is a bit much.
             "GOPROXY",
+            "GONOPROXY",
+            "GOPRIVATE",
+            "GOSUMDB",
+            "GONOSUMDB",
+
+            # PATH is needed to locate git and other vcs tools.
             "PATH",
+
+            # HOME is needed to locate vcs configuration files (.gitconfig).
             "HOME",
+
+            # Settings below are used by vcs tools.
             "SSH_AUTH_SOCK",
             "HTTP_PROXY",
             "HTTPS_PROXY",
@@ -114,11 +129,16 @@ def _go_repository_impl(ctx):
         env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
     if fetch_repo_args:
+        # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
+        # attribute of go_repository, so we don't need to look it up.
+        fetch_repo_env = dict(env)
+        fetch_repo_env["GOSUMDB"] = "off"
+
         fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
         result = env_execute(
             ctx,
             [fetch_repo] + fetch_repo_args,
-            environment = env,
+            environment = fetch_repo_env,
             timeout = _GO_REPOSITORY_TIMEOUT,
         )
         if result.return_code:
