@@ -82,10 +82,10 @@ should look like this:
     http_archive(
         name = "bazel_gazelle",
         urls = [
-            "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/0.18.0/bazel-gazelle-0.18.0.tar.gz",
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.18.0/bazel-gazelle-0.18.0.tar.gz",
+            "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/0.18.1/bazel-gazelle-0.18.1.tar.gz",
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.18.1/bazel-gazelle-0.18.1.tar.gz",
         ],
-        sha256 = "887c6e7764463d2a39cecbebfdb7ca73ad9cb628e5c4d08cf64d1195300bea62",
+        sha256 = "be9296bfd64882e3c08e3283c58fcb461fa6dd3c171764fcc4cf322f60615a9b",
     )
 
     load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
