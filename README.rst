@@ -69,6 +69,7 @@ should look like this:
 .. code:: bzl
 
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
     http_archive(
         name = "io_bazel_rules_go",
         urls = [
@@ -77,15 +78,24 @@ should look like this:
         ],
         sha256 = "9fb16af4d4836c8222142e54c9efa0bb5fc562ffc893ce2abeac3e25daead144",
     )
+
     http_archive(
         name = "bazel_gazelle",
-        urls = ["https://github.com/bazelbuild/bazel-gazelle/releases/download/0.17.0/bazel-gazelle-0.17.0.tar.gz"],
-        sha256 = "3c681998538231a2d24d0c07ed5a7658cb72bfb5fd4bf9911157c0e9ac6a2687",
+        urls = [
+            "https://storage.googleapis.com/bazel-mirror/github.com/bazelbuild/bazel-gazelle/releases/download/0.18.0/bazel-gazelle-0.18.0.tar.gz",
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/0.18.0/bazel-gazelle-0.18.0.tar.gz",
+        ],
+        sha256 = "887c6e7764463d2a39cecbebfdb7ca73ad9cb628e5c4d08cf64d1195300bea62",
     )
+
     load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+
     go_rules_dependencies()
+
     go_register_toolchains()
+
     load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+
     gazelle_dependencies()
 
 Add the code below to the BUILD or BUILD.bazel file in the root directory
@@ -175,6 +185,8 @@ you're using a compatible version.
 | 0.16.0              | 0.13.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 | 0.17.0              | 0.13.0                       | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.18.0              | 0.19.0                       | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
