@@ -56,23 +56,25 @@ def _go_repository_tools_impl(ctx):
     if "GOPROXY" in ctx.os.environ:
         env["GOPROXY"] = ctx.os.environ["GOPROXY"]
 
-    # Run the script to make sure the list of srcs is up to date.
+    # Make sure the list of source is up to date.
     # We don't want to run the script, then resolve each source file it returns.
     # If many of the sources changed even slightly, Bazel would restart this
     # rule each time. Compiling the script is relatively slow.
-    result = env_execute(
-        ctx,
-        [
-            go_tool,
-            "run",
-            ctx.path(ctx.attr._list_repository_tools_srcs),
-            "-dir", "src/github.com/bazelbuild/bazel-gazelle",
-            "-check", "internal/go_repository_tools_srcs.bzl",
-        ],
-        environment = env,
-    )
-    if result.return_code:
-        fail("list_repository_tools_srcs: " + result.stderr)
+    # Don't try this on Windows: bazel does not set up symbolic links.
+    if "windows" not in ctx.os.name:
+        result = env_execute(
+            ctx,
+            [
+                go_tool,
+                "run",
+                ctx.path(ctx.attr._list_repository_tools_srcs),
+                "-dir", "src/github.com/bazelbuild/bazel-gazelle",
+                "-check", "internal/go_repository_tools_srcs.bzl",
+            ],
+            environment = env,
+        )
+        if result.return_code:
+            fail("list_repository_tools_srcs: " + result.stderr)
 
     # Build the tools.
     args = [
