@@ -62,13 +62,15 @@ func fetchModule(dest, importpath, version, sum string) error {
 	}
 
 	buf := &bytes.Buffer{}
+	bufErr := &bytes.Buffer{}
 	cmd := exec.Command(goPath, "mod", "download", "-json", importpath+"@"+version)
 	cmd.Stdout = buf
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = bufErr
 	dlErr := cmd.Run()
 	os.Remove("go.mod")
 	if dlErr != nil {
 		if _, ok := dlErr.(*exec.ExitError); !ok {
+			_, _ = os.Stderr.Write(bufErr.Bytes())
 			return dlErr
 		}
 	}
