@@ -17,12 +17,14 @@ package resolve
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
 )
 
 // FindRuleWithOverride searches the current configuration for user-specified
@@ -62,13 +64,28 @@ func getResolveConfig(c *config.Config) *resolveConfig {
 	return c.Exts[resolveName].(*resolveConfig)
 }
 
-type Configurer struct{}
-
-func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
-	c.Exts[resolveName] = &resolveConfig{}
+type Configurer struct{
+	resolves []string
 }
 
-func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
+func (cc *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
+	c.Exts[resolveName] = &resolveConfig{}
+	fs.Var(&gzflag.MultiFlag{Values: &cc.resolves}, "resolve",
+	"Specifies an explicit mapping from an import string to a label for dependency resolution (may be repeated)")
+}
+
+func (cc *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
+	rc := c.Exts[resolveName].(*resolveConfig)
+	for _, resolveString := range cc.resolves {
+		o, err := overrideSpecFromString(resolveString, "|")
+		if err != nil {
+			log.Print(err)
+			continue
+		}
+		rc.overrides = append(rc.overrides, o)
+	}
+	return nil
+}
 
 func (_ *Configurer) KnownDirectives() []string {
 	return []string{"resolve"}
@@ -83,26 +100,9 @@ func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	if f != nil {
 		for _, d := range f.Directives {
 			if d.Key == "resolve" {
-				parts := strings.Fields(d.Value)
-				o := overrideSpec{}
-				var lbl string
-				if len(parts) == 3 {
-					o.imp.Lang = parts[0]
-					o.imp.Imp = parts[1]
-					lbl = parts[2]
-				} else if len(parts) == 4 {
-					o.imp.Lang = parts[0]
-					o.lang = parts[1]
-					o.imp.Imp = parts[2]
-					lbl = parts[3]
-				} else {
-					log.Printf("could not parse directive: %s\n\texpected gazelle:resolve source-language [import-language] import-string label", d.Value)
-					continue
-				}
-				var err error
-				o.dep, err = label.Parse(lbl)
+				o, err := overrideSpecFromString(d.Value, "")
 				if err != nil {
-					log.Printf("gazelle:resolve %s: %v", d.Value, err)
+					log.Print(err)
 					continue
 				}
 				o.dep = o.dep.Abs("", rel)
@@ -112,4 +112,33 @@ func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	c.Exts[resolveName] = rcCopy
+}
+
+func overrideSpecFromString(s, sep string) (overrideSpec, error) {
+	var parts []string
+	if sep == "" {
+		parts = strings.Fields(s)
+	} else {
+		parts = strings.Split(s, sep)
+	}
+	o := overrideSpec{}
+	var lbl string
+	if len(parts) == 3 {
+		o.imp.Lang = parts[0]
+		o.imp.Imp = parts[1]
+		lbl = parts[2]
+	} else if len(parts) == 4 {
+		o.imp.Lang = parts[0]
+		o.lang = parts[1]
+		o.imp.Imp = parts[2]
+		lbl = parts[3]
+	} else {
+		return o, fmt.Errorf("could not parse directive: %s\n\texpected gazelle:resolve source-language [import-language] import-string label", s)
+	}
+	var err error
+	o.dep, err = label.Parse(lbl)
+	if err != nil {
+		return o, fmt.Errorf("gazelle:resolve %s: %v", s, err)
+	}
+	return o, nil
 }
