@@ -70,7 +70,7 @@ def _go_repository_impl(ctx):
         # module mode
         for key in ("urls", "strip_prefix", "type", "sha256", "commit", "tag", "vcs", "remote"):
             if getattr(ctx.attr, key):
-                fail("cannot specify both version and %s", key)
+                fail("cannot specify both version and %s" % key)
         if not ctx.attr.sum:
             fail("if version is specified, sum must also be")
 
