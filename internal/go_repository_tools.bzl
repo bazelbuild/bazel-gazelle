@@ -46,13 +46,15 @@ def _go_repository_tools_impl(ctx):
     env.update({
         "GOPATH": str(ctx.path(".")),
         "GO111MODULE": "off",
-        # workaround: to find gcc for go link tool on Arm platform
-        "PATH": ctx.os.environ["PATH"],
         # workaround: avoid the Go SDK paths from leaking into the binary
         "GOROOT_FINAL": "GOROOT",
         # workaround: avoid cgo paths in /tmp leaking into binary
         "CGO_ENABLED": "0",
     })
+
+    if "PATH" in ctx.os.environ:
+        # workaround: to find gcc for go link tool on Arm platform
+        env["PATH"] = ctx.os.environ["PATH"]
     if "GOPROXY" in ctx.os.environ:
         env["GOPROXY"] = ctx.os.environ["GOPROXY"]
 
@@ -68,8 +70,8 @@ def _go_repository_tools_impl(ctx):
                 go_tool,
                 "run",
                 ctx.path(ctx.attr._list_repository_tools_srcs),
-                "-dir", "src/github.com/bazelbuild/bazel-gazelle",
-                "-check", "internal/go_repository_tools_srcs.bzl",
+                "-dir=src/github.com/bazelbuild/bazel-gazelle",
+                "-check=internal/go_repository_tools_srcs.bzl",
             ],
             environment = env,
         )
