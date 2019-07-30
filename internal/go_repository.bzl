@@ -88,7 +88,7 @@ def _go_repository_impl(ctx):
     generate = ctx.attr.build_file_generation == "on"
     if ctx.attr.build_file_generation == "auto":
         generate = True
-        for name in set(["BUILD", "BUILD.bazel"] + ctx.attr.build_file_name.split(",")):
+        for name in depset(["BUILD", "BUILD.bazel"] + ctx.attr.build_file_name.split(",")).to_list():
             path = ctx.path(name)
             if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
                 generate = False
