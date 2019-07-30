@@ -88,7 +88,7 @@ def _go_repository_impl(ctx):
     generate = ctx.attr.build_file_generation == "on"
     if ctx.attr.build_file_generation == "auto":
         generate = True
-        for name in ["BUILD", "BUILD.bazel", ctx.attr.build_file_name]:
+        for name in set(["BUILD", "BUILD.bazel"] + ctx.attr.build_file_name.split(",")):
             path = ctx.path(name)
             if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
                 generate = False
@@ -147,7 +147,13 @@ def _go_repository_impl(ctx):
             print("fetch_repo: " + result.stderr)
 
     if generate:
-        # Build file generation is needed
+        # Build file generation is needed. Populate Gazelle directive at root build file
+        ctx.file(
+            ctx.attr.build_file_name.split(",")[0],
+            "\n".join(["# gazelle:" + d for d in ctx.attr.gazelle_directives]),
+        )
+
+        # Run Gazelle
         _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
         gazelle = ctx.path(Label(_gazelle))
         cmd = [
@@ -248,6 +254,7 @@ go_repository = repository_rule(
         ),
         "build_extra_args": attr.string_list(),
         "build_config": attr.label(default = "@//:WORKSPACE"),
+        "gazelle_directives": attr.string_list(default = []),
 
         # Patches to apply after running gazelle.
         "patches": attr.label_list(),
