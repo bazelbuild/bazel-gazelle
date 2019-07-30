@@ -264,6 +264,12 @@ returned by ``go env GOPATH``.
 | A list of additional command line arguments to pass to Gazelle when                                     |
 | generating build files.                                                                                 |
 +--------------------------------+----------------------+-------------------------------------------------+
+| :param:`gazelle_directives`    | :type:`string list`  | :value:`[]`                                     |
++--------------------------------+----------------------+-------------------------------------------------+
+| A list of Gazelle directives to be written to the root level build file before                          |
+| Calling Gazelle to generate build files. Each string in the list will be                                |
+| prefixed with `# gazelle:` automatically.                                                               |
++--------------------------------+----------------------+-------------------------------------------------+
 | :param:`patches`               | :type:`label list`   | :value:`[]`                                     |
 +--------------------------------+----------------------+-------------------------------------------------+
 | A list of patches to apply to the repository after gazelle runs.                                        |
