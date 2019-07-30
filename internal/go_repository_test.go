@@ -44,6 +44,20 @@ go_repository(
     version = "v0.8.1",
     sum ="h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=",
 )
+
+go_repository(
+    name = "com_github_apache_mesos",
+    build_file_proto_mode = "package",
+    directives = [
+        "gazelle:proto_strip_import_prefix /include/",
+        "gazelle:exclude include/mesos/attributes.hpp",
+        "gazelle:exclude include/mesos/executor.hpp",
+        "gazelle:exclude include/mesos/hook.hpp",
+    ],
+    importpath = "github.com/apache/mesos",
+    sum = "h1:65atl5ZUZ7fzMM/oIVFV5VdO0plKO0hye9taZR6ssHw=",
+    version = "v0.0.0-20190710134757-4ae064484664",
+)
 `,
 }
 
