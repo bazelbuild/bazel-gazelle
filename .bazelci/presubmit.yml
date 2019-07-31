@@ -17,6 +17,10 @@ platforms:
     - "..."
   windows:
     build_targets:
+    - "--"
     - "..."
+    - "-//cmd/autogazelle/..."
     test_targets:
+    - "--"
     - "..."
+    - "-//cmd/autogazelle/..."
