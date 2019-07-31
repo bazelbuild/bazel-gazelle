@@ -16,6 +16,7 @@ limitations under the License.
 package go_repository_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel_testing"
@@ -46,17 +47,11 @@ go_repository(
 )
 
 go_repository(
-    name = "com_github_apache_mesos",
-    build_file_proto_mode = "package",
-    directives = [
-        "gazelle:proto_strip_import_prefix /include/",
-        "gazelle:exclude include/mesos/attributes.hpp",
-        "gazelle:exclude include/mesos/executor.hpp",
-        "gazelle:exclude include/mesos/hook.hpp",
-    ],
-    importpath = "github.com/apache/mesos",
-    sum = "h1:65atl5ZUZ7fzMM/oIVFV5VdO0plKO0hye9taZR6ssHw=",
-    version = "v0.0.0-20190710134757-4ae064484664",
+	name = "com_github_apex_log",
+	directives = ["gazelle:exclude handlers"],
+	importpath = "github.com/apex/log",
+	sum = "h1:J5rld6WVFi6NxA6m8GJ1LJqu3+GiTFIt3mYv27gdQWI=",
+	version = "v1.1.0",
 )
 `,
 }
@@ -68,5 +63,15 @@ func TestMain(m *testing.M) {
 func TestBuild(t *testing.T) {
 	if err := bazel_testing.RunBazel("build", "@errors_go_git//:errors", "@errors_go_mod//:go_default_library"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestDirectives(t *testing.T)  {
+	err := bazel_testing.RunBazel("query", "@com_github_apex_log//handlers/...")
+	if err == nil {
+		t.Fatal("Should not generate build files for @com_github_apex_log//handlers/...")
+	}
+	if !strings.Contains(err.Error(), "no targets found beneath 'handlers'") {
+		t.Fatal("Unexpected error:\n", err)
 	}
 }

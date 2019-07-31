@@ -92,10 +92,7 @@ def _go_repository_impl(ctx):
             existing_build_file = name
             break
 
-    if ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"):
-        generate = True
-    else:
-        generate = False
+    generate = (ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"))
 
     if fetch_repo_args or generate:
         env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
