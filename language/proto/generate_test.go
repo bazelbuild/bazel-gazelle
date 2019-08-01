@@ -17,8 +17,10 @@ package proto
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -34,6 +36,15 @@ import (
 )
 
 func TestGenerateRules(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO(jayconrod): set up testdata directory on windows before running test
+		if _, err := os.Stat("testdata"); os.IsNotExist(err) {
+			t.Skip("testdata missing on windows due to lack of symbolic links")
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	c, lang, _ := testConfig(t, "testdata")
 
 	walk.Walk(c, []config.Configurer{lang}, []string{"testdata"}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
@@ -129,6 +140,15 @@ proto_library(
 }
 
 func TestGeneratePackage(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO(jayconrod): set up testdata directory on windows before running test
+		if _, err := os.Stat("testdata"); os.IsNotExist(err) {
+			t.Skip("testdata missing on windows due to lack of symbolic links")
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	lang := NewLanguage()
 	c, _, _ := testConfig(t, "testdata")
 	dir := filepath.FromSlash("testdata/protos")

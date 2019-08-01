@@ -236,6 +236,9 @@ go_library(
 			defer cleanup()
 			replacer := strings.NewReplacer("{{dir}}", dir, "/", string(os.PathSeparator))
 			for i := range tc.args {
+				if strings.HasPrefix(tc.args[i], "-go_prefix=") {
+					continue // don't put backslashes in prefix on windows
+				}
 				tc.args[i] = replacer.Replace(tc.args[i])
 			}
 			if err := run(tc.args); err != nil {

@@ -17,6 +17,14 @@ platforms:
     - "..."
   windows:
     build_targets:
+    - "--"
     - "..."
+    - "-//cmd/autogazelle/..."
     test_targets:
+    - "--"
     - "..."
+    # autogazelle is only supported on UNIX-like platforms.
+    # It requires UNIX domain sockets.
+    - "-//cmd/autogazelle/..."
+    # Fails to execute, apparently due to command-line length limit.
+    - "-//internal:go_repository_test"

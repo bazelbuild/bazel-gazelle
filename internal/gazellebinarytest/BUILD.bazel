@@ -28,11 +28,13 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = ["gazellebinary_test.go"],
-    args = ["-gazelle=$(location :gazelle_go_x)"],
     data = [":gazelle_go_x"],
     embed = [":go_default_library"],
     rundir = ".",
-    deps = ["//testtools:go_default_library"],
+    deps = [
+        "//testtools:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
 )
 
 filegroup(
