@@ -83,39 +83,19 @@ type RewriteInfo struct {
 	Log              []string // log entries - may change
 }
 
-func (info *RewriteInfo) String() string {
-	s := ""
-	if info.EditLabel > 0 {
-		s += " label"
+// Stats returns a map with statistics about applied rewrites
+func (info *RewriteInfo) Stats() map[string]int {
+	return map[string]int{
+		"label":            info.EditLabel,
+		"callname":         info.NameCall,
+		"callsort":         info.SortCall,
+		"listsort":         info.SortStringList,
+		"unsafesort":       info.UnsafeSort,
+		"sortload":         info.SortLoad,
+		"formatdocstrings": info.FormatDocstrings,
+		"reorderarguments": info.ReorderArguments,
+		"editoctal":        info.EditOctal,
 	}
-	if info.NameCall > 0 {
-		s += " callname"
-	}
-	if info.SortCall > 0 {
-		s += " callsort"
-	}
-	if info.SortStringList > 0 {
-		s += " listsort"
-	}
-	if info.UnsafeSort > 0 {
-		s += " unsafesort"
-	}
-	if info.SortLoad > 0 {
-		s += " sortload"
-	}
-	if info.FormatDocstrings > 0 {
-		s += " formatdocstrings"
-	}
-	if info.ReorderArguments > 0 {
-		s += " reorderarguments"
-	}
-	if info.EditOctal > 0 {
-		s += " editoctal"
-	}
-	if s != "" {
-		s = s[1:]
-	}
-	return s
 }
 
 // Each rewrite function can be either applied for BUILD files, other files (such as .bzl),
@@ -138,7 +118,7 @@ var rewrites = []struct {
 	{"label", fixLabels, scopeBuild},
 	{"listsort", sortStringLists, scopeBoth},
 	{"multiplus", fixMultilinePlus, scopeBuild},
-	{"loadsort", sortLoadArgs, scopeBoth},
+	{"loadsort", sortAllLoadArgs, scopeBoth},
 	{"formatdocstrings", formatDocstrings, scopeBoth},
 	{"reorderarguments", reorderArguments, scopeBoth},
 	{"editoctal", editOctals, scopeBoth},
@@ -842,16 +822,13 @@ func fixMultilinePlus(f *File, info *RewriteInfo) {
 	})
 }
 
-func sortLoadArgs(f *File, info *RewriteInfo) {
+// sortAllLoadArgs sorts all load arguments in the file
+func sortAllLoadArgs(f *File, info *RewriteInfo) {
 	Walk(f, func(v Expr, stk []Expr) {
-		load, ok := v.(*LoadStmt)
-		if !ok {
-			return
-		}
-		args := loadArgs{From: load.From, To: load.To}
-		sort.Sort(args)
-		if args.modified {
-			info.SortLoad++
+		if load, ok := v.(*LoadStmt); ok {
+			if SortLoadArgs(load) {
+				info.SortLoad++
+			}
 		}
 	})
 }
@@ -910,6 +887,13 @@ func (args loadArgs) Less(i, j int) bool {
 	return args.To[i].Name < args.To[j].Name
 }
 
+// SortLoadArgs sorts a load statement arguments (lexicographically, but positional first)
+func SortLoadArgs(load *LoadStmt) bool {
+	args := loadArgs{From: load.From, To: load.To}
+	sort.Sort(args)
+	return args.modified
+}
+
 // formatDocstrings fixes the indentation and trailing whitespace of docstrings
 func formatDocstrings(f *File, info *RewriteInfo) {
 	Walk(f, func(v Expr, stk []Expr) {
@@ -931,7 +915,7 @@ func formatDocstrings(f *File, info *RewriteInfo) {
 		if updatedToken != docstring.Token {
 			docstring.Token = updatedToken
 			// Update the value to keep it consistent with Token
-			docstring.Value, _, _ = unquote(updatedToken)
+			docstring.Value, _, _ = Unquote(updatedToken)
 			info.FormatDocstrings++
 		}
 	})
@@ -1010,7 +994,7 @@ func editOctals(f *File, info *RewriteInfo) {
 		if !ok {
 			return
 		}
-		if len(l.Token) > 1 && l.Token[0] == '0' && l.Token[1] >= '0' && l.Token[1] <= '9'{
+		if len(l.Token) > 1 && l.Token[0] == '0' && l.Token[1] >= '0' && l.Token[1] <= '9' {
 			l.Token = "0o" + l.Token[1:]
 			info.EditOctal++
 		}
