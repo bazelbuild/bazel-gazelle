@@ -85,14 +85,14 @@ def _go_repository_impl(ctx):
         fail("one of urls, commit, tag, or importpath must be specified")
 
     # Generate build files if needed.
-    generate = ctx.attr.build_file_generation == "on"
-    if ctx.attr.build_file_generation == "auto":
-        generate = True
-        for name in ["BUILD", "BUILD.bazel", ctx.attr.build_file_name]:
-            path = ctx.path(name)
-            if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
-                generate = False
-                break
+    existing_build_file = ""
+    for name in ["BUILD", "BUILD.bazel"] + ctx.attr.build_file_name.split(","):
+        path = ctx.path(name)
+        if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
+            existing_build_file = name
+            break
+
+    generate = (ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"))
 
     if fetch_repo_args or generate:
         env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
@@ -147,7 +147,18 @@ def _go_repository_impl(ctx):
             print("fetch_repo: " + result.stderr)
 
     if generate:
-        # Build file generation is needed
+        # Build file generation is needed. Populate Gazelle directive at root build file
+        if existing_build_file:
+            build_file_name = existing_build_file
+        else:
+            build_file_name = "BUILD.bazel"
+        if len(ctx.attr.build_directives) > 0:
+            ctx.file(
+                build_file_name,
+                "\n".join(["# " + d for d in ctx.attr.build_directives]),
+            )
+
+        # Run Gazelle
         _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
         gazelle = ctx.path(Label(_gazelle))
         cmd = [
@@ -248,6 +259,7 @@ go_repository = repository_rule(
         ),
         "build_extra_args": attr.string_list(),
         "build_config": attr.label(default = "@//:WORKSPACE"),
+        "build_directives": attr.string_list(default = []),
 
         # Patches to apply after running gazelle.
         "patches": attr.label_list(),
