@@ -373,7 +373,7 @@ proto_library(
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			c, lang, cexts := testConfig(t, "testdata")
+			c, lang, cexts := testConfig(t, ".")
 			mrslv := make(mapResolver)
 			mrslv["proto_library"] = lang
 			ix := resolve.NewRuleIndex(mrslv.Resolver)

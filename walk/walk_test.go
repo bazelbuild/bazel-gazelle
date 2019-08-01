@@ -20,6 +20,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -267,6 +268,9 @@ unknown_rule(
 }
 
 func TestSymlinksBasic(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks not supported on windows")
+	}
 	files := []testtools.FileSpec{
 		{Path: "root/a.go", Content: "package a"},
 		{Path: "root/b", Symlink: "../b"},   // symlink outside repo is followed
@@ -295,6 +299,9 @@ func TestSymlinksBasic(t *testing.T) {
 }
 
 func TestSymlinksIgnore(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks not supported on windows")
+	}
 	files := []testtools.FileSpec{
 		{
 			Path:    "root/BUILD",
@@ -319,6 +326,9 @@ func TestSymlinksIgnore(t *testing.T) {
 }
 
 func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks not supported on windows")
+	}
 	files := []testtools.FileSpec{
 		{
 			Path:    "root/BUILD",
@@ -344,6 +354,9 @@ func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
 }
 
 func TestSymlinksChained(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks not supported on windows")
+	}
 	files := []testtools.FileSpec{
 		{Path: "root/b", Symlink: "../link0"},
 		{Path: "link0", Symlink: "b"},
@@ -366,6 +379,9 @@ func TestSymlinksChained(t *testing.T) {
 }
 
 func TestSymlinksDangling(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks not supported on windows")
+	}
 	files := []testtools.FileSpec{
 		{Path: "root/b", Symlink: "../b"},
 	}
@@ -385,6 +401,9 @@ func TestSymlinksDangling(t *testing.T) {
 }
 
 func TestSymlinksFollow(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks not supported on windows")
+	}
 	files := []testtools.FileSpec{
 		{Path: "staging/src/k8s.io/api/"},
 		{Path: "staging/src/k8s.io/BUILD.bazel", Content: "# gazelle:exclude api"},

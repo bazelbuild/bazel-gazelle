@@ -16,38 +16,20 @@ limitations under the License.
 package gazellebinarytest
 
 import (
-	"flag"
-	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
 )
-
-var (
-	gazellePath = flag.String("gazelle", "", "path to gazelle binary")
-)
-
-func TestMain(m *testing.M) {
-	_, ok := os.LookupEnv("TEST_TARGET")
-	if !ok {
-		// Skip all tests if we aren't run by Bazel
-		return
-	}
-
-	flag.Parse()
-	if abs, err := filepath.Abs(*gazellePath); err != nil {
-		log.Fatalf("unable to find absolute path for gazelle: %v\n", err)
-		os.Exit(1)
-	} else {
-		*gazellePath = abs
-	}
-	os.Exit(m.Run())
-}
 
 func TestGazelleBinary(t *testing.T) {
+	gazellePath, ok := bazel.FindBinary("internal/gazellebinarytest", "gazelle_go_x")
+	if !ok {
+		t.Fatal("could not find gazelle binary")
+	}
+
 	files := []testtools.FileSpec{
 		{Path: "WORKSPACE"},
 		{Path: "BUILD.bazel", Content: "# gazelle:prefix example.com/test"},
@@ -57,7 +39,7 @@ func TestGazelleBinary(t *testing.T) {
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	cmd := exec.Command(*gazellePath)
+	cmd := exec.Command(gazellePath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Dir = dir
