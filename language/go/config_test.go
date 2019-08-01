@@ -65,7 +65,7 @@ func TestCommandLine(t *testing.T) {
 		"-build_tags=foo,bar",
 		"-go_prefix=example.com/repo",
 		"-external=vendored",
-		"-repo_root=testdata")
+		"-repo_root=.")
 	gc := getGoConfig(c)
 	for _, tag := range []string{"foo", "bar", "gc"} {
 		if !gc.genericTags[tag] {

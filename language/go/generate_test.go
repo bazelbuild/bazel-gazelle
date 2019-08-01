@@ -17,7 +17,9 @@ package golang
 
 import (
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -31,6 +33,15 @@ import (
 )
 
 func TestGenerateRules(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO(jayconrod): set up testdata directory on windows before running test
+		if _, err := os.Stat("testdata"); os.IsNotExist(err) {
+			t.Skip("testdata missing on windows due to lack of symbolic links")
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	c, langs, cexts := testConfig(
 		t,
 		"-build_file_name=BUILD.old",

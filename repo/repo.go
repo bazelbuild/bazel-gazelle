@@ -315,7 +315,11 @@ func getRepos(rules []*rule.Rule) (repos []Repo, names []string) {
 			// Currently, we don't use the result of this function to produce new
 			// go_repository rules, so it doesn't matter.
 			goPrefix := r.AttrString("importpath")
+			version := r.AttrString("version")
+			sum := r.AttrString("sum")
+			replace := r.AttrString("replace")
 			revision := r.AttrString("commit")
+			tag := r.AttrString("tag")
 			remote := r.AttrString("remote")
 			vcs := r.AttrString("vcs")
 			if goPrefix == "" {
@@ -324,7 +328,11 @@ func getRepos(rules []*rule.Rule) (repos []Repo, names []string) {
 			repo = Repo{
 				Name:     name,
 				GoPrefix: goPrefix,
+				Version:  version,
+				Sum:      sum,
+				Replace:  replace,
 				Commit:   revision,
+				Tag:      tag,
 				Remote:   remote,
 				VCS:      vcs,
 			}
