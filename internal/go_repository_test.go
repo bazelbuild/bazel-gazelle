@@ -47,11 +47,11 @@ go_repository(
 )
 
 go_repository(
-	name = "com_github_apex_log",
-	directives = ["gazelle:exclude handlers"],
-	importpath = "github.com/apex/log",
-	sum = "h1:J5rld6WVFi6NxA6m8GJ1LJqu3+GiTFIt3mYv27gdQWI=",
-	version = "v1.1.0",
+		name = "com_github_apex_log",
+		build_directives = ["gazelle:exclude handlers"],
+		importpath = "github.com/apex/log",
+		sum = "h1:J5rld6WVFi6NxA6m8GJ1LJqu3+GiTFIt3mYv27gdQWI=",
+		version = "v1.1.0",
 )
 `,
 }
@@ -66,7 +66,7 @@ func TestBuild(t *testing.T) {
 	}
 }
 
-func TestDirectives(t *testing.T)  {
+func TestDirectives(t *testing.T) {
 	err := bazel_testing.RunBazel("query", "@com_github_apex_log//handlers/...")
 	if err == nil {
 		t.Fatal("Should not generate build files for @com_github_apex_log//handlers/...")

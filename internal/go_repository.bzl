@@ -152,10 +152,10 @@ def _go_repository_impl(ctx):
             build_file_name = existing_build_file
         else:
             build_file_name = "BUILD.bazel"
-        if len(ctx.attr.directives) > 0:
+        if len(ctx.attr.build_directives) > 0:
             ctx.file(
                 build_file_name,
-                "\n".join(["# " + d for d in ctx.attr.directives]),
+                "\n".join(["# " + d for d in ctx.attr.build_directives]),
             )
 
         # Run Gazelle
@@ -259,7 +259,7 @@ go_repository = repository_rule(
         ),
         "build_extra_args": attr.string_list(),
         "build_config": attr.label(default = "@//:WORKSPACE"),
-        "directives": attr.string_list(default = []),
+        "build_directives": attr.string_list(default = []),
 
         # Patches to apply after running gazelle.
         "patches": attr.label_list(),
