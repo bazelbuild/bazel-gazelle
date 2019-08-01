@@ -176,7 +176,17 @@ func (p *printer) nestedStatements(stmts []Expr) {
 	p.level--
 }
 
-func (p *printer) statements(stmts []Expr) {
+func (p *printer) statements(rawStmts []Expr) {
+	// rawStmts may contain nils if a refactoring tool replaces an actual statement with nil.
+	// It means the statements don't exist anymore, just ignore them.
+
+	stmts := []Expr{}
+	for _, stmt := range rawStmts {
+		if stmt != nil {
+			stmts = append(stmts, stmt)
+		}
+	}
+
 	for i, stmt := range stmts {
 		switch stmt := stmt.(type) {
 		case *CommentBlock:
@@ -299,6 +309,10 @@ const (
 	precOr
 	precAnd
 	precCmp
+	precBitwiseOr
+	precBitwiseXor
+	precBitwiseAnd
+	precBitwiseShift
 	precAdd
 	precMultiply
 	precUnary
@@ -323,7 +337,11 @@ var opPrec = map[string]int{
 	"/":      precMultiply,
 	"//":     precMultiply,
 	"%":      precMultiply,
-	"|":      precMultiply,
+	"|":      precBitwiseOr,
+	"&":      precBitwiseAnd,
+	"^":      precBitwiseXor,
+	"<<":     precBitwiseShift,
+	">>":     precBitwiseShift,
 }
 
 // expr prints the expression v to the print buffer.
@@ -394,7 +412,7 @@ func (p *printer) expr(v Expr, outerPrec int) {
 		// If the Token is a correct quoting of Value and has double quotes, use it,
 		// also use it if it has single quotes and the value itself contains a double quote symbol.
 		// This preserves the specific escaping choices that BUILD authors have made.
-		s, triple, err := unquote(v.Token)
+		s, triple, err := Unquote(v.Token)
 		if s == v.Value && triple == v.TripleQuote && err == nil {
 			if strings.HasPrefix(v.Token, `"`) || strings.ContainsRune(v.Value, '"') {
 				p.printf("%s", v.Token)
@@ -456,7 +474,11 @@ func (p *printer) expr(v Expr, outerPrec int) {
 		} else {
 			p.printf("%s", v.Op)
 		}
-		p.expr(v.X, precUnary)
+		// Use the next precedence level (precSuffix), so that nested unary expressions are parenthesized,
+		// for example: `not (-(+(~foo)))` instead of `not -+~foo`
+		if v.X != nil {
+			p.expr(v.X, precSuffix)
+		}
 
 	case *LambdaExpr:
 		addParen(precColon)
@@ -697,7 +719,7 @@ func (p *printer) useCompactMode(start *Position, list *[]Expr, end *End, mode s
 	// If there are line comments, use multiline
 	// so we can print the comments before the closing bracket.
 	for _, x := range *list {
-		if len(x.Comment().Before) > 0 {
+		if len(x.Comment().Before) > 0 || (len(x.Comment().Suffix) > 0 && mode != modeDef) {
 			return false
 		}
 	}
