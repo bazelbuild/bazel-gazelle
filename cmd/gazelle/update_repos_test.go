@@ -73,7 +73,7 @@ func TestCommandLine(t *testing.T) {
 	}
 }
 
-func TestApplyBuildAttributes(t *testing.T)  {
+func TestApplyBuildAttributes(t *testing.T) {
 	config := updateReposConfig{buildExtraArgsAttr: "-exclude=vendor"}
 	r := rule.NewRule("go_repository", "uber_repo")
 	applyBuildAttributes(&config, r)

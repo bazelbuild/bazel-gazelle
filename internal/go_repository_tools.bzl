@@ -29,6 +29,11 @@ filegroup(
     srcs = ["bin/gazelle{extension}"],
 )
 
+filegroup(
+    name = "generate_repo_config",
+    srcs = ["bin/generate_repo_config{extension}"],
+)
+
 exports_files(["ROOT"])
 """
 
@@ -90,6 +95,7 @@ def _go_repository_tools_impl(ctx):
         "all=-trimpath=" + env["GOPATH"],
         "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
         "github.com/bazelbuild/bazel-gazelle/cmd/fetch_repo",
+        "github.com/bazelbuild/bazel-gazelle/cmd/generate_repo_config",
     ]
     result = env_execute(ctx, args, environment = env)
     if result.return_code:

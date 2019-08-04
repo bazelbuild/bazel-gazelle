@@ -32,6 +32,7 @@ filegroup(
         "go_repository_cache.bzl",
         "go_repository_tools.bzl",
         "go_repository_tools_srcs.bzl",
+        "go_repository_config.bzl",
         "list_repository_tools_srcs.go",
         "overlay_repository.bzl",
         "repository_rules_test_errors.patch",

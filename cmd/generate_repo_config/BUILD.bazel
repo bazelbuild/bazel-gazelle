@@ -1,0 +1,36 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["generate_repo_config.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/cmd/generate_repo_config",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//repo:go_default_library",
+        "//rule:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "generate_repo_config",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["generate_repo_config_test.go"],
+    embed = [":go_default_library"],
+    deps = ["//testtools:go_default_library"],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "generate_repo_config.go",
+        "generate_repo_config_test.go",
+    ],
+    visibility = ["//visibility:public"],
+)

@@ -19,17 +19,6 @@ load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
 _GO_REPOSITORY_TIMEOUT = 86400
 
 def _go_repository_impl(ctx):
-    # Locate and resolve configuration files. Gazelle reads directives and
-    # known repositories from these files. Resolving them here forces
-    # go_repository rules to be invalidated when they change. Gazelle's cache
-    # should NOT be invalidated, so we shouldn't need to download these again.
-    # TODO(#549): vcs repositories are not cached and still need to be fetched.
-    config_path = None
-    if ctx.attr.build_config:
-        config_path = ctx.path(ctx.attr.build_config)
-        for label in _find_macro_file_labels(ctx, ctx.attr.build_config):
-            ctx.path(label)
-
     # Download the repository or module.
     fetch_repo_args = None
 
@@ -170,9 +159,9 @@ def _go_repository_impl(ctx):
             "fix",
             "-repo_root",
             ctx.path(""),
+            "-repo_config",
+            ctx.path(Label("@bazel_gazelle_go_repository_config//:WORKSPACE"))
         ]
-        if config_path:
-            cmd.extend(["-repo_config", str(config_path)])
         if ctx.attr.version:
             cmd.append("-go_repository_module_mode")
         if ctx.attr.build_file_name:
@@ -258,7 +247,6 @@ go_repository = repository_rule(
             ],
         ),
         "build_extra_args": attr.string_list(),
-        "build_config": attr.label(default = "@//:WORKSPACE"),
         "build_directives": attr.string_list(default = []),
 
         # Patches to apply after running gazelle.
@@ -292,47 +280,3 @@ def patch(ctx):
         if st.return_code:
             fail("Error applying patch command %s:\n%s%s" %
                  (cmd, st.stdout, st.stderr))
-
-def _find_macro_file_labels(ctx, label):
-    """Returns a list of labels for configuration files that Gazelle may read.
-
-    The list is gathered by reading '# gazelle:repository_macro' directives
-    from the file named by label (which is not included in the returned list).
-    """
-    seen = {}
-    files = []
-
-    result = ctx.execute(["cat", str(ctx.path(label))])
-    if result.return_code == 0:
-        content = result.stdout
-    else:
-        # TODO(jayconrod): "type" might work on Windows, but I think
-        # it's a shell builtin, and I'm not sure if ctx.execute will work.
-        content = ""
-
-    lines = content.split("\n")
-    for line in lines:
-        i = line.find("#")
-        if i < 0:
-            continue
-        line = line[i + len("#"):]
-        i = line.find("gazelle:")
-        if i < 0 or not line[:i].isspace():
-            continue
-        line = line[i + len("gazelle:"):]
-        i = line.find("repository_macro")
-        if i < 0 or (i > 0 and not line[:i].isspace()):
-            continue
-        line = line[i + len("repository_macro"):]
-        if len(line) == 0 or not line[0].isspace():
-            continue
-        i = line.rfind("%")
-        if i < 0:
-            continue
-        line = line[:i].lstrip()
-        macro_label = Label("@" + label.workspace_name + "//:" + line)
-        if macro_label not in seen:
-            seen[macro_label] = None
-            files.append(macro_label)
-
-    return files
