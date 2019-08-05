@@ -21,7 +21,13 @@ go_library(
     _gazelle_imports = [
         "example.com/repo/platforms/generic",
     ] + select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "example.com/repo/platforms/linux",
+        ],
         "@io_bazel_rules_go//go/platform:darwin": [
+            "example.com/repo/platforms/darwin",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
             "example.com/repo/platforms/darwin",
         ],
         "@io_bazel_rules_go//go/platform:linux": [
@@ -33,6 +39,9 @@ go_library(
     copts = [
         "-DGENERIC",
     ] + select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "-DLINUX",
+        ],
         "@io_bazel_rules_go//go/platform:linux": [
             "-DLINUX",
         ],

@@ -149,6 +149,28 @@ import (
 `,
 		},
 		{
+			Path: "foo_android_build_tag.go",
+			Content: `
+// +build android
+
+package foo
+
+import (
+    _ "example.com/foo/outer_android_build_tag"
+)
+`,
+		},
+		{
+			Path: "foo_android.go",
+			Content: `
+package foo
+
+import (
+    _ "example.com/foo/outer_android_suffix"
+)
+`,
+		},
+		{
 			Path: "bar.go",
 			Content: `// +build linux
 
@@ -156,6 +178,8 @@ package foo
 `,
 		},
 		{Path: "outer/outer.go", Content: "package outer"},
+		{Path: "outer_android_build_tag/outer.go", Content: "package outer_android_build_tag"},
+		{Path: "outer_android_suffix/outer.go", Content: "package outer_android_suffix"},
 		{Path: "outer/inner/inner.go", Content: "package inner"},
 	})
 	want := `load("@io_bazel_rules_go//go:def.bzl", "go_library")
@@ -167,10 +191,19 @@ go_library(
         "bar.go",
         # foo comment
         "foo.go",  # side comment
+        "foo_android.go",
+        "foo_android_build_tag.go",
     ],
     importpath = "example.com/foo",
     visibility = ["//visibility:public"],
     deps = select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "//outer:go_default_library",
+            "//outer/inner:go_default_library",
+            "//outer_android_build_tag:go_default_library",
+            "//outer_android_suffix:go_default_library",
+            "@com_github_jr_hacker_tools//:go_default_library",
+        ],
         "@io_bazel_rules_go//go/platform:linux": [
             "//outer:go_default_library",
             "//outer/inner:go_default_library",
