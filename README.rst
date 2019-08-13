@@ -29,13 +29,15 @@ Gazelle build file generator
 .. |mandatory| replace:: **mandatory value**
 .. End of directives
 
-Gazelle is a build file generator for Go projects. It can create new BUILD.bazel
-files for a project that follows "go build" conventions, and it can update
-existing build files to include new sources, dependencies, and options. Gazelle
-may be run by Bazel using the `gazelle rule`_, or it can be run as a command
-line tool. Gazelle can also be run in an external repository as part of the
-`go_repository`_ rule. Gazelle may be extended_ to support new languages
-and custom rule sets.
+Gazelle is a build file generator for Bazel projects. It can create new
+BUILD.bazel files for a project that follows language conventions, and it can
+update existing build files to include new sources, dependencies, and
+options. Gazelle natively supports Go and protobuf, and it may be extended_
+to support new languages and custom rule sets.
+
+Gazelle may be run by Bazel using the `gazelle rule`_, or it may be installed
+and run as a command line tool. Gazelle can also generate build files for
+external repositories as part of the `go_repository`_ rule.
 
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
@@ -49,8 +51,6 @@ may change. Gazelle is not an official Google product.*
 * `Repository rules`_
 
   * `go_repository`_
-  * `git_repository`_ (deprecated)
-  * `http_archive`_ (deprecated)
 
 * `Extending Gazelle`_
 * `Supported languages`_
@@ -99,8 +99,8 @@ should look like this:
     gazelle_dependencies()
 
 Add the code below to the BUILD or BUILD.bazel file in the root directory
-of your repository. Replace the string after ``prefix`` with the portion of
-your import path that corresponds to your repository.
+of your repository. For Go projects, replace the string after ``prefix`` with
+the portion of your import path that corresponds to your repository.
 
 .. code:: bzl
 
@@ -130,11 +130,12 @@ rule cannot run directly.
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-If you have a Go SDK installed, you can install Gazelle with the command below:
+If you have a Go toolchain installed, you can install Gazelle with the
+command below:
 
 .. code::
 
-  go get -u github.com/bazelbuild/bazel-gazelle/cmd/gazelle
+  go get github.com/bazelbuild/bazel-gazelle/cmd/gazelle
 
 Make sure to re-run this command to upgrade Gazelle whenever you upgrade
 rules_go in your repository.
@@ -155,8 +156,8 @@ your root build files to avoid having to type ``-go_prefix`` every time.
 
   # gazelle:prefix github.com/example/project
 
-Compatibility
--------------
+Compatibility with rules_go
+---------------------------
 
 Gazelle generates build files that use features in newer versions of
 ``rules_go``. Newer versions of Gazelle *may* generate build files that work
