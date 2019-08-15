@@ -391,14 +391,17 @@ The following flags are accepted:
 
 The ``update-repos`` command updates repository rules.
 It can write the rules to either the WORKSPACE (by default) or a .bzl file macro function.
-It can be used to add new repository rules or update existing rules to the
-latest version. It can also import repository rules from a ``go.mod`` file or
+It can be used to add new repository rules or update existing rules to specified
+version. It can also import repository rules from a ``go.mod`` file or
 a ``Gopkg.lock`` file.
 
 .. code:: bash
 
-  # Add or update a repository by import path
+  # Add or update a repository to latest version by import path
   $ gazelle update-repos example.com/new/repo
+
+  # Add or update a repository to specified version/commit by import path
+  $ gazelle update-repos example.com/new/repo@v1.3.1
 
   # Import repositories from go.mod
   $ gazelle update-repos -from_file=go.mod
