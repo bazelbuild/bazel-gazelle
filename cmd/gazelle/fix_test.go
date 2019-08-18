@@ -17,7 +17,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -48,9 +47,15 @@ func TestMain(m *testing.M) {
 	flag.Set("repo_root", tmpdir)
 	flag.Parse()
 
-	fmt.Println("goroot: ", goroot)
 	if goroot != "" {
-		os.Setenv("GOROOT", filepath.Dir(goroot))
+		gorootDir := filepath.Dir(goroot)
+		dir, err := filepath.Abs(gorootDir)
+		if err != nil {
+			panic(err)
+		}
+		dir = strings.TrimRight(dir, gorootDir)
+		dir = filepath.Join(filepath.Dir(filepath.Dir(dir)), gorootDir)
+		os.Setenv("GOROOT", dir)
 	}
 	os.Exit(m.Run())
 }
