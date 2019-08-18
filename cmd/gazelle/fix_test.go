@@ -17,6 +17,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,9 +27,31 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
 
+var goroot string
+
+func init() {
+	flag.StringVar(&goroot, "goroot", "", "define GOROOT")
+}
+
 func TestMain(m *testing.M) {
 	tmpdir := os.Getenv("TEST_TMPDIR")
+
+	f, err := ioutil.TempDir("", "gazelle_test")
+	if err != nil {
+		panic(err)
+	}
+	defer os.RemoveAll(f)
+
+	os.Setenv("GOCACHE", f)
+	os.Setenv("GOPATH", f)
+
 	flag.Set("repo_root", tmpdir)
+	flag.Parse()
+
+	fmt.Println("goroot: ", goroot)
+	if goroot != "" {
+		os.Setenv("GOROOT", filepath.Dir(goroot))
+	}
 	os.Exit(m.Run())
 }
 

@@ -1205,8 +1205,6 @@ gazelle_dependencies()
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	os.Setenv("GOCACHE", os.TempDir())
-	os.Setenv("GOPATH", os.TempDir())
 	args := []string{"update-repos", "github.com/sirupsen/logrus@v1.3.0"}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
