@@ -65,6 +65,11 @@ go_test(
         "langs.go",  # keep
         "update_repos_test.go",
     ],
+    args = ["-goroot=$(location @go_sdk//:ROOT)"],
+    data = [
+        "@go_sdk//:ROOT",
+        "@go_sdk//:files",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//config:go_default_library",
@@ -73,8 +78,6 @@ go_test(
         "//testtools:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
     ],
-    data = ["@go_sdk//:files", "@go_sdk//:ROOT"],
-    args = ["-goroot=$(location @go_sdk//:ROOT)"],
 )
 
 filegroup(

@@ -17,6 +17,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,38 +27,39 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
 
-var goroot string
-
-func init() {
-	flag.StringVar(&goroot, "goroot", "", "define GOROOT")
-}
+// goroot is a path to a file in the GOROOT directory, relative to the
+// gazelle repository root. It is provided for convenience with go_test.
+var goroot = flag.String("goroot", "", "set GOROOT (if not in environment)")
 
 func TestMain(m *testing.M) {
-	tmpdir := os.Getenv("TEST_TMPDIR")
+	status := 1
+	defer func() {
+		os.Exit(status)
+	}()
 
-	f, err := ioutil.TempDir("", "gazelle_test")
-	if err != nil {
-		panic(err)
-	}
-	defer os.RemoveAll(f)
-
-	os.Setenv("GOCACHE", f)
-	os.Setenv("GOPATH", f)
-
-	flag.Set("repo_root", tmpdir)
 	flag.Parse()
 
-	if goroot != "" {
-		gorootDir := filepath.Dir(goroot)
-		dir, err := filepath.Abs(gorootDir)
-		if err != nil {
-			panic(err)
-		}
-		dir = strings.TrimRight(dir, gorootDir)
-		dir = filepath.Join(filepath.Dir(filepath.Dir(dir)), gorootDir)
-		os.Setenv("GOROOT", dir)
+	var err error
+	tmpDir, err := ioutil.TempDir(os.Getenv("TEST_TMPDIR"), "gazelle_test")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
 	}
-	os.Exit(m.Run())
+	defer os.RemoveAll(tmpDir)
+
+	if *goroot != "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+		gorootDir := filepath.Dir(filepath.Join(wd, "..", "..", *goroot))
+		os.Setenv("GOROOT", gorootDir)
+	}
+	os.Setenv("GOCACHE", filepath.Join(tmpDir, "gocache"))
+	os.Setenv("GOPATH", filepath.Join(tmpDir, "gopath"))
+
+	status = m.Run()
 }
 
 func defaultArgs(dir string) []string {

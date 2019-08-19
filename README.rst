@@ -389,11 +389,11 @@ The following flags are accepted:
 ``update-repos``
 ~~~~~~~~~~~~~~~~
 
-The ``update-repos`` command updates repository rules.
-It can write the rules to either the WORKSPACE (by default) or a .bzl file macro function.
-It can be used to add new repository rules or update existing rules to specified
-version. It can also import repository rules from a ``go.mod`` file or
-a ``Gopkg.lock`` file.
+The ``update-repos`` command updates repository rules.  It can write the rules
+to either the WORKSPACE (by default) or a .bzl file macro function.  It can be
+used to add new repository rules or update existing rules to the specified
+version. It can also import repository rules from a ``go.mod`` file or a
+``Gopkg.lock`` file.
 
 .. code:: bash
 
