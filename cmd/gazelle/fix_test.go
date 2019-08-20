@@ -45,7 +45,22 @@ func TestMain(m *testing.M) {
 		fmt.Fprintln(os.Stderr, err)
 		return
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		// Before deleting files in the temporary directory, add write permission
+		// to any files that don't have it. Files and directories in the module cache
+		// are read-only, and on Windows, the read-only bit prevents deletion and
+		// prevents Bazel from cleaning up the source tree.
+		filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if mode := info.Mode(); mode&0200 == 0 {
+				err = os.Chmod(path, mode|0200)
+			}
+			return err
+		})
+		os.RemoveAll(tmpDir)
+	}()
 
 	if *goSdk != "" {
 		// This flag is only set when the test is run by Bazel. Figure out where
@@ -61,9 +76,8 @@ func TestMain(m *testing.M) {
 		if runtime.GOOS == "windows" {
 			ext = ".exe"
 		}
-		suffix := fmt.Sprintf("%[1]cbin%[1]cgo%[2]s", os.PathSeparator, ext)
 		for _, entry := range entries {
-			if entry.Workspace == *goSdk && strings.HasSuffix(entry.Path, suffix) {
+			if entry.Workspace == *goSdk && entry.ShortPath == "bin/go"+ext {
 				goToolPath = entry.Path
 				break
 			}
