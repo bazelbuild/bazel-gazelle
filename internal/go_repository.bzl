@@ -19,6 +19,7 @@ load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
 _GO_REPOSITORY_TIMEOUT = 86400
 
 def _go_repository_impl(ctx):
+    # TODO(#549): vcs repositories are not cached and still need to be fetched.
     # Download the repository or module.
     fetch_repo_args = None
 
@@ -160,7 +161,7 @@ def _go_repository_impl(ctx):
             "-repo_root",
             ctx.path(""),
             "-repo_config",
-            ctx.path(Label("@bazel_gazelle_go_repository_config//:WORKSPACE"))
+            ctx.path(ctx.attr.build_config)
         ]
         if ctx.attr.version:
             cmd.append("-go_repository_module_mode")
@@ -247,6 +248,7 @@ go_repository = repository_rule(
             ],
         ),
         "build_extra_args": attr.string_list(),
+        "build_config": attr.label(default= "@bazel_gazelle_go_repository_config//:WORKSPACE"),
         "build_directives": attr.string_list(default = []),
 
         # Patches to apply after running gazelle.

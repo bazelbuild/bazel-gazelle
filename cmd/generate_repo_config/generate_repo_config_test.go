@@ -66,7 +66,7 @@ def go_repositories():
 	}
 	defer os.RemoveAll(tmp)
 
-	if err := generateRepoConfig(tmp, dir+"/WORKSPACE"); err != nil {
+	if err := generateRepoConfig(tmp+"/WORKSPACE", dir+"/WORKSPACE"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -104,7 +104,7 @@ func TestEmptyConfig(t *testing.T) {
 	}
 	defer os.RemoveAll(tmp)
 
-	if err := generateRepoConfig(tmp, ""); err != nil {
+	if err := generateRepoConfig(tmp+"/WORKSPACE", ""); err != nil {
 		t.Fatal(err)
 	}
 

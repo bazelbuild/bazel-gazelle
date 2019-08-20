@@ -213,6 +213,22 @@ returned by ``go env GOPATH``.
 | Whether Gazelle should generate build files in the repository. In ``"auto"``                            |
 | mode, Gazelle will run if there is no build file in the repository root                                 |
 | directory.                                                                                              |
++------------------------+----------------+---------------------------------------------------------------+
+| :param:`build_config`  | :type:`label`  | :value:`@bazel_gazelle_go_repository_config//:WORKSPACE`      |
++------------------------+----------------+---------------------------------------------------------------+
+| A file that Gazelle should read to learn about external repositories before                             |
+| generating build files. This is useful for dependency resolution. For example,                          |
+| a ``go_repository`` rule in this file establishes a mapping between a                                   |
+| repository name like ``golang.org/x/tools`` and a workspace name like                                   |
+| ``org_golang_x_tools``. Workspace directives like                                                       |
+| ``# gazelle:repository_macro`` are recognized.                                                          |
+|                                                                                                         |
+| ``go_repository`` rules will be re-evaluated when parts of WORKSPACE related                            |
+| to Gazelle's configuration are changed, including Gazelle directives and                                |
+| ``go_repository`` ``name`` and ``importpath`` attributes.                                               |
+| Their content should still be fetched from a local cache, but build files                               |
+| will be regenerated. If this is not desirable, ``build_config`` may be set                              |
+| to a less frequently updated file or ``None`` to disable this functionality.                            |
 +--------------------------------+----------------------+-------------------------------------------------+
 | :param:`build_file_name`       | :type:`string`       | :value:`BUILD.bazel,BUILD`                      |
 +--------------------------------+----------------------+-------------------------------------------------+

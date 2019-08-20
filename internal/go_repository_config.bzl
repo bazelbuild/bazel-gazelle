@@ -1,4 +1,4 @@
-# Copyright 2014 The Bazel Authors. All rights reserved.
+# Copyright 2019 The Bazel Authors. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,11 @@
 load("@io_bazel_rules_go//go/private:common.bzl", "env_execute", "executable_extension")
 load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
 
-def _go_repository_config_(ctx):
+def _go_repository_config_impl(ctx):
     # Locate and resolve configuration files. Gazelle reads directives and
-    # known repositories from these files. Resolving them here forces
-    # go_repository rules to be invalidated when they change. Gazelle's cache
+    # known repositories from these files. Resolving them here forces the
+    # go_repository_config rule to be invalidated when they change. Gazelle's cache
     # should NOT be invalidated, so we shouldn't need to download these again.
-    # TODO(#549): vcs repositories are not cached and still need to be fetched.
     config_path = None
     if ctx.attr.config:
         config_path = ctx.path(ctx.attr.config)
@@ -31,8 +30,8 @@ def _go_repository_config_(ctx):
 
     generate_repo_config = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/generate_repo_config{}".format(executable_extension(ctx)))))
     list_repos_args = [
-        "-dest=" + str(ctx.path("")),
         "-config_source=" + str(config_path),
+        "-config_dest=" + str(ctx.path("WORKSPACE")),
     ]
     result = env_execute(
         ctx,
@@ -51,7 +50,7 @@ def _go_repository_config_(ctx):
 
 
 go_repository_config = repository_rule(
-    implementation = _go_repository_config_,
+    implementation = _go_repository_config_impl,
     attrs = {
         "config": attr.label(default = "@//:WORKSPACE"),
     },
