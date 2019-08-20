@@ -41,7 +41,12 @@ import (
 // information may already be locally available. Frequently though, information
 // will be fetched over the network, so this function may be slow.
 func UpdateRepo(rc *RemoteCache, modPath string) (Repo, error) {
-	name, version, sum, err := rc.ModVersion(modPath, "latest")
+	query := "latest"
+	if i := strings.IndexByte(modPath, '@'); i >= 0 {
+		query = modPath[i+1:]
+		modPath = modPath[:i]
+	}
+	name, version, sum, err := rc.ModVersion(modPath, query)
 	if err != nil {
 		return Repo{}, err
 	}

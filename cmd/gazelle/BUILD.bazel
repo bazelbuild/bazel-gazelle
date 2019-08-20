@@ -65,6 +65,8 @@ go_test(
         "langs.go",  # keep
         "update_repos_test.go",
     ],
+    args = ["-go_sdk=go_sdk"],
+    data = ["@go_sdk//:files"],
     embed = [":go_default_library"],
     deps = [
         "//config:go_default_library",
@@ -72,6 +74,7 @@ go_test(
         "//rule:go_default_library",
         "//testtools:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
     ],
 )
 

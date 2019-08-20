@@ -17,19 +17,81 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
 )
 
+var goSdk = flag.String("go_sdk", "", "name of the go_sdk repository when invoked by Bazel")
+
 func TestMain(m *testing.M) {
-	tmpdir := os.Getenv("TEST_TMPDIR")
-	flag.Set("repo_root", tmpdir)
-	os.Exit(m.Run())
+	status := 1
+	defer func() {
+		os.Exit(status)
+	}()
+
+	flag.Parse()
+
+	var err error
+	tmpDir, err := ioutil.TempDir(os.Getenv("TEST_TMPDIR"), "gazelle_test")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	defer func() {
+		// Before deleting files in the temporary directory, add write permission
+		// to any files that don't have it. Files and directories in the module cache
+		// are read-only, and on Windows, the read-only bit prevents deletion and
+		// prevents Bazel from cleaning up the source tree.
+		filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if mode := info.Mode(); mode&0200 == 0 {
+				err = os.Chmod(path, mode|0200)
+			}
+			return err
+		})
+		os.RemoveAll(tmpDir)
+	}()
+
+	if *goSdk != "" {
+		// This flag is only set when the test is run by Bazel. Figure out where
+		// the Go binary is and set GOROOT appropriately.
+		entries, err := bazel.ListRunfiles()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return
+		}
+
+		var goToolPath string
+		ext := ""
+		if runtime.GOOS == "windows" {
+			ext = ".exe"
+		}
+		for _, entry := range entries {
+			if entry.Workspace == *goSdk && entry.ShortPath == "bin/go"+ext {
+				goToolPath = entry.Path
+				break
+			}
+		}
+		if goToolPath == "" {
+			fmt.Fprintln(os.Stderr, "could not locate go tool")
+			return
+		}
+		os.Setenv("GOROOT", filepath.Dir(filepath.Dir(goToolPath)))
+	}
+	os.Setenv("GOCACHE", filepath.Join(tmpDir, "gocache"))
+	os.Setenv("GOPATH", filepath.Join(tmpDir, "gopath"))
+
+	status = m.Run()
 }
 
 func defaultArgs(dir string) []string {
