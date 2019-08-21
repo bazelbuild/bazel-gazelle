@@ -26,21 +26,27 @@ def _go_repository_config_impl(ctx):
         for label in _find_macro_file_labels(ctx, ctx.attr.config):
             ctx.path(label)
 
-    env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
-
-    generate_repo_config = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/generate_repo_config{}".format(executable_extension(ctx)))))
-    list_repos_args = [
-        "-config_source=" + str(config_path),
-        "-config_dest=" + str(ctx.path("WORKSPACE")),
-    ]
-    result = env_execute(
-        ctx,
-        [generate_repo_config] + list_repos_args,
-        environment = env,
+    if config_path:
+        env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
+        generate_repo_config = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/generate_repo_config{}".format(executable_extension(ctx)))))
+        list_repos_args = [
+            "-config_source=" + str(config_path),
+            "-config_dest=" + str(ctx.path("WORKSPACE")),
+        ]
+        result = env_execute(
+            ctx,
+            [generate_repo_config] + list_repos_args,
+            environment = env,
+        )
+        if result.return_code:
+            print("generate_repo_config: " + result.stderr)
+    else:
+        ctx.file(
+        "WORKSPACE",
+        "",
+        False,
     )
-    if result.return_code:
-        print("generate_repo_config: " + result.stderr)
-
+    
     # add an empty build file so Bazel recognizes the config
     ctx.file(
         "BUILD.bazel",
@@ -48,11 +54,10 @@ def _go_repository_config_impl(ctx):
         False,
     )
 
-
 go_repository_config = repository_rule(
     implementation = _go_repository_config_impl,
     attrs = {
-        "config": attr.label(default = "@//:WORKSPACE"),
+        "config": attr.label(),
     },
 )
 

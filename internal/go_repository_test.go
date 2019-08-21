@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -90,7 +91,7 @@ func TestRepoConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outDir := outputBase + "/external/bazel_gazelle_go_repository_config"
+	outDir := filepath.Join(outputBase, "/external/bazel_gazelle_go_repository_config")
 	testtools.CheckFiles(t, outDir, []testtools.FileSpec{
 		{
 			Path: "WORKSPACE",
@@ -117,6 +118,7 @@ go_repository(
 	})
 }
 
+// TODO(bazelbuild/rules_go#2189): call bazel_testing.BazelOutput once implemented.
 func getBazelOutputBase() (string, error) {
 	cmd := exec.Command("bazel", "info", "output_base")
 	for _, e := range os.Environ() {
