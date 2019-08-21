@@ -56,6 +56,10 @@ var KnownPlatforms = []Platform{
 	{"freebsd", "386"},
 	{"freebsd", "amd64"},
 	{"freebsd", "arm"},
+	{"ios", "386"},
+	{"ios", "amd64"},
+	{"ios", "arm"},
+	{"ios", "arm64"},
 	{"linux", "386"},
 	{"linux", "amd64"},
 	{"linux", "arm"},
@@ -82,6 +86,11 @@ var KnownPlatforms = []Platform{
 	{"solaris", "amd64"},
 	{"windows", "386"},
 	{"windows", "amd64"},
+}
+
+var OSAliases = map[string][]string{
+	"android": []string{"linux"},
+	"ios": []string{"darwin"},
 }
 
 var (
