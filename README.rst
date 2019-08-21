@@ -297,7 +297,7 @@ The following flags are accepted:
 | (for example, ``ignore``). This flag overrides that behavior.                                         |
 |                                                                                                       |
 | Bazel may still filter sources with these tags. Use                                                   |
-| ``bazel build --features gotags=foo,bar`` to set tags at build time.                                  |
+| ``bazel build --define gotags=foo,bar`` to set tags at build time.                                    |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-exclude path`                                        |                                        |
 +--------------------------------------------------------------+----------------------------------------+
@@ -521,7 +521,7 @@ The following directives are recognized:
 | (for example, ``ignore``). This flag overrides that behavior.                              |
 |                                                                                            |
 | Bazel may still filter sources with these tags. Use                                        |
-| ``bazel build --features gotags=foo,bar`` to set tags at build time.                       |
+| ``bazel build --define gotags=foo,bar`` to set tags at build time.                         |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:exclude path`                   | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
