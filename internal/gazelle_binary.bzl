@@ -56,7 +56,7 @@ var languages = []language.Language{{
     go.actions.write(langs_file, langs_content)
 
     # Build the gazelle binary.
-    library = go.new_library(go)
+    library = go.new_library(go, is_main = True)
     attr = struct(
         srcs = [struct(files = [langs_file])],
         deps = ctx.attr.languages,
