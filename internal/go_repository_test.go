@@ -91,7 +91,7 @@ func TestRepoConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	outDir := filepath.Join(outputBase, "/external/bazel_gazelle_go_repository_config")
+	outDir := filepath.Join(outputBase, "external/bazel_gazelle_go_repository_config")
 	testtools.CheckFiles(t, outDir, []testtools.FileSpec{
 		{
 			Path: "WORKSPACE",

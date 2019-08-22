@@ -67,7 +67,7 @@ def go_repositories():
 	}
 	defer os.RemoveAll(tmp)
 
-	if err := generateRepoConfig(filepath.Join(tmp, "/WORKSPACE"), filepath.Join(dir, "/WORKSPACE")); err != nil {
+	if err := generateRepoConfig(filepath.Join(tmp, "WORKSPACE"), filepath.Join(dir, "WORKSPACE")); err != nil {
 		t.Fatal(err)
 	}
 

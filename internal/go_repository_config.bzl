@@ -39,7 +39,7 @@ def _go_repository_config_impl(ctx):
             environment = env,
         )
         if result.return_code:
-            print("generate_repo_config: " + result.stderr)
+            fail("generate_repo_config: " + result.stderr)
     else:
         ctx.file(
         "WORKSPACE",
