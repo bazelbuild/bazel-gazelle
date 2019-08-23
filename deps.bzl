@@ -25,6 +25,10 @@ load(
     "go_repository_tools",
 )
 load(
+    "@bazel_gazelle//internal:go_repository_config.bzl",
+    "go_repository_config",
+)
+load(
     "@bazel_gazelle//internal:overlay_repository.bzl",
     # Load overlay git_repository and http_archive in order to re-export.
     # These may be removed at some point in the future.
@@ -68,6 +72,11 @@ def gazelle_dependencies(
     go_repository_tools(
         name = "bazel_gazelle_go_repository_tools",
         go_cache = "@bazel_gazelle_go_repository_cache//:go.env",
+    )
+
+    go_repository_config(
+        name = "bazel_gazelle_go_repository_config",
+        config = go_repository_default_config,
     )
 
     _maybe(

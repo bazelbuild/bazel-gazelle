@@ -4,6 +4,7 @@ load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 go_bazel_test(
     name = "go_repository_test",
     srcs = ["go_repository_test.go"],
+    deps = ["//testtools:go_default_library"],
     rule_files = [
         "@bazel_gazelle//:all_files",
         "@io_bazel_rules_go//:all_files",
@@ -32,6 +33,7 @@ filegroup(
         "go_repository_cache.bzl",
         "go_repository_tools.bzl",
         "go_repository_tools_srcs.bzl",
+        "go_repository_config.bzl",
         "list_repository_tools_srcs.go",
         "overlay_repository.bzl",
         "repository_rules_test_errors.patch",
