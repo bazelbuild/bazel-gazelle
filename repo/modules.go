@@ -24,6 +24,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -50,6 +51,7 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			Path, Version string
 		}
 	}
+
 	// path@version can be used as a unique identifier for looking up sums
 	pathToModule := map[string]*module{}
 	data, err := goListModules(tempDir)
@@ -71,11 +73,12 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 					mod.Replace.Path)
 				continue
 			}
-			pathToModule[mod.Replace.Path + "@" + mod.Replace.Version] = mod
+			pathToModule[mod.Replace.Path+"@"+mod.Replace.Version] = mod
 		} else {
-			pathToModule[mod.Path + "@" + mod.Version] = mod
+			pathToModule[mod.Path+"@"+mod.Version] = mod
 		}
 	}
+
 	// Load sums from go.sum. Ideally, they're all there.
 	goSumPath := filepath.Join(filepath.Dir(filename), "go.sum")
 	data, _ = ioutil.ReadFile(goSumPath)
@@ -90,10 +93,11 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 		if strings.HasSuffix(version, "/go.mod") {
 			continue
 		}
-		if mod, ok := pathToModule[path + "@" + version]; ok {
+		if mod, ok := pathToModule[path+"@"+version]; ok {
 			mod.Sum = sum
 		}
 	}
+
 	// If sums are missing, run go mod download to get them.
 	var missingSumArgs []string
 	for pathVer, mod := range pathToModule {
@@ -112,11 +116,12 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 			if err := dec.Decode(&dl); err != nil {
 				return nil, err
 			}
-			if mod, ok := pathToModule[dl.Path + "@" + dl.Version]; ok {
+			if mod, ok := pathToModule[dl.Path+"@"+dl.Version]; ok {
 				mod.Sum = dl.Sum
 			}
 		}
 	}
+
 	// Translate to repo metadata.
 	repos = make([]Repo, 0, len(pathToModule))
 	for pathVer, mod := range pathToModule {
@@ -136,6 +141,21 @@ func importRepoRulesModules(filename string, _ *RemoteCache) (repos []Repo, err 
 		}
 		repos = append(repos, repo)
 	}
+
+	// Populate submodule lists.
+	pathToRepo := make(map[string]*Repo)
+	for i := range repos {
+		pathToRepo[repos[i].GoPrefix] = &repos[i]
+	}
+	for _, repo := range repos {
+		for prefix := path.Dir(repo.GoPrefix); prefix != "" && prefix != "."; prefix = path.Dir(prefix) {
+			if parent := pathToRepo[prefix]; parent != nil {
+				m := struct{ Name, Path string }{repo.Name, repo.GoPrefix}
+				parent.Submodules = append(parent.Submodules, m)
+			}
+		}
+	}
+
 	sort.Slice(repos, func(i, j int) bool { return repos[i].Name < repos[j].Name })
 	return repos, nil
 }

@@ -69,6 +69,11 @@ type Repo struct {
 	// Replace is the Go import path of the module configured by the replace
 	// directive in go.mod.
 	Replace string
+
+	// Submodules is a list of modules that have this repo's module path
+	// as a prefix of their own module path. This affects visibility
+	// attributes for internal packages.
+	Submodules []struct{ Name, Path string }
 }
 
 type byName []Repo
@@ -233,6 +238,13 @@ func GenerateRule(repo Repo) *rule.Rule {
 	}
 	if repo.Replace != "" {
 		r.SetAttr("replace", repo.Replace)
+	}
+	if len(repo.Submodules) > 0 {
+		dict := make(map[string]string)
+		for _, m := range repo.Submodules {
+			dict[m.Name] = m.Path
+		}
+		r.SetAttr("build_submodules", dict)
 	}
 	return r
 }

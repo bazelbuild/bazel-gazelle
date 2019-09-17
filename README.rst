@@ -562,6 +562,15 @@ The following directives are recognized:
 | ``@io_bazel_rules_go//proto:gofast_proto`` and                                             |
 | ``@io_bazel_rules_go//proto:gogofaster_proto``.                                            |
 +---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_submodule repo path`         | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Declares a module whose path has the current module's path as a prefix.                    |
+| May be repeated for multiple submodules.                                                   |
+|                                                                                            |
+| Affects ``visibility`` attributes for Go libraries in ``internal``                         |
+| directories, since internal visibility is determined by import path,                       |
+| not by module boundaries. This is mainly used by `go_repository`_.                         |
++---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:ignore`                         | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
 | Prevents Gazelle from modifying the build file. Gazelle will still read                    |

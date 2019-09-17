@@ -83,6 +83,11 @@ type goConfig struct {
 	// if this is true in the root directory. External dependencies may be
 	// resolved differently (also depending on goRepositoryMode).
 	moduleMode bool
+
+	// submodules is a list of modules which have the current module's path
+	// as a prefix of their own path. This affects visibility attributes
+	// in internal packages.
+	submodules []moduleRepo
 }
 
 var (
@@ -109,6 +114,9 @@ func (gc *goConfig) clone() *goConfig {
 	for k, v := range gc.genericTags {
 		gcCopy.genericTags[k] = v
 	}
+	gcCopy.goProtoCompilers = gc.goProtoCompilers[:len(gc.goProtoCompilers):len(gc.goProtoCompilers)]
+	gcCopy.goGrpcCompilers = gc.goGrpcCompilers[:len(gc.goGrpcCompilers):len(gc.goGrpcCompilers)]
+	gcCopy.submodules = gc.submodules[:len(gc.submodules):len(gc.submodules)]
 	return &gcCopy
 }
 
@@ -200,11 +208,16 @@ func (f tagsFlag) String() string {
 	return ""
 }
 
+type moduleRepo struct {
+	repoName, modulePath string
+}
+
 func (_ *goLang) KnownDirectives() []string {
 	return []string{
 		"build_tags",
 		"go_grpc_compilers",
 		"go_proto_compilers",
+		"go_submodule",
 		"importmap_prefix",
 		"prefix",
 	}
@@ -302,6 +315,7 @@ func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 				gc.preprocessTags()
 				gc.setBuildTags(d.Value)
+
 			case "go_grpc_compilers":
 				// Special syntax (empty value) to reset directive.
 				if d.Value == "" {
@@ -311,6 +325,7 @@ func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
 					gc.goGrpcCompilersSet = true
 					gc.goGrpcCompilers = splitValue(d.Value)
 				}
+
 			case "go_proto_compilers":
 				// Special syntax (empty value) to reset directive.
 				if d.Value == "" {
@@ -320,9 +335,20 @@ func (_ *goLang) Configure(c *config.Config, rel string, f *rule.File) {
 					gc.goProtoCompilersSet = true
 					gc.goProtoCompilers = splitValue(d.Value)
 				}
+
+			case "go_submodule":
+				fields := strings.Fields(d.Value)
+				if len(fields) != 2 {
+					log.Printf("invalid go_submodule directive: want 2 fields, got %d", len(fields))
+					continue
+				}
+				m := moduleRepo{repoName: fields[0], modulePath: fields[1]}
+				gc.submodules = append(gc.submodules, m)
+
 			case "importmap_prefix":
 				gc.importMapPrefix = d.Value
 				gc.importMapPrefixRel = rel
+
 			case "prefix":
 				setPrefix(d.Value)
 			}

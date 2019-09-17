@@ -90,3 +90,28 @@ func TestTrimPrefix(t *testing.T) {
 		})
 	}
 }
+
+func TestIndex(t *testing.T) {
+	for _, tc := range []struct {
+		desc, path, sub string
+		want            int
+	}{
+		{"path_empty", "", "x", -1},
+		{"sub_empty", "x", "", 0},
+		{"path_and_sub_empty", "", "", 0},
+		{"only", "ab", "ab", 0},
+		{"first", "ab/cd/ef", "ab", 0},
+		{"middle", "ab/cd/ef", "cd", 3},
+		{"last", "ab/cd/ef", "ef", 6},
+		{"multi_first", "ab/cd/ef", "ab/cd", 0},
+		{"multi_last", "ab/cd/ef", "cd/ef", 3},
+		{"missing", "xy", "x", -1},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			got := Index(tc.path, tc.sub)
+			if got != tc.want {
+				t.Errorf("got %d; want %d", got, tc.want)
+			}
+		})
+	}
+}

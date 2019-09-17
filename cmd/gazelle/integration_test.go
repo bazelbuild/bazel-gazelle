@@ -2822,6 +2822,97 @@ go_library(
 	})
 }
 
+// TestGoImportVisibility checks that submodules declared with -go_submodule
+// have visibility for rules generated in internal directories when appropriate.
+func TestGoImportVisibility(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+# gazelle:go_submodule com_example_m_x_z example.com/m/x/z
+# gazelle:go_submodule com_example_m_a example.com/m/a
+`,
+		}, {
+			Path:    "x/internal/y/y.go",
+			Content: `package y`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{
+		"update",
+		"-repo_root=" + dir,
+		"-go_prefix=example.com/m",
+		"-go_repository_mode",
+		"-go_repository_module_mode",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: "x/internal/y/BUILD.bazel",
+		Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["y.go"],
+    importpath = "example.com/m/x/internal/y",
+    visibility = [
+        "//x:__subpackages__",
+        "@com_example_m_x_z//:__subpackages__",
+    ],
+)
+`,
+	}})
+}
+
+func TestGoRepoVisibility(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+# gazelle:go_submodule com_example_m example.com/m
+`,
+		}, {
+			Path:    "x/x.go",
+			Content: `package x`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{
+		"update",
+		"-repo_root=" + dir,
+		"-go_prefix=example.com/internal",
+		"-go_repository_mode",
+		"-go_repository_module_mode",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: "x/BUILD.bazel",
+		Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["x.go"],
+    importpath = "example.com/internal/x",
+    visibility = [
+        "//:__subpackages__",
+        "@com_example_m//:__subpackages__",
+    ],
+)
+`,
+	}})
+}
+
 // TODO(jayconrod): more tests
 //   run in fix mode in testdata directories to create new files
 //   run in diff mode in testdata directories to update existing files (no change)

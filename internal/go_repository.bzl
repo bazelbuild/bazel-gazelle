@@ -142,11 +142,15 @@ def _go_repository_impl(ctx):
             build_file_name = existing_build_file
         else:
             build_file_name = "BUILD.bazel"
-        if len(ctx.attr.build_directives) > 0:
-            ctx.file(
-                build_file_name,
-                "\n".join(["# " + d for d in ctx.attr.build_directives]),
-            )
+        directives = list(ctx.attr.build_directives)
+        submodules = ctx.attr.build_submodules
+        directives.extend([
+            "gazelle:go_submodule {} {}".format(repo, submodules[repo])
+            for repo in sorted(submodules.keys())
+        ])
+        if directives:
+            content = "\n".join(["# " + d for d in directives])
+            ctx.file(build_file_name, content)
 
         # Run Gazelle
         _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
@@ -161,7 +165,7 @@ def _go_repository_impl(ctx):
             "-repo_root",
             ctx.path(""),
             "-repo_config",
-            ctx.path(ctx.attr.build_config)
+            ctx.path(ctx.attr.build_config),
         ]
         if ctx.attr.version:
             cmd.append("-go_repository_module_mode")
@@ -247,8 +251,9 @@ go_repository = repository_rule(
                 "legacy",
             ],
         ),
+        "build_submodules": attr.string_dict(),
         "build_extra_args": attr.string_list(),
-        "build_config": attr.label(default= "@bazel_gazelle_go_repository_config//:WORKSPACE"),
+        "build_config": attr.label(default = "@bazel_gazelle_go_repository_config//:WORKSPACE"),
         "build_directives": attr.string_list(default = []),
 
         # Patches to apply after running gazelle.
