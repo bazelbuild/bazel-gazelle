@@ -16,6 +16,7 @@ limitations under the License.
 package golang
 
 import (
+	"fmt"
 	"go/build"
 	"log"
 	"path"
@@ -396,7 +397,7 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 		protoName = proto.RuleName(importPath)
 	}
 	goProtoName := strings.TrimSuffix(protoName, "_proto") + "_go_proto"
-	visibility := []string{rule.CheckInternalVisibility(g.rel, "//visibility:public")}
+	visibility := g.commonVisibility(importPath)
 
 	if mode == proto.LegacyMode {
 		filegroup := rule.NewRule("filegroup", filegroupName)
@@ -437,12 +438,12 @@ func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
 	if !pkg.library.sources.hasGo() && embed == "" {
 		return goLibrary // empty
 	}
-	var visibility string
+	var visibility []string
 	if pkg.isCommand() {
 		// Libraries made for a go_binary should not be exposed to the public.
-		visibility = "//visibility:private"
+		visibility = []string{"//visibility:private"}
 	} else {
-		visibility = rule.CheckInternalVisibility(pkg.rel, "//visibility:public")
+		visibility = g.commonVisibility(pkg.importPath)
 	}
 	g.setCommonAttrs(goLibrary, pkg.rel, visibility, pkg.library, embed)
 	g.setImportAttrs(goLibrary, pkg.importPath)
@@ -455,7 +456,7 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
 	if !pkg.isCommand() || pkg.binary.sources.isEmpty() && library == "" {
 		return goBinary // empty
 	}
-	visibility := rule.CheckInternalVisibility(pkg.rel, "//visibility:public")
+	visibility := g.commonVisibility(pkg.importPath)
 	g.setCommonAttrs(goBinary, pkg.rel, visibility, pkg.binary, library)
 	return goBinary
 }
@@ -465,14 +466,14 @@ func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
 	if !pkg.test.sources.hasGo() {
 		return goTest // empty
 	}
-	g.setCommonAttrs(goTest, pkg.rel, "", pkg.test, library)
+	g.setCommonAttrs(goTest, pkg.rel, nil, pkg.test, library)
 	if pkg.hasTestdata {
 		goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
 	}
 	return goTest
 }
 
-func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel, visibility string, target goTarget, embed string) {
+func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embed string) {
 	if !target.sources.isEmpty() {
 		r.SetAttr("srcs", target.sources.buildFlat())
 	}
@@ -485,8 +486,8 @@ func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel, visibility string, targ
 	if !target.copts.isEmpty() {
 		r.SetAttr("copts", g.options(target.copts.build(), pkgRel))
 	}
-	if g.shouldSetVisibility && visibility != "" {
-		r.SetAttr("visibility", []string{visibility})
+	if g.shouldSetVisibility && len(visibility) > 0 {
+		r.SetAttr("visibility", visibility)
 	}
 	if embed != "" {
 		r.SetAttr("embed", []string{":" + embed})
@@ -515,6 +516,38 @@ func (g *generator) setImportAttrs(r *rule.Rule, importPath string) {
 			r.SetAttr("importmap", importMap)
 		}
 	}
+}
+
+func (g *generator) commonVisibility(importPath string) []string {
+	// If the Bazel package name (rel) contains "internal", add visibility for
+	// subpackages of the parent.
+	// If the import path contains "internal" but rel does not, this is
+	// probably an internal submodule. Add visibility for all subpackages.
+	relIndex := pathtools.Index(g.rel, "internal")
+	importIndex := pathtools.Index(importPath, "internal")
+	var visibility []string
+	if relIndex >= 0 {
+		parent := strings.TrimSuffix(g.rel[:relIndex], "/")
+		visibility = append(visibility, fmt.Sprintf("//%s:__subpackages__", parent))
+	} else if importIndex >= 0 {
+		visibility = append(visibility, "//:__subpackages__")
+	} else {
+		return []string{"//visibility:public"}
+	}
+
+	// Add visibility for any submodules that have the internal parent as
+	// a prefix of their module path.
+	if importIndex >= 0 {
+		gc := getGoConfig(g.c)
+		internalRoot := strings.TrimSuffix(importPath[:importIndex], "/")
+		for _, m := range gc.submodules {
+			if strings.HasPrefix(m.modulePath, internalRoot) {
+				visibility = append(visibility, fmt.Sprintf("@%s//:__subpackages__", m.repoName))
+			}
+		}
+	}
+
+	return visibility
 }
 
 var (
