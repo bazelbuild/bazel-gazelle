@@ -78,7 +78,14 @@ func generateRepoConfig(configDest, configSource string) error {
 	}
 	sort.Stable(byName(repos))
 
+	sortedRepoFiles := make([]*rule.File, 0, len(reposByFile))
 	for r := range reposByFile {
+		sortedRepoFiles = append(sortedRepoFiles, r)
+	}
+	sort.SliceStable(sortedRepoFiles, func(i, j int) bool {
+		return sortedRepoFiles[i].Path < sortedRepoFiles[j].Path
+	})
+	for _, r := range sortedRepoFiles {
 		for _, d := range r.Directives {
 			// skip repository_macro directives, because for the repo config we flatten
 			// macros into one file

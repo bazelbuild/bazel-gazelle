@@ -21,6 +21,9 @@ import (
 
 // Platform represents a GOOS/GOARCH pair. When Platform is used to describe
 // sources, dependencies, or flags, either OS or Arch may be empty.
+//
+// DEPRECATED: do not use outside language/go. This type is Go-specific
+// and should be moved to the Go extension.
 type Platform struct {
 	OS, Arch string
 }
@@ -43,6 +46,8 @@ func (p Platform) String() string {
 // KnownPlatforms is the set of target platforms that Go supports. Gazelle
 // will generate multi-platform build files using these tags. rules_go and
 // Bazel may not actually support all of these.
+//
+// DEPRECATED: do not use outside language/go.
 var KnownPlatforms = []Platform{
 	{"android", "386"},
 	{"android", "amd64"},
@@ -90,7 +95,7 @@ var KnownPlatforms = []Platform{
 
 var OSAliases = map[string][]string{
 	"android": []string{"linux"},
-	"ios": []string{"darwin"},
+	"ios":     []string{"darwin"},
 }
 
 var (
