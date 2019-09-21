@@ -29,6 +29,7 @@ import (
 	"io/ioutil"
 	"log"
 	"sort"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -39,10 +40,10 @@ var (
 	configDest   = flag.String("config_dest", "", "destination file for the generated repo config")
 )
 
-type byName []repo.Repo
+type byName []*rule.Rule
 
 func (s byName) Len() int           { return len(s) }
-func (s byName) Less(i, j int) bool { return s[i].Name < s[j].Name }
+func (s byName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
 func (s byName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
 func main() {
@@ -72,20 +73,27 @@ func generateRepoConfig(configDest, configSource string) error {
 	if err != nil {
 		return err
 	}
-	repos, reposByFile, err := repo.ListRepositories(sourceFile)
+	repos, repoFileMap, err := repo.ListRepositories(sourceFile)
 	if err != nil {
 		return err
 	}
 	sort.Stable(byName(repos))
 
-	sortedRepoFiles := make([]*rule.File, 0, len(reposByFile))
-	for r := range reposByFile {
-		sortedRepoFiles = append(sortedRepoFiles, r)
+	seenFile := make(map[*rule.File]bool)
+	var sortedFiles []*rule.File
+	for _, f := range repoFileMap {
+		if !seenFile[f] {
+			seenFile[f] = true
+			sortedFiles = append(sortedFiles, f)
+		}
 	}
-	sort.SliceStable(sortedRepoFiles, func(i, j int) bool {
-		return sortedRepoFiles[i].Path < sortedRepoFiles[j].Path
+	sort.SliceStable(sortedFiles, func(i, j int) bool {
+		if cmp := strings.Compare(sortedFiles[i].Path, sortedFiles[j].Path); cmp != 0 {
+			return cmp < 0
+		}
+		return sortedFiles[i].DefName < sortedFiles[j].DefName
 	})
-	for _, r := range sortedRepoFiles {
+	for _, r := range sortedFiles {
 		for _, d := range r.Directives {
 			// skip repository_macro directives, because for the repo config we flatten
 			// macros into one file
@@ -96,11 +104,11 @@ func generateRepoConfig(configDest, configSource string) error {
 	}
 
 	destFile := rule.EmptyFile(configDest, "")
-	for _, r := range repos {
-		if r.Name != "" && r.GoPrefix != "" {
-			rule := rule.NewRule("go_repository", r.Name)
-			rule.SetAttr("importpath", r.GoPrefix)
-			rule.Insert(destFile)
+	for _, rsrc := range repos {
+		if rsrc.Kind() == "go_repository" {
+			rdst := rule.NewRule("go_repository", rsrc.Name())
+			rdst.SetAttr("importpath", rsrc.AttrString("importpath"))
+			rdst.Insert(destFile)
 		}
 	}
 

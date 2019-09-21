@@ -83,6 +83,11 @@ type goConfig struct {
 	// if this is true in the root directory. External dependencies may be
 	// resolved differently (also depending on goRepositoryMode).
 	moduleMode bool
+
+	// buildExternalAttr, buildFileNamesAttr, buildFileGenerationAttr,
+	// buildTagsAttr, buildFileProtoModeAttr, and buildExtraArgsAttr are
+	// attributes for go_repository rules, set on the command line.
+	buildExternalAttr, buildFileNamesAttr, buildFileGenerationAttr, buildTagsAttr, buildFileProtoModeAttr, buildExtraArgsAttr string
 }
 
 var (
@@ -200,6 +205,10 @@ func (f tagsFlag) String() string {
 	return ""
 }
 
+var validBuildExternalAttr = []string{"external", "vendored"}
+var validBuildFileGenerationAttr = []string{"auto", "on", "off"}
+var validBuildFileProtoModeAttr = []string{"default", "legacy", "disable", "disable_global", "package"}
+
 func (_ *goLang) KnownDirectives() []string {
 	return []string{
 		"build_tags",
@@ -244,6 +253,29 @@ func (_ *goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			"go_repository_module_mode",
 			false,
 			"set when gazelle is invoked by go_repository in module mode")
+
+	case "update-repos":
+		fs.Var(&gzflag.AllowedStringFlag{Value: &gc.buildExternalAttr, Allowed: validBuildExternalAttr},
+			"build_external",
+			"Sets the build_external attribute for the generated go_repository rule(s).")
+		fs.StringVar(&gc.buildExtraArgsAttr,
+			"build_extra_args",
+			"",
+			"Sets the build_extra_args attribute for the generated go_repository rule(s).")
+		fs.Var(&gzflag.AllowedStringFlag{Value: &gc.buildFileGenerationAttr, Allowed: validBuildFileGenerationAttr},
+			"build_file_generation",
+			"Sets the build_file_generation attribute for the generated go_repository rule(s).")
+		fs.StringVar(&gc.buildFileNamesAttr,
+			"build_file_names",
+			"",
+			"Sets the build_file_name attribute for the generated go_repository rule(s).")
+		fs.Var(&gzflag.AllowedStringFlag{Value: &gc.buildFileProtoModeAttr, Allowed: validBuildFileProtoModeAttr},
+			"build_file_proto_mode",
+			"Sets the build_file_proto_mode attribute for the generated go_repository rule(s).")
+		fs.StringVar(&gc.buildTagsAttr,
+			"build_tags",
+			"",
+			"Sets the build_tags attribute for the generated go_repository rule(s).")
 	}
 	c.Exts[goName] = gc
 }
