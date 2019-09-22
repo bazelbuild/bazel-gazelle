@@ -230,8 +230,15 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		for _, f := range regularFiles {
 			regularFileSet[f] = true
 		}
+		// Some of the generated files may have been consumed by other rules
+		consumedFileSet := make(map[string]bool)
+		for _, r := range args.OtherGen {
+			for _, f := range r.AttrStrings("srcs") {
+				consumedFileSet[f] = true
+			}
+		}
 		for _, f := range genFiles {
-			if regularFileSet[f] {
+			if regularFileSet[f] || consumedFileSet[f] {
 				continue
 			}
 			info := fileNameInfo(filepath.Join(args.Dir, f))
