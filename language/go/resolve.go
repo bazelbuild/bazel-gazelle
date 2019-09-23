@@ -106,6 +106,12 @@ var (
 	notFoundError   = errors.New("rule not found")
 )
 
+// ResolveGo resolves a Go import path to a Bazel label, possibly using the
+// given rule index and remote cache. Some special cases may be applied to
+// known proto import paths, depending on the current proto mode.
+//
+// This may be used directly by other language extensions related to Go
+// (gomock). Gazelle calls Language.Resolve instead.
 func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
 	gc := getGoConfig(c)
 	pcMode := getProtoMode(c)
