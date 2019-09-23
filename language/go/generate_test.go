@@ -231,12 +231,14 @@ func TestGenerateRulesPrebuiltGoProtoRules(t *testing.T) {
 	}
 }
 
-func TestConsumedGenFiles(t *testing.T)  {
+// Test generated files that have been consumed by other rules should not be
+// added to the go_default_library rule
+func TestConsumedGenFiles(t *testing.T) {
 	args := language.GenerateArgs{
-		RegularFiles:[]string{"regular.go"},
-		GenFiles:[]string{"mocks.go"},
-		Config:&config.Config{
-			Exts:make(map[string]interface{}),
+		RegularFiles: []string{"regular.go"},
+		GenFiles:     []string{"mocks.go"},
+		Config: &config.Config{
+			Exts: make(map[string]interface{}),
 		},
 	}
 	otherRule := rule.NewRule("go_library", "go_mock_library")

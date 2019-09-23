@@ -236,6 +236,9 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			for _, f := range r.AttrStrings("srcs") {
 				consumedFileSet[f] = true
 			}
+			if f := r.AttrString("src"); f != "" {
+				consumedFileSet[f] = true
+			}
 		}
 		for _, f := range genFiles {
 			if regularFileSet[f] || consumedFileSet[f] {
