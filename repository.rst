@@ -272,13 +272,6 @@ returned by ``go env GOPATH``.
 | prefixed with `#` automatically. A common use case is to pass a list of                                               |
 | Gazelle directives.                                                                                                   |
 +--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_submodules`      | :type:`string dict`  | :value:`{}`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A map from workspace names to module paths that declares modules that are                                             |
-| submodules of the module that the ``go_repository`` rule defines.                                                     |
-| This adds labels to ``visibility`` attributes for packages in ``internal``                                            |
-| directories, since those packages may need to be visible to submodules.                                               |
-+--------------------------------+----------------------+---------------------------------------------------------------+
 | :param:`patches`               | :type:`label list`   | :value:`[]`                                                   |
 +--------------------------------+----------------------+---------------------------------------------------------------+
 | A list of patches to apply to the repository after gazelle runs.                                                      |
