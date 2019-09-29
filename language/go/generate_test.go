@@ -257,6 +257,21 @@ func TestConsumedGenFiles(t *testing.T) {
 	}
 }
 
+func TestAddVisibility(t *testing.T) {
+	additionalVisibility := "//mock/example.com:__subpackages__"
+	gen := generator{
+		c: &config.Config{
+			AddVisibility: []string{additionalVisibility},
+			Exts:          map[string]interface{}{goName: &goConfig{}},
+		},
+		shouldSetVisibility: true,
+	}
+	visibility := gen.commonVisibility("example.com/internal/version")
+	if visibility[0] != additionalVisibility {
+		t.Error("expect to contain additional visibility", additionalVisibility)
+	}
+}
+
 func prebuiltProtoRules() []*rule.Rule {
 	protoRule := rule.NewRule("proto_library", "foo_proto")
 	protoRule.SetAttr("srcs", []string{"foo.proto"})
