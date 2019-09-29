@@ -2822,6 +2822,56 @@ go_library(
 	})
 }
 
-// TODO(jayconrod): more tests
-//   run in fix mode in testdata directories to create new files
-//   run in diff mode in testdata directories to update existing files (no change)
+// TestGoImportVisibility checks that submodules implicitly declared with
+// go_repository rules in the repo config file (WORKSPACE) have visibility
+// for rules generated in internal directories where appropriate.
+// Verifies #619.
+func TestGoImportVisibility(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+			Content: `
+go_repository(
+		name = "com_example_m_logging",
+    importpath = "example.com/m/logging",		
+)
+`,
+		}, {
+			Path:    "internal/version/version.go",
+			Content: "package version",
+		}, {
+			Path:    "internal/version/version_test.go",
+			Content: "package version",
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update", "-go_prefix", "example.com/m"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: "internal/version/BUILD.bazel",
+		Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["version.go"],
+    importpath = "example.com/m/internal/version",
+    visibility = [
+        "//:__subpackages__",
+        "@com_example_m_logging//:__subpackages__",
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["version_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+	}})
+}
