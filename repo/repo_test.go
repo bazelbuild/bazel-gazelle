@@ -16,10 +16,10 @@ limitations under the License.
 package repo_test
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -28,26 +28,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
-
-func TestGenerateRepoRules(t *testing.T) {
-	newRepo := repo.Repo{
-		Name:     "org_golang_x_tools",
-		GoPrefix: "golang.org/x/tools",
-		Commit:   "123456",
-	}
-	r := repo.GenerateRule(newRepo)
-	f := rule.EmptyFile("test", "")
-	r.Insert(f)
-	got := strings.TrimSpace(string(f.Format()))
-	want := `go_repository(
-    name = "org_golang_x_tools",
-    commit = "123456",
-    importpath = "golang.org/x/tools",
-)`
-	if got != want {
-		t.Errorf("got %s ; want %s", got, want)
-	}
-}
 
 func TestFindExternalRepo(t *testing.T) {
 	if runtime.GOOS == "windows" {
@@ -92,12 +72,11 @@ func TestFindExternalRepo(t *testing.T) {
 
 func TestListRepositories(t *testing.T) {
 	for _, tc := range []struct {
-		desc, workspace string
-		want            []repo.Repo
+		desc, workspace, want string
 	}{
 		{
 			desc: "empty",
-			want: nil,
+			want: "",
 		}, {
 			desc: "go_repository",
 			workspace: `
@@ -108,12 +87,7 @@ go_repository(
     importpath = "example.com/repo",
 )
 `,
-			want: []repo.Repo{{
-				Name:     "custom_repo",
-				GoPrefix: "example.com/repo",
-				Remote:   "https://example.com/repo",
-				Commit:   "123456",
-			}},
+			want: "custom_repo example.com/repo",
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -121,14 +95,13 @@ go_repository(
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, _, err := repo.ListRepositories(workspace)
+			repos, _, err := repo.ListRepositories(workspace)
 			if err != nil {
 				t.Fatal(err)
 			}
-			for i := range tc.want {
-				if !reflect.DeepEqual(got[i], tc.want[i]) {
-					t.Errorf("got %#v ; want %#v", got, tc.want)
-				}
+			got := reposToString(repos)
+			if got != tc.want {
+				t.Errorf("got\n%s\n\nwant:\n%s", got, tc.want)
 			}
 		})
 	}
@@ -183,29 +156,25 @@ def baz_repositories():
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, _, err := repo.ListRepositories(workspace)
+	repos, _, err := repo.ListRepositories(workspace)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []repo.Repo{{
-		Name:     "go_repo",
-		GoPrefix: "example.com/go",
-		Remote:   "https://example.com/go",
-		Commit:   "123456",
-	}, {
-		Name:     "foo_repo",
-		GoPrefix: "example.com/foo",
-		Remote:   "https://example.com/foo",
-		Commit:   "123456",
-	}, {
-		Name:     "bar_repo",
-		GoPrefix: "example.com/bar",
-		Remote:   "https://example.com/bar",
-		Commit:   "123456",
-	}}
-	for i := range want {
-		if !reflect.DeepEqual(got[i], want[i]) {
-			t.Errorf("got %#v ; want %#v", got, want)
-		}
+	got := reposToString(repos)
+	want := `go_repo example.com/go
+foo_repo example.com/foo
+bar_repo example.com/bar`
+	if got != want {
+		t.Errorf("got\n%s\n\nwant:\n%s", got, want)
 	}
+}
+
+func reposToString(repos []*rule.Rule) string {
+	buf := &strings.Builder{}
+	sep := ""
+	for _, r := range repos {
+		fmt.Fprintf(buf, "%s%s %s", sep, r.Name(), r.AttrString("importpath"))
+		sep = "\n"
+	}
+	return buf.String()
 }

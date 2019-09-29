@@ -4,6 +4,8 @@ load("//:def.bzl", "gazelle", "gazelle_binary")
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle
 # gazelle:exclude vendor
 # gazelle:exclude third_party
+# gazelle:exclude .bazelci
+# gazelle:exclude .github
 gazelle(
     name = "gazelle",
     command = "fix",

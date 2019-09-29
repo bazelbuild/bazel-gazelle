@@ -88,6 +88,14 @@ def gazelle_dependencies(
 
     _maybe(
         go_repository,
+        name = "org_golang_x_sync",
+        importpath = "golang.org/x/sync",
+        sum = "h1:vcxGaoTs7kV8m5Np9uUNQin4BrLOthgV7252N8V+FwY=",
+        version = "v0.0.0-20190911185100-cd5d95a43a6e",
+    )
+
+    _maybe(
+        go_repository,
         name = "org_golang_x_sys",
         importpath = "golang.org/x/sys",
         sum = "h1:Lk4tbZFnlyPgV+sLgTw5yGfzrlOn9kx4vSombi2FFlY=",

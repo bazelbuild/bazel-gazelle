@@ -13,21 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package repo_test
+package golang
 
 import (
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/testtools"
 )
-
-func init() {
-	repo.InstallTestStubs()
-}
 
 func TestImports(t *testing.T) {
 	for _, tc := range []struct {
@@ -313,13 +311,26 @@ go_repository(
 			defer cleanup()
 
 			filename := filepath.Join(dir, tc.files[0].Path)
-			cache := repo.NewStubRemoteCache(nil)
-			rules, err := repo.ImportRepoRules(filename, cache)
-			if err != nil {
-				t.Fatal(err)
+			c := &config.Config{Exts: map[string]interface{}{}}
+			rc, rcCleanup := repo.NewRemoteCache(nil)
+			defer func() {
+				if err := rcCleanup(); err != nil {
+					t.Fatal(err)
+				}
+			}()
+			gl := NewLanguage()
+			gl.Configure(c, "", nil)
+			importer := gl.(language.RepoImporter)
+			result := importer.ImportRepos(language.ImportReposArgs{
+				Config: c,
+				Path:   filename,
+				Cache:  rc,
+			})
+			if result.Error != nil {
+				t.Fatal(result.Error)
 			}
 			f := rule.EmptyFile("test", "")
-			for _, r := range rules {
+			for _, r := range result.Gen {
 				r.Insert(f)
 			}
 			got := strings.TrimSpace(string(f.Format()))

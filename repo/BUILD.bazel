@@ -3,9 +3,6 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "go_default_library",
     srcs = [
-        "dep.go",
-        "godep.go",
-        "modules.go",
         "remote.go",
         "repo.go",
     ],
@@ -13,10 +10,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//label:go_default_library",
-        "//merger:go_default_library",
         "//pathtools:go_default_library",
         "//rule:go_default_library",
-        "@com_github_pelletier_go_toml//:go_default_library",
         "@org_golang_x_tools//go/vcs:go_default_library",
     ],
 )
@@ -24,7 +19,6 @@ go_library(
 go_test(
     name = "go_default_test",
     srcs = [
-        "import_test.go",
         "remote_test.go",
         "repo_test.go",
         "stubs_test.go",
@@ -43,10 +37,6 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
-        "dep.go",
-        "godep.go",
-        "import_test.go",
-        "modules.go",
         "remote.go",
         "remote_test.go",
         "repo.go",
