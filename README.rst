@@ -695,6 +695,12 @@ The following directives are recognized:
 |   # gazelle:resolve proto go foo/foo.proto //foo:foo_go_proto                              |
 |                                                                                            |
 +---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_visibility label`            | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| By default, internal packages are only visible to its siblings. This directive adds a label|
+| internal packages should be visible to additionally. This directive can be used several    |
+| times, adding a list of labels.                                                            |
++---------------------------------------------------+----------------------------------------+
 
 Gazelle also reads directives from the WORKSPACE file. They may be used to
 discover custom repository names and known prefixes. The ``fix`` and ``update``

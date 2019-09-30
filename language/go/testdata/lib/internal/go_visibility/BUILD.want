@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["thought.go"],
+    _gazelle_imports = [],
+    importpath = "example.com/repo/lib/internal/go_visibility",
+    visibility = [
+        "//example.com/repo/default_visibility:__subpackages__",
+        "//lib:__subpackages__",
+    ],
+)

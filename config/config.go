@@ -75,11 +75,6 @@ type Config struct {
 	// libraries in the workspace for dependency resolution
 	IndexLibraries bool
 
-	// By default, internal packages are only visible to its siblings.
-	// AddVisibility adds a list of packages the internal packages should be
-	// visible to
-	AddVisibility []string
-
 	// KindMap maps from a kind name to its replacement. It provides a way for
 	// users to customize the kind of rules created by Gazelle, via
 	// # gazelle:map_kind.
@@ -252,8 +247,6 @@ func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
 				KindName: vals[1],
 				KindLoad: vals[2],
 			}
-		case "add_visibility":
-			c.AddVisibility = strings.Split(d.Value, ",")
 		}
 	}
 }

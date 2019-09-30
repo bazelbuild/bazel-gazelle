@@ -535,7 +535,7 @@ func (g *generator) commonVisibility(importPath string) []string {
 	// probably an internal submodule. Add visibility for all subpackages.
 	relIndex := pathtools.Index(g.rel, "internal")
 	importIndex := pathtools.Index(importPath, "internal")
-	visibility := g.c.AddVisibility
+	visibility := getGoConfig(g.c).goVisibility
 	if relIndex >= 0 {
 		parent := strings.TrimSuffix(g.rel[:relIndex], "/")
 		visibility = append(visibility, fmt.Sprintf("//%s:__subpackages__", parent))
