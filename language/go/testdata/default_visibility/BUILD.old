@@ -1,1 +1,2 @@
 package(default_visibility = ["//visibility:public"])
+# gazelle:go_visibility //example.com/repo:__subpackages__

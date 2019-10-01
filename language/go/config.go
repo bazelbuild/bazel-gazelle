@@ -78,6 +78,11 @@ type goConfig struct {
 	// In this mode, we won't go out to the network to resolve external deps.
 	goRepositoryMode bool
 
+	// By default, internal packages are only visible to its siblings.
+	// goVisibility adds a list of packages the internal packages should be
+	// visible to
+	goVisibility []string
+
 	// moduleMode is true if the current directory is intended to be built
 	// as part of a module. Minimal module compatibility won't be supported
 	// if this is true in the root directory. External dependencies may be
@@ -226,6 +231,7 @@ func (*goLang) KnownDirectives() []string {
 		"build_tags",
 		"go_grpc_compilers",
 		"go_proto_compilers",
+		"go_visibility",
 		"importmap_prefix",
 		"prefix",
 	}
@@ -383,6 +389,9 @@ func (*goLang) Configure(c *config.Config, rel string, f *rule.File) {
 					gc.goProtoCompilersSet = true
 					gc.goProtoCompilers = splitValue(d.Value)
 				}
+
+			case "go_visibility":
+				gc.goVisibility = append(gc.goVisibility, strings.TrimSpace(d.Value))
 
 			case "importmap_prefix":
 				gc.importMapPrefix = d.Value
