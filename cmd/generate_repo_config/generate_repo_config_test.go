@@ -42,8 +42,8 @@ go_repository(
 			Path: "repositories.bzl",
 			Content: `
 load("@bazel_gazelle//:deps.bzl", "go_repository")
-# gazelle:repo test2
 def go_repositories():
+    # gazelle:repo test2
     go_repository(
         name = "org_golang_x_net",
         importpath = "golang.org/x/net",
