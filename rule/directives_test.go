@@ -54,7 +54,7 @@ foo(
 				t.Fatal(err)
 			}
 
-			got := ParseDirectives(f)
+			got := parseDirectives(f.Stmt)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %#v ; want %#v", got, tc.want)
 			}
