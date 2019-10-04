@@ -205,8 +205,8 @@ def baz_repositories():
 	got := reposToString(repos)
 	want := `go_repo example.com/go
 foo_repo example.com/foo
-extra_repo example.com/extra
-bar_repo example.com/bar`
+bar_repo example.com/bar
+extra_repo example.com/extra`
 	if got != want {
 		t.Errorf("got\n%s\n\nwant:\n%s", got, want)
 	}

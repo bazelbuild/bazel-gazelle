@@ -69,22 +69,26 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 // ListRepositories extracts metadata about repositories declared in a
 // file.
 func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map[string]*rule.File, err error) {
-	directiveRepoMap, err := parseRepositoryDirectives(workspace.Directives)
+	repoIndexMap := make(map[string]int)
+	repoFileMap = make(map[string]*rule.File)
+	for _, repo := range workspace.Rules {
+		if name := repo.Name(); name != "" {
+				repos = append(repos, repo)
+				repoFileMap[name] = workspace
+				repoIndexMap[name] = len(repos) - 1
+		}
+	}
+	extraRepos, err := parseRepositoryDirectives(workspace.Directives)
 	if err != nil {
 		return nil, nil, err
 	}
-	repoFileMap = make(map[string]*rule.File)
-	for _, repo := range directiveRepoMap {
-		repos = append(repos, repo)
-		repoFileMap[repo.Name()] = workspace
-	}
-	for _, repo := range workspace.Rules {
-		if name := repo.Name(); name != "" {
-			if _, ok := directiveRepoMap[name]; !ok {
-				repos = append(repos, repo)
-				repoFileMap[name] = workspace
-			}
+	for _, repo := range extraRepos {
+		if i, ok := repoIndexMap[repo.Name()]; ok {
+			repos[i] = repo
+		} else {
+			repos = append(repos, repo)
 		}
+		repoFileMap[repo.Name()] = workspace
 	}
 
 	for _, d := range workspace.Directives {
@@ -99,52 +103,54 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 			if err != nil {
 				return nil, nil, err
 			}
-			directiveRepoMap, err = parseRepositoryDirectives(macroFile.Directives)
+			for _, repo := range macroFile.Rules {
+				if name := repo.Name(); name != "" {
+					repos = append(repos, repo)
+					repoFileMap[name] = macroFile
+					repoIndexMap[name] = len(repos) - 1
+				}
+			}
+			extraRepos, err = parseRepositoryDirectives(macroFile.Directives)
 			if err != nil {
 				return nil, nil, err
 			}
-			for _, repo := range directiveRepoMap {
-				repos = append(repos, repo)
-				repoFileMap[repo.Name()] = macroFile
-			}
-			for _, repo := range macroFile.Rules {
-				if name := repo.Name(); name != "" {
-					if _, ok := directiveRepoMap[name]; !ok {
-						repos = append(repos, repo)
-						repoFileMap[name] = macroFile
-					}
+			for _, repo := range extraRepos {
+				if i, ok := repoIndexMap[repo.Name()]; ok {
+					repos[i] = repo
+				} else {
+					repos = append(repos, repo)
 				}
+				repoFileMap[repo.Name()] = macroFile
 			}
 		}
 	}
 	return repos, repoFileMap, nil
 }
 
-func parseRepositoryDirectives(directives []rule.Directive) (repoMap map[string]*rule.Rule, err error) {
-	repoMap = make(map[string]*rule.Rule)
+func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule, err error) {
 	for _, d := range directives {
 		switch d.Key {
 		case "repository":
-			vals := strings.Split(d.Value, " ")
+			vals := strings.Fields(d.Value)
 			if len(vals) < 2 {
-				return nil, fmt.Errorf("Failure parsing repository: %s, you must define at least a rule kind and name attribute", d.Value)
+				return nil, fmt.Errorf("failure parsing repository: %s, expected repository kind and attributes", d.Value)
 			}
 			kind := vals[0]
 			r := rule.NewRule(kind, "")
 			for _, val := range vals[1:] {
 				kv := strings.SplitN(val, "=", 2)
 				if len(kv) != 2 {
-					return nil, fmt.Errorf("Failure parsing repository: %s, expected format for attributes is <attr1_name=attr1_value>", d.Value)
+					return nil, fmt.Errorf("failure parsing repository: %s, expected format for attributes is attr1_name=attr1_value", d.Value)
 				}
 				r.SetAttr(kv[0], kv[1])
 			}
 			if r.Name() == "" {
-				return nil, fmt.Errorf("Failure parsing repository: %s, you must define a name attribute for the given repository", d.Value)
+				return nil, fmt.Errorf("failure parsing repository: %s, expected a name attribute for the given repository", d.Value)
 			}
-			repoMap[r.Name()] = r
+			repos = append(repos, r)
 		}
 	}
-	return repoMap, nil
+	return repos, nil
 }
 
 func parseRepositoryMacroDirective(directive string) (string, string, error) {
