@@ -205,7 +205,11 @@ func ScanASTBody(pkg, defName string, bzlFile *bzl.File) *File {
 			inserted: false,
 		}
 	}
-	f.Directives = ParseDirectives(bzlFile)
+	if f.function != nil {
+		f.Directives = ParseDirectivesFromMacro(f.function.stmt)
+	} else {
+		f.Directives = ParseDirectives(bzlFile)
+	}
 	return f
 }
 

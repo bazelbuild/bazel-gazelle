@@ -107,6 +107,46 @@ go_repository(
 	}
 }
 
+func TestListRepositoriesWithRepositoryDirective(t *testing.T) {
+	for _, tc := range []struct {
+		desc, workspace, want string
+	}{
+		{
+			desc: "empty",
+			want: "",
+		}, {
+			desc: "git_repository",
+			workspace: `
+git_repository(
+    name = "custom_repo",
+    commit = "123456",
+    remote = "https://example.com/repo",
+    importpath = "example.com/repo",
+)
+# gazelle:repository go_repository name=custom_repo importpath=example.com/repo1
+# gazelle:repository go_repository name=custom_repo_2 importpath=example.com/repo2
+`,
+			want: `custom_repo example.com/repo1
+custom_repo_2 example.com/repo2`,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			workspace, err := rule.LoadData("WORKSPACE", "", []byte(tc.workspace))
+			if err != nil {
+				t.Fatal(err)
+			}
+			repos, _, err := repo.ListRepositories(workspace)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := reposToString(repos)
+			if got != tc.want {
+				t.Errorf("got\n%s\n\nwant:\n%s", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestListRepositoriesWithRepositoryMacroDirective(t *testing.T) {
 	files := []testtools.FileSpec{{
 		Path: "repos1.bzl",
@@ -130,6 +170,7 @@ def foo_repositories():
 		Path: "repos2.bzl",
 		Content: `
 def bar_repositories():
+    # gazelle:repository go_repository name=extra_repo importpath=example.com/extra
     go_repository(
         name = "bar_repo",
         commit = "123456",
@@ -138,6 +179,7 @@ def bar_repositories():
     )
 
 def baz_repositories():
+    # gazelle:repository go_repository name=ignored_repo importpath=example.com/ignored
     go_repository(
         name = "ignored_repo",
         commit = "123456",
@@ -163,7 +205,8 @@ def baz_repositories():
 	got := reposToString(repos)
 	want := `go_repo example.com/go
 foo_repo example.com/foo
-bar_repo example.com/bar`
+bar_repo example.com/bar
+extra_repo example.com/extra`
 	if got != want {
 		t.Errorf("got\n%s\n\nwant:\n%s", got, want)
 	}
