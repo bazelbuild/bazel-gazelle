@@ -74,49 +74,7 @@ def _go_repository_impl(ctx):
     else:
         fail("one of urls, commit, tag, or importpath must be specified")
 
-    # Generate build files if needed.
-    existing_build_file = ""
-    for name in ["BUILD", "BUILD.bazel"] + ctx.attr.build_file_name.split(","):
-        path = ctx.path(name)
-        if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
-            existing_build_file = name
-            break
-
-    generate = (ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"))
-
-    if fetch_repo_args or generate:
-        env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
-        env_keys = [
-            # Respect user proxy and sumdb settings for privacy.
-            # TODO(jayconrod): gazelle in go_repository mode should probably
-            # not go out to the network at all. This means *the build*
-            # goes out to the network. We tolerate this for downloading
-            # archives, but finding module roots is a bit much.
-            "GOPROXY",
-            "GONOPROXY",
-            "GOPRIVATE",
-            "GOSUMDB",
-            "GONOSUMDB",
-
-            # PATH is needed to locate git and other vcs tools.
-            "PATH",
-
-            # HOME is needed to locate vcs configuration files (.gitconfig).
-            "HOME",
-
-            # Settings below are used by vcs tools.
-            "SSH_AUTH_SOCK",
-            "HTTP_PROXY",
-            "HTTPS_PROXY",
-            "NO_PROXY",
-            "http_proxy",
-            "https_proxy",
-            "no_proxy",
-            "GIT_SSL_CAINFO",
-            "GIT_SSH",
-            "GIT_SSH_COMMAND",
-        ]
-        env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
+    env = get_env(ctx)
 
     if fetch_repo_args:
         # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
@@ -136,12 +94,25 @@ def _go_repository_impl(ctx):
         if result.stderr:
             print("fetch_repo: " + result.stderr)
 
+    # Repositories are fetched. Determine if build file generation is needed.
+    build_file_names = ctx.attr.build_file_name.split(",")
+    existing_build_file = ""
+    for name in build_file_names:
+        path = ctx.path(name)
+        if path.exists and not env_execute(ctx, ["test", "-f", path]).return_code:
+            existing_build_file = name
+            break
+
+    generate = (ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"))
+
+
     if generate:
         # Build file generation is needed. Populate Gazelle directive at root build file
         if existing_build_file:
             build_file_name = existing_build_file
         else:
-            build_file_name = "BUILD.bazel"
+            # len(build_file_names) should always be >0 given it has a default
+            build_file_name = build_file_names[0]
         if len(ctx.attr.build_directives) > 0:
             ctx.file(
                 build_file_name,
@@ -259,6 +230,42 @@ go_repository = repository_rule(
     },
 )
 """See repository.rst#go-repository for full documentation."""
+
+def get_env(ctx):
+    env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
+    env_keys = [
+        # Respect user proxy and sumdb settings for privacy.
+        # TODO(jayconrod): gazelle in go_repository mode should probably
+        # not go out to the network at all. This means *the build*
+        # goes out to the network. We tolerate this for downloading
+        # archives, but finding module roots is a bit much.
+        "GOPROXY",
+        "GONOPROXY",
+        "GOPRIVATE",
+        "GOSUMDB",
+        "GONOSUMDB",
+
+        # PATH is needed to locate git and other vcs tools.
+        "PATH",
+
+        # HOME is needed to locate vcs configuration files (.gitconfig).
+        "HOME",
+
+        # Settings below are used by vcs tools.
+        "SSH_AUTH_SOCK",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
+        "GIT_SSL_CAINFO",
+        "GIT_SSH",
+        "GIT_SSH_COMMAND",
+    ]
+    env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
+    return env
+
 
 # Copied from @bazel_tools//tools/build_defs/repo:utils.bzl
 def patch(ctx):
