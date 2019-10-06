@@ -105,14 +105,9 @@ def _go_repository_impl(ctx):
 
     generate = (ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"))
 
-
     if generate:
         # Build file generation is needed. Populate Gazelle directive at root build file
-        if existing_build_file:
-            build_file_name = existing_build_file
-        else:
-            # len(build_file_names) should always be >0 given it has a default
-            build_file_name = build_file_names[0]
+        build_file_name = existing_build_file or build_file_names[0]
         if len(ctx.attr.build_directives) > 0:
             ctx.file(
                 build_file_name,
