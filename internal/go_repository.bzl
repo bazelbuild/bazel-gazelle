@@ -74,7 +74,38 @@ def _go_repository_impl(ctx):
     else:
         fail("one of urls, commit, tag, or importpath must be specified")
 
-    env = get_env(ctx)
+    env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
+    env_keys = [
+        # Respect user proxy and sumdb settings for privacy.
+        # TODO(jayconrod): gazelle in go_repository mode should probably
+        # not go out to the network at all. This means *the build*
+        # goes out to the network. We tolerate this for downloading
+        # archives, but finding module roots is a bit much.
+        "GOPROXY",
+        "GONOPROXY",
+        "GOPRIVATE",
+        "GOSUMDB",
+        "GONOSUMDB",
+
+        # PATH is needed to locate git and other vcs tools.
+        "PATH",
+
+        # HOME is needed to locate vcs configuration files (.gitconfig).
+        "HOME",
+
+        # Settings below are used by vcs tools.
+        "SSH_AUTH_SOCK",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
+        "GIT_SSL_CAINFO",
+        "GIT_SSH",
+        "GIT_SSH_COMMAND",
+    ]
+    env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
     if fetch_repo_args:
         # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
@@ -225,41 +256,6 @@ go_repository = repository_rule(
     },
 )
 """See repository.rst#go-repository for full documentation."""
-
-def get_env(ctx):
-    env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
-    env_keys = [
-        # Respect user proxy and sumdb settings for privacy.
-        # TODO(jayconrod): gazelle in go_repository mode should probably
-        # not go out to the network at all. This means *the build*
-        # goes out to the network. We tolerate this for downloading
-        # archives, but finding module roots is a bit much.
-        "GOPROXY",
-        "GONOPROXY",
-        "GOPRIVATE",
-        "GOSUMDB",
-        "GONOSUMDB",
-
-        # PATH is needed to locate git and other vcs tools.
-        "PATH",
-
-        # HOME is needed to locate vcs configuration files (.gitconfig).
-        "HOME",
-
-        # Settings below are used by vcs tools.
-        "SSH_AUTH_SOCK",
-        "HTTP_PROXY",
-        "HTTPS_PROXY",
-        "NO_PROXY",
-        "http_proxy",
-        "https_proxy",
-        "no_proxy",
-        "GIT_SSL_CAINFO",
-        "GIT_SSH",
-        "GIT_SSH_COMMAND",
-    ]
-    env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
-    return env
 
 
 # Copied from @bazel_tools//tools/build_defs/repo:utils.bzl
