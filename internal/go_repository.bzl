@@ -257,7 +257,6 @@ go_repository = repository_rule(
 )
 """See repository.rst#go-repository for full documentation."""
 
-
 # Copied from @bazel_tools//tools/build_defs/repo:utils.bzl
 def patch(ctx):
     """Implementation of patching an already extracted repository"""
