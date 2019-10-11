@@ -123,7 +123,7 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 		imp = path.Join(gc.prefix, cleanRel)
 	}
 
-	if isStandard(imp) {
+	if IsStandard(imp) {
 		return label.NoLabel, skipImportError
 	}
 
@@ -191,8 +191,8 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 	}
 }
 
-// isStandard returns whether a package is in the standard library.
-func isStandard(imp string) bool {
+// IsStandard returns whether a package is in the standard library.
+func IsStandard(imp string) bool {
 	return stdPackages[imp]
 }
 
