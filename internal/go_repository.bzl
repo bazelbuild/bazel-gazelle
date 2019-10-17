@@ -179,7 +179,7 @@ def _go_repository_impl(ctx):
                 result.stderr,
             ))
         if result.stderr:
-            print("gazelle: " + result.stderr)
+            print("%s: %s" % (ctx.name, result.stderr))
 
     # Apply patches if necessary.
     patch(ctx)
