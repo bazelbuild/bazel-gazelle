@@ -95,6 +95,8 @@ def _go_repository_impl(ctx):
 
         # Settings below are used by vcs tools.
         "SSH_AUTH_SOCK",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
         "HTTP_PROXY",
         "HTTPS_PROXY",
         "NO_PROXY",
