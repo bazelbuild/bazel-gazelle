@@ -2937,4 +2937,22 @@ replace github.com/selvatico/go-mocket => github.com/Selvatico/go-mocket v1.0.7
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+			Content: `
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+# gazelle:repo bazel_gazelle
+
+go_repository(
+    name = "com_github_selvatico_go_mocket",
+    importpath = "github.com/selvatico/go-mocket",
+    replace = "github.com/Selvatico/go-mocket",
+    sum = "h1:sXuFMnMfVL9b/Os8rGXPgbOFbr4HJm8aHsulD/uMTUk=",
+    version = "v1.0.7",
+)
+`,
+		},
+	})
 }
