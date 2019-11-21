@@ -175,7 +175,16 @@ func updateRepos(args []string) (err error) {
 	var newGen []*rule.Rule
 	genForFiles := make(map[*rule.File][]*rule.Rule)
 	emptyForFiles := make(map[*rule.File][]*rule.Rule)
+	ruleSet := make(map[string]*rule.Rule)
 	for _, r := range gen {
+		if existingRule, exist := ruleSet[r.Name()]; exist {
+			import1 := existingRule.AttrString("importpath")
+			import2 := r.AttrString("importpath")
+			return fmt.Errorf("imports %s and %s resolve to the same repository rule name %s",
+				import1, import2, r.Name())
+		} else {
+			ruleSet[r.Name()] = r
+		}
 		f := uc.repoFileMap[r.Name()]
 		if f != nil {
 			genForFiles[f] = append(genForFiles[f], r)
