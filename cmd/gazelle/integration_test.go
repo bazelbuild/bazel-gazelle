@@ -22,6 +22,7 @@ package main
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -2874,4 +2875,84 @@ go_test(
 )
 `,
 	}})
+}
+
+func TestImportCollision(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		},
+		{
+			Path: "go.mod",
+			Content: `
+module example.com/importcases
+
+go 1.13
+
+require (
+	github.com/Selvatico/go-mocket v1.0.7
+	github.com/selvatico/go-mocket v1.0.7
+)
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update-repos", "--from_file=go.mod"}
+	errMsg := "imports github.com/Selvatico/go-mocket and github.com/selvatico/go-mocket resolve to the same repository rule name com_github_selvatico_go_mocket"
+	if err := runGazelle(dir, args); err == nil {
+		t.Fatal("expected error, got nil")
+	} else if err.Error() != errMsg {
+		t.Error(fmt.Sprintf("want %s, got %s", errMsg, err.Error()))
+	}
+}
+
+func TestImportCollisionWithReplace(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+			Content: "# gazelle:repo bazel_gazelle",
+		},
+		{
+			Path: "go.mod",
+			Content: `
+module github.com/linzhp/go_examples/importcases
+
+go 1.13
+
+require (
+	github.com/Selvatico/go-mocket v1.0.7
+	github.com/selvatico/go-mocket v0.0.0-00010101000000-000000000000
+)
+
+replace github.com/selvatico/go-mocket => github.com/Selvatico/go-mocket v1.0.7
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update-repos", "--from_file=go.mod"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+			Content: `
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+# gazelle:repo bazel_gazelle
+
+go_repository(
+    name = "com_github_selvatico_go_mocket",
+    importpath = "github.com/selvatico/go-mocket",
+    replace = "github.com/Selvatico/go-mocket",
+    sum = "h1:sXuFMnMfVL9b/Os8rGXPgbOFbr4HJm8aHsulD/uMTUk=",
+    version = "v1.0.7",
+)
+`,
+		},
+	})
 }
