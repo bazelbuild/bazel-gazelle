@@ -3,7 +3,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_binary(
     name = "gen_std_package_list",
     embed = [":go_default_library"],
-    visibility = ["//language/go:__subpackages__"],
+    # TODO(bazelbuild/rules_go#2302): needs to be public in order to use as
+    # a default value in std_package_list, which is defined with go_rule.
+    # std_package_list should not be defined with go_rule.
+    visibility = ["//visibility:public"],
 )
 
 go_library(
