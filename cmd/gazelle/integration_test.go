@@ -602,6 +602,7 @@ go_proto_library(
 		}, {
 			args: []string{"fix", "-go_prefix", "example.com/repo"},
 			want: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -649,6 +650,7 @@ func TestRemoveProtoDeletesRules(t *testing.T) {
 		{
 			Path: config.DefaultValidBuildFileNames[0],
 			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -713,6 +715,7 @@ func TestAddServiceConvertsToGrpc(t *testing.T) {
 		{
 			Path: config.DefaultValidBuildFileNames[0],
 			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -758,6 +761,7 @@ service {}
 	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
 		Path: config.DefaultValidBuildFileNames[0],
 		Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -791,6 +795,7 @@ func TestProtoImportPrefix(t *testing.T) {
 		{
 			Path: config.DefaultValidBuildFileNames[0],
 			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -832,6 +837,7 @@ go_library(
 	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
 		Path: config.DefaultValidBuildFileNames[0],
 		Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 
@@ -1033,6 +1039,7 @@ func TestDeleteProtoWithDeps(t *testing.T) {
 		{
 			Path: "foo/BUILD.bazel",
 			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -2398,6 +2405,7 @@ func TestGoGrpcProtoFlag(t *testing.T) {
 		}, {
 			Path: "BUILD.bazel",
 			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -2433,6 +2441,7 @@ message Bar {};
 		}, {
 			Path: "service/BUILD.bazel",
 			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -2480,6 +2489,7 @@ service {}
 		{
 			Path: "BUILD.bazel",
 			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -2508,6 +2518,7 @@ go_library(
 		{
 			Path: "service/BUILD.bazel",
 			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -2834,7 +2845,7 @@ func TestGoImportVisibility(t *testing.T) {
 			Content: `
 go_repository(
 		name = "com_example_m_logging",
-    importpath = "example.com/m/logging",		
+    importpath = "example.com/m/logging",
 )
 `,
 		}, {
@@ -2911,7 +2922,7 @@ require (
 func TestImportCollisionWithReplace(t *testing.T) {
 	files := []testtools.FileSpec{
 		{
-			Path: "WORKSPACE",
+			Path:    "WORKSPACE",
 			Content: "# gazelle:repo bazel_gazelle",
 		},
 		{
