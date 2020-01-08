@@ -85,3 +85,14 @@ func TestParse(t *testing.T) {
 		}
 	}
 }
+
+func TestImportPathToBazelRepoName(t *testing.T) {
+	for path, want := range map[string]string{
+		"git.sr.ht/~urandom/errors": "ht_sr_git_urandom_errors",
+		"golang.org/x/mod":          "org_golang_x_mod",
+	} {
+		if got := ImportPathToBazelRepoName(path); got != want {
+			t.Errorf(`ImportPathToBazelRepoName(%q) = %q; want %q`, path, got, want)
+		}
+	}
+}
