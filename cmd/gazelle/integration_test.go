@@ -1811,6 +1811,14 @@ func TestImportReposFromDepToEmptyMacro(t *testing.T) {
 
 	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
+			Path: "WORKSPACE",
+			Content: `
+load("//:repositories.bzl", "go_repositories")
+
+# gazelle:repository_macro repositories.bzl%go_repositories
+go_repositories()
+`,
+		}, {
 			Path: "repositories.bzl",
 			Content: `
 load("@bazel_gazelle//:deps.bzl", "go_repository")
