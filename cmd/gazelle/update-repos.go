@@ -29,6 +29,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 type updateReposConfig struct {
@@ -245,6 +246,12 @@ func updateRepos(args []string) (err error) {
 			sortedFiles = append(sortedFiles, f)
 		}
 	}
+	if ensureMacroInWorkspace(uc) {
+		if !seenFile[uc.workspace] {
+			seenFile[uc.workspace] = true
+			sortedFiles = append(sortedFiles, uc.workspace)
+		}
+	}
 	sort.Slice(sortedFiles, func(i, j int) bool {
 		if cmp := strings.Compare(sortedFiles[i].Path, sortedFiles[j].Path); cmp != 0 {
 			return cmp < 0
@@ -268,6 +275,8 @@ func updateRepos(args []string) (err error) {
 			updatedFiles[f.Path] = f
 		}
 	}
+
+	// Write updated files to disk.
 	for _, f := range sortedFiles {
 		if uf := updatedFiles[f.Path]; uf != nil {
 			if err := uf.Save(uf.Path); err != nil {
@@ -374,4 +383,82 @@ func importRepos(c *config.Config, rc *repo.RemoteCache) (gen, empty []*rule.Rul
 		Cache:  rc,
 	})
 	return res.Gen, res.Empty, res.Error
+}
+
+// ensureMacroInWorkspace adds a call to the repository macro if the -to_macro
+// flag was used, and the macro was not called or declared with a
+// '# gazelle:repository_macro' directive.
+//
+// ensureMacroInWorkspace returns true if the WORKSPACE file was updated
+// and should be saved.
+func ensureMacroInWorkspace(uc *updateReposConfig) (updated bool) {
+	if uc.macroFileName == "" {
+		return false
+	}
+
+	// Check whether the macro is already declared.
+	// We won't add a call if the macro is declared but not called. It might
+	// be called somewhere else.
+	macroValue := uc.macroFileName + "%" + uc.macroDefName
+	for _, d := range uc.workspace.Directives {
+		if d.Key == "repository_macro" && d.Value == macroValue {
+			return false
+		}
+	}
+
+	// Try to find a load and a call.
+	var load *bzl.LoadStmt
+	var call *bzl.CallExpr
+	var loadedDefName string
+CallLoop:
+	for _, stmt := range uc.workspace.File.Stmt {
+		switch stmt := stmt.(type) {
+		case *bzl.LoadStmt:
+			mod := stmt.Module.Value
+			if mod != ":"+uc.macroFileName &&
+				mod != "//:"+uc.macroFileName &&
+				mod != "@//:"+uc.macroFileName {
+				break
+			}
+			for i, from := range stmt.From {
+				if from.Name == uc.macroDefName {
+					loadedDefName = stmt.To[i].Name
+					load = stmt
+					break
+				}
+			}
+
+		case *bzl.CallExpr:
+			if id, ok := stmt.X.(*bzl.Ident); ok && id.Name == loadedDefName {
+				break CallLoop
+			}
+		}
+	}
+
+	// Add the load and call if they're missing.
+	if call == nil {
+		if load == nil {
+			load = &bzl.LoadStmt{
+				Module:       &bzl.StringExpr{Value: "//:" + uc.macroFileName},
+				From:         []*bzl.Ident{{Name: uc.macroDefName}},
+				To:           []*bzl.Ident{{Name: uc.macroDefName}},
+				ForceCompact: true,
+			}
+			uc.workspace.File.Stmt = append(uc.workspace.File.Stmt, load)
+			loadedDefName = uc.macroDefName
+		} else if loadedDefName == "" {
+			load.From = append(load.From, &bzl.Ident{Name: uc.macroDefName})
+			load.To = append(load.To, &bzl.Ident{Name: uc.macroDefName})
+			loadedDefName = uc.macroDefName
+		}
+
+		call = &bzl.CallExpr{X: &bzl.Ident{Name: loadedDefName}}
+		uc.workspace.File.Stmt = append(uc.workspace.File.Stmt, call)
+	}
+
+	// Add the directive to the call.
+	com := bzl.Comment{Token: "# gazelle:repository_macro " + macroValue}
+	call.Before = append(call.Before, com)
+
+	return true
 }
