@@ -236,14 +236,20 @@ func TestGenerateRulesPrebuiltGoProtoRules(t *testing.T) {
 func TestConsumedGenFiles(t *testing.T) {
 	args := language.GenerateArgs{
 		RegularFiles: []string{"regular.go"},
-		GenFiles:     []string{"mocks.go"},
+		GenFiles:     []string{"mocks1.go", "mocks2.go"},
 		Config: &config.Config{
 			Exts: make(map[string]interface{}),
 		},
 	}
-	otherRule := rule.NewRule("go_library", "go_mock_library")
-	otherRule.SetAttr("srcs", []string{"mocks.go"})
-	args.OtherGen = append(args.OtherGen, otherRule)
+	otherGenRule := rule.NewRule("go_library", "generated_go_mock_library1")
+	otherGenRule.SetAttr("srcs", []string{"mocks1.go"})
+	args.OtherGen = append(args.OtherGen, otherGenRule)
+
+	otherManualRule := rule.NewRule("go_library", "manual_go_mock_library")
+	otherManualRule.SetAttr("srcs", []string{"mocks2.go"})
+	args.File = &rule.File{
+		Rules: []*rule.Rule{otherManualRule},
+	}
 
 	gl := goLang{
 		goPkgRels: make(map[string]bool),

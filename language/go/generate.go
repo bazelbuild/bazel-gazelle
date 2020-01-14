@@ -232,7 +232,12 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 		// Some of the generated files may have been consumed by other rules
 		consumedFileSet := make(map[string]bool)
-		for _, r := range args.OtherGen {
+		var otherRules []*rule.Rule
+		otherRules = append(otherRules, args.OtherGen...)
+		if args.File != nil {
+			otherRules = append(otherRules, args.File.Rules...)
+		}
+		for _, r := range otherRules {
 			for _, f := range r.AttrStrings("srcs") {
 				consumedFileSet[f] = true
 			}
