@@ -105,11 +105,18 @@ import "second.proto";`,
 				Options: []Option{{Key: "go_package", Value: "github.com/example/project;projectpb"}},
 			},
 		}, {
-			desc:  "service",
+			desc:  "service def",
 			name:  "service.proto",
 			proto: `service ChatService {}`,
 			want: FileInfo{
 				HasServices: true,
+			},
+		}, {
+			desc: "service as name",
+			name: "service.proto",
+			proto: `message ServiceAccount { string service = 1; }`,
+			want: FileInfo{
+				HasServices: false,
 			},
 		},
 	} {

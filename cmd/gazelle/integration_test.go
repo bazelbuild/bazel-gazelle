@@ -745,7 +745,7 @@ go_library(
 
 option go_package = "example.com/repo";
 
-service {}
+service TestService {}
 `,
 		},
 	}
@@ -2481,7 +2481,7 @@ syntax = "proto3";
 
 option go_package = "example.com/repo/service";
 
-service {}
+service TestService {}
 `,
 		},
 	}
