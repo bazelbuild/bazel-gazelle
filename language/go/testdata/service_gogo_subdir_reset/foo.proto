@@ -2,4 +2,4 @@ syntax = "proto2";
 
 option go_package = "example.com/repo/protos_gogo";
 
-service {}
+service TestService {}
