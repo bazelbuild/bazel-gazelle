@@ -502,12 +502,20 @@ func removeLegacyGoRepository(f *rule.File) {
 }
 
 func findWorkspaceName(f *rule.File) string {
+	var name string
 	for _, r := range f.Rules {
 		if r.Kind() == "workspace" {
-			return r.Name()
+			name = r.Name()
+			break
 		}
 	}
-	return ""
+	// HACK(bazelbuild/rules_go#2355, bazelbuild/rules_go#2387):
+	// We can't patch the WORKSPACE file with the correct name because Bazel
+	// writes it first; our patches won't apply.
+	if name == "com_google_googleapis" {
+		return "go_googleapis"
+	}
+	return name
 }
 
 func isDescendingDir(dir, root string) bool {
