@@ -1,0 +1,7 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "generated_proto",
+    srcs = ["foo_generated.proto"],
+    visibility = ["//visibility:public"],
+)

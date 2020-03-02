@@ -124,8 +124,8 @@ proto_library(
 		Rel:      "foo",
 		File:     old,
 		GenFiles: genFiles})
-	if len(res.Gen) > 0 {
-		t.Errorf("got %d generated rules; want 0", len(res.Gen))
+	if len(res.Gen) != 1 {
+		t.Errorf("got %d generated rules; want 1", len(res.Gen))
 	}
 	f := rule.EmptyFile("test", "")
 	for _, r := range res.Empty {
