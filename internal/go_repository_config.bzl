@@ -70,14 +70,7 @@ def _find_macro_file_labels(ctx, label):
     seen = {}
     files = []
 
-    result = ctx.execute(["cat", str(ctx.path(label))])
-    if result.return_code == 0:
-        content = result.stdout
-    else:
-        # TODO(jayconrod): "type" might work on Windows, but I think
-        # it's a shell builtin, and I'm not sure if ctx.execute will work.
-        content = ""
-
+    content = ctx.read(ctx.path(label))
     lines = content.split("\n")
     for line in lines:
         i = line.find("#")
