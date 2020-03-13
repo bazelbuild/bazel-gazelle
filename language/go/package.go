@@ -155,7 +155,7 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 	if !gc.prefixSet {
 		return fmt.Errorf("%s: go prefix is not set, so importpath can't be determined for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line", pkg.dir)
 	}
-	pkg.importPath = inferImportPath(gc, pkg.rel)
+	pkg.importPath = InferImportPath(c, pkg.rel)
 
 	if pkg.rel == gc.prefixRel {
 		pkg.importPath = gc.prefix
@@ -166,7 +166,8 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 	return nil
 }
 
-func inferImportPath(gc *goConfig, rel string) string {
+func InferImportPath(c *config.Config, rel string) string {
+	gc := getGoConfig(c)
 	if rel == gc.prefixRel {
 		return gc.prefix
 	} else {
@@ -190,17 +191,17 @@ func goProtoPackageName(pkg proto.Package) string {
 	return strings.Replace(pkg.Name, ".", "_", -1)
 }
 
-func goProtoImportPath(gc *goConfig, pkg proto.Package, rel string) string {
+func goProtoImportPath(c *config.Config, pkg proto.Package, rel string) string {
 	if value, ok := pkg.Options["go_package"]; ok {
 		if strings.LastIndexByte(value, '/') == -1 {
-			return inferImportPath(gc, rel)
+			return InferImportPath(c, rel)
 		} else if i := strings.LastIndexByte(value, ';'); i != -1 {
 			return value[:i]
 		} else {
 			return value
 		}
 	}
-	return inferImportPath(gc, rel)
+	return InferImportPath(c, rel)
 }
 
 func (t *goTarget) addFile(c *config.Config, info fileInfo) {
