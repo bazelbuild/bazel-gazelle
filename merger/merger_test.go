@@ -969,6 +969,11 @@ go_binary(name = "y")
 go_binary(name = "z")
 `,
 			wantError: true,
+		}, {
+			desc: "srcs match",
+			gen: `proto_library(name = "proto1", srcs = ["foo.proto", "bar.proto"])`,
+			old: `proto_library(name = "proto2", srcs = ["bar.proto", "foo.proto"])`,
+			wantIndex: 0,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

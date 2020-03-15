@@ -816,6 +816,27 @@ func (r *Rule) sync() {
 	r.updated = false
 }
 
+// AttrEqual decides if the rule and the other rule has the same value on the attribute
+func (r *Rule) AttrEqual(other *Rule, key string) bool {
+	value := r.AttrString(key)
+	if len(value) > 0 && value == other.AttrString(key) {
+		return true
+	}
+	myValues := r.AttrStrings(key)
+	otherValues := other.AttrStrings(key)
+	if myValues != nil && otherValues != nil && len(myValues) == len(otherValues){
+		sort.Strings(myValues)
+		sort.Strings(otherValues)
+		for i, v := range myValues {
+			if v != otherValues[i] {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 // ShouldKeep returns whether e is marked with a "# keep" comment. Kept
 // expressions should not be removed or modified.
 func ShouldKeep(e bzl.Expr) bool {

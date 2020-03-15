@@ -222,19 +222,15 @@ func Match(rules []*rule.Rule, x *rule.Rule, info rule.KindInfo) (*rule.Rule, er
 
 	for _, key := range info.MatchAttrs {
 		var attrMatches []*rule.Rule
-		xvalue := x.AttrString(key)
-		if xvalue == "" {
-			continue
-		}
 		for _, y := range kindMatches {
-			if xvalue == y.AttrString(key) {
+			if x.AttrEqual(y, key) {
 				attrMatches = append(attrMatches, y)
 			}
 		}
 		if len(attrMatches) == 1 {
 			return attrMatches[0], nil
 		} else if len(attrMatches) > 1 {
-			return nil, fmt.Errorf("could not merge %s(%s): multiple rules have the same attribute %s = %q", xkind, xname, key, xvalue)
+			return nil, fmt.Errorf("could not merge %s(%s): multiple rules have the same attribute %s", xkind, xname, key)
 		}
 	}
 
