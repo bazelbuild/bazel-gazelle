@@ -970,9 +970,9 @@ go_binary(name = "z")
 `,
 			wantError: true,
 		}, {
-			desc: "srcs match",
-			gen: `proto_library(name = "proto1", srcs = ["foo.proto", "bar.proto"])`,
-			old: `proto_library(name = "proto2", srcs = ["bar.proto", "foo.proto"])`,
+			desc:      "srcs match",
+			gen:       `proto_library(name = "proto1", srcs = ["foo.proto", "bar.proto"])`,
+			old:       `proto_library(name = "proto2", srcs = ["bar.proto", "foo.proto"])`,
 			wantIndex: 0,
 		},
 	} {
@@ -997,6 +997,62 @@ go_binary(name = "z")
 				t.Errorf("got nil; want index %d", tc.wantIndex)
 			} else if got != nil && got.Index() != tc.wantIndex {
 				t.Fatalf("got index %d ; want %d", got.Index(), tc.wantIndex)
+			}
+		})
+	}
+}
+
+func TestAttrMatch(t *testing.T) {
+	for _, tc := range []struct {
+		desc, attr     string
+		value1, value2 interface{}
+		want           bool
+	}{
+		{
+			desc: "empty attr",
+			attr: "importpath",
+			want: false,
+		},
+		{
+			desc:   "same string",
+			attr:   "importpath",
+			value1: "example.com/foo",
+			value2: "example.com/foo",
+			want:   true,
+		},
+		{
+			desc:   "different strings",
+			attr:   "importpath",
+			value1: "example.com/foo",
+			value2: "example.com/bar",
+			want:   false,
+		},
+		{
+			desc:   "nil slice",
+			attr:   "srcs",
+			value1: []string{"foo.proto"},
+			want:   false,
+		},
+		{
+			desc:   "different order slices",
+			attr:   "srcs",
+			value1: []string{"foo.proto", "bar.proto"},
+			value2: []string{"bar.proto", "foo.proto"},
+			want:   true,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			rule1 := rule.NewRule("go_library", "go_library1")
+			if tc.value1 != nil {
+				rule1.SetAttr(tc.attr, tc.value1)
+			}
+			rule2 := rule.NewRule("go_library", "go_library2")
+			if tc.value2 != nil {
+				rule2.SetAttr(tc.attr, tc.value2)
+			}
+			actual := merger.AttrMatch(rule1, rule2, tc.attr)
+			if actual != tc.want {
+				t.Errorf("expect %v == %v to be %v, got %v", tc.value1, tc.value2, tc.want, actual)
 			}
 		})
 	}

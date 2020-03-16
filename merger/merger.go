@@ -38,6 +38,7 @@ package merger
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -223,7 +224,7 @@ func Match(rules []*rule.Rule, x *rule.Rule, info rule.KindInfo) (*rule.Rule, er
 	for _, key := range info.MatchAttrs {
 		var attrMatches []*rule.Rule
 		for _, y := range kindMatches {
-			if x.AttrEqual(y, key) {
+			if AttrMatch(x, y, key) {
 				attrMatches = append(attrMatches, y)
 			}
 		}
@@ -243,4 +244,24 @@ func Match(rules []*rule.Rule, x *rule.Rule, info rule.KindInfo) (*rule.Rule, er
 	}
 
 	return nil, nil
+}
+
+func AttrMatch(x, y *rule.Rule, key string) bool {
+	xValue := x.AttrString(key)
+	if xValue != "" && xValue == y.AttrString(key) {
+		return true
+	}
+	xValues := x.AttrStrings(key)
+	yValues := y.AttrStrings(key)
+	if xValues == nil || yValues == nil || len(xValues) != len(yValues) {
+		return false
+	}
+	sort.Strings(xValues)
+	sort.Strings(yValues)
+	for i, v := range xValues {
+		if v != yValues[i] {
+			return false
+		}
+	}
+	return true
 }
