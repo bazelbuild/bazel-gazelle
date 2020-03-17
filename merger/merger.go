@@ -224,7 +224,7 @@ func Match(rules []*rule.Rule, x *rule.Rule, info rule.KindInfo) (*rule.Rule, er
 	for _, key := range info.MatchAttrs {
 		var attrMatches []*rule.Rule
 		for _, y := range kindMatches {
-			if AttrMatch(x, y, key) {
+			if attrMatch(x, y, key) {
 				attrMatches = append(attrMatches, y)
 			}
 		}
@@ -246,7 +246,7 @@ func Match(rules []*rule.Rule, x *rule.Rule, info rule.KindInfo) (*rule.Rule, er
 	return nil, nil
 }
 
-func AttrMatch(x, y *rule.Rule, key string) bool {
+func attrMatch(x, y *rule.Rule, key string) bool {
 	xValue := x.AttrString(key)
 	if xValue != "" && xValue == y.AttrString(key) {
 		return true
