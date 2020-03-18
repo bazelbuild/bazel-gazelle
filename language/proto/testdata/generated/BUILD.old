@@ -1,5 +1,0 @@
-genrule(
-    name = "gen_foo_proto",
-    outs = ["foo_generated.proto"],
-    cmd = """echo 'syntax = "proto2"' > foo_generated.proto""",
-)
