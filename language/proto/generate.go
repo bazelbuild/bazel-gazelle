@@ -18,7 +18,6 @@ package proto
 import (
 	"fmt"
 	"log"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -122,10 +121,7 @@ func buildPackages(pc *ProtoConfig, dir, rel string, protoFiles, genFiles []stri
 			log.Print(err)
 		}
 		if pkg == nil {
-			if len(genFiles) == 0 {
-				return nil // empty rule created in generateEmpty
-			}
-			pkg = newPackage(filepath.Base(rel))
+			return nil // empty rule created in generateEmpty
 		}
 		for _, name := range genFiles {
 			pkg.addGenFile(dir, name)
