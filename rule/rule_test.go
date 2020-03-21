@@ -346,3 +346,16 @@ func TestShouldKeepExpr(t *testing.T) {
 		})
 	}
 }
+
+func TestGlobWithExclude(t *testing.T) {
+	want := `glob(
+    ["*.star"],
+    exclude = ["*.bzl"],
+)`
+	val := GlobValue{Patterns: []string{"*.star"}, Excludes: []string{"*.bzl"}}
+	expr := ExprFromValue(val)
+	got := bzl.FormatString(expr)
+	if got != want {
+		t.Errorf("got %q; want %q", got, want)
+	}
+}
