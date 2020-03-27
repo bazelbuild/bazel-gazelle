@@ -19,6 +19,7 @@ import "github.com/bazelbuild/bazel-gazelle/rule"
 
 var protoKinds = map[string]rule.KindInfo{
 	"proto_library": {
+		MatchAttrs:    []string{"srcs"},
 		NonEmptyAttrs: map[string]bool{"srcs": true},
 		MergeableAttrs: map[string]bool{
 			"srcs": true,
