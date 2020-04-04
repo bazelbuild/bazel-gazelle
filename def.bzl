@@ -47,6 +47,10 @@ DEFAULT_LANGUAGES = [
 
 def _gazelle_runner_impl(ctx):
     go = _go_context(ctx)
+    runfiles = [
+        ctx.executable.gazelle,
+        go.go,
+    ]
     args = [
         ctx.attr.command,
         "-mode",
@@ -58,11 +62,19 @@ def _gazelle_runner_impl(ctx):
         args.extend(["-go_prefix", ctx.attr.prefix])
     if ctx.attr.build_tags:
         args.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
+
+    # file_args absolute paths are found in the script
+    file_args = []
+    if ctx.attr.repo_config:
+        file_args.extend(["-repo_config", ctx.file.repo_config.path])
+        runfiles.append(ctx.file.repo_config)
+
     args.extend(ctx.attr.extra_args)
 
     out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
     substitutions = {
         "@@ARGS@@": shell.array_literal(args),
+        "@@FILE_ARGS@@": shell.array_literal(file_args),
         "@@GAZELLE_LABEL@@": shell.quote(str(ctx.attr.gazelle.label)),
         "@@GAZELLE_SHORT_PATH@@": shell.quote(ctx.executable.gazelle.short_path),
         "@@GENERATED_MESSAGE@@": """
@@ -78,13 +90,11 @@ def _gazelle_runner_impl(ctx):
         substitutions = substitutions,
         is_executable = True,
     )
-    runfiles = ctx.runfiles(files = [
-        ctx.executable.gazelle,
-        go.go,
-    ])
+
+
     return [DefaultInfo(
         files = depset([out_file]),
-        runfiles = runfiles,
+        runfiles = ctx.runfiles(files = runfiles),
         executable = out_file,
     )]
 
@@ -104,6 +114,7 @@ _gazelle_runner = _go_rule(
             values = ["print", "fix", "diff"],
             default = "fix",
         ),
+        "repo_config": attr.label(allow_single_file = True),
         "external": attr.string(
             values = ["", "external", "vendored"],
             default = "",
