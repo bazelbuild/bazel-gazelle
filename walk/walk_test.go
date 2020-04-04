@@ -166,10 +166,12 @@ func TestExcludeFiles(t *testing.T) {
 		{
 			Path: "BUILD.bazel",
 			Content: `
+# gazelle:exclude **/*.pb.go
+# gazelle:exclude *.gen.go
 # gazelle:exclude a.go
-# gazelle:exclude sub/b.go
-# gazelle:exclude ign
 # gazelle:exclude gen
+# gazelle:exclude ign
+# gazelle:exclude sub/b.go
 
 gen(
     name = "x",
@@ -177,11 +179,18 @@ gen(
 )
 `,
 		},
-		{Path: "a.go"},
-		{Path: ".dot"},
-		{Path: "_blank"},
-		{Path: "sub/b.go"},
-		{Path: "ign/bad"},
+		{Path: ".dot"},       // not ignored
+		{Path: "_blank"},     // not ignored
+		{Path: "a/a.proto"},  // not ignored
+		{Path: "a/b.gen.go"}, // not ignored
+
+		{Path: "a.gen.go"},    // ignored by '*.gen.go'
+		{Path: "a.go"},        // ignored by 'a.go'
+		{Path: "a.pb.go"},     // ignored by '**/*.pb.go'
+		{Path: "ign/bad"},     // ignored by 'ign'
+		{Path: "a/a.pb.go"},   // ignored by '**/*.pb.go'
+		{Path: "a/b/a.pb.go"}, // ignored by '**/*.pb.go'
+		{Path: "sub/b.go"},    // ignored by 'sub/b.go'
 	})
 	defer cleanup()
 
@@ -195,7 +204,7 @@ gen(
 			files = append(files, path.Join(rel, f))
 		}
 	})
-	want := []string{".dot", "BUILD.bazel", "_blank"}
+	want := []string{"a/a.proto", "a/b.gen.go", ".dot", "BUILD.bazel", "_blank"}
 	if !reflect.DeepEqual(files, want) {
 		t.Errorf("got %#v; want %#v", files, want)
 	}

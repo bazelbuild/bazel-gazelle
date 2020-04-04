@@ -5,6 +5,8 @@ github.com/bazelbuild/buildtools/tables
 github.com/bazelbuild/rules_go/go/tools/bazel
 github.com/bazelbuild/rules_go/go/tools/bazel_testing
 github.com/bazelbuild/rules_go/go/tools/internal/txtar
+# github.com/bmatcuk/doublestar v1.2.2
+github.com/bmatcuk/doublestar
 # github.com/fsnotify/fsnotify v1.4.7
 github.com/fsnotify/fsnotify
 # github.com/pelletier/go-toml v1.2.0

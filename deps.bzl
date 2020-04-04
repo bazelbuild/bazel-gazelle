@@ -134,6 +134,14 @@ def gazelle_dependencies(
         version = "v1.0.0",
     )
 
+    _maybe(
+        go_repository,
+        name = "com_github_bmatcuk_doublestar",
+        importpath = "github.com/bmatcuk/doublestar",
+        sum = "h1:oC24CykoSAB8zd7XgruHo33E0cHJf/WhQA/7BeXj+x0=",
+        version = "v1.2.2",
+    )
+
 def _maybe(repo_rule, name, **kwargs):
     if name not in native.existing_rules():
         repo_rule(name = name, **kwargs)

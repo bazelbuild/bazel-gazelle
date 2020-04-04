@@ -17,11 +17,14 @@ package walk
 
 import (
 	"flag"
+	"log"
 	"path"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bmatcuk/doublestar"
+
+	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
 )
 
 // TODO(#472): store location information to validate each exclude. They
@@ -46,7 +49,12 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 	}
 	f := path.Join(rel, base)
 	for _, x := range wc.excludes {
-		if f == x {
+		matched, err := doublestar.PathMatch(x, f)
+		if err != nil {
+			log.Printf("error running doublestar.PathMatch(%q, %q): %s", x, f, err)
+			continue
+		}
+		if matched {
 			return true
 		}
 	}
@@ -58,7 +66,7 @@ type Configurer struct{}
 func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	wc := &walkConfig{}
 	c.Exts[walkName] = wc
-	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "Path to file or directory that should be ignored (may be repeated)")
+	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "path.Match pattern that should be ignored (may be repeated)")
 }
 
 func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
