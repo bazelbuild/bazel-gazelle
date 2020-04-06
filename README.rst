@@ -12,7 +12,7 @@ Gazelle build file generator
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
 .. _gazelle rule: #bazel-rule
-.. _doublestar.PathMatch: https://github.com/bmatcuk/doublestar#pathmatch
+.. _doublestar.Match: https://github.com/bmatcuk/doublestar#match
 .. _Extending Gazelle: extend.rst
 .. _Supported languages: extend.rst#supported-languages
 .. _extended: `Extending Gazelle`_
@@ -305,7 +305,7 @@ The following flags are accepted:
 | :flag:`-exclude pattern`                                     |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | Prevents Gazelle from processing a file or directory if the given                                     |
-| `doublestar.PathMatch`_ pattern matches. If the pattern refers to a source file,                      |
+| `doublestar.Match`_ pattern matches. If the pattern refers to a source file,                          |
 | Gazelle won't include it in any rules. If the pattern refers to a directory,                          |
 | Gazelle won't recurse into it.                                                                        |
 |                                                                                                       |
@@ -530,7 +530,7 @@ The following directives are recognized:
 | :direc:`# gazelle:exclude pattern`                | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
 | Prevents Gazelle from processing a file or directory if the given                          |
-| `doublestar.PathMatch`_ pattern matches. If the pattern refers to a source file,           |
+| `doublestar.Match`_ pattern matches. If the pattern refers to a source file,               |
 | Gazelle won't include it in any rules. If the pattern refers to a directory,               |
 | Gazelle won't recurse into it. This directive may be repeated to exclude                   |
 | multiple patterns, one per line.                                                           |

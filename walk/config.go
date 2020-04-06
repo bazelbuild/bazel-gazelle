@@ -49,7 +49,7 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 	}
 	f := path.Join(rel, base)
 	for _, x := range wc.excludes {
-		matched, err := doublestar.PathMatch(x, f)
+		matched, err := doublestar.Match(x, f)
 		if err != nil {
 			log.Printf("error running doublestar.PathMatch(%q, %q): %s", x, f, err)
 			continue
