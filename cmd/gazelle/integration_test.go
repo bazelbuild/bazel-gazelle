@@ -2976,6 +2976,76 @@ go_repository(
 	})
 }
 
+// TestUpdateReposWithGlobalBuildTags is a regresion test for issue #711.
+// It also ensures that existings build_tags get merged with requested build_tags.
+func TestUpdateReposWithGlobalBuildTags(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+			Content: `
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+# gazelle:repo bazel_gazelle
+
+go_repository(
+    name = "com_github_selvatico_go_mocket",
+    build_tags = [
+        "bar",
+    ],
+    importpath = "github.com/selvatico/go-mocket",
+    replace = "github.com/Selvatico/go-mocket",
+    sum = "h1:sXuFMnMfVL9b/Os8rGXPgbOFbr4HJm8aHsulD/uMTUk=",
+    version = "v1.0.7",
+)
+`,
+		},
+		{
+			Path: "go.mod",
+			Content: `
+module github.com/linzhp/go_examples/importcases
+
+go 1.13
+
+require (
+	github.com/Selvatico/go-mocket v1.0.7
+	github.com/selvatico/go-mocket v0.0.0-00010101000000-000000000000
+)
+
+replace github.com/selvatico/go-mocket => github.com/Selvatico/go-mocket v1.0.7
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update-repos", "--from_file=go.mod", "--build_tags=bar,foo"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+			Content: `
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+# gazelle:repo bazel_gazelle
+
+go_repository(
+    name = "com_github_selvatico_go_mocket",
+    build_tags = [
+        "bar",
+        "foo",
+    ],
+    importpath = "github.com/selvatico/go-mocket",
+    replace = "github.com/Selvatico/go-mocket",
+    sum = "h1:sXuFMnMfVL9b/Os8rGXPgbOFbr4HJm8aHsulD/uMTUk=",
+    version = "v1.0.7",
+)
+`,
+		},
+	})
+}
+
 func TestMatchProtoLibrary(t *testing.T) {
 	files := []testtools.FileSpec{
 		{
