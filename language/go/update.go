@@ -99,7 +99,8 @@ func setBuildAttrs(gc *goConfig, r *rule.Rule) {
 		r.SetAttr("build_file_generation", gc.buildFileGenerationAttr)
 	}
 	if gc.buildTagsAttr != "" {
-		r.SetAttr("build_tags", gc.buildTagsAttr)
+		buildTags := strings.Split(gc.buildTagsAttr, ",")
+		r.SetAttr("build_tags", buildTags)
 	}
 	if gc.buildFileProtoModeAttr != "" {
 		r.SetAttr("build_file_proto_mode", gc.buildFileProtoModeAttr)
