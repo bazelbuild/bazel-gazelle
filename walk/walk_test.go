@@ -169,6 +169,7 @@ func TestExcludeFiles(t *testing.T) {
 # gazelle:exclude **/*.pb.go
 # gazelle:exclude *.gen.go
 # gazelle:exclude a.go
+# gazelle:exclude c/**/b
 # gazelle:exclude gen
 # gazelle:exclude ign
 # gazelle:exclude sub/b.go
@@ -187,9 +188,11 @@ gen(
 		{Path: "a.gen.go"},    // ignored by '*.gen.go'
 		{Path: "a.go"},        // ignored by 'a.go'
 		{Path: "a.pb.go"},     // ignored by '**/*.pb.go'
-		{Path: "ign/bad"},     // ignored by 'ign'
 		{Path: "a/a.pb.go"},   // ignored by '**/*.pb.go'
 		{Path: "a/b/a.pb.go"}, // ignored by '**/*.pb.go'
+		{Path: "c/x/b/foo"},   // ignored by 'c/**/b'
+		{Path: "c/x/y/b/bar"}, // ignored by 'c/**/b'
+		{Path: "ign/bad"},     // ignored by 'ign'
 		{Path: "sub/b.go"},    // ignored by 'sub/b.go'
 	})
 	defer cleanup()
