@@ -69,7 +69,7 @@ type Configurer struct{}
 func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	wc := &walkConfig{}
 	c.Exts[walkName] = wc
-	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "path.Match pattern that should be ignored (may be repeated)")
+	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "pattern that should be ignored (may be repeated)")
 }
 
 func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
