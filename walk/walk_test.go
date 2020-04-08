@@ -185,15 +185,16 @@ gen(
 		{Path: "a/a.proto"},  // not ignored
 		{Path: "a/b.gen.go"}, // not ignored
 
-		{Path: "a.gen.go"},    // ignored by '*.gen.go'
-		{Path: "a.go"},        // ignored by 'a.go'
-		{Path: "a.pb.go"},     // ignored by '**/*.pb.go'
-		{Path: "a/a.pb.go"},   // ignored by '**/*.pb.go'
-		{Path: "a/b/a.pb.go"}, // ignored by '**/*.pb.go'
-		{Path: "c/x/b/foo"},   // ignored by 'c/**/b'
-		{Path: "c/x/y/b/bar"}, // ignored by 'c/**/b'
-		{Path: "ign/bad"},     // ignored by 'ign'
-		{Path: "sub/b.go"},    // ignored by 'sub/b.go'
+		{Path: "a.gen.go"},        // ignored by '*.gen.go'
+		{Path: "a.go"},            // ignored by 'a.go'
+		{Path: "a.pb.go"},         // ignored by '**/*.pb.go'
+		{Path: "a/a.pb.go"},       // ignored by '**/*.pb.go'
+		{Path: "a/b/a.pb.go"},     // ignored by '**/*.pb.go'
+		{Path: "c/x/b/foo"},       // ignored by 'c/**/b'
+		{Path: "c/x/y/b/bar"},     // ignored by 'c/**/b'
+		{Path: "c/x/y/b/foo/bar"}, // ignored by 'c/**/b'
+		{Path: "ign/bad"},         // ignored by 'ign'
+		{Path: "sub/b.go"},        // ignored by 'sub/b.go'
 	})
 	defer cleanup()
 
