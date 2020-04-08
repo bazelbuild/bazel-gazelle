@@ -12,6 +12,7 @@ Gazelle build file generator
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
 .. _gazelle rule: #bazel-rule
+.. _doublestar.Match: https://github.com/bmatcuk/doublestar#match
 .. _Extending Gazelle: extend.rst
 .. _Supported languages: extend.rst#supported-languages
 .. _extended: `Extending Gazelle`_
@@ -303,14 +304,15 @@ The following flags are accepted:
 | Bazel may still filter sources with these tags. Use                                                   |
 | ``bazel build --define gotags=foo,bar`` to set tags at build time.                                    |
 +--------------------------------------------------------------+----------------------------------------+
-| :flag:`-exclude path`                                        |                                        |
+| :flag:`-exclude pattern`                                     |                                        |
 +--------------------------------------------------------------+----------------------------------------+
-| Prevents Gazelle from processing a file or directory. If the path refers to                           |
-| a source file, Gazelle won't include it in any rules. If the path refers to                           |
-| a directory, Gazelle won't recurse into it.                                                           |
+| Prevents Gazelle from processing a file or directory if the given                                     |
+| `doublestar.Match`_ pattern matches. If the pattern refers to a source file,                          |
+| Gazelle won't include it in any rules. If the pattern refers to a directory,                          |
+| Gazelle won't recurse into it.                                                                        |
 |                                                                                                       |
-| This option may be repeated. Paths must be slash-separated, relative to the                           |
-| repository root. This is equivalent to the ``# gazelle:exclude path``                                 |
+| This option may be repeated. Patterns must be slash-separated, relative to the                        |
+| repository root. This is equivalent to the ``# gazelle:exclude pattern``                              |
 | directive.                                                                                            |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-external external|vendored`                          | :value:`external`                      |
@@ -527,14 +529,13 @@ The following directives are recognized:
 | Bazel may still filter sources with these tags. Use                                        |
 | ``bazel build --define gotags=foo,bar`` to set tags at build time.                         |
 +---------------------------------------------------+----------------------------------------+
-| :direc:`# gazelle:exclude path`                   | n/a                                    |
+| :direc:`# gazelle:exclude pattern`                | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
-| Prevents Gazelle from processing a file or directory. If the path refers to                |
-| a source file, Gazelle won't include it in any rules. If the path refers to                |
-| a directory, Gazelle won't recurse into it. The path may refer to something                |
-| withinin a subdirectory, for example, a testdata directory somewhere in a                  |
-| vendor tree. This directive may be repeated to exclude multiple paths, one                 |
-| per line.                                                                                  |
+| Prevents Gazelle from processing a file or directory if the given                          |
+| `doublestar.Match`_ pattern matches. If the pattern refers to a source file,               |
+| Gazelle won't include it in any rules. If the pattern refers to a directory,               |
+| Gazelle won't recurse into it. This directive may be repeated to exclude                   |
+| multiple patterns, one per line.                                                           |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:follow path`                    | n/a                                    |
 +---------------------------------------------------+----------------------------------------+

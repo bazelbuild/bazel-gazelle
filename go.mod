@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/bazelbuild/buildtools v0.0.0-20190731111112-f720930ceb60
 	github.com/bazelbuild/rules_go v0.0.0-20190719190356-6dae44dc5cab
+	github.com/bmatcuk/doublestar v1.2.2
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/kr/pretty v0.1.0 // indirect
