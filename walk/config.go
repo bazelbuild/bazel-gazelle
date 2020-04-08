@@ -51,8 +51,11 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 	for _, x := range wc.excludes {
 		matched, err := doublestar.Match(x, f)
 		if err != nil {
-			log.Printf("error running doublestar.PathMatch(%q, %q): %s", x, f, err)
-			continue
+			// doublestar.Match returns only one possible error, and only if the
+			// pattern is not valid. During the configuration of the walker (see
+			// Configure below), we discard any invalid pattern and thus an error
+			// here should not be possible.
+			log.Panicf("error during doublestar.Match. This should not happen, please file an issue https://github.com/bazelbuild/bazel-gazelle/issues/new: %s", err)
 		}
 		if matched {
 			return true
@@ -75,7 +78,7 @@ func (_ *Configurer) KnownDirectives() []string {
 	return []string{"exclude", "follow", "ignore"}
 }
 
-func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
+func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	wc := getWalkConfig(c)
 	wcCopy := &walkConfig{}
 	*wcCopy = *wc
@@ -85,6 +88,10 @@ func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 		for _, d := range f.Directives {
 			switch d.Key {
 			case "exclude":
+				if err := checkPathMatchPattern(path.Join(rel, d.Value)); err != nil {
+					log.Printf("the exclusion pattern is not valid %q: %s", path.Join(rel, d.Value), err)
+					continue
+				}
 				wcCopy.excludes = append(wcCopy.excludes, path.Join(rel, d.Value))
 			case "follow":
 				wcCopy.follow = append(wcCopy.follow, path.Join(rel, d.Value))
@@ -95,4 +102,9 @@ func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	c.Exts[walkName] = wcCopy
+}
+
+func checkPathMatchPattern(pattern string) error {
+	_, err := doublestar.Match(pattern, "x")
+	return err
 }
