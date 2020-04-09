@@ -390,6 +390,12 @@ The following flags are accepted:
 |                                                                                                       |
 | Gazelle will not process packages outside this directory.                                             |
 +--------------------------------------------------------------+----------------------------------------+
+| :flag:`-lang lang1,lang2,...`                                | :value:`""`                            |
++--------------------------------------------------------------+----------------------------------------+
+| Selects languages for which to compose rules.                                                         |
+|                                                                                                       |
+| By default, all languages that this Gazelle was built with are processed.                             |
++--------------------------------------------------------------+----------------------------------------+
 .. _Predefined plugins: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#predefined-plugins
 
 ``update-repos``
@@ -705,6 +711,11 @@ The following directives are recognized:
 | By default, internal packages are only visible to its siblings. This directive adds a label|
 | internal packages should be visible to additionally. This directive can be used several    |
 | times, adding a list of labels.                                                            |
++---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:lang lang1,lang2,...`           | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Sets the language selection flag for this and descendent packages, which gazelle to        |
+| process just the languages named in this directive.
 +---------------------------------------------------+----------------------------------------+
 
 Gazelle also reads directives from the WORKSPACE file. They may be used to

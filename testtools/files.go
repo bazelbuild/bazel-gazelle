@@ -37,6 +37,10 @@ type FileSpec struct {
 
 	// Content is the content of the test file.
 	Content string
+
+	// NotExist asserts that no file at this path exists.
+	// It is only valid in CheckFiles.
+	NotExist bool
 }
 
 // CreateFiles creates a directory of test files. This is a more compact
@@ -55,6 +59,9 @@ func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 	}
 
 	for _, f := range files {
+		if f.NotExist {
+			t.Fatalf("CreateFiles: NotExist may not be set: %s", f.Path)
+		}
 		path := filepath.Join(dir, filepath.FromSlash(f.Path))
 		if strings.HasSuffix(f.Path, "/") {
 			if err := os.MkdirAll(path, 0700); err != nil {
@@ -89,8 +96,19 @@ func CheckFiles(t *testing.T, dir string, files []FileSpec) {
 	t.Helper()
 	for _, f := range files {
 		path := filepath.Join(dir, f.Path)
+
+		st, err := os.Stat(path)
+		if f.NotExist {
+			if err == nil {
+				t.Errorf("asserted to not exist, but does: %s", f.Path)
+			} else if !os.IsNotExist(err) {
+				t.Errorf("could not stat %s: %v", f.Path, err)
+			}
+			continue
+		}
+
 		if strings.HasSuffix(f.Path, "/") {
-			if st, err := os.Stat(path); err != nil {
+			if err != nil {
 				t.Errorf("could not stat %s: %v", f.Path, err)
 			} else if !st.IsDir() {
 				t.Errorf("not a directory: %s", f.Path)

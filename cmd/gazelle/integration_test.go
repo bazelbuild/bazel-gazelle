@@ -3107,3 +3107,90 @@ go_library(
 		},
 	})
 }
+
+func TestConfigLang(t *testing.T) {
+	// Gazelle is run with "-lang=proto".
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+
+		// Verify that Gazelle does not create a BUILD file.
+		{Path: "foo/foo.go", Content: "package foo"},
+
+		// Verify that Gazelle only creates the proto rule.
+		{Path: "pb/pb.go", Content: "package pb"},
+		{Path: "pb/pb.proto", Content: `syntax = "proto3";`},
+
+		// Verify that Gazelle does create a BUILD file, because of the override.
+		{Path: "bar/BUILD.bazel", Content: "# gazelle:lang"},
+		{Path: "bar/bar.go", Content: "package bar"},
+		{Path: "baz/BUILD.bazel", Content: "# gazelle:lang go,proto"},
+		{Path: "baz/baz.go", Content: "package baz"},
+	}
+
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"-lang", "proto"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path:     filepath.Join("foo", "BUILD.bazel"),
+		NotExist: true,
+	}, {
+		Path: filepath.Join("pb", "BUILD.bazel"),
+		Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "pb_proto",
+    srcs = ["pb.proto"],
+    visibility = ["//visibility:public"],
+)`,
+	},
+		{
+			Path: filepath.Join("bar", "BUILD.bazel"),
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:lang
+
+go_library(
+    name = "go_default_library",
+    srcs = ["bar.go"],
+    importpath = "",
+    visibility = ["//visibility:public"],
+)`,
+		},
+		{
+			Path: filepath.Join("baz", "BUILD.bazel"),
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:lang go,proto
+
+go_library(
+    name = "go_default_library",
+    srcs = ["baz.go"],
+    importpath = "",
+    visibility = ["//visibility:public"],
+)`,
+		}})
+}
+
+func TestUpdateRepos_LangFilter(t *testing.T) {
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+	})
+	defer cleanup()
+
+	args := []string{"update-repos", "-lang=proto", "github.com/sirupsen/logrus@v1.3.0"}
+	err := runGazelle(dir, args)
+	if err == nil {
+		t.Fatal("expected an error, got none")
+	}
+	if !strings.Contains(err.Error(), "no languages can update repositories") {
+		t.Fatalf("unexpected error: %+v", err)
+	}
+}

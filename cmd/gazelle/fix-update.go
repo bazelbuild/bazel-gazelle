@@ -285,7 +285,7 @@ func runFixUpdate(cmd command, args []string) (err error) {
 
 		// Fix any problems in the file.
 		if f != nil {
-			for _, l := range languages {
+			for _, l := range filterLanguages(c, languages) {
 				l.Fix(c, f)
 			}
 		}
@@ -293,7 +293,7 @@ func runFixUpdate(cmd command, args []string) (err error) {
 		// Generate rules.
 		var empty, gen []*rule.Rule
 		var imports []interface{}
-		for _, l := range languages {
+		for _, l := range filterLanguages(c, languages) {
 			res := l.GenerateRules(language.GenerateArgs{
 				Config:       c,
 				Dir:          dir,

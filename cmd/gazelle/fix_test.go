@@ -310,3 +310,43 @@ go_library(
 		})
 	}
 }
+
+func TestFix_LangFilter(t *testing.T) {
+	fixture := []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_binary(
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)`,
+		},
+		{
+			Path:    "main.go",
+			Content: `package main`,
+		},
+	}
+
+	dir, cleanup := testtools.CreateFiles(t, fixture)
+	defer cleanup()
+
+	// Check that Gazelle does not update the BUILD file, due to lang filter.
+	run([]string{
+		"-repo_root", dir,
+		"-go_prefix", "example.com/repo",
+		"-lang=proto",
+		dir,
+	})
+
+	testtools.CheckFiles(t, dir, fixture)
+}
