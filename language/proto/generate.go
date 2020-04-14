@@ -41,13 +41,29 @@ func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 			regularProtoFiles = append(regularProtoFiles, name)
 		}
 	}
-	var genProtoFiles []string
+
+	// Some of the generated files may have been consumed by other rules
+	consumedFileSet := make(map[string]bool)
+	for _, r := range args.OtherGen {
+		for _, f := range r.AttrStrings("srcs") {
+			consumedFileSet[f] = true
+		}
+		if f := r.AttrString("src"); f != "" {
+			consumedFileSet[f] = true
+		}
+	}
+	var (
+		genProtoFiles, genProtoFilesNotConsumed []string
+	)
 	for _, name := range args.GenFiles {
 		if strings.HasSuffix(name, ".proto") {
 			genProtoFiles = append(genProtoFiles, name)
+			if !consumedFileSet[name] {
+				genProtoFilesNotConsumed = append(genProtoFilesNotConsumed, name)
+			}
 		}
 	}
-	pkgs := buildPackages(pc, args.Dir, args.Rel, regularProtoFiles, genProtoFiles)
+	pkgs := buildPackages(pc, args.Dir, args.Rel, regularProtoFiles, genProtoFilesNotConsumed)
 	shouldSetVisibility := args.File == nil || !args.File.HasDefaultVisibility()
 	var res language.GenerateResult
 	for _, pkg := range pkgs {
