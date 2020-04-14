@@ -213,19 +213,19 @@ proto_library(
 	c, lang, _ := testConfig(t, "testdata")
 
 	args := language.GenerateArgs{
-		Config:   c,
+		Config:       c,
 		Dir:          filepath.FromSlash("testdata/foo"),
-		File: old,
+		File:         old,
 		Rel:          "foo",
 		RegularFiles: []string{"foo.proto"},
 		GenFiles:     []string{"gen.proto"},
-		OtherGen: []*rule.Rule{genRule},
+		OtherGen:     []*rule.Rule{genRule},
 	}
 
 	args.Config = c
 	res := lang.GenerateRules(args)
 	// Make sure that gen.proto is not added to existing foo_proto rule because it is consumed
-	if len(res.Gen)!=1 {
+	if len(res.Gen) != 1 {
 		t.Errorf("got gen files len :\n%d\nwant:\n1", len(res.Gen))
 	}
 	fmt.Println(res.Gen[0].AttrString("name"))
