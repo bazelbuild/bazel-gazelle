@@ -16,6 +16,7 @@ limitations under the License.
 package proto
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -185,6 +186,64 @@ func TestGeneratePackage(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %#v; want %#v", got, want)
+	}
+}
+
+// Test generated files that have been consumed by other rules should not be
+// added to the  rule
+func TestConsumedGenFiles(t *testing.T) {
+	oldContent := []byte(`
+proto_library(
+    name = "existing_gen_proto",
+    srcs = ["gen.proto"],
+)
+proto_library(
+    name = "dead_proto",
+    srcs = ["dead.proto"],
+)
+`)
+	old, err := rule.LoadData("BUILD.bazel", "", oldContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	genRule := rule.NewRule("proto_library", "gen_proto")
+	genRule.SetAttr("srcs", []string{"gen.proto"})
+
+	c, lang, _ := testConfig(t, "testdata")
+
+	args := language.GenerateArgs{
+		Config:   c,
+		Dir:          filepath.FromSlash("testdata/foo"),
+		File: old,
+		Rel:          "foo",
+		RegularFiles: []string{"foo.proto"},
+		GenFiles:     []string{"gen.proto"},
+		OtherGen: []*rule.Rule{genRule},
+	}
+
+	args.Config = c
+	res := lang.GenerateRules(args)
+	// Make sure that gen.proto is not added to existing foo_proto rule because it is consumed
+	if len(res.Gen)!=1 {
+		t.Errorf("got gen files len :\n%d\nwant:\n1", len(res.Gen))
+	}
+	fmt.Println(res.Gen[0].AttrString("name"))
+	gotSrcs := res.Gen[0].AttrStrings("srcs")
+	wantSrcs := []string{"foo.proto"}
+	if len(gotSrcs) != len(wantSrcs) || gotSrcs[0] != wantSrcs[0] {
+		t.Errorf("got:\n%s\nwant:\n%s", gotSrcs, wantSrcs)
+	}
+	// Make sure that gen.proto is not among empty because it is in GenFiles
+	f := rule.EmptyFile("test", "")
+	for _, r := range res.Empty {
+		r.Insert(f)
+	}
+	f.Sync()
+	got := strings.TrimSpace(string(bzl.Format(f.File)))
+	want := `proto_library(name = "dead_proto")`
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
 	}
 }
 
