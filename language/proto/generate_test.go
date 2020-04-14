@@ -192,6 +192,15 @@ func TestGeneratePackage(t *testing.T) {
 // Test generated files that have been consumed by other rules should not be
 // added to the  rule
 func TestConsumedGenFiles(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO(jayconrod): set up testdata directory on windows before running test
+		if _, err := os.Stat("testdata"); os.IsNotExist(err) {
+			t.Skip("testdata missing on windows due to lack of symbolic links")
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	oldContent := []byte(`
 proto_library(
     name = "existing_gen_proto",
