@@ -217,12 +217,12 @@ proto_library(
 
 	genRule1 := rule.NewRule("proto_library", "gen_proto")
 	genRule1.SetAttr("srcs", []string{"gen.proto"})
-	genRule2 := rule.NewRule("not_proto_library", "gen_not_consumed_proto")
-	genRule2.SetAttr("srcs", []string{"gen_not_consumed.proto"})
+	genRule2 := rule.NewRule("filegroup", "filegroup_protos")
+	genRule2.SetAttr("srcs", []string{"gen.proto", "gen_not_consumed.proto"})
 
 	c, lang, _ := testConfig(t, "testdata")
 
-	args := language.GenerateArgs{
+	res := lang.GenerateRules(language.GenerateArgs{
 		Config:       c,
 		Dir:          filepath.FromSlash("testdata/protos"),
 		File:         old,
@@ -230,27 +230,36 @@ proto_library(
 		RegularFiles: []string{"foo.proto"},
 		GenFiles:     []string{"gen.proto", "gen_not_consumed.proto"},
 		OtherGen:     []*rule.Rule{genRule1, genRule2},
+	})
+	// Make sure that "gen.proto" is not added to existing foo_proto rule
+	// because it is consumed by existing_gen_proto proto_library
+	// "gen_not_consumed.proto" is added to existing foo_proto rule because
+	// it is not consumed by "proto_library". "filegroup" consumption is
+	// ignored.
+	fg := rule.EmptyFile("test_gen", "")
+	for _, r := range res.Gen {
+		r.Insert(fg)
+	}
+	gotGen := strings.TrimSpace(string(fg.Format()))
+	wantGen := `proto_library(
+    name = "protos_proto",
+    srcs = [
+        "foo.proto",
+        "gen_not_consumed.proto",
+    ],
+    visibility = ["//visibility:public"],
+)`
+
+	if gotGen != wantGen {
+		t.Errorf("got:\n%s\nwant:\n%s", gotGen, wantGen)
 	}
 
-	args.Config = c
-	res := lang.GenerateRules(args)
-	// Make sure that "gen.proto" is not added to existing foo_proto rule because it is consumed
-	// "gen_not_consumed.proto" is consumed not by "proto_library", this is why it is added
-	if len(res.Gen) != 1 {
-		t.Errorf("got gen files len :\n%d\nwant:\n1", len(res.Gen))
-	}
-	gotSrcs := res.Gen[0].AttrStrings("srcs")
-	wantSrcs := []string{"foo.proto", "gen_not_consumed"}
-	if len(gotSrcs) != len(wantSrcs) || gotSrcs[0] != wantSrcs[0] {
-		t.Errorf("got:\n%s\nwant:\n%s", gotSrcs, wantSrcs)
-	}
 	// Make sure that gen.proto is not among empty because it is in GenFiles
-	f := rule.EmptyFile("test", "")
+	fe := rule.EmptyFile("test_empty", "")
 	for _, r := range res.Empty {
-		r.Insert(f)
+		r.Insert(fe)
 	}
-	f.Sync()
-	got := strings.TrimSpace(string(bzl.Format(f.File)))
+	got := strings.TrimSpace(string(fe.Format()))
 	want := `proto_library(name = "dead_proto")`
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)

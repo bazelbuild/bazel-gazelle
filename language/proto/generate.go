@@ -51,11 +51,12 @@ func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 		for _, f := range r.AttrStrings("srcs") {
 			consumedFileSet[f] = true
 		}
-		if f := r.AttrString("src"); f != "" {
-			consumedFileSet[f] = true
-		}
 	}
 	var (
+		// genProtoFilesNotConsumed represents only not consumed generetad files.
+		// genProtoFiles represents all generated files.
+		// This is required for not generating empty rules for consumed generated
+		// files.
 		genProtoFiles, genProtoFilesNotConsumed []string
 	)
 	for _, name := range args.GenFiles {
