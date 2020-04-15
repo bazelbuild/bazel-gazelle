@@ -16,7 +16,6 @@ limitations under the License.
 package proto
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -216,30 +215,32 @@ proto_library(
 		t.Fatal(err)
 	}
 
-	genRule := rule.NewRule("proto_library", "gen_proto")
-	genRule.SetAttr("srcs", []string{"gen.proto"})
+	genRule1 := rule.NewRule("proto_library", "gen_proto")
+	genRule1.SetAttr("srcs", []string{"gen.proto"})
+	genRule2 := rule.NewRule("not_proto_library", "gen_not_consumed_proto")
+	genRule2.SetAttr("srcs", []string{"gen_not_consumed.proto"})
 
 	c, lang, _ := testConfig(t, "testdata")
 
 	args := language.GenerateArgs{
 		Config:       c,
-		Dir:          filepath.FromSlash("testdata/foo"),
+		Dir:          filepath.FromSlash("testdata/protos"),
 		File:         old,
-		Rel:          "foo",
+		Rel:          "protos",
 		RegularFiles: []string{"foo.proto"},
-		GenFiles:     []string{"gen.proto"},
-		OtherGen:     []*rule.Rule{genRule},
+		GenFiles:     []string{"gen.proto", "gen_not_consumed.proto"},
+		OtherGen:     []*rule.Rule{genRule1, genRule2},
 	}
 
 	args.Config = c
 	res := lang.GenerateRules(args)
-	// Make sure that gen.proto is not added to existing foo_proto rule because it is consumed
+	// Make sure that "gen.proto" is not added to existing foo_proto rule because it is consumed
+	// "gen_not_consumed.proto" is consumed not by "proto_library", this is why it is added
 	if len(res.Gen) != 1 {
 		t.Errorf("got gen files len :\n%d\nwant:\n1", len(res.Gen))
 	}
-	fmt.Println(res.Gen[0].AttrString("name"))
 	gotSrcs := res.Gen[0].AttrStrings("srcs")
-	wantSrcs := []string{"foo.proto"}
+	wantSrcs := []string{"foo.proto", "gen_not_consumed"}
 	if len(gotSrcs) != len(wantSrcs) || gotSrcs[0] != wantSrcs[0] {
 		t.Errorf("got:\n%s\nwant:\n%s", gotSrcs, wantSrcs)
 	}

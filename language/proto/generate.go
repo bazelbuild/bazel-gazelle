@@ -45,6 +45,9 @@ func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 	// Some of the generated files may have been consumed by other rules
 	consumedFileSet := make(map[string]bool)
 	for _, r := range args.OtherGen {
+		if r.Kind() != "proto_library" {
+			continue
+		}
 		for _, f := range r.AttrStrings("srcs") {
 			consumedFileSet[f] = true
 		}
