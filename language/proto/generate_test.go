@@ -188,6 +188,85 @@ func TestGeneratePackage(t *testing.T) {
 	}
 }
 
+// TestConsumedGenFiles checks that generated files that have been consumed by
+// other rules should not be added to the rule
+func TestConsumedGenFiles(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO(jayconrod): set up testdata directory on windows before running test
+		if _, err := os.Stat("testdata"); os.IsNotExist(err) {
+			t.Skip("testdata missing on windows due to lack of symbolic links")
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	oldContent := []byte(`
+proto_library(
+    name = "existing_gen_proto",
+    srcs = ["gen.proto"],
+)
+proto_library(
+    name = "dead_proto",
+    srcs = ["dead.proto"],
+)
+`)
+	old, err := rule.LoadData("BUILD.bazel", "", oldContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	genRule1 := rule.NewRule("proto_library", "gen_proto")
+	genRule1.SetAttr("srcs", []string{"gen.proto"})
+	genRule2 := rule.NewRule("filegroup", "filegroup_protos")
+	genRule2.SetAttr("srcs", []string{"gen.proto", "gen_not_consumed.proto"})
+
+	c, lang, _ := testConfig(t, "testdata")
+
+	res := lang.GenerateRules(language.GenerateArgs{
+		Config:       c,
+		Dir:          filepath.FromSlash("testdata/protos"),
+		File:         old,
+		Rel:          "protos",
+		RegularFiles: []string{"foo.proto"},
+		GenFiles:     []string{"gen.proto", "gen_not_consumed.proto"},
+		OtherGen:     []*rule.Rule{genRule1, genRule2},
+	})
+
+	// Make sure that "gen.proto" is not added to existing foo_proto rule
+	// because it is consumed by existing_gen_proto proto_library.
+	// "gen_not_consumed.proto" is added to existing foo_proto rule because
+	// it is not consumed by "proto_library". "filegroup" consumption is
+	// ignored.
+	fg := rule.EmptyFile("test_gen", "")
+	for _, r := range res.Gen {
+		r.Insert(fg)
+	}
+	gotGen := strings.TrimSpace(string(fg.Format()))
+	wantGen := `proto_library(
+    name = "protos_proto",
+    srcs = [
+        "foo.proto",
+        "gen_not_consumed.proto",
+    ],
+    visibility = ["//visibility:public"],
+)`
+
+	if gotGen != wantGen {
+		t.Errorf("got:\n%s\nwant:\n%s", gotGen, wantGen)
+	}
+
+	// Make sure that gen.proto is not among empty because it is in GenFiles
+	fe := rule.EmptyFile("test_empty", "")
+	for _, r := range res.Empty {
+		r.Insert(fe)
+	}
+	got := strings.TrimSpace(string(fe.Format()))
+	want := `proto_library(name = "dead_proto")`
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
 func testConfig(t *testing.T, repoRoot string) (*config.Config, language.Language, []config.Configurer) {
 	cexts := []config.Configurer{
 		&config.CommonConfigurer{},
