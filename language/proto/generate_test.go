@@ -188,8 +188,8 @@ func TestGeneratePackage(t *testing.T) {
 	}
 }
 
-// Test generated files that have been consumed by other rules should not be
-// added to the  rule
+// TestConsumedGenFiles checks that generated files that have been consumed by
+// other rules should not be added to the rule
 func TestConsumedGenFiles(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		// TODO(jayconrod): set up testdata directory on windows before running test
@@ -231,8 +231,9 @@ proto_library(
 		GenFiles:     []string{"gen.proto", "gen_not_consumed.proto"},
 		OtherGen:     []*rule.Rule{genRule1, genRule2},
 	})
+
 	// Make sure that "gen.proto" is not added to existing foo_proto rule
-	// because it is consumed by existing_gen_proto proto_library
+	// because it is consumed by existing_gen_proto proto_library.
 	// "gen_not_consumed.proto" is added to existing foo_proto rule because
 	// it is not consumed by "proto_library". "filegroup" consumption is
 	// ignored.
