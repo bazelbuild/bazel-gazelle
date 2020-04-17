@@ -52,13 +52,12 @@ func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 			consumedFileSet[f] = true
 		}
 	}
-	var (
-		// genProtoFilesNotConsumed represents only not consumed generetad files.
-		// genProtoFiles represents all generated files.
-		// This is required for not generating empty rules for consumed generated
-		// files.
-		genProtoFiles, genProtoFilesNotConsumed []string
-	)
+
+	// genProtoFilesNotConsumed represents only not consumed generetad files.
+	// genProtoFiles represents all generated files.
+	// This is required for not generating empty rules for consumed generated
+	// files.
+	var genProtoFiles, genProtoFilesNotConsumed []string
 	for _, name := range args.GenFiles {
 		if strings.HasSuffix(name, ".proto") {
 			genProtoFiles = append(genProtoFiles, name)
