@@ -14,6 +14,8 @@
 
 load("@io_bazel_rules_go//go/private:common.bzl", "executable_extension")
 
+# Change to trigger cache invalidation: 1
+
 def _go_repository_cache_impl(ctx):
     if ctx.attr.go_sdk_name:
         go_sdk_name = ctx.attr.go_sdk_name
