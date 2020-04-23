@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/build"
 	"io"
 	"os"
 	"os/exec"
@@ -45,6 +46,16 @@ func fetchModule(dest, importpath, version, sum string) error {
 		goPath = filepath.Join(goroot, "bin", goPath)
 	}
 
+	// Check whether -modcacherw is supported.
+	// Assume that fetch_repo was built with the same version of Go we're running.
+	modcacherw := false
+	for _, tag := range build.Default.ReleaseTags {
+		if tag == "go1.14" {
+			modcacherw = true
+			break
+		}
+	}
+
 	// Download the module. In Go 1.11, this command must be run in a module,
 	// so we create a dummy module in the current directory (which should be
 	// empty).
@@ -63,7 +74,11 @@ func fetchModule(dest, importpath, version, sum string) error {
 
 	buf := &bytes.Buffer{}
 	bufErr := &bytes.Buffer{}
-	cmd := exec.Command(goPath, "mod", "download", "-json", importpath+"@"+version)
+	cmd := exec.Command(goPath, "mod", "download", "-json")
+	if modcacherw {
+		cmd.Args = append(cmd.Args, "-modcacherw")
+	}
+	cmd.Args = append(cmd.Args, importpath+"@"+version)
 	cmd.Stdout = buf
 	cmd.Stderr = bufErr
 	dlErr := cmd.Run()
