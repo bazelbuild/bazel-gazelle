@@ -19,54 +19,56 @@ import (
 )
 
 func TestFind(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
+	for _, workspaceFile := range workspaceFiles {
+		wd, err := os.Getwd()
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	tmp, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-	tmp, err = filepath.EvalSymlinks(tmp) // on macOS, TEST_TEMPDIR is a symlink
-	if err != nil {
-		t.Fatal(err)
-	}
-	if parent, err := Find(tmp); err == nil {
-		t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, tmp)
-	}
+		tmp, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(tmp)
+		tmp, err = filepath.EvalSymlinks(tmp) // on macOS, TEST_TEMPDIR is a symlink
+		if err != nil {
+			t.Fatal(err)
+		}
+		if parent, err := Find(tmp); err == nil {
+			t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, tmp)
+		}
 
-	if err := os.MkdirAll(filepath.Join(tmp, "base", "sub"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(tmp, "base", workspaceFile), nil, 0755); err != nil {
-		t.Fatal(err)
-	}
+		if err := os.MkdirAll(filepath.Join(tmp, "base", "sub"), 0755); err != nil {
+			t.Fatal(err)
+		}
+		if err := ioutil.WriteFile(filepath.Join(tmp, "base", workspaceFile), nil, 0755); err != nil {
+			t.Fatal(err)
+		}
 
-	tmpBase := filepath.Join(tmp, "base")
-	for _, tc := range []struct {
-		dir, want string // want == "" means an error is expected
-	}{
-		{tmp, ""},
-		{tmpBase, tmpBase},
-		{filepath.Join(tmpBase, "sub"), tmpBase},
-	} {
-		t.Run(tc.dir, func(t *testing.T) {
-			if got, err := Find(tc.dir); err != nil && tc.want != "" {
-				t.Errorf("in %s, Find(%q): got %v, want %q", wd, tc.dir, err, tc.want)
-			} else if got != tc.want {
-				t.Errorf("in %s, Find(%q): got %q, want %q", wd, tc.dir, got, tc.want)
-			}
-			if err := os.Chdir(tc.dir); err != nil {
-				t.Fatal(err)
-			}
-			defer os.Chdir(wd)
-			if got, err := Find("."); err != nil && tc.want != "" {
-				t.Errorf(`in %s, Find("."): got %v, want %q`, tc.dir, err, tc.want)
-			} else if got != tc.want {
-				t.Errorf(`in %s, Find("."): got %q, want %q`, tc.dir, got, tc.want)
-			}
-		})
+		tmpBase := filepath.Join(tmp, "base")
+		for _, tc := range []struct {
+			dir, want string // want == "" means an error is expected
+		}{
+			{tmp, ""},
+			{tmpBase, tmpBase},
+			{filepath.Join(tmpBase, "sub"), tmpBase},
+		} {
+			t.Run(tc.dir, func(t *testing.T) {
+				if got, err := Find(tc.dir); err != nil && tc.want != "" {
+					t.Errorf("in %s, Find(%q): got %v, want %q", wd, tc.dir, err, tc.want)
+				} else if got != tc.want {
+					t.Errorf("in %s, Find(%q): got %q, want %q", wd, tc.dir, got, tc.want)
+				}
+				if err := os.Chdir(tc.dir); err != nil {
+					t.Fatal(err)
+				}
+				defer os.Chdir(wd)
+				if got, err := Find("."); err != nil && tc.want != "" {
+					t.Errorf(`in %s, Find("."): got %v, want %q`, tc.dir, err, tc.want)
+				} else if got != tc.want {
+					t.Errorf(`in %s, Find("."): got %q, want %q`, tc.dir, got, tc.want)
+				}
+			})
+		}
 	}
 }

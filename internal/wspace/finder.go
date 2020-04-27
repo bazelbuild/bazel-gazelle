@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-const workspaceFile = "WORKSPACE"
+var workspaceFiles = []string{"WORKSPACE.bazel", "WORKSPACE"}
 
 // Find searches from the given dir and up for the WORKSPACE file
 // returning the directory containing it, or an error if none found in the tree.
@@ -30,12 +30,14 @@ func Find(dir string) (string, error) {
 	}
 
 	for {
-		_, err = os.Stat(filepath.Join(dir, workspaceFile))
-		if err == nil {
-			return dir, nil
-		}
-		if !os.IsNotExist(err) {
-			return "", err
+		for _, workspaceFile := range workspaceFiles {
+			_, err = os.Stat(filepath.Join(dir, workspaceFile))
+			if err == nil {
+				return dir, nil
+			}
+			if !os.IsNotExist(err) {
+				return "", err
+			}
 		}
 		if strings.HasSuffix(dir, string(os.PathSeparator)) { // stop at root dir
 			return "", os.ErrNotExist
