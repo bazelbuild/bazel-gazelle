@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/move_labels",
     visibility = ["//visibility:private"],
     deps = [
+        "//internal/wspace:go_default_library",
         "//label:go_default_library",
         "//pathtools:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",

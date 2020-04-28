@@ -19,56 +19,61 @@ import (
 )
 
 func TestFind(t *testing.T) {
-	for _, workspaceFile := range workspaceFiles {
-		wd, err := os.Getwd()
-		if err != nil {
-			t.Fatal(err)
-		}
+	tmp, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+	tmp, err = filepath.EvalSymlinks(tmp) // on macOS, TEST_TEMPDIR is a symlink
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parent, err := FindWorkspaceFile(tmp); err == nil {
+		t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, tmp)
+	}
 
-		tmp, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "")
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer os.RemoveAll(tmp)
-		tmp, err = filepath.EvalSymlinks(tmp) // on macOS, TEST_TEMPDIR is a symlink
-		if err != nil {
-			t.Fatal(err)
-		}
-		if parent, err := Find(tmp); err == nil {
-			t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, tmp)
-		}
+	for _, tc := range []struct {
+		file, testdir string // file == "" ==> do not create file
+		shouldSucceed bool
+	}{
+		{"", tmp, false},
+		{filepath.Join(tmp, "WORKSPACE"), tmp, true},
+		{filepath.Join(tmp, "WORKSPACE.bazel"), tmp, true},
+		{filepath.Join(tmp, "WORKSPACE.bazel"), filepath.Join(tmp, "dir1"), true},
+	} {
+		t.Run(tc.file, func(t *testing.T) {
+			if err := os.RemoveAll(tmp); err != nil {
+				t.Fatal(err)
+			}
 
-		if err := os.MkdirAll(filepath.Join(tmp, "base", "sub"), 0755); err != nil {
-			t.Fatal(err)
-		}
-		if err := ioutil.WriteFile(filepath.Join(tmp, "base", workspaceFile), nil, 0755); err != nil {
-			t.Fatal(err)
-		}
-
-		tmpBase := filepath.Join(tmp, "base")
-		for _, tc := range []struct {
-			dir, want string // want == "" means an error is expected
-		}{
-			{tmp, ""},
-			{tmpBase, tmpBase},
-			{filepath.Join(tmpBase, "sub"), tmpBase},
-		} {
-			t.Run(tc.dir, func(t *testing.T) {
-				if got, err := Find(tc.dir); err != nil && tc.want != "" {
-					t.Errorf("in %s, Find(%q): got %v, want %q", wd, tc.dir, err, tc.want)
-				} else if got != tc.want {
-					t.Errorf("in %s, Find(%q): got %q, want %q", wd, tc.dir, got, tc.want)
-				}
-				if err := os.Chdir(tc.dir); err != nil {
+			if tc.file != "" {
+				// Create a WORKSPACE file
+				if err := os.MkdirAll(filepath.Dir(tc.file), 0755); err != nil {
 					t.Fatal(err)
 				}
-				defer os.Chdir(wd)
-				if got, err := Find("."); err != nil && tc.want != "" {
-					t.Errorf(`in %s, Find("."): got %v, want %q`, tc.dir, err, tc.want)
-				} else if got != tc.want {
-					t.Errorf(`in %s, Find("."): got %q, want %q`, tc.dir, got, tc.want)
+
+				if err := ioutil.WriteFile(tc.file, nil, 0755); err != nil {
+					t.Fatal(err)
 				}
-			})
-		}
+			}
+
+			// Look for the file
+			got, err := FindWorkspaceFile(tc.testdir)
+
+			if !tc.shouldSucceed {
+				if err == nil {
+					t.Errorf("FindWorkspaceFile(%q): got %v, wanted failure", tc.testdir, got)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("FindWorkspaceFile(%q): got error %v, wanted %v", tc.testdir, err, tc.file)
+			}
+
+			if got != tc.file {
+				t.Errorf("FindWorkspaceFile(%q): got %v, wanted %v", tc.testdir, got, tc.file)
+			}
+		})
 	}
 }
