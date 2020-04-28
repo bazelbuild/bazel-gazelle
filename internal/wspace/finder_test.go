@@ -28,7 +28,7 @@ func TestFind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parent, err := FindRoot(tmp); err == nil {
+	if parent, err := FindRepoRoot(tmp); err == nil {
 		t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, tmp)
 	}
 
@@ -58,7 +58,7 @@ func TestFind(t *testing.T) {
 			}
 
 			// Look for the file
-			dir, err := FindRoot(tc.testdir)
+			dir, err := FindRepoRoot(tc.testdir)
 
 			if !tc.shouldSucceed {
 				if err == nil {
@@ -71,7 +71,7 @@ func TestFind(t *testing.T) {
 				t.Errorf("FindRoot(%q): got error %v, wanted %v", tc.testdir, err, tc.file)
 			}
 
-			file := FindWorkspaceFile(dir)
+			file := FindWORKSPACEFile(dir)
 			if file != tc.file {
 				t.Errorf("FindWorkspaceFile(FindRoot(%q)): got %v, wanted %v", tc.testdir, file, tc.file)
 			}

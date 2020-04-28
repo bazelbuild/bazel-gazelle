@@ -130,7 +130,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 	// dependency resolution for Go.
 	// TODO(jayconrod): Go-specific code should be moved to language/go.
 	if ucr.repoConfigPath == "" {
-		ucr.repoConfigPath = wspace.FindWorkspaceFile(c.RepoRoot)
+		ucr.repoConfigPath = wspace.FindWORKSPACEFile(c.RepoRoot)
 	}
 	repoConfigFile, err := rule.LoadWorkspaceFile(ucr.repoConfigPath, "")
 	if err != nil && !os.IsNotExist(err) {
@@ -158,7 +158,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 
 	// If the repo configuration file is not WORKSPACE, also load WORKSPACE
 	// and any declared macro files so we can apply fixes.
-	workspacePath := wspace.FindWorkspaceFile(c.RepoRoot)
+	workspacePath := wspace.FindWORKSPACEFile(c.RepoRoot)
 	var workspace *rule.File
 	if ucr.repoConfigPath == workspacePath {
 		workspace = repoConfigFile
@@ -475,7 +475,7 @@ func fixRepoFiles(c *config.Config, loads []rule.LoadInfo) error {
 
 	for _, f := range uc.workspaceFiles {
 		merger.FixLoads(f, loads)
-		workspaceFile := wspace.FindWorkspaceFile(c.RepoRoot)
+		workspaceFile := wspace.FindWORKSPACEFile(c.RepoRoot)
 
 		if f.Path == workspaceFile {
 			removeLegacyGoRepository(f)

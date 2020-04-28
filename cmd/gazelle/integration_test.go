@@ -40,7 +40,7 @@ import (
 // are run without sandboxing, since temp directories may be inside the
 // exec root.
 func skipIfWorkspaceVisible(t *testing.T, dir string) {
-	if parent, err := wspace.FindRoot(dir); err == nil {
+	if parent, err := wspace.FindRepoRoot(dir); err == nil {
 		t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, dir)
 	}
 }

@@ -234,7 +234,7 @@ func findRepoRoot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	root, err := wspace.FindRoot(dir)
+	root, err := wspace.FindRepoRoot(dir)
 	if err != nil {
 		return "", fmt.Errorf("could not find WORKSPACE file. -repo_root must be set explicitly")
 	}

@@ -21,10 +21,21 @@ import (
 
 var workspaceFiles = []string{"WORKSPACE.bazel", "WORKSPACE"}
 
-// FindWorkspaceFile returns a path to a file in the provided root directory,
+// IsWORKSPACE checks whether path is a WORKSPACE or WORKSPACE.bazel file
+func IsWORKSPACE(path string) bool {
+	base := filepath.Base(path)
+	for _, workspaceFile := range workspaceFiles {
+		if base == workspaceFile {
+			return true
+		}
+	}
+	return false
+}
+
+// FindWORKSPACEFile returns a path to a file in the provided root directory,
 // either to an existing WORKSPACE or WORKSPACE.bazel file, or to root/WORKSPACE
-// by default. Note that this function does NOT recursively check parent directories
-func FindWorkspaceFile(root string) string {
+// if neither exists. Note that this function does NOT recursively check parent directories.
+func FindWORKSPACEFile(root string) string {
 	for _, workspaceFile := range workspaceFiles {
 		path := filepath.Join(root, workspaceFile)
 		if _, err := os.Stat(path); err == nil {
@@ -34,9 +45,9 @@ func FindWorkspaceFile(root string) string {
 	return filepath.Join(root, "WORKSPACE")
 }
 
-// FindRoot searches from the given dir and up for a directory containing a WORKSPACE file
+// FindRepoRoot searches from the given dir and up for a directory containing a WORKSPACE file
 // returning the directory containing it, or an error if none found in the tree.
-func FindRoot(dir string) (string, error) {
+func FindRepoRoot(dir string) (string, error) {
 	dir, err := filepath.Abs(dir)
 	if err != nil {
 		return "", err
