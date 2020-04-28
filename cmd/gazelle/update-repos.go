@@ -100,10 +100,7 @@ func (*updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) err
 	}
 
 	var err error
-	workspacePath, err := wspace.FindWorkspaceFile(c.RepoRoot)
-	if err != nil {
-		return fmt.Errorf("loading WORKSPACE file: %v", err)
-	}
+	workspacePath := wspace.FindWorkspaceFile(c.RepoRoot)
 	uc.workspace, err = rule.LoadWorkspaceFile(workspacePath, "")
 	if err != nil {
 		return fmt.Errorf("loading WORKSPACE file: %v", err)
