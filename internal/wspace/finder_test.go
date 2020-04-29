@@ -19,11 +19,6 @@ import (
 )
 
 func TestFind(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	tmp, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "")
 	if err != nil {
 		t.Fatal(err)
@@ -33,39 +28,52 @@ func TestFind(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if parent, err := Find(tmp); err == nil {
+	if parent, err := FindRepoRoot(tmp); err == nil {
 		t.Skipf("WORKSPACE visible in parent %q of tmp %q", parent, tmp)
 	}
 
-	if err := os.MkdirAll(filepath.Join(tmp, "base", "sub"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(tmp, "base", workspaceFile), nil, 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	tmpBase := filepath.Join(tmp, "base")
 	for _, tc := range []struct {
-		dir, want string // want == "" means an error is expected
+		file, testdir string // file == "" ==> do not create file
+		shouldSucceed bool
 	}{
-		{tmp, ""},
-		{tmpBase, tmpBase},
-		{filepath.Join(tmpBase, "sub"), tmpBase},
+		{"", tmp, false},
+		{filepath.Join(tmp, "WORKSPACE"), tmp, true},
+		{filepath.Join(tmp, "WORKSPACE.bazel"), tmp, true},
+		{filepath.Join(tmp, "WORKSPACE.bazel"), filepath.Join(tmp, "dir1"), true},
 	} {
-		t.Run(tc.dir, func(t *testing.T) {
-			if got, err := Find(tc.dir); err != nil && tc.want != "" {
-				t.Errorf("in %s, Find(%q): got %v, want %q", wd, tc.dir, err, tc.want)
-			} else if got != tc.want {
-				t.Errorf("in %s, Find(%q): got %q, want %q", wd, tc.dir, got, tc.want)
-			}
-			if err := os.Chdir(tc.dir); err != nil {
+		t.Run(tc.file, func(t *testing.T) {
+			if err := os.RemoveAll(tmp); err != nil {
 				t.Fatal(err)
 			}
-			defer os.Chdir(wd)
-			if got, err := Find("."); err != nil && tc.want != "" {
-				t.Errorf(`in %s, Find("."): got %v, want %q`, tc.dir, err, tc.want)
-			} else if got != tc.want {
-				t.Errorf(`in %s, Find("."): got %q, want %q`, tc.dir, got, tc.want)
+
+			if tc.file != "" {
+				// Create a WORKSPACE file
+				if err := os.MkdirAll(filepath.Dir(tc.file), 0755); err != nil {
+					t.Fatal(err)
+				}
+
+				if err := ioutil.WriteFile(tc.file, nil, 0755); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// Look for the file
+			dir, err := FindRepoRoot(tc.testdir)
+
+			if !tc.shouldSucceed {
+				if err == nil {
+					t.Errorf("FindRoot(%q): got %v, wanted failure", tc.testdir, dir)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("FindRoot(%q): got error %v, wanted %v", tc.testdir, err, tc.file)
+			}
+
+			file := FindWORKSPACEFile(dir)
+			if file != tc.file {
+				t.Errorf("FindWorkspaceFile(FindRoot(%q)): got %v, wanted %v", tc.testdir, file, tc.file)
 			}
 		})
 	}

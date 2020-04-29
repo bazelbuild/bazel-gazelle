@@ -42,6 +42,7 @@ go_library(
         "//config:go_default_library",
         "//flag:go_default_library",
         "//internal/version:go_default_library",
+        "//internal/wspace:go_default_library",
         "//label:go_default_library",
         "//language:go_default_library",
         "//language/go:go_default_library",

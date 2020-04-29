@@ -28,6 +28,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/buildtools/build"
@@ -233,19 +234,11 @@ func findRepoRoot() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for {
-		workspacePath := filepath.Join(dir, "WORKSPACE")
-		_, err := os.Stat(workspacePath)
-		if err == nil {
-			return dir, nil
-		}
-		if strings.HasSuffix(dir, string(os.PathSeparator)) {
-			// root directory
-			break
-		}
-		dir = filepath.Dir(dir)
+	root, err := wspace.FindRepoRoot(dir)
+	if err != nil {
+		return "", fmt.Errorf("could not find WORKSPACE file. -repo_root must be set explicitly")
 	}
-	return "", fmt.Errorf("could not find WORKSPACE file. -repo_root must be set explicitly.")
+	return root, nil
 }
 
 type errorList []error

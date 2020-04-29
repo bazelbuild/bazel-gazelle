@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	"github.com/bazelbuild/bazel-gazelle/language"
 	"github.com/bazelbuild/bazel-gazelle/merger"
 	"github.com/bazelbuild/bazel-gazelle/repo"
@@ -99,7 +100,7 @@ func (*updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) err
 	}
 
 	var err error
-	workspacePath := filepath.Join(c.RepoRoot, "WORKSPACE")
+	workspacePath := wspace.FindWORKSPACEFile(c.RepoRoot)
 	uc.workspace, err = rule.LoadWorkspaceFile(workspacePath, "")
 	if err != nil {
 		return fmt.Errorf("loading WORKSPACE file: %v", err)
@@ -207,7 +208,7 @@ func updateRepos(args []string) (err error) {
 		macroPath = filepath.Join(c.RepoRoot, filepath.Clean(uc.macroFileName))
 	}
 	for f := range genForFiles {
-		if macroPath == "" && filepath.Base(f.Path) == "WORKSPACE" ||
+		if macroPath == "" && wspace.IsWORKSPACE(f.Path) ||
 			macroPath != "" && f.Path == macroPath && f.DefName == uc.macroDefName {
 			newGenFile = f
 			break
