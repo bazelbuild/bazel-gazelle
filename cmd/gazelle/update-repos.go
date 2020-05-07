@@ -156,7 +156,7 @@ func updateRepos(args []string) (err error) {
 	}()
 
 	// Fix the workspace file with each language.
-	for _, lang := range languages {
+	for _, lang := range filterLanguages(c, languages) {
 		lang.Fix(c, uc.workspace)
 	}
 
@@ -340,7 +340,7 @@ func updateRepoImports(c *config.Config, rc *repo.RemoteCache) (gen []*rule.Rule
 	// For now, only use the first language that implements the interface.
 	uc := getUpdateReposConfig(c)
 	var updater language.RepoUpdater
-	for _, lang := range languages {
+	for _, lang := range filterLanguages(c, languages) {
 		if u, ok := lang.(language.RepoUpdater); ok {
 			updater = u
 			break
@@ -361,7 +361,7 @@ func importRepos(c *config.Config, rc *repo.RemoteCache) (gen, empty []*rule.Rul
 	uc := getUpdateReposConfig(c)
 	importSupported := false
 	var importer language.RepoImporter
-	for _, lang := range languages {
+	for _, lang := range filterLanguages(c, languages) {
 		if i, ok := lang.(language.RepoImporter); ok {
 			importSupported = true
 			if i.CanImport(uc.repoFilePath) {
