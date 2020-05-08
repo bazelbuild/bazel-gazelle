@@ -715,7 +715,7 @@ The following directives are recognized:
 | :direc:`# gazelle:lang lang1,lang2,...`           | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
 | Sets the language selection flag for this and descendent packages, which gazelle to        |
-| process just the languages named in this directive.
+| process just the languages named in this directive.                                        |
 +---------------------------------------------------+----------------------------------------+
 
 Gazelle also reads directives from the WORKSPACE file. They may be used to
