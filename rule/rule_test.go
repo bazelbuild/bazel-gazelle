@@ -346,3 +346,23 @@ func TestShouldKeepExpr(t *testing.T) {
 		})
 	}
 }
+
+func TestInternalVisibility(t *testing.T) {
+	var tests = []struct {
+		rel      string
+		expected string
+	}{
+		{rel: "internal", expected: "//:__subpackages__"},
+		{rel: "a/b/internal", expected: "//a/b:__subpackages__"},
+		{rel: "a/b/internal/c", expected: "//a/b:__subpackages__"},
+		{rel: "a/b/internal/c/d", expected: "//a/b:__subpackages__"},
+		{rel: "a/b/internal/c/internal", expected: "//a/b/internal/c:__subpackages__"},
+		{rel: "a/b/internal/c/internal/d", expected: "//a/b/internal/c:__subpackages__"},
+	}
+
+	for _, tt := range tests {
+		if actual := CheckInternalVisibility(tt.rel, "default"); actual != tt.expected {
+			t.Errorf("got %v; want %v", actual, tt.expected)
+		}
+	}
+}
