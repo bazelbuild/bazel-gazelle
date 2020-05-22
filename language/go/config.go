@@ -112,7 +112,7 @@ func newGoConfig() *goConfig {
 	gc := &goConfig{
 		goProtoCompilers: defaultGoProtoCompilers,
 		goGrpcCompilers:  defaultGoGrpcCompilers,
-		goProto: true,
+		goProto:          true,
 	}
 	gc.preprocessTags()
 	return gc
