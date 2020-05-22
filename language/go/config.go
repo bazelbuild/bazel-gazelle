@@ -62,6 +62,9 @@ type goConfig struct {
 	// (under the current prefix) should be resolved.
 	depMode dependencyMode
 
+	// goProto indicates whether to generate go_proto_library
+	goProto bool
+
 	// goProtoCompilers is the protocol buffers compiler(s) to use for go code.
 	goProtoCompilers []string
 
@@ -109,6 +112,7 @@ func newGoConfig() *goConfig {
 	gc := &goConfig{
 		goProtoCompilers: defaultGoProtoCompilers,
 		goGrpcCompilers:  defaultGoGrpcCompilers,
+		goProto: true,
 	}
 	gc.preprocessTags()
 	return gc
@@ -234,6 +238,7 @@ func (*goLang) KnownDirectives() []string {
 		"go_visibility",
 		"importmap_prefix",
 		"prefix",
+		"go_proto",
 	}
 }
 
@@ -369,7 +374,10 @@ func (*goLang) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 				gc.preprocessTags()
 				gc.setBuildTags(d.Value)
-
+			case "go_proto":
+				if d.Value == "disable" {
+					gc.goProto = false
+				}
 			case "go_grpc_compilers":
 				// Special syntax (empty value) to reset directive.
 				if d.Value == "" {
