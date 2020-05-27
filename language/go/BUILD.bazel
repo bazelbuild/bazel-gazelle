@@ -52,6 +52,7 @@ go_library(
     deps = [
         "//config:go_default_library",
         "//flag:go_default_library",
+        "//internal/version:go_default_library",
         "//label:go_default_library",
         "//language:go_default_library",
         "//language/proto:go_default_library",
