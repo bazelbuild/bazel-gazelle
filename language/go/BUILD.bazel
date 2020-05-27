@@ -1,5 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load(":def.bzl", "std_package_list")
+load("//language/proto/gen:def.bzl", "known_imports")
 
 # gazelle:exclude testdata
 
@@ -11,20 +12,24 @@ std_package_list(
     out = "std_package_list.go",
 )
 
-genrule(
+known_imports(
     name = "known_proto_imports",
-    srcs = ["//language/proto:proto.csv"],
-    outs = ["known_proto_imports.go"],
-    cmd = "$(location //language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package golang -var knownProtoImports -key 0 -value 3",
-    tools = ["//language/proto/gen:gen_known_imports"],
+    src = "//language/proto:proto.csv",
+    out = "known_proto_imports.go",
+    key = 0,
+    package = "golang",
+    value = 3,
+    var = "knownProtoImports",
 )
 
-genrule(
+known_imports(
     name = "known_go_imports",
-    srcs = ["//language/proto:proto.csv"],
-    outs = ["known_go_imports.go"],
-    cmd = "$(location //language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package golang -var knownGoProtoImports -key 2 -value 3",
-    tools = ["//language/proto/gen:gen_known_imports"],
+    src = "//language/proto:proto.csv",
+    out = "known_go_imports.go",
+    key = 2,
+    package = "golang",
+    value = 3,
+    var = "knownGoProtoImports",
 )
 
 go_library(
