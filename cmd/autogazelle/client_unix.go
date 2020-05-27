@@ -1,4 +1,4 @@
-// +build darwin dragonfly freebsd js,wasm linux nacl netbsd openbsd solaris
+// +build darwin dragonfly freebsd linux nacl netbsd openbsd solaris
 
 /* Copyright 2018 The Bazel Authors. All rights reserved.
 
