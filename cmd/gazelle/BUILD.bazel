@@ -33,7 +33,6 @@ go_library(
         "metaresolver.go",
         "print.go",
         "update-repos.go",
-        "version.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/gazelle",
     tags = ["manual"],
@@ -41,7 +40,6 @@ go_library(
     deps = [
         "//config:go_default_library",
         "//flag:go_default_library",
-        "//internal/version:go_default_library",
         "//internal/wspace:go_default_library",
         "//label:go_default_library",
         "//language:go_default_library",
@@ -93,7 +91,6 @@ filegroup(
         "metaresolver.go",
         "print.go",
         "update-repos.go",
-        "version.go",
     ],
     visibility = ["//visibility:public"],
 )
