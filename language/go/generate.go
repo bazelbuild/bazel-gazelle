@@ -393,8 +393,8 @@ type generator struct {
 
 func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPath string) (string, []*rule.Rule) {
 	if !mode.ShouldGenerateRules() && mode != proto.LegacyMode {
-		// Don't create or delete proto rules in this mode. Any existing rules
-		// are likely hand-written.
+		// Don't create or delete proto rules in this mode. When proto mode is disabled,
+		// there may be hand-written rules or pre-generated Go files
 		return "", nil
 	}
 

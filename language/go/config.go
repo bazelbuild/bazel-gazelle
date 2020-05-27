@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -61,6 +62,9 @@ type goConfig struct {
 	// depMode determines how imports that are not standard, indexed, or local
 	// (under the current prefix) should be resolved.
 	depMode dependencyMode
+
+	// goGenerateProto indicates whether to generate go_proto_library
+	goGenerateProto bool
 
 	// goProtoCompilers is the protocol buffers compiler(s) to use for go code.
 	goProtoCompilers []string
@@ -109,6 +113,7 @@ func newGoConfig() *goConfig {
 	gc := &goConfig{
 		goProtoCompilers: defaultGoProtoCompilers,
 		goGrpcCompilers:  defaultGoGrpcCompilers,
+		goGenerateProto:  true,
 	}
 	gc.preprocessTags()
 	return gc
@@ -156,7 +161,9 @@ func (gc *goConfig) setBuildTags(tags string) error {
 }
 
 func getProtoMode(c *config.Config) proto.Mode {
-	if pc := proto.GetProtoConfig(c); pc != nil {
+	if gc := getGoConfig(c); !gc.goGenerateProto {
+		return proto.DisableMode
+	} else if pc := proto.GetProtoConfig(c); pc != nil {
 		return pc.Mode
 	} else {
 		return proto.DisableGlobalMode
@@ -229,6 +236,7 @@ var validBuildFileProtoModeAttr = []string{"default", "legacy", "disable", "disa
 func (*goLang) KnownDirectives() []string {
 	return []string{
 		"build_tags",
+		"go_generate_proto",
 		"go_grpc_compilers",
 		"go_proto_compilers",
 		"go_visibility",
@@ -369,7 +377,13 @@ func (*goLang) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 				gc.preprocessTags()
 				gc.setBuildTags(d.Value)
+			case "go_generate_proto":
 
+				if goGenerateProto, err := strconv.ParseBool(d.Value); err == nil {
+					gc.goGenerateProto = goGenerateProto
+				} else {
+					log.Printf("parsing go_generate_proto: %v", err)
+				}
 			case "go_grpc_compilers":
 				// Special syntax (empty value) to reset directive.
 				if d.Value == "" {

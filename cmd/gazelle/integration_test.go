@@ -3194,3 +3194,56 @@ func TestUpdateRepos_LangFilter(t *testing.T) {
 		t.Fatalf("unexpected error: %+v", err)
 	}
 }
+
+func TestGoGenerateProto(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		},
+		{
+			Path: "proto/BUILD.bazel",
+			Content: `# gazelle:go_generate_proto false
+# gazelle:prefix example.com/proto
+`,
+		},
+		{
+			Path:    "proto/foo.proto",
+			Content: `syntax = "proto3";`,
+		},
+		{
+			Path:    "proto/foo.pb.go",
+			Content: "package proto",
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "proto/BUILD.bazel",
+			Content: `load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:go_generate_proto false
+# gazelle:prefix example.com/proto
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.pb.go"],
+    importpath = "example.com/proto",
+    visibility = ["//visibility:public"],
+)`,
+		},
+	})
+}
