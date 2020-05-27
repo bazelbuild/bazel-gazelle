@@ -19,7 +19,6 @@ GO_REPOSITORY_TOOLS_SRCS = [
 	"@bazel_gazelle//cmd/gazelle:metaresolver.go",
 	"@bazel_gazelle//cmd/gazelle:print.go",
 	"@bazel_gazelle//cmd/gazelle:update-repos.go",
-	"@bazel_gazelle//cmd/gazelle:version.go",
 	"@bazel_gazelle//cmd/generate_repo_config:BUILD.bazel",
 	"@bazel_gazelle//cmd/generate_repo_config:generate_repo_config.go",
 	"@bazel_gazelle//cmd/move_labels:BUILD.bazel",

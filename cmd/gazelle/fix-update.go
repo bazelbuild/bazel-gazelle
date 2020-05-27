@@ -262,13 +262,6 @@ func runFixUpdate(cmd command, args []string) (err error) {
 		return err
 	}
 
-	if cmd == fixCmd {
-		// Only check the version when "fix" is run. Generated build files
-		// frequently work with older version of rules_go, and we don't want to
-		// nag too much since there's no way to disable this warning.
-		checkRulesGoVersion(c.RepoRoot)
-	}
-
 	// Visit all directories in the repository.
 	var visits []visitRecord
 	uc := getUpdateConfig(c)
