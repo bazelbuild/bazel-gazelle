@@ -19,12 +19,16 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["walk_test.go"],
+    srcs = [
+        "config_test.go",
+        "walk_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//config:go_default_library",
         "//rule:go_default_library",
         "//testtools:go_default_library",
+        "@com_github_bmatcuk_doublestar//:go_default_library",
     ],
 )
 
@@ -34,6 +38,7 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "config.go",
+        "config_test.go",
         "walk.go",
         "walk_test.go",
     ],
