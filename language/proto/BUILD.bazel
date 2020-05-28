@@ -1,13 +1,16 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("//language/proto/gen:def.bzl", "known_imports")
 
 # gazelle:exclude testdata
 
-genrule(
+known_imports(
     name = "known_imports",
-    srcs = ["proto.csv"],
-    outs = ["known_imports.go"],
-    cmd = "$(location //language/proto/gen:gen_known_imports) -proto_csv $< -known_imports $@ -package proto -var knownImports -key 0 -value 1",
-    tools = ["//language/proto/gen:gen_known_imports"],
+    src = "proto.csv",
+    out = "known_imports.go",
+    key = 0,
+    package = "proto",
+    value = 1,
+    var = "knownImports",
 )
 
 go_library(
