@@ -78,11 +78,9 @@ go_repository_cache = repository_rule(
 )
 
 def read_cache_env(ctx, path):
-    result = ctx.execute(["cat", path])
-    if result.return_code:
-        fail("failed to read cache environment: " + result.stderr)
+    contents = ctx.read(path)
     env = {}
-    lines = result.stdout.split("\n")
+    lines = contents.split("\n")
     for line in lines:
         line = line.strip()
         if line == "" or line.startswith("#"):
