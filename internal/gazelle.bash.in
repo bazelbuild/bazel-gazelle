@@ -24,6 +24,7 @@ GAZELLE_SHORT_PATH=@@GAZELLE_SHORT_PATH@@
 GAZELLE_LABEL=@@GAZELLE_LABEL@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
+FILE_ARGS=@@FILE_ARGS@@
 
 # find_runfile prints the location of a runfile in the source workspace,
 # either by reading the symbolic link or reading the runfiles manifest.
@@ -83,6 +84,19 @@ if [ "${1-}" = "-args" ]; then
   ARGS+=("$@")
 elif [ $# -ne 0 ]; then
   ARGS=("$@")
+fi
+
+if [ "${FILE_ARGS-}" != "" ]; then
+  for f in "${FILE_ARGS[@]}"
+  do
+    # If the arg starts with '-' just append
+    if [[ $f = -* ]]; then
+      ARGS=( "${ARGS[@]}" "$f" )
+    else
+      f=$(find_runfile "$f")
+      ARGS=( "${ARGS[@]}" "$f")
+    fi
+  done
 fi
 
 if [ "$is_bazel_run" = true ]; then
