@@ -77,8 +77,9 @@ func (_ *Configurer) KnownDirectives() []string {
 func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	rc := getResolveConfig(c)
 	rcCopy := &resolveConfig{
-		overrides: rc.overrides[:],
+		overrides: make([]overrideSpec, len(rc.overrides)),
 	}
+	copy(rcCopy.overrides, rc.overrides)
 
 	if f != nil {
 		for _, d := range f.Directives {
