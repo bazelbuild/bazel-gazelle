@@ -16,16 +16,16 @@ load(
     "@io_bazel_rules_go//go:def.bzl",
     "GoArchive",
     "go_context",
-    "go_rule",
-)
-load(
-    "@io_bazel_rules_go//go/private:rules/aspect.bzl",
-    "go_archive_aspect",
 )
 load(
     "@io_bazel_rules_go//go/platform:list.bzl",
     "GOARCH",
     "GOOS",
+)
+load(
+    "@io_bazel_rules_go//go/private:rules/transition.bzl",
+    "go_transition_rule",
+    "go_transition_wrapper",
 )
 
 def _gazelle_binary_impl(ctx):
@@ -84,63 +84,33 @@ var languages = []language.Language{{
         ),
     ]
 
-gazelle_binary = go_rule(
-    implementation = _gazelle_binary_impl,
-    attrs = {
+_gazelle_binary_kwargs = {
+    "implementation": _gazelle_binary_impl,
+    "attrs": {
         "languages": attr.label_list(
             doc = "A list of language extensions the Gazelle binary will use",
             providers = [GoArchive],
             mandatory = True,
             allow_empty = False,
-            aspects = [go_archive_aspect],
         ),
-        "pure": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "static": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "race": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "msan": attr.string(
-            values = [
-                "on",
-                "off",
-                "auto",
-            ],
-            default = "auto",
-        ),
-        "goos": attr.string(
-            values = GOOS.keys() + ["auto"],
-            default = "auto",
-        ),
-        "goarch": attr.string(
-            values = GOARCH.keys() + ["auto"],
-            default = "auto",
-        ),
+        "_go_context_data": attr.label(default = "@io_bazel_rules_go//:go_context_data"),
         "_srcs": attr.label(
             default = "//cmd/gazelle:go_default_library",
-            aspects = [go_archive_aspect],
         ),
     },
-    executable = True,
-)
+    "executable": True,
+    "toolchains": ["@io_bazel_rules_go//go:toolchain"],
+}
+
+gazelle_binary = rule(**_gazelle_binary_kwargs)
+
+# DEPRECATED(#803): go_transition_rule and go_transition_wrapper are internal
+# to rules_go and should not be used. The mode attributes supported by this
+# are deprecated, and support for them should be dropped after v0.22.0.
+gazelle_transition_binary = go_transition_rule(**_gazelle_binary_kwargs)
+
+def gazelle_binary_wrapper(name, **kwargs):
+    go_transition_wrapper(gazelle_binary, gazelle_transition_binary, name = name, **kwargs)
 
 def _format_import(importpath):
     _, _, base = importpath.rpartition("/")

@@ -15,6 +15,7 @@ Extending Gazelle
 .. _rules_sass: https://github.com/bazelbuild/rules_sass
 .. _#75: https://github.com/bazelbuild/rules_sass/pull/75
 .. _bazel_rules_nodejs_contrib: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
+.. _#803: https://github.com/bazelbuild/bazel-gazelle/issues/803
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -67,8 +68,7 @@ a stub implementation used for testing.
 
 ``//cmd/gazelle`` is a ``gazelle_binary`` rule that includes both of these
 libraries through the ``DEFAULT_LANGUAGES`` list (you may want to use
-``DEFAULT_LANGUAGES`` in your own rule). The ``msan``, ``pure``, ``race``,
-and ``static`` attributes are optional.
+``DEFAULT_LANGUAGES`` in your own rule).
 
 .. code:: bzl
 
@@ -77,10 +77,6 @@ and ``static`` attributes are optional.
     gazelle_binary(
         name = "gazelle",
         languages = DEFAULT_LANGUAGES,
-        msan = "off",
-        pure = "off",
-        race = "off",
-        static = "off",
         visibility = ["//visibility:public"],
     )
 
@@ -126,6 +122,12 @@ The following attributes are supported on the ``gazelle_binary`` rule.
 | must export a function named ``NewLanguage`` with no parameters that returns      |
 | a value assignable to `Language`_.                                                |
 +----------------------+---------------------+--------------------------------------+
+
+The following attributes are deprecated (`#803`_):
+
++----------------------+---------------------+--------------------------------------+
+| **Name**             | **Type**            | **Default value**                    |
++======================+=====================+======================================+
 | :param:`pure`        | :type:`string`      | :value:`auto`                        |
 +----------------------+---------------------+--------------------------------------+
 | Same meaning as `go_binary`_. It may be necessary to set this to avoid            |

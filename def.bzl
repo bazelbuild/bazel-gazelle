@@ -13,11 +13,6 @@
 # limitations under the License.
 
 load(
-    "@io_bazel_rules_go//go:def.bzl",
-    _go_context = "go_context",
-    _go_rule = "go_rule",
-)
-load(
     "@bazel_skylib//lib:shell.bzl",
     "shell",
 )
@@ -32,7 +27,7 @@ load(
 )
 load(
     "//internal:gazelle_binary.bzl",
-    _gazelle_binary = "gazelle_binary",
+    _gazelle_binary = "gazelle_binary_wrapper",
 )
 
 go_repository = _go_repository
@@ -46,7 +41,6 @@ DEFAULT_LANGUAGES = [
 ]
 
 def _gazelle_runner_impl(ctx):
-    go = _go_context(ctx)
     args = [
         ctx.attr.command,
         "-mode",
@@ -61,6 +55,7 @@ def _gazelle_runner_impl(ctx):
     args.extend(ctx.attr.extra_args)
 
     out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
+    go_tool = ctx.toolchains["@io_bazel_rules_go//go:toolchain"].sdk.go
     substitutions = {
         "@@ARGS@@": shell.array_literal(args),
         "@@GAZELLE_LABEL@@": shell.quote(str(ctx.attr.gazelle.label)),
@@ -70,7 +65,7 @@ def _gazelle_runner_impl(ctx):
 # DO NOT EDIT
 """.format(label = str(ctx.label)),
         "@@RUNNER_LABEL@@": shell.quote(str(ctx.label)),
-        "@@GOTOOL@@": shell.quote(go.go.path),
+        "@@GOTOOL@@": shell.quote(go_tool.path),
     }
     ctx.actions.expand_template(
         template = ctx.file._template,
@@ -80,7 +75,7 @@ def _gazelle_runner_impl(ctx):
     )
     runfiles = ctx.runfiles(files = [
         ctx.executable.gazelle,
-        go.go,
+        go_tool,
     ])
     return [DefaultInfo(
         files = depset([out_file]),
@@ -88,7 +83,7 @@ def _gazelle_runner_impl(ctx):
         executable = out_file,
     )]
 
-_gazelle_runner = _go_rule(
+_gazelle_runner = rule(
     implementation = _gazelle_runner_impl,
     attrs = {
         "gazelle": attr.label(
@@ -117,6 +112,7 @@ _gazelle_runner = _go_rule(
         ),
     },
     executable = True,
+    toolchains = ["@io_bazel_rules_go//go:toolchain"],
 )
 
 def gazelle(name, **kwargs):
