@@ -382,8 +382,9 @@ The following flags are accepted:
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-proto_import_prefix repo`                            |                                        |
 +--------------------------------------------------------------+----------------------------------------+
-| Sets the `import_prefix`_ attribute of generated ``proto_library`` rules. This is a prefix            |
-| to add to import paths of .proto files.                                                               |
+| Sets the `import_prefix`_ attribute of generated ``proto_library`` rules.                             |
+| This adds a prefix to the string used to import ``.proto`` files listed in                            |
+| the ``srcs`` attribute of generated rules.                                                            |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-repo_root dir`                                       |                                        |
 +--------------------------------------------------------------+----------------------------------------+
@@ -683,15 +684,31 @@ The following directives are recognized:
 | in the package name. For example, if the package is ``"foo/bar/baz"``, the                 |
 | ``proto_library`` rule will be named ``baz_proto``.                                        |
 +---------------------------------------------------+----------------------------------------+
-| :direc:`# gazelle:proto_strip_import_prefix path` | n/a                                    |
-+---------------------------------------------------+----------------------------------------+
-| Sets the `strip_import_prefix`_ attribute of generated ``proto_library`` rules.            |
-| This is a prefix to strip from the import paths of .proto files.                           |
-+---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:proto_import_prefix path`       | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
 | Sets the `import_prefix`_ attribute of generated ``proto_library`` rules.                  |
-| This is a prefix to add to import paths of .proto files.                                   |
+| This adds a prefix to the string used to import ``.proto`` files listed in                 |
+| the ``srcs`` attribute of generated rules.                                                 |
+|                                                                                            |
+| For example, if the target ``//a:b_proto`` has ``srcs = ["b.proto"]`` and                  |
+| ``import_prefix = "github.com/x/y"``, then ``b.proto`` should be imported                  |
+| with the string ``"github.com/x/y/a/b.proto"``.                                            |
++---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:proto_strip_import_prefix path` | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Sets the `strip_import_prefix`_ attribute of generated ``proto_library`` rules.            |
+| This is a prefix to strip from the strings used to import ``.proto`` files.                |
+|                                                                                            |
+| If the prefix starts with a slash, it's intepreted relative to the repository              |
+| root. Otherwise, it's relative to the directory containing the build file.                 |
+| The package-relative form is only useful when a single build file covers                   |
+| ``.proto`` files in subdirectories. Gazelle doesn't generate build files like              |
+| this, so only paths with a leading slash should be used. Gazelle will print                |
+| a warning when the package-relative form is used.                                          |
+|                                                                                            |
+| For example, if the target ``//proto/a:b_proto`` has ``srcs = ["b.proto"]``                |
+| and ``strip_import_prefix = "/proto"``, then ``b.proto`` should be imported                |
+| with the string ``"a/b.proto"``.                                                           |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:resolve ...`                    | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
