@@ -256,20 +256,15 @@ proto_library(
 		}, {
 			desc: "strip_import_prefix",
 			index: []buildFile{{
-				rel: "",
-				content: `
-# gazelle:proto_strip_import_prefix /foo/bar/
-`,
-			}, {
 				rel: "foo/bar/sub",
 				content: `
 proto_library(
     name = "foo_proto",
     srcs = ["foo.proto"],
+    strip_import_prefix = "/foo/bar",
 )
 `,
-			},
-			},
+			}},
 			old: `
 proto_library(
     name = "dep_proto",
@@ -285,20 +280,15 @@ proto_library(
 		}, {
 			desc: "skip bad strip_import_prefix",
 			index: []buildFile{{
-				rel: "",
-				content: `
-# gazelle:proto_strip_import_prefix /foo
-`,
-			}, {
 				rel: "bar",
 				content: `
 proto_library(
     name = "foo_proto",
     srcs = ["foo.proto"],
+    strip_import_prefix = "/foo",
 )
 `,
-			},
-			},
+			}},
 			old: `
 proto_library(
     name = "dep_proto",
@@ -314,20 +304,15 @@ proto_library(
 		}, {
 			desc: "import_prefix",
 			index: []buildFile{{
-				rel: "",
-				content: `
-# gazelle:proto_import_prefix foo/
-`,
-			}, {
 				rel: "bar",
 				content: `
 proto_library(
     name = "foo_proto",
     srcs = ["foo.proto"],
+    import_prefix = "foo/",
 )
 `,
-			},
-			},
+			}},
 			old: `
 proto_library(
     name = "dep_proto",
@@ -343,21 +328,16 @@ proto_library(
 		}, {
 			desc: "strip_import_prefix and import_prefix",
 			index: []buildFile{{
-				rel: "",
-				content: `
-# gazelle:proto_strip_import_prefix /foo
-# gazelle:proto_import_prefix bar/
-`,
-			}, {
 				rel: "foo",
 				content: `
 proto_library(
     name = "foo_proto",
     srcs = ["foo.proto"],
+    import_prefix = "bar/",
+    strip_import_prefix = "/foo",
 )
 `,
-			},
-			},
+			}},
 			old: `
 proto_library(
     name = "dep_proto",

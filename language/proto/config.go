@@ -215,10 +215,8 @@ func (_ *protoLang) Configure(c *config.Config, rel string, f *rule.File) {
 				pc.groupOption = d.Value
 			case "proto_strip_import_prefix":
 				pc.StripImportPrefix = d.Value
-				if rel != "" {
-					if err := checkStripImportPrefix(pc.StripImportPrefix, rel); err != nil {
-						log.Print(err)
-					}
+				if err := checkStripImportPrefix(pc.StripImportPrefix, rel); err != nil {
+					log.Print(err)
 				}
 			case "proto_import_prefix":
 				pc.ImportPrefix = d.Value
@@ -277,7 +275,13 @@ outer:
 }
 
 func checkStripImportPrefix(prefix, rel string) error {
-	if !strings.HasPrefix(prefix, "/") || !strings.HasPrefix(rel, prefix[1:]) {
+	if prefix == "" {
+		return nil
+	}
+	if !strings.HasPrefix(prefix, "/") {
+		return fmt.Errorf("proto_strip_import_prefix should start with '/' for a prefix relative to the repository root")
+	}
+	if rel != "" && !strings.HasPrefix(rel, prefix[1:]) {
 		return fmt.Errorf("invalid proto_strip_import_prefix %q at %s", prefix, rel)
 	}
 	return nil
