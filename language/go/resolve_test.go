@@ -879,17 +879,13 @@ go_library(
 		}, {
 			desc: "proto_import_prefix_and_strip_import_prefix",
 			index: []buildFile{{
-				rel: "",
-				content: `
-# gazelle:proto_strip_import_prefix /sub
-# gazelle:proto_import_prefix foo/
-`,
-			}, {
 				rel: "sub",
 				content: `
 proto_library(
     name = "foo_proto",
     srcs = ["bar.proto"],
+    import_prefix = "foo/",
+    strip_import_prefix = "/sub",
 )
 
 go_proto_library(
@@ -904,8 +900,7 @@ go_library(
     importpath = "example.com/foo",
 )
 `,
-			},
-			},
+			}},
 			old: buildFile{content: `
 go_proto_library(
     name = "dep_proto",

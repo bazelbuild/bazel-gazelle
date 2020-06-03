@@ -25,6 +25,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -36,14 +37,32 @@ func (_ *protoLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	imports := make([]resolve.ImportSpec, len(srcs))
 	pc := GetProtoConfig(c)
 	prefix := rel
-	if pc.StripImportPrefix != "" {
-		prefix = strings.TrimPrefix(rel, pc.StripImportPrefix[1:])
+	if stripImportPrefix := r.AttrString("strip_import_prefix"); stripImportPrefix != "" {
+		// If strip_import_prefix starts with a /, it's interpreted as being
+		// relative to the repository root. Otherwise, it's interpreted as being
+		// relative to the package directory.
+		//
+		// So for the file //a/b:c/d.proto, if strip_import_prefix = "/a",
+		// the proto should be imported as "b/c/d.proto".
+		// If strip_import_prefix = "c", the proto should be imported as "d.proto".
+		//
+		// The package-relativeform only seems useful if there is one Bazel package
+		// covering protos in subdirectories. Gazelle does not generate build files
+		// like that, but we might still index proto_library rules like that,
+		// so we support it here.
+		if strings.HasPrefix(stripImportPrefix, "/") {
+			prefix = pathtools.TrimPrefix(rel, stripImportPrefix[len("/"):])
+		} else {
+			prefix = pathtools.TrimPrefix(rel, path.Join(rel, pc.StripImportPrefix))
+		}
 		if rel == prefix {
+			// Stripped prefix is not a prefix of rel, so the rule won't be buildable.
+			// Don't index it.
 			return nil
 		}
 	}
-	if pc.ImportPrefix != "" {
-		prefix = path.Join(pc.ImportPrefix, prefix)
+	if importPrefix := r.AttrString("import_prefix"); importPrefix != "" {
+		prefix = path.Join(importPrefix, prefix)
 	}
 	for i, src := range srcs {
 		imports[i] = resolve.ImportSpec{Lang: "proto", Imp: path.Join(prefix, src)}

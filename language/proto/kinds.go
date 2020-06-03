@@ -22,7 +22,9 @@ var protoKinds = map[string]rule.KindInfo{
 		MatchAttrs:    []string{"srcs"},
 		NonEmptyAttrs: map[string]bool{"srcs": true},
 		MergeableAttrs: map[string]bool{
-			"srcs": true,
+			"srcs":                true,
+			"import_prefix":       true,
+			"strip_import_prefix": true,
 		},
 		ResolveAttrs: map[string]bool{"deps": true},
 	},
