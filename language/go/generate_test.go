@@ -95,6 +95,7 @@ func TestGenerateRules(t *testing.T) {
 				t.Fatalf("error reading %s: %v", wantPath, err)
 			}
 			want := string(wantBytes)
+			want = strings.ReplaceAll(want, "\r\n", "\n")
 
 			if got != want {
 				t.Errorf("GenerateRules %q: got:\n%s\nwant:\n%s", rel, got, want)
