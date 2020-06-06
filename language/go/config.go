@@ -77,6 +77,9 @@ type goConfig struct {
 	// goGenerateProto indicates whether to generate go_proto_library
 	goGenerateProto bool
 
+	// goNamingConvention controls the name of generated targets
+	goNamingConvention namingConvention
+
 	// goProtoCompilers is the protocol buffers compiler(s) to use for go code.
 	goProtoCompilers []string
 
@@ -103,6 +106,10 @@ type goConfig struct {
 	// if this is true in the root directory. External dependencies may be
 	// resolved differently (also depending on goRepositoryMode).
 	moduleMode bool
+
+	// map between external repo names and their `build_naming_convention`
+	// attribute.
+	repoNamingConvention map[string]namingConvention
 
 	// submodules is a list of modules which have the current module's path
 	// as a prefix of their own path. This affects visibility attributes
@@ -171,6 +178,15 @@ func (gc *goConfig) setBuildTags(tags string) error {
 	return nil
 }
 
+func (gc *goConfig) setNamingConvention(s string) error {
+	if nc, err := namingConventionFromString(s); err == nil {
+		gc.goNamingConvention = nc
+		return nil
+	} else {
+		return err
+	}
+}
+
 func getProtoMode(c *config.Config) proto.Mode {
 	if gc := getGoConfig(c); !gc.goGenerateProto {
 		return proto.DisableMode
@@ -236,6 +252,59 @@ func (f tagsFlag) String() string {
 	return ""
 }
 
+type namingConventionFlag func(string) error
+
+func (f namingConventionFlag) Set(value string) error {
+	return f(value)
+}
+
+func (f namingConventionFlag) String() string {
+	return ""
+}
+
+// namingConvention determines how go targets are named.
+type namingConvention int
+
+const (
+	// 'go_default_library' and 'go_default_test'
+	goDefaultLibraryNamingConvention = iota
+
+	// For an import path that ends with foo, the go_library rules target is
+	// named 'foo', the go_test is named 'foo_test'.
+	// For a main package, the go_binary takes the 'foo' name, the library
+	// is named 'foo_lib', and the go_test is named 'foo_test'.
+	importNamingConvention
+
+	// Same as importNamingConvention, but generate alias rules for libraries that have
+	// the legacy 'go_default_library' name.
+	importAliasNamingConvention
+)
+
+func (nc namingConvention) String() string {
+	switch nc {
+	case goDefaultLibraryNamingConvention:
+		return "go_default_library"
+	case importNamingConvention:
+		return "import"
+	case importAliasNamingConvention:
+		return "import_alias"
+	}
+	return ""
+}
+
+func namingConventionFromString(s string) (namingConvention, error) {
+	switch s {
+	case "go_default_library":
+		return goDefaultLibraryNamingConvention, nil
+	case "import":
+		return importNamingConvention, nil
+	case "import_alias":
+		return importAliasNamingConvention, nil
+	default:
+		return goDefaultLibraryNamingConvention, fmt.Errorf("unknown naming convention %q", s)
+	}
+}
+
 type moduleRepo struct {
 	repoName, modulePath string
 }
@@ -249,6 +318,7 @@ func (*goLang) KnownDirectives() []string {
 		"build_tags",
 		"go_generate_proto",
 		"go_grpc_compilers",
+		"go_naming_convention",
 		"go_proto_compilers",
 		"go_visibility",
 		"importmap_prefix",
@@ -290,6 +360,10 @@ func (*goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			"go_repository_module_mode",
 			false,
 			"set when gazelle is invoked by go_repository in module mode")
+		fs.Var(
+			namingConventionFlag(gc.setNamingConvention),
+			"go_naming_convention",
+			"controls generated library names. One of (go_default_library, import, import_alias)")
 
 	case "update-repos":
 		fs.Var(&gzflag.AllowedStringFlag{Value: &gc.buildExternalAttr, Allowed: validBuildExternalAttr},
@@ -372,6 +446,17 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				log.Printf("Found RULES_GO_VERSION %s. Minimum compatible version is %s.\n%s", gc.rulesGoVersion, minimumRulesGoVersion, message)
 			}
 		}
+		repoNamingConvention := map[string]namingConvention{}
+		for _, repo := range c.Repos {
+			if repo.Kind() == "go_repository" {
+				if nc, err := namingConventionFromString(repo.AttrString("build_naming_convention")); err == nil {
+					repoNamingConvention[repo.Name()] = nc
+				} else {
+					log.Printf("%v\n", err)
+				}
+			}
+		}
+		gc.repoNamingConvention = repoNamingConvention
 	}
 
 	if !gc.moduleMode {
@@ -408,11 +493,14 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				gc.preprocessTags()
 				gc.setBuildTags(d.Value)
 			case "go_generate_proto":
-
 				if goGenerateProto, err := strconv.ParseBool(d.Value); err == nil {
 					gc.goGenerateProto = goGenerateProto
 				} else {
 					log.Printf("parsing go_generate_proto: %v", err)
+				}
+			case "go_naming_convention":
+				if err := gc.setNamingConvention(d.Value); err != nil {
+					log.Print(err)
 				}
 			case "go_grpc_compilers":
 				// Special syntax (empty value) to reset directive.

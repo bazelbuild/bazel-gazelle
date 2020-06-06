@@ -79,6 +79,9 @@ const (
 	platformSet
 )
 
+// Matches a package version, eg. the end segment of 'example.com/foo/v1'
+var pkgVersionRe = regexp.MustCompile("^v[0-9]+$")
+
 // addFile adds the file described by "info" to a target in the package "p" if
 // the file is buildable.
 //
@@ -164,6 +167,49 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 		pkg.importPath = path.Join(gc.prefix, fromPrefixRel)
 	}
 	return nil
+}
+
+// libNameFromDir returns a a suitable go_library name based on the import path.
+// Major version suffixes (eg. "v1") are dropped.
+func libNameFromImportPath(dir string) string {
+	i := strings.LastIndexAny(dir, "/\\")
+	if i < 0 {
+		return dir
+	}
+	name := dir[i+1:]
+	if pkgVersionRe.MatchString(name) {
+		dir := dir[:i]
+		i = strings.LastIndexAny(dir, "/\\")
+		if i >= 0 {
+			name = dir[i+1:]
+		}
+	}
+	return name
+}
+
+// libNameByConvention returns a suitable lib name based on go_naming_convention
+// If go_default_library, "go_default_library" is returned.
+// Else if this is a 'main' package, 'foo_lib' is returned, where 'foo' is the name of the go_binary rule.
+// Else it is a regular package, the last segment of the importpath is returned. Major version suffixes (eg. "v1") are dropped.
+func libNameByConvention(nc namingConvention, binName, imp string) string {
+	if nc == goDefaultLibraryNamingConvention {
+		return defaultLibName
+	}
+	if binName != "" {
+		return binName + "_lib"
+	}
+	return libNameFromImportPath(imp)
+}
+
+// testNameByConvention works like libNameByConvention, but always appends '_test'.
+func testNameByConvention(nc namingConvention, binName, imp string) string {
+	if nc == goDefaultLibraryNamingConvention {
+		return defaultTestName
+	}
+	if binName != "" {
+		return binName + "_test"
+	}
+	return libNameFromImportPath(imp) + "_test"
 }
 
 func InferImportPath(c *config.Config, rel string) string {

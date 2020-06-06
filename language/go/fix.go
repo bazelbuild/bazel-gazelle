@@ -30,8 +30,113 @@ func (_ *goLang) Fix(c *config.Config, f *rule.File) {
 	flattenSrcs(c, f)
 	squashCgoLibrary(c, f)
 	squashXtest(c, f)
+	migrateNamingConvention(c, f)
 	removeLegacyProto(c, f)
 	removeLegacyGazelle(c, f)
+}
+
+// migrateNamingConvention renames rules according to go_naming_convention directives.
+func migrateNamingConvention(c *config.Config, f *rule.File) {
+	nc := getGoConfig(c).goNamingConvention
+
+	binName := binName(f)
+	importPath := importPath(f)
+	libName := libNameByConvention(nc, binName, importPath)
+	testName := testNameByConvention(nc, binName, importPath)
+	var migrateLibName, migrateTestName string
+	switch nc {
+	case goDefaultLibraryNamingConvention:
+		migrateLibName = libNameByConvention(importNamingConvention, binName, importPath)
+		migrateTestName = testNameByConvention(importNamingConvention, binName, importPath)
+	case importNamingConvention, importAliasNamingConvention:
+		migrateLibName = defaultLibName
+		migrateTestName = defaultTestName
+	default:
+		return
+	}
+
+	for _, r := range f.Rules {
+		switch r.Kind() {
+		case "go_binary":
+			replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
+		case "go_library":
+			if r.Name() == migrateLibName {
+				r.SetName(libName)
+			}
+		case "go_test":
+			if r.Name() == migrateTestName {
+				r.SetName(testName)
+				replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
+			}
+		}
+	}
+
+	// Alias migration
+	if binName == "" {
+		var ar *rule.Rule
+		var lib *rule.Rule
+		for _, r := range f.Rules {
+			if r.Kind() == "alias" && r.Name() == defaultLibName {
+				ar = r
+			} else if r.Kind() == "go_library" && r.Name() == libName {
+				lib = r
+			}
+		}
+		if nc == importAliasNamingConvention {
+			if ar == nil && lib != nil {
+				r := rule.NewRule("alias", defaultLibName)
+				r.SetAttr("actual", ":"+lib.Name())
+				visibility := lib.Attr("visibility")
+				if visibility != nil {
+					r.SetAttr("visibility", visibility)
+				}
+				r.Insert(f)
+			}
+		} else {
+			if ar != nil {
+				ar.Delete()
+			}
+		}
+	}
+}
+
+// binName returns the name of a go_binary rule if one can be found.
+func binName(f *rule.File) string {
+	for _, r := range f.Rules {
+		if r.Kind() == "go_binary" {
+			return r.Name()
+		}
+	}
+	return ""
+}
+
+// import path returns the existing import path from the first encountered Go rule with the attribute set.
+func importPath(f *rule.File) string {
+	for _, r := range f.Rules {
+		switch r.Kind() {
+		case "go_binary", "go_library", "go_test":
+			if ip, ok := r.Attr("importpath").(*bzl.StringExpr); ok && ip.Value != "" {
+				return ip.Value
+			}
+		}
+	}
+	return f.Pkg
+}
+
+func replaceInStrListAttr(r *rule.Rule, attr, old, new string) {
+	l := r.AttrStrings(attr)
+	var shouldAdd = true
+	var items []string
+	for _, v := range l {
+		if v != old {
+			items = append(items, v)
+		}
+		shouldAdd = shouldAdd && v != new
+	}
+	if shouldAdd {
+		items = append(items, new)
+	}
+	r.SetAttr(attr, items)
 }
 
 // migrateLibraryEmbed converts "library" attributes to "embed" attributes,
@@ -72,6 +177,9 @@ func migrateGrpcCompilers(c *config.Config, f *rule.File) {
 // MergeFile will remove unused values and attributes later.
 func squashCgoLibrary(c *config.Config, f *rule.File) {
 	// Find the default cgo_library and go_library rules.
+	binName := binName(f)
+	importPath := importPath(f)
+	libName := libNameByConvention(getGoConfig(c).goNamingConvention, binName, importPath)
 	var cgoLibrary, goLibrary *rule.Rule
 	for _, r := range f.Rules {
 		if r.Kind() == "cgo_library" && r.Name() == "cgo_default_library" && !r.ShouldKeep() {
@@ -82,7 +190,7 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 			cgoLibrary = r
 			continue
 		}
-		if r.Kind() == "go_library" && r.Name() == defaultLibName {
+		if r.Kind() == "go_library" && r.Name() == libName {
 			if goLibrary != nil {
 				log.Printf("%s: when fixing existing file, multiple go_library rules with default name referencing cgo_library found", f.Path)
 			}
@@ -99,9 +207,10 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 		return
 	}
 
+	// If there wasn't an existing library to squash into, we'll have to guess at its name.
 	if goLibrary == nil {
 		cgoLibrary.SetKind("go_library")
-		cgoLibrary.SetName(defaultLibName)
+		cgoLibrary.SetName(libName)
 		cgoLibrary.SetAttr("cgo", true)
 		return
 	}
@@ -121,12 +230,15 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 // renaming the old rule).
 func squashXtest(c *config.Config, f *rule.File) {
 	// Search for internal and external tests.
+	binName := binName(f)
+	importPath := importPath(f)
+	testName := testNameByConvention(getGoConfig(c).goNamingConvention, binName, importPath)
 	var itest, xtest *rule.Rule
 	for _, r := range f.Rules {
 		if r.Kind() != "go_test" {
 			continue
 		}
-		if r.Name() == defaultTestName {
+		if r.Name() == testName {
 			itest = r
 		} else if r.Name() == "go_default_xtest" {
 			xtest = r
@@ -138,16 +250,16 @@ func squashXtest(c *config.Config, f *rule.File) {
 	}
 	if !c.ShouldFix {
 		if itest == nil {
-			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to rename to go_default_test.", f.Path)
+			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to rename to %s.", f.Path, testName)
 		} else {
-			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to squash with go_default_test.", f.Path)
+			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to squash with %s.", f.Path, testName)
 		}
 		return
 	}
 
 	// If there was no internal test, we can just rename the external test.
 	if itest == nil {
-		xtest.SetName(defaultTestName)
+		xtest.SetName(testName)
 		return
 	}
 

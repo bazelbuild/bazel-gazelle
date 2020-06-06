@@ -147,12 +147,15 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 			GoPrefix: imp,
 		})
 	}
+	goRepos := make(map[string]repo.Repo)
 	for _, r := range c.Repos {
 		if r.Kind() == "go_repository" {
-			uc.repos = append(uc.repos, repo.Repo{
-				Name:     r.Name(),
-				GoPrefix: r.AttrString("importpath"),
-			})
+			gr := repo.Repo{
+				Name:                  r.Name(),
+				GoPrefix:              r.AttrString("importpath"),
+			}
+			uc.repos = append(uc.repos, gr)
+			goRepos[r.Name()] = gr
 		}
 	}
 

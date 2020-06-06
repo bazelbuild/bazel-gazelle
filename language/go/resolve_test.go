@@ -35,11 +35,12 @@ func TestResolveGo(t *testing.T) {
 		rel, content string
 	}
 	type testCase struct {
-		desc      string
-		index     []buildFile
-		old       buildFile
-		want      string
-		skipIndex bool
+		desc             string
+		index            []buildFile
+		old              buildFile
+		want             string
+		skipIndex        bool
+		namingConvention namingConvention
 	}
 	for _, tc := range []testCase{
 		{
@@ -535,6 +536,21 @@ go_binary(
 )
 `,
 		}, {
+			desc:             "vendor with go_naming_convention=import",
+			namingConvention: importNamingConvention,
+			old: buildFile{content: `
+go_binary(
+    name = "bin",
+    _imports = ["example.com/outside/prefix"],
+)
+`},
+			want: `
+go_binary(
+    name = "bin",
+    deps = ["//vendor/example.com/outside/prefix"],
+)
+`,
+		}, {
 			desc: "test_and_library_not_indexed",
 			index: []buildFile{{
 				rel: "foo",
@@ -919,6 +935,7 @@ go_proto_library(
 			c, langs, cexts := testConfig(
 				t,
 				"-go_prefix=example.com/repo/resolve",
+				fmt.Sprintf("-go_naming_convention=%s", tc.namingConvention),
 				"-external=vendored", fmt.Sprintf("-index=%v", !tc.skipIndex))
 			mrslv := make(mapResolver)
 			for _, lang := range langs {
@@ -1064,6 +1081,8 @@ func TestResolveExternal(t *testing.T) {
 		desc, importpath string
 		repos            []repo.Repo
 		moduleMode       bool
+		namingConvention namingConvention
+		repoNamingConvention map[string]namingConvention
 		want             string
 	}{
 		{
@@ -1075,6 +1094,16 @@ func TestResolveExternal(t *testing.T) {
 			importpath: "example.com/repo/lib",
 			want:       "@com_example_repo//lib:go_default_library",
 		}, {
+			desc:             "top go_naming_convention=import",
+			namingConvention: importNamingConvention,
+			importpath:       "example.com/repo",
+			want:             "@com_example_repo//:repo",
+		}, {
+			desc:             "sub go_naming_convention=import",
+			namingConvention: importNamingConvention,
+			importpath:       "example.com/repo/lib",
+			want:             "@com_example_repo//lib",
+		}, {
 			desc: "custom_repo",
 			repos: []repo.Repo{{
 				Name:     "custom_repo_name",
@@ -1082,6 +1111,17 @@ func TestResolveExternal(t *testing.T) {
 			}},
 			importpath: "example.com/repo/lib",
 			want:       "@custom_repo_name//lib:go_default_library",
+		}, {
+			desc: "custom_repo go_naming_convention=import",
+			repos: []repo.Repo{{
+				Name:                  "custom_repo_name",
+				GoPrefix:              "example.com/repo",
+			}},
+			repoNamingConvention: map[string]namingConvention{
+				"custom_repo_name": importNamingConvention,
+			},
+			importpath: "example.com/repo/lib",
+			want:       "@custom_repo_name//lib",
 		}, {
 			desc:       "qualified",
 			importpath: "example.com/repo.git/lib",
@@ -1139,6 +1179,8 @@ func TestResolveExternal(t *testing.T) {
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			gc.moduleMode = tc.moduleMode
+			gc.goNamingConvention = tc.namingConvention
+			gc.repoNamingConvention = tc.repoNamingConvention
 			rc := testRemoteCache(tc.repos)
 			r := rule.NewRule("go_library", "x")
 			imports := rule.PlatformStrings{Generic: []string{tc.importpath}}
