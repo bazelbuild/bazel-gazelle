@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 // FileSpec specifies the content of a test file.
@@ -121,8 +123,8 @@ func CheckFiles(t *testing.T, dir string, files []FileSpec) {
 				continue
 			}
 			got := strings.TrimSpace(string(gotBytes))
-			if got != want {
-				t.Errorf("%s: got:\n%s\nwant:\n%s", f.Path, gotBytes, f.Content)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("%s diff (-want,+got):\n%s", f.Path, diff)
 			}
 		}
 	}
