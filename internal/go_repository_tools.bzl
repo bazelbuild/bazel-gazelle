@@ -50,6 +50,7 @@ def _go_repository_tools_impl(ctx):
 
     env.update({
         "GOPATH": str(ctx.path(".")),
+        "GOBIN": "",
         "GO111MODULE": "off",
         # workaround: avoid the Go SDK paths from leaking into the binary
         "GOROOT_FINAL": "GOROOT",
