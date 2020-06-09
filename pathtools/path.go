@@ -44,7 +44,7 @@ func TrimPrefix(p, prefix string) string {
 	if prefix == p {
 		return ""
 	}
-	return strings.TrimPrefix(p, prefix+"/")
+	return strings.TrimPrefix(p, filepath.Clean(prefix)+"/")
 }
 
 // RelBaseName returns the base name for rel, a slash-separated path relative
