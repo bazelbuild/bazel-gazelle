@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -281,8 +282,8 @@ func checkStripImportPrefix(prefix, rel string) error {
 	if !strings.HasPrefix(prefix, "/") {
 		return fmt.Errorf("proto_strip_import_prefix should start with '/' for a prefix relative to the repository root")
 	}
-	if rel != "" && !strings.HasPrefix(rel, prefix[1:]) {
-		return fmt.Errorf("invalid proto_strip_import_prefix %q at %s", prefix, rel)
+	if !pathtools.HasPrefix(rel, prefix[1:]) {
+		return fmt.Errorf("proto_strip_import_prefix %q not in directory %s", prefix, rel)
 	}
 	return nil
 }
