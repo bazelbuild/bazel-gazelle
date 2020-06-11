@@ -150,6 +150,14 @@ def gazelle_dependencies(
         version = "v0.4.1",
     )
 
+    _maybe(
+        go_repository,
+        name = "com_github_google_go_cmp",
+        importpath = "golang.org/x/xerrors",
+        sum = "h1:/9bdfabe68543",
+        version = "v0.0.0",
+    )
+
 def _maybe(repo_rule, name, **kwargs):
     if name not in native.existing_rules():
         repo_rule(name = name, **kwargs)
