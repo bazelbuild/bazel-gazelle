@@ -154,8 +154,8 @@ def gazelle_dependencies(
         go_repository,
         name = "com_github_google_go_cmp",
         importpath = "golang.org/x/xerrors",
-        sum = "h1:/9bdfabe68543",
-        version = "v0.0.0",
+        sum = "h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=",
+        version = "v0.0.0-20191204190536-9bdfabe68543",
     )
 
 def _maybe(repo_rule, name, **kwargs):
