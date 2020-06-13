@@ -142,7 +142,7 @@ returned by ``go env GOPATH``.
 |                                                                                                                       |
 | A value for ``sum`` may be found in the ``go.sum`` file or by running                                                 |
 | ``go mod download -json <module>@<version>``.                                                                         |
-+--------------------------------+----------------------+---------------------------------------------------------------+
++-----------------------------------+----------------------+------------------------------------------------------------+
 | :param:`build_naming_convention`  | :type:`string`       | :value:`""`                                                |
 +--------------------------------+----------------------+---------------------------------------------------------------+
 | Sets the library naming convention to use when resolving dependencies against this external                           |

@@ -178,15 +178,6 @@ func (gc *goConfig) setBuildTags(tags string) error {
 	return nil
 }
 
-func (gc *goConfig) setNamingConvention(s string) error {
-	if nc, err := namingConventionFromString(s); err == nil {
-		gc.goNamingConvention = nc
-		return nil
-	} else {
-		return err
-	}
-}
-
 func getProtoMode(c *config.Config) proto.Mode {
 	if gc := getGoConfig(c); !gc.goGenerateProto {
 		return proto.DisableMode
@@ -252,14 +243,24 @@ func (f tagsFlag) String() string {
 	return ""
 }
 
-type namingConventionFlag func(string) error
-
-func (f namingConventionFlag) Set(value string) error {
-	return f(value)
+type namingConventionFlag struct {
+	nc *namingConvention
 }
 
-func (f namingConventionFlag) String() string {
-	return ""
+func (f namingConventionFlag) Set(value string) error {
+	if nc, err := namingConventionFromString(value); err != nil {
+		return err
+	} else {
+		*f.nc = nc
+		return nil
+	}
+}
+
+func (f *namingConventionFlag) String() string {
+	if f == nil || f.nc == nil {
+		return "naming_convention"
+	}
+	return f.nc.String()
 }
 
 // namingConvention determines how go targets are named.
@@ -361,7 +362,7 @@ func (*goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			false,
 			"set when gazelle is invoked by go_repository in module mode")
 		fs.Var(
-			namingConventionFlag(gc.setNamingConvention),
+			&namingConventionFlag{&gc.goNamingConvention},
 			"go_naming_convention",
 			"controls generated library names. One of (go_default_library, import, import_alias)")
 
@@ -452,7 +453,7 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				if nc, err := namingConventionFromString(repo.AttrString("build_naming_convention")); err == nil {
 					repoNamingConvention[repo.Name()] = nc
 				} else {
-					log.Printf("%v\n", err)
+					log.Printf("in go_repository named %q: %v", repo.Name(), err)
 				}
 			}
 		}
@@ -499,7 +500,9 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 					log.Printf("parsing go_generate_proto: %v", err)
 				}
 			case "go_naming_convention":
-				if err := gc.setNamingConvention(d.Value); err != nil {
+				if nc, err := namingConventionFromString(d.Value); err == nil {
+					gc.goNamingConvention = nc
+				} else {
 					log.Print(err)
 				}
 			case "go_grpc_compilers":

@@ -172,6 +172,8 @@ def _go_repository_impl(ctx):
             cmd.extend(["-external", ctx.attr.build_external])
         if ctx.attr.build_file_proto_mode:
             cmd.extend(["-proto", ctx.attr.build_file_proto_mode])
+        if ctx.attr.build_naming_convention:
+            cmd.extend(["-go_naming_convention", ctx.attr.build_naming_convention])
         cmd.extend(ctx.attr.build_extra_args)
         cmd.append(ctx.path(""))
         result = env_execute(ctx, cmd, environment = env, timeout = _GO_REPOSITORY_TIMEOUT)

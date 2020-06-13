@@ -295,10 +295,8 @@ func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.
 	// If none is specified with "build_naming_convention", the either naming convention
 	// can be used, so we'll default to whatever's used in the current workspace to avoid churn.
 	nc := gc.goNamingConvention
-	if gc.repoNamingConvention != nil {
-		if rnc, ok := gc.repoNamingConvention[repo]; ok {
-			nc = rnc
-		}
+	if rnc, ok := gc.repoNamingConvention[repo]; ok {
+		nc = rnc
 	}
 
 	name := libNameByConvention(nc, "", imp)

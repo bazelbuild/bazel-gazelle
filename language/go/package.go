@@ -169,7 +169,7 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 	return nil
 }
 
-// libNameFromDir returns a a suitable go_library name based on the import path.
+// libNameFromImportPath returns a a suitable go_library name based on the import path.
 // Major version suffixes (eg. "v1") are dropped.
 func libNameFromImportPath(dir string) string {
 	i := strings.LastIndexAny(dir, "/\\")

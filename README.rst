@@ -339,7 +339,7 @@ The following flags are accepted:
 | :flag:`-go_naming_convention`                                |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | Controls the names of generated Go targets. Equivalent to the                                         |
-| # gazelle:go_naming_convention directive.                                                             |
+| ``# gazelle:go_naming_convention directive.``                                                         |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-go_prefix example.com/repo`                          |                                        |
 +--------------------------------------------------------------+----------------------------------------+
@@ -583,8 +583,10 @@ The following directives are recognized:
 | :direc:`# gazelle:go_naming_convention`           | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
 | Controls the names of generated Go targets. By default, library targets are named          |
-| `go_default_library` and test targets `go_default_test`.                                   |
-|  Valid values are:                                                                         |
+| ``go_default_library`` and test targets ``go_default_test``.                               |
+|                                                                                            |
+| Valid values are:                                                                          |
+|                                                                                            |
 | * ``go_default_library``: Library targets are named ``go_default_library``, test targets   |
 |   are named ``go_default_test``.                                                           |
 | * ``import``: Library and test targets are named after the last segment of their import    |
