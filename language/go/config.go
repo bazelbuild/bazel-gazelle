@@ -450,10 +450,12 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 		repoNamingConvention := map[string]namingConvention{}
 		for _, repo := range c.Repos {
 			if repo.Kind() == "go_repository" {
-				if nc, err := namingConventionFromString(repo.AttrString("build_naming_convention")); err == nil {
-					repoNamingConvention[repo.Name()] = nc
-				} else {
+				if attr := repo.AttrString("build_naming_convention"); attr == "" {
+					repoNamingConvention[repo.Name()] = goDefaultLibraryNamingConvention // default for go_repository
+				} else if nc, err := namingConventionFromString(attr); err != nil {
 					log.Printf("in go_repository named %q: %v", repo.Name(), err)
+				} else {
+					repoNamingConvention[repo.Name()] = nc
 				}
 			}
 		}

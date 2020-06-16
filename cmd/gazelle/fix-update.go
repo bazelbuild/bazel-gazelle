@@ -147,6 +147,14 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 			GoPrefix: imp,
 		})
 	}
+	for _, r := range c.Repos {
+		if r.Kind() == "go_repository" {
+			uc.repos = append(uc.repos, repo.Repo{
+				Name:     r.Name(),
+				GoPrefix: r.AttrString("importpath"),
+			})
+		}
+	}
 
 	// If the repo configuration file is not WORKSPACE, also load WORKSPACE
 	// and any declared macro files so we can apply fixes.

@@ -339,7 +339,7 @@ The following flags are accepted:
 | :flag:`-go_naming_convention`                                |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | Controls the names of generated Go targets. Equivalent to the                                         |
-| ``# gazelle:go_naming_convention directive.``                                                         |
+| ``# gazelle:go_naming_convention`` directive.                                                         |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-go_prefix example.com/repo`                          |                                        |
 +--------------------------------------------------------------+----------------------------------------+
