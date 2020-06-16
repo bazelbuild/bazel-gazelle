@@ -106,8 +106,8 @@ def gazelle_dependencies(
         go_repository,
         name = "com_github_bazelbuild_buildtools",
         importpath = "github.com/bazelbuild/buildtools",
-        sum = "h1:OfyUN/Msd8yqJww6deQ9vayJWw+Jrbe6Qp9giv51QQI=",
-        version = "v0.0.0-20190731111112-f720930ceb60",
+        sum = "h1:1I4g46mO4vmg8ThkDgnsDVhpK+58ob6rfweZCLQ8HQg=",
+        version = "v0.0.0-20200612171844-a60df6e5d134",
     )
 
     _maybe(
