@@ -57,17 +57,13 @@ func MapExprStrings(e bzl.Expr, f func(string) string) bzl.Expr {
 		return &ret
 
 	case *bzl.DictExpr:
-		var cases []bzl.Expr
+		var cases []*bzl.KeyValueExpr
 		isEmpty := true
 		for _, kv := range expr.List {
-			keyval, ok := kv.(*bzl.KeyValueExpr)
-			if !ok {
-				log.Panicf("unexpected expression in generated imports dict: %#v", kv)
-			}
-			value := MapExprStrings(keyval.Value, f)
+			value := MapExprStrings(kv.Value, f)
 			if value != nil {
-				cases = append(cases, &bzl.KeyValueExpr{Key: keyval.Key, Value: value})
-				if key, ok := keyval.Key.(*bzl.StringExpr); !ok || key.Value != "//conditions:default" {
+				cases = append(cases, &bzl.KeyValueExpr{Key: kv.Key, Value: value})
+				if key, ok := kv.Key.(*bzl.StringExpr); !ok || key.Value != "//conditions:default" {
 					isEmpty = false
 				}
 			}
@@ -144,7 +140,7 @@ func FlattenExpr(e bzl.Expr) bzl.Expr {
 	}
 	addDict := func(d *bzl.DictExpr) bool {
 		for _, kv := range d.List {
-			if !addList(kv.(*bzl.KeyValueExpr).Value) {
+			if !addList(kv.Value) {
 				return false
 			}
 		}
@@ -259,8 +255,7 @@ func extractPlatformStringsExprs(expr bzl.Expr) (platformStringsExprs, error) {
 				return platformStringsExprs{}, fmt.Errorf("expression could not be matched: select argument not dict")
 			}
 			var dict **bzl.DictExpr
-			for _, item := range arg.List {
-				kv := item.(*bzl.KeyValueExpr) // parser guarantees this
+			for _, kv := range arg.List {
 				k, ok := kv.Key.(*bzl.StringExpr)
 				if !ok {
 					return platformStringsExprs{}, fmt.Errorf("expression could not be matched: dict keys are not all strings")

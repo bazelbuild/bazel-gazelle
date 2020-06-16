@@ -191,7 +191,7 @@ func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
 		return src, nil
 	}
 	if src == nil {
-		src = &bzl.DictExpr{List: []bzl.Expr{}}
+		src = &bzl.DictExpr{List: []*bzl.KeyValueExpr{}}
 	}
 
 	var entries []*dictEntry
@@ -247,7 +247,7 @@ func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
 		keys = append(keys, "//conditions:default")
 	}
 
-	mergedEntries := make([]bzl.Expr, len(keys))
+	mergedEntries := make([]*bzl.KeyValueExpr, len(keys))
 	for i, k := range keys {
 		e := entryMap[k]
 		mergedEntries[i] = &bzl.KeyValueExpr{
@@ -425,7 +425,7 @@ func squashDict(x, y *bzl.DictExpr) (*bzl.DictExpr, error) {
 	squashed.Comments.Before = append(x.Comments.Before, y.Comments.Before...)
 	squashed.Comments.Suffix = append(x.Comments.Suffix, y.Comments.Suffix...)
 	squashed.Comments.After = append(x.Comments.After, y.Comments.After...)
-	squashed.List = make([]bzl.Expr, 0, len(cases))
+	squashed.List = make([]*bzl.KeyValueExpr, 0, len(cases))
 	for _, k := range keys {
 		squashed.List = append(squashed.List, cases[k])
 	}
