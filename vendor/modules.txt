@@ -1,4 +1,4 @@
-# github.com/bazelbuild/buildtools v0.0.0-20190731111112-f720930ceb60
+# github.com/bazelbuild/buildtools v0.0.0-20200612171844-a60df6e5d134
 github.com/bazelbuild/buildtools/build
 github.com/bazelbuild/buildtools/tables
 # github.com/bazelbuild/rules_go v0.0.0-20190719190356-6dae44dc5cab

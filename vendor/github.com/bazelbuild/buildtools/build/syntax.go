@@ -20,6 +20,7 @@ package build
 // Syntax data structure definitions.
 
 import (
+	"fmt"
 	"strings"
 	"unicode/utf8"
 )
@@ -53,12 +54,22 @@ type Expr interface {
 	// This method would normally be named 'Comments' but that
 	// would interfere with embedding a type of the same name.
 	Comment() *Comments
+
+	// Copy returns a non-deep copy of the node. Can be useful if
+	// the actual node type is hidden by the Expr interface and
+	// not relevant.
+	Copy() Expr
 }
 
 // A Comment represents a single # comment.
 type Comment struct {
 	Start Position
 	Token string // without trailing newline
+}
+
+// Span returns the start and end positions of the node
+func (c Comment) Span() (start, end Position) {
+	return c.Start, c.Start.add(c.Token)
 }
 
 // Comments collects the comments associated with an expression.
@@ -90,10 +101,13 @@ func stmtsEnd(stmts []Expr) Position {
 	return Position{}
 }
 
-// A File represents an entire BUILD file.
+// A File represents an entire BUILD or .bzl file.
 type File struct {
-	Path string // file path, relative to workspace directory
-	Type FileType
+	Path          string // absolute file path
+	Pkg           string // optional; the package of the file (always forward slashes)
+	Label         string // optional; file path relative to the package name (always forward slashes)
+	WorkspaceRoot string // optional; path to the directory containing the WORKSPACE file
+	Type          FileType
 	Comments
 	Stmt []Expr
 }
@@ -106,6 +120,15 @@ func (f *File) DisplayPath() string {
 	return f.Path
 }
 
+// CanonicalPath returns the path of a file relative to the workspace root with forward slashes only
+func (f *File) CanonicalPath() string {
+	if f.Pkg == "" {
+		return "//" + f.Label
+	}
+	return fmt.Sprintf("//%s/%s", f.Pkg, f.Label)
+}
+
+// Span returns the start and end positions of the node
 func (f *File) Span() (start, end Position) {
 	if len(f.Stmt) == 0 {
 		p := Position{Line: 1, LineRune: 1}
@@ -116,6 +139,12 @@ func (f *File) Span() (start, end Position) {
 	return start, end
 }
 
+//Copy creates and returns a non-deep copy of File
+func (f *File) Copy() Expr {
+	n := *f
+	return &n
+}
+
 // A CommentBlock represents a top-level block of comments separate
 // from any rule.
 type CommentBlock struct {
@@ -123,8 +152,15 @@ type CommentBlock struct {
 	Start Position
 }
 
+// Span returns the start and end positions of the node
 func (x *CommentBlock) Span() (start, end Position) {
 	return x.Start, x.Start
+}
+
+//Copy creates and returns a non-deep copy of CommentBlock
+func (x *CommentBlock) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // An Ident represents an identifier.
@@ -134,19 +170,15 @@ type Ident struct {
 	Name    string
 }
 
+// Span returns the start and end positions of the node
 func (x *Ident) Span() (start, end Position) {
 	return x.NamePos, x.NamePos.add(x.Name)
 }
 
-// BranchStmt represents a `pass`, `break`, or `continue` statement.
-type BranchStmt struct {
-	Comments
-	Token    string // pass, break, continue
-	TokenPos Position
-}
-
-func (x *BranchStmt) Span() (start, end Position) {
-	return x.TokenPos, x.TokenPos.add(x.Token)
+//Copy creates and returns a non-deep copy of Ident
+func (x *Ident) Copy() Expr {
+	n := *x
+	return &n
 }
 
 func (x *Ident) asString() *StringExpr {
@@ -159,6 +191,24 @@ func (x *Ident) asString() *StringExpr {
 	}
 }
 
+// BranchStmt represents a `pass`, `break`, or `continue` statement.
+type BranchStmt struct {
+	Comments
+	Token    string // pass, break, continue
+	TokenPos Position
+}
+
+// Span returns the start and end positions of the node
+func (x *BranchStmt) Span() (start, end Position) {
+	return x.TokenPos, x.TokenPos.add(x.Token)
+}
+
+//Copy creates and returns a non-deep copy of BranchStmt
+func (x *BranchStmt) Copy() Expr {
+	n := *x
+	return &n
+}
+
 // A LiteralExpr represents a literal number.
 type LiteralExpr struct {
 	Comments
@@ -166,8 +216,15 @@ type LiteralExpr struct {
 	Token string // identifier token
 }
 
+// Span returns the start and end positions of the node
 func (x *LiteralExpr) Span() (start, end Position) {
 	return x.Start, x.Start.add(x.Token)
+}
+
+//Copy creates and returns a non-deep copy of LiteralExpr
+func (x *LiteralExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A StringExpr represents a single literal string.
@@ -185,8 +242,15 @@ type StringExpr struct {
 	Token string
 }
 
+// Span returns the start and end positions of the node
 func (x *StringExpr) Span() (start, end Position) {
 	return x.Start, x.End
+}
+
+//Copy creates and returns a non-deep copy of StringExpr
+func (x *StringExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // An End represents the end of a parenthesized or bracketed expression.
@@ -196,8 +260,15 @@ type End struct {
 	Pos Position
 }
 
+// Span returns the start and end positions of the node
 func (x *End) Span() (start, end Position) {
 	return x.Pos, x.Pos.add(")")
+}
+
+//Copy creates and returns a non-deep copy of End
+func (x *End) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A CallExpr represents a function call expression: X(List).
@@ -211,9 +282,16 @@ type CallExpr struct {
 	ForceMultiLine bool // force multiline form when printing
 }
 
+// Span returns the start and end positions of the node
 func (x *CallExpr) Span() (start, end Position) {
 	start, _ = x.X.Span()
 	return start, x.End.Pos.add(")")
+}
+
+//Copy creates and returns a non-deep copy of CallExpr
+func (x *CallExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A DotExpr represents a field selector: X.Name.
@@ -225,9 +303,16 @@ type DotExpr struct {
 	Name    string
 }
 
+// Span returns the start and end positions of the node
 func (x *DotExpr) Span() (start, end Position) {
 	start, _ = x.X.Span()
 	return start, x.NamePos.add(x.Name)
+}
+
+//Copy creates and returns a non-deep copy of DotExpr
+func (x *DotExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A Comprehension represents a list comprehension expression: [X for ... if ...].
@@ -241,8 +326,15 @@ type Comprehension struct {
 	End
 }
 
+// Span returns the start and end positions of the node
 func (x *Comprehension) Span() (start, end Position) {
 	return x.Lbrack, x.End.Pos.add("]")
+}
+
+//Copy creates and returns a non-deep copy of Comprehension
+func (x *Comprehension) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A ForClause represents a for clause in a list comprehension: for Var in Expr.
@@ -254,9 +346,16 @@ type ForClause struct {
 	X    Expr
 }
 
+// Span returns the start and end positions of the node
 func (x *ForClause) Span() (start, end Position) {
 	_, end = x.X.Span()
 	return x.For, end
+}
+
+//Copy creates and returns a non-deep copy of ForClause
+func (x *ForClause) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // An IfClause represents an if clause in a list comprehension: if Cond.
@@ -266,9 +365,16 @@ type IfClause struct {
 	Cond Expr
 }
 
+// Span returns the start and end positions of the node
 func (x *IfClause) Span() (start, end Position) {
 	_, end = x.Cond.Span()
 	return x.If, end
+}
+
+//Copy creates and returns a non-deep copy of IfClause
+func (x *IfClause) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A KeyValueExpr represents a dictionary entry: Key: Value.
@@ -279,23 +385,37 @@ type KeyValueExpr struct {
 	Value Expr
 }
 
+// Span returns the start and end positions of the node
 func (x *KeyValueExpr) Span() (start, end Position) {
 	start, _ = x.Key.Span()
 	_, end = x.Value.Span()
 	return start, end
 }
 
+//Copy creates and returns a non-deep copy of KeyValueExpr
+func (x *KeyValueExpr) Copy() Expr {
+	n := *x
+	return &n
+}
+
 // A DictExpr represents a dictionary literal: { List }.
 type DictExpr struct {
 	Comments
 	Start Position
-	List  []Expr // all *KeyValueExprs
+	List  []*KeyValueExpr
 	End
 	ForceMultiLine bool // force multiline form when printing
 }
 
+// Span returns the start and end positions of the node
 func (x *DictExpr) Span() (start, end Position) {
 	return x.Start, x.End.Pos.add("}")
+}
+
+//Copy creates and returns a non-deep copy of DictExpr
+func (x *DictExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A ListExpr represents a list literal: [ List ].
@@ -307,8 +427,15 @@ type ListExpr struct {
 	ForceMultiLine bool // force multiline form when printing
 }
 
+// Span returns the start and end positions of the node
 func (x *ListExpr) Span() (start, end Position) {
 	return x.Start, x.End.Pos.add("]")
+}
+
+//Copy creates and returns a non-deep copy of ListExpr
+func (x *ListExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A SetExpr represents a set literal: { List }.
@@ -320,8 +447,15 @@ type SetExpr struct {
 	ForceMultiLine bool // force multiline form when printing
 }
 
+// Span returns the start and end positions of the node
 func (x *SetExpr) Span() (start, end Position) {
 	return x.Start, x.End.Pos.add("}")
+}
+
+//Copy creates and returns a non-deep copy of SetExpr
+func (x *SetExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A TupleExpr represents a tuple literal: (List)
@@ -335,6 +469,7 @@ type TupleExpr struct {
 	ForceMultiLine bool // force multiline form when printing
 }
 
+// Span returns the start and end positions of the node
 func (x *TupleExpr) Span() (start, end Position) {
 	if !x.NoBrackets {
 		return x.Start, x.End.Pos.add(")")
@@ -342,6 +477,12 @@ func (x *TupleExpr) Span() (start, end Position) {
 	start, _ = x.List[0].Span()
 	_, end = x.List[len(x.List)-1].Span()
 	return start, end
+}
+
+//Copy creates and returns a non-deep copy of TupleExpr
+func (x *TupleExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A UnaryExpr represents a unary expression: Op X.
@@ -352,12 +493,19 @@ type UnaryExpr struct {
 	X       Expr
 }
 
+// Span returns the start and end positions of the node
 func (x *UnaryExpr) Span() (start, end Position) {
 	if x.X == nil {
 		return x.OpStart, x.OpStart
 	}
 	_, end = x.X.Span()
 	return x.OpStart, end
+}
+
+//Copy creates and returns a non-deep copy of UnaryExpr
+func (x *UnaryExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A BinaryExpr represents a binary expression: X Op Y.
@@ -370,10 +518,17 @@ type BinaryExpr struct {
 	Y         Expr
 }
 
+// Span returns the start and end positions of the node
 func (x *BinaryExpr) Span() (start, end Position) {
 	start, _ = x.X.Span()
 	_, end = x.Y.Span()
 	return start, end
+}
+
+//Copy creates and returns a non-deep copy of BinaryExpr
+func (x *BinaryExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // An AssignExpr represents a binary expression with `=`: LHS = RHS.
@@ -386,10 +541,17 @@ type AssignExpr struct {
 	RHS       Expr
 }
 
+// Span returns the start and end positions of the node
 func (x *AssignExpr) Span() (start, end Position) {
 	start, _ = x.LHS.Span()
 	_, end = x.RHS.Span()
 	return start, end
+}
+
+//Copy creates and returns a non-deep copy of AssignExpr
+func (x *AssignExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A ParenExpr represents a parenthesized expression: (X).
@@ -401,8 +563,15 @@ type ParenExpr struct {
 	ForceMultiLine bool // insert line break after opening ( and before closing )
 }
 
+// Span returns the start and end positions of the node
 func (x *ParenExpr) Span() (start, end Position) {
 	return x.Start, x.End.Pos.add(")")
+}
+
+//Copy creates and returns a non-deep copy of ParenExpr
+func (x *ParenExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A SliceExpr represents a slice expression: expr[from:to] or expr[from:to:step] .
@@ -418,9 +587,16 @@ type SliceExpr struct {
 	End         Position
 }
 
+// Span returns the start and end positions of the node
 func (x *SliceExpr) Span() (start, end Position) {
 	start, _ = x.X.Span()
 	return start, x.End.add("]")
+}
+
+//Copy creates and returns a non-deep copy of SliceExpr
+func (x *SliceExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // An IndexExpr represents an index expression: X[Y].
@@ -432,9 +608,16 @@ type IndexExpr struct {
 	End        Position
 }
 
+// Span returns the start and end positions of the node
 func (x *IndexExpr) Span() (start, end Position) {
 	start, _ = x.X.Span()
 	return start, x.End.add("]")
+}
+
+//Copy creates and returns a non-deep copy of IndexExpr
+func (x *IndexExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A Function represents the common parts of LambdaExpr and DefStmt
@@ -445,9 +628,16 @@ type Function struct {
 	Body     []Expr
 }
 
+// Span returns the start and end positions of the node
 func (x *Function) Span() (start, end Position) {
 	_, end = x.Body[len(x.Body)-1].Span()
 	return x.StartPos, end
+}
+
+//Copy creates and returns a non-deep copy of Function
+func (x *Function) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A LambdaExpr represents a lambda expression: lambda Var: Expr.
@@ -456,8 +646,15 @@ type LambdaExpr struct {
 	Function
 }
 
+// Span returns the start and end positions of the node
 func (x *LambdaExpr) Span() (start, end Position) {
 	return x.Function.Span()
+}
+
+//Copy creates and returns a non-deep copy of LambdaExpr
+func (x *LambdaExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // ConditionalExpr represents the conditional: X if TEST else ELSE.
@@ -472,10 +669,17 @@ type ConditionalExpr struct {
 
 // Span returns the start and end position of the expression,
 // excluding leading or trailing comments.
+// Span returns the start and end positions of the node
 func (x *ConditionalExpr) Span() (start, end Position) {
 	start, _ = x.Then.Span()
 	_, end = x.Else.Span()
 	return start, end
+}
+
+//Copy creates and returns a non-deep copy of ConditionalExpr
+func (x *ConditionalExpr) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A LoadStmt loads another module and binds names from it:
@@ -496,8 +700,15 @@ type LoadStmt struct {
 	ForceCompact bool // force compact (non-multiline) form when printing
 }
 
+// Span returns the start and end positions of the node
 func (x *LoadStmt) Span() (start, end Position) {
 	return x.Load, x.Rparen.Pos.add(")")
+}
+
+//Copy creates and returns a non-deep copy of LoadStmt
+func (x *LoadStmt) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A DefStmt represents a function definition expression: def foo(List):.
@@ -510,8 +721,15 @@ type DefStmt struct {
 	ForceMultiLine bool     // force multiline form when printing the arguments
 }
 
+// Span returns the start and end positions of the node
 func (x *DefStmt) Span() (start, end Position) {
 	return x.Function.Span()
+}
+
+//Copy creates and returns a non-deep copy of DefStmt
+func (x *DefStmt) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // HeaderSpan returns the span of the function header `def f(...):`
@@ -526,12 +744,19 @@ type ReturnStmt struct {
 	Result Expr // may be nil
 }
 
+// Span returns the start and end positions of the node
 func (x *ReturnStmt) Span() (start, end Position) {
 	if x.Result == nil {
 		return x.Return, x.Return.add("return")
 	}
 	_, end = x.Result.Span()
 	return x.Return, end
+}
+
+//Copy creates and returns a non-deep copy of ReturnStmt
+func (x *ReturnStmt) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // A ForStmt represents a for loop block: for x in range(10):.
@@ -544,9 +769,16 @@ type ForStmt struct {
 	Body []Expr
 }
 
+// Span returns the start and end positions of the node
 func (x *ForStmt) Span() (start, end Position) {
 	end = stmtsEnd(x.Body)
 	return x.For, end
+}
+
+//Copy creates and returns a non-deep copy of ForStmt
+func (x *ForStmt) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // An IfStmt represents an if-else block: if x: ... else: ... .
@@ -560,6 +792,7 @@ type IfStmt struct {
 	False   []Expr // optional
 }
 
+// Span returns the start and end positions of the node
 func (x *IfStmt) Span() (start, end Position) {
 	body := x.False
 	if body == nil {
@@ -567,4 +800,10 @@ func (x *IfStmt) Span() (start, end Position) {
 	}
 	end = stmtsEnd(body)
 	return x.If, end
+}
+
+//Copy creates and returns a non-deep copy of IfStmt
+func (x *IfStmt) Copy() Expr {
+	n := *x
+	return &n
 }

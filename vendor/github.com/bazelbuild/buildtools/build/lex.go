@@ -122,9 +122,9 @@ func getFileType(filename string) FileType {
 	}
 	base := basename[:len(basename)-len(ext)]
 	switch {
-	case ext == ".build" || base == "build":
+	case ext == ".build" || base == "build" || strings.HasPrefix(base, "build."):
 		return TypeBuild
-	case ext == ".workspace" || base == "workspace":
+	case ext == ".workspace" || base == "workspace" || strings.HasPrefix(base, "workspace."):
 		return TypeWorkspace
 	}
 	return TypeDefault
@@ -611,7 +611,7 @@ func (in *input) Lex(val *yySymType) int {
 		return _CONTINUE
 	}
 	if len(val.tok) > 0 && val.tok[0] >= '0' && val.tok[0] <= '9' {
-		return _NUMBER
+		return _INT
 	}
 	return _IDENT
 }
