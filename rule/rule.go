@@ -369,9 +369,18 @@ func (f *File) Format() []byte {
 	return bzl.Format(f.File)
 }
 
+// Sort rules in this File
+func (f *File) Sort() {
+	//TODO: sort load statements too
+	if f.function != nil {
+		sort.Stable(byName{f.Rules, f.function.stmt.Body})
+	}
+}
+
 // Save writes the build file to disk. This method calls Sync internally.
 func (f *File) Save(path string) error {
 	f.Sync()
+	f.Sort()
 	data := bzl.Format(f.File)
 	return ioutil.WriteFile(path, data, 0666)
 }
@@ -416,6 +425,28 @@ func (s byIndex) Less(i, j int) bool {
 
 func (s byIndex) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
+}
+
+type byName struct {
+	rules []*Rule
+	exprs []bzl.Expr
+}
+
+// type checking
+var _ sort.Interface = byName{}
+
+func (s byName) Len() int {
+	return len(s.rules)
+}
+
+func (s byName) Less(i, j int) bool {
+	return s.rules[i].Name() < s.rules[j].Name()
+}
+
+func (s byName) Swap(i, j int) {
+	s.exprs[s.rules[i].index], s.exprs[s.rules[j].index] = s.exprs[s.rules[j].index], s.exprs[s.rules[i].index]
+	s.rules[i].index, s.rules[j].index = s.rules[j].index, s.rules[i].index
+	s.rules[i], s.rules[j] = s.rules[j], s.rules[i]
 }
 
 // identPair represents one symbol, with or without remapping, in a load
@@ -748,10 +779,9 @@ func (r *Rule) Args() []bzl.Expr {
 }
 
 // Insert marks this statement for insertion at the end of the file. Multiple
-// statements will be inserted in the order Insert is called.
+// statements will be inserted in the order Insert is called. Inserted rules
+// will be sorted together with other rules at File.Save()
 func (r *Rule) Insert(f *File) {
-	// TODO(jayconrod): should rules always be inserted at the end? Should there
-	// be some sort order?
 	var stmt []bzl.Expr
 	if f.function == nil {
 		stmt = f.File.Stmt

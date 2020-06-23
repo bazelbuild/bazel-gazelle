@@ -1744,16 +1744,17 @@ def go_repositories():
 
 def foo_repositories():
     go_repository(
-        name = "org_golang_x_net",
-        build_file_generation = "off",
-        commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
-        importpath = "golang.org/x/net",
-    )
-    go_repository(
         name = "com_github_pkg_errors",
         build_file_generation = "off",
         commit = "645ef00459ed84a119197bfb8d8205042c6df63d",
         importpath = "github.com/pkg/errors",
+    )
+
+    go_repository(
+        name = "org_golang_x_net",
+        build_file_generation = "off",
+        commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
+        importpath = "golang.org/x/net",
     )
 `,
 		},
@@ -2028,6 +2029,13 @@ def go_repositories():
 
 def foo_repositories():
     go_repository(
+        name = "com_github_pkg_errors",
+        build_file_generation = "off",
+        commit = "645ef00459ed84a119197bfb8d8205042c6df63d",
+        importpath = "github.com/pkg/errors",
+    )
+
+    go_repository(
         name = "org_golang_x_net",
         build_file_generation = "off",
         commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
@@ -2038,12 +2046,6 @@ def foo_repositories():
     go_repository(
         name = "stay",
         importpath = "stay",
-    )
-    go_repository(
-        name = "com_github_pkg_errors",
-        build_file_generation = "off",
-        commit = "645ef00459ed84a119197bfb8d8205042c6df63d",
-        importpath = "github.com/pkg/errors",
     )
 `,
 		},

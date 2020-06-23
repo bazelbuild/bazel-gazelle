@@ -18,6 +18,7 @@ package rule
 import (
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -364,5 +365,52 @@ func TestInternalVisibility(t *testing.T) {
 		if actual := CheckInternalVisibility(tt.rel, "default"); actual != tt.expected {
 			t.Errorf("got %v; want %v", actual, tt.expected)
 		}
+	}
+}
+
+func TestSortRulesByName(t *testing.T) {
+	f, err := LoadMacroData(
+		filepath.Join("third_party", "repos.bzl"),
+		"", "repos",
+		[]byte(`load("@bazel_gazelle//:deps.bzl", "go_repository")
+def repos():
+    go_repository(
+        name = "com_github_andybalholm_cascadia",
+        importpath = "github.com/andybalholm/cascadia",
+        sum = "h1:BuuO6sSfQNFRu1LppgbD25Hr2vLYW25JvxHs5zzsLTo=",
+        version = "v1.1.0",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_buildtools",
+        importpath = "github.com/bazelbuild/buildtools",
+        sum = "h1:OfyUN/Msd8yqJww6deQ9vayJWw+Jrbe6Qp9giv51QQI=",
+        version = "v0.0.0-20190731111112-f720930ceb60",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_rules_go",
+        importpath = "github.com/bazelbuild/rules_go",
+        sum = "h1:wzbawlkLtl2ze9w/312NHZ84c7kpUCtlkD8HgFY27sw=",
+        version = "v0.0.0-20190719190356-6dae44dc5cab",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_bazel_gazelle",
+        importpath = "github.com/bazelbuild/bazel-gazelle",
+        sum = "h1:buszGdD9d/Z691sxFDgOdcEUWli0ZT2tBXUxfbLMrb4=",
+        version = "v0.21.1",
+    )
+`))
+	if err != nil {
+		t.Error(err)
+	}
+	gazelleRule := f.Rules[3]
+	if gazelleRule.Name() != "com_github_bazelbuild_bazel_gazelle" || gazelleRule.stmt.index != 3 {
+		t.Error("failed to parse repos.bzl")
+	}
+	sort.Stable(byName{
+		rules: f.Rules,
+		exprs: f.function.stmt.Body,
+	})
+	if gazelleRule.index != 1 {
+		t.Errorf("expect com_github_bazelbuild_bazel_gazelle to be at 1, found at %d", gazelleRule.index)
 	}
 }
