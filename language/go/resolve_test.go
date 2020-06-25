@@ -728,7 +728,7 @@ go_proto_library(
 )
 `,
 		}, {
-			desc: "proto_wkt",
+			desc: "proto_wkt_cross_resolve",
 			old: buildFile{content: `
 go_proto_library(
     name = "wkts_go_proto",
@@ -804,7 +804,7 @@ go_library(
 )
 `,
 		}, {
-			desc: "proto_special",
+			desc: "proto_special_cross_resolve",
 			old: buildFile{content: `
 go_library(
     name = "go_default_library",
@@ -921,12 +921,16 @@ go_proto_library(
 				"-go_prefix=example.com/repo/resolve",
 				"-external=vendored", fmt.Sprintf("-index=%v", !tc.skipIndex))
 			mrslv := make(mapResolver)
+			var crslvs []resolve.CrossResolver
 			for _, lang := range langs {
 				for kind := range lang.Kinds() {
 					mrslv[kind] = lang
 				}
+				if c, ok := lang.(resolve.CrossResolver); ok {
+					crslvs = append(crslvs, c)
+				}
 			}
-			ix := resolve.NewRuleIndex(mrslv.Resolver)
+			ix := resolve.NewRuleIndexCrslv(mrslv.Resolver, crslvs)
 			rc := testRemoteCache(nil)
 
 			for _, bf := range tc.index {
@@ -973,7 +977,13 @@ func TestResolveDisableGlobal(t *testing.T) {
 		t,
 		"-go_prefix=example.com/repo",
 		"-proto=disable_global")
-	ix := resolve.NewRuleIndex(nil)
+	var crslvs []resolve.CrossResolver
+	for _, lang := range langs {
+		if c, ok := lang.(resolve.CrossResolver); ok {
+			crslvs = append(crslvs, c)
+		}
+	}
+	ix := resolve.NewRuleIndexCrslv(nil, crslvs)
 	ix.Finish()
 	rc := testRemoteCache([]repo.Repo{
 		{

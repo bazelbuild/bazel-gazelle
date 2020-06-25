@@ -61,6 +61,15 @@ type Resolver interface {
 	Resolve(c *config.Config, ix *RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label)
 }
 
+// CrossResolver is an interface that language extensions can implement to provide
+// custom dependency resolution logic for other languages.
+type CrossResolver interface {
+	// CrossResolve attempts to resolve an import string to a rule for languages
+	// other than the implementing extension. lang is the langauge of the rule
+	// with the dependency.
+	CrossResolve(c *config.Config, ix *RuleIndex, rc *repo.RemoteCache, imp ImportSpec, lang string) []FindResult
+}
+
 // RuleIndex is a table of rules in a workspace, indexed by label and by
 // import path. Used by Resolver to map import paths to labels.
 type RuleIndex struct {
@@ -68,6 +77,7 @@ type RuleIndex struct {
 	labelMap  map[label.Label]*ruleRecord
 	importMap map[ImportSpec][]*ruleRecord
 	mrslv     func(r *rule.Rule, pkgRel string) Resolver
+	crslvs    []CrossResolver
 }
 
 // ruleRecord contains information about a rule relevant to import indexing.
@@ -101,6 +111,15 @@ func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver) *RuleIndex {
 	return &RuleIndex{
 		labelMap: make(map[label.Label]*ruleRecord),
 		mrslv:    mrslv,
+	}
+}
+
+// NewRuleIndexCrslv creates a new index with CrossResolver capabilities.
+func NewRuleIndexCrslv(mrslv func(r *rule.Rule, pkgRel string) Resolver, crslvs []CrossResolver) *RuleIndex {
+	return &RuleIndex{
+		labelMap: make(map[label.Label]*ruleRecord),
+		mrslv:    mrslv,
+		crslvs:   crslvs,
 	}
 }
 
@@ -225,6 +244,19 @@ func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult
 			Label:  m.label,
 			Embeds: m.embeds,
 		})
+	}
+	return results
+}
+
+// FindRulesByImportCrslv attempts to resolve an import to a rule first by
+// checking the rule index, then if no matches are found any registered
+// CrossResolve implementations are called.
+func (ix *RuleIndex) FindRulesByImportCrslv(c *config.Config, rc *repo.RemoteCache, imp ImportSpec, lang string) []FindResult {
+	results := ix.FindRulesByImport(imp, lang)
+	if len(results) == 0 {
+		for _, crslv := range ix.crslvs {
+			results = append(results, crslv.CrossResolve(c, ix, rc, imp, lang)...)
+		}
 	}
 	return results
 }

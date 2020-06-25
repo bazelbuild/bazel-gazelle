@@ -13,6 +13,26 @@ known_imports(
     var = "knownImports",
 )
 
+known_imports(
+    name = "known_proto_imports",
+    src = "proto.csv",
+    out = "known_proto_imports.go",
+    key = 0,
+    package = "proto",
+    value = 3,
+    var = "knownProtoImports",
+)
+
+known_imports(
+    name = "known_go_imports",
+    src = "proto.csv",
+    out = "known_go_imports.go",
+    key = 2,
+    package = "proto",
+    value = 3,
+    var = "knownGoProtoImports",
+)
+
 go_library(
     name = "go_default_library",
     srcs = [
@@ -23,6 +43,8 @@ go_library(
         "generate.go",
         "kinds.go",
         "known_imports.go",
+        "known_go_imports.go",
+        "known_proto_imports.go",
         "lang.go",
         "package.go",
         "resolve.go",
@@ -81,6 +103,8 @@ filegroup(
         "generate_test.go",
         "kinds.go",
         "known_imports.go",
+        "known_go_imports.go",
+        "known_proto_imports.go",
         "lang.go",
         "package.go",
         "proto.csv",

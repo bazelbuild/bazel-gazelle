@@ -83,7 +83,7 @@ func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Re
 	r.DelAttr("deps")
 	depSet := make(map[string]bool)
 	for _, imp := range imports {
-		l, err := resolveProto(c, ix, r, imp, from)
+		l, err := resolveProto(c, rc, ix, r, imp, from)
 		if err == skipImportError {
 			continue
 		} else if err != nil {
@@ -108,7 +108,7 @@ var (
 	notFoundError   = errors.New("not found")
 )
 
-func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
+func resolveProto(c *config.Config, rc *repo.RemoteCache, ix *resolve.RuleIndex, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
 	pc := GetProtoConfig(c)
 	if !strings.HasSuffix(imp, ".proto") {
 		return label.NoLabel, fmt.Errorf("can't import non-proto: %q", imp)
@@ -126,7 +126,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp str
 		}
 	}
 
-	if l, err := resolveWithIndex(ix, imp, from); err == nil || err == skipImportError {
+	if l, err := resolveWithIndex(c, ix, rc, imp, from); err == nil || err == skipImportError {
 		return l, err
 	} else if err != notFoundError {
 		return label.NoLabel, err
@@ -140,8 +140,8 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp str
 	return label.New("", rel, name), nil
 }
 
-func resolveWithIndex(ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
-	matches := ix.FindRulesByImport(resolve.ImportSpec{Lang: "proto", Imp: imp}, "proto")
+func resolveWithIndex(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
+	matches := ix.FindRulesByImportCrslv(c, rc, resolve.ImportSpec{Lang: "proto", Imp: imp}, "proto")
 	if len(matches) == 0 {
 		return label.NoLabel, notFoundError
 	}
@@ -152,4 +152,43 @@ func resolveWithIndex(ix *resolve.RuleIndex, imp string, from label.Label) (labe
 		return label.NoLabel, skipImportError
 	}
 	return matches[0].Label, nil
+}
+
+// CrossResolve provides dependency resolution logic for the go language extension.
+func (_ *protoLang) CrossResolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp resolve.ImportSpec, lang string) []resolve.FindResult {
+	if lang != "go" {
+		return nil
+	}
+	pc := GetProtoConfig(c)
+	if imp.Lang == "proto" && pc.Mode.ShouldUseKnownImports() {
+		if l, ok := knownProtoImports[imp.Imp]; ok {
+			return []resolve.FindResult{{Label: l}}
+		}
+	}
+	if imp.Lang == "go" && pc.Mode.ShouldUseKnownImports() {
+		// These are commonly used libraries that depend on Well Known Types.
+		// They depend on the generated versions of these protos to avoid conflicts.
+		// However, since protoc-gen-go depends on these libraries, we generate
+		// its rules in disable_global mode (to avoid cyclic dependency), so the
+		// "go_default_library" versions of these libraries depend on the
+		// pre-generated versions of the proto libraries.
+		switch imp.Imp {
+		case "github.com/golang/protobuf/proto":
+			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "proto", "go_default_library")}}
+		case "github.com/golang/protobuf/jsonpb":
+			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "jsonpb", "go_default_library_gen")}}
+		case "github.com/golang/protobuf/descriptor":
+			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "descriptor", "go_default_library_gen")}}
+		case "github.com/golang/protobuf/ptypes":
+			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "ptypes", "go_default_library_gen")}}
+		case "github.com/golang/protobuf/protoc-gen-go/generator":
+			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "protoc-gen-go/generator", "go_default_library_gen")}}
+		case "google.golang.org/grpc":
+			return []resolve.FindResult{{Label: label.New("org_golang_google_grpc", "", "go_default_library")}}
+		}
+		if l, ok := knownGoProtoImports[imp.Imp]; ok {
+			return []resolve.FindResult{{Label: l}}
+		}
+	}
+	return nil
 }
