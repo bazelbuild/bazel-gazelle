@@ -79,6 +79,7 @@ func fetchModule(dest, importpath, version, sum string) error {
 		cmd.Args = append(cmd.Args, "-modcacherw")
 	}
 	cmd.Args = append(cmd.Args, importpath+"@"+version)
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	cmd.Stdout = buf
 	cmd.Stderr = bufErr
 	dlErr := cmd.Run()
@@ -93,9 +94,11 @@ func fetchModule(dest, importpath, version, sum string) error {
 	// Parse the JSON output.
 	var dl struct{ Dir, Sum, Error string }
 	if err := json.Unmarshal(buf.Bytes(), &dl); err != nil {
+		_, _ = os.Stderr.Write(bufErr.Bytes())
 		return err
 	}
 	if dl.Error != "" {
+		_, _ = os.Stderr.Write(bufErr.Bytes())
 		return errors.New(dl.Error)
 	}
 	if dlErr != nil {
