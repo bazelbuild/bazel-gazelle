@@ -26,6 +26,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 func fetchModule(dest, importpath, version, sum string) error {
@@ -79,26 +80,30 @@ func fetchModule(dest, importpath, version, sum string) error {
 		cmd.Args = append(cmd.Args, "-modcacherw")
 	}
 	cmd.Args = append(cmd.Args, importpath+"@"+version)
-	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	cmd.Stdout = buf
 	cmd.Stderr = bufErr
 	dlErr := cmd.Run()
 	os.Remove("go.mod")
 	if dlErr != nil {
 		if _, ok := dlErr.(*exec.ExitError); !ok {
-			_, _ = os.Stderr.Write(bufErr.Bytes())
-			return dlErr
+			if bufErr.Len() > 0 {
+				return fmt.Errorf("%s %s: %s", cmd.Path, strings.Join(cmd.Args, " "), bufErr.Bytes())
+			} else {
+				return fmt.Errorf("%s %s: %v", cmd.Path, strings.Join(cmd.Args, " "), dlErr)
+			}
 		}
 	}
 
 	// Parse the JSON output.
 	var dl struct{ Dir, Sum, Error string }
 	if err := json.Unmarshal(buf.Bytes(), &dl); err != nil {
-		_, _ = os.Stderr.Write(bufErr.Bytes())
-		return err
+		if bufErr.Len() > 0 {
+			return fmt.Errorf("%s %s: %s", cmd.Path, strings.Join(cmd.Args, " "), bufErr.Bytes())
+		} else {
+			return fmt.Errorf("%s %s: %v", cmd.Path, strings.Join(cmd.Args, " "), err)
+		}
 	}
 	if dl.Error != "" {
-		_, _ = os.Stderr.Write(bufErr.Bytes())
 		return errors.New(dl.Error)
 	}
 	if dlErr != nil {
