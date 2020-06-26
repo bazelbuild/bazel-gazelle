@@ -781,8 +781,7 @@ func (r *Rule) Args() []bzl.Expr {
 }
 
 // Insert marks this statement for insertion at the end of the file. Multiple
-// statements will be inserted in the order Insert is called. Inserted rules
-// will be sorted together with other rules at File.Save()
+// statements will be inserted in the order Insert is called.
 func (r *Rule) Insert(f *File) {
 	var stmt []bzl.Expr
 	if f.function == nil {
