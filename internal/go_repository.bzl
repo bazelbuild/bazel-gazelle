@@ -110,12 +110,12 @@ def _go_repository_impl(ctx):
     env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
     if fetch_repo_args:
-        # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
-        fetch_repo_env["GO111MODULE"] = "on"
         # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
         # attribute of go_repository, so we don't need to look it up.
         fetch_repo_env = dict(env)
         fetch_repo_env["GOSUMDB"] = "off"
+        # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
+        fetch_repo_env["GO111MODULE"] = "on"
 
         fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
         result = env_execute(
