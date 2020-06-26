@@ -369,8 +369,11 @@ func (f *File) Format() []byte {
 	return bzl.Format(f.File)
 }
 
-// Sort rules in this File
+// Sort rules in the macro of this File. It doesn't sort the rules if
+// this File does not have a macro, e.g., WORKSPACE.
+// This method calls Sync internally.
 func (f *File) Sort() {
+	f.Sync()
 	//TODO: sort load statements too
 	if f.function != nil {
 		sort.Stable(byName{f.Rules, f.function.stmt.Body})
@@ -380,7 +383,6 @@ func (f *File) Sort() {
 // Save writes the build file to disk. This method calls Sync internally.
 func (f *File) Save(path string) error {
 	f.Sync()
-	f.Sort()
 	data := bzl.Format(f.File)
 	return ioutil.WriteFile(path, data, 0666)
 }

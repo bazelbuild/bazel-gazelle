@@ -280,6 +280,7 @@ func updateRepos(args []string) (err error) {
 	// Write updated files to disk.
 	for _, f := range sortedFiles {
 		if uf := updatedFiles[f.Path]; uf != nil {
+			uf.Sort()
 			if err := uf.Save(uf.Path); err != nil {
 				return err
 			}
