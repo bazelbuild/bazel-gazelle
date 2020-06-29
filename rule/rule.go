@@ -369,7 +369,7 @@ func (f *File) Format() []byte {
 	return bzl.Format(f.File)
 }
 
-// SortMacros sorts rules in the macro of this File. It doesn't sort the rules if
+// SortMacro sorts rules in the macro of this File. It doesn't sort the rules if
 // this File does not have a macro, e.g., WORKSPACE.
 // This method calls Sync internally.
 func (f *File) SortMacro() {
@@ -377,7 +377,7 @@ func (f *File) SortMacro() {
 	if f.function != nil {
 		sort.Stable(byName{f.Rules, f.function.stmt.Body})
 	} else {
-		panic(fmt.Sprintf("no macros found in %s", f.Path))
+		panic(fmt.Sprintf("%s: not loaded as macro file", f.Path))
 	}
 }
 
