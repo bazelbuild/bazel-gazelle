@@ -197,7 +197,6 @@ go_binary(
 
 	// Ensure that Gazelle does not write to the BUILD file.
 	run(defaultArgs(dir))
-	data, err := ioutil.ReadFile(buildFile)
 	if st, err := os.Stat(buildFile); err != nil {
 		t.Errorf("could not stat BUILD: %v", err)
 	} else if !modTime.Equal(st.ModTime()) {
