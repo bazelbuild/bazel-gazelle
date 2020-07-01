@@ -18,7 +18,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -43,12 +42,10 @@ func diffFile(c *config.Config, f *rule.File) error {
 		ToDate:   date,
 	}
 
-	if oldContent, err := ioutil.ReadFile(f.Path); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("error reading original file: %v", err)
-	} else if err != nil {
+	if len(f.Content) == 0 {
 		diff.FromFile = "/dev/null"
-	} else if err == nil {
-		diff.A = difflib.SplitLines(string(oldContent))
+	} else {
+		diff.A = difflib.SplitLines(string(f.Content))
 		if c.ReadBuildFilesDir == "" {
 			path, err := filepath.Rel(c.RepoRoot, f.Path)
 			if err != nil {

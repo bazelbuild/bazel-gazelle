@@ -71,6 +71,12 @@ type File struct {
 	// Rules is a list of rules within the file (or function calls that look like
 	// rules). This should not be modified directly; use Rule methods instead.
 	Rules []*Rule
+
+	// Content is the file's underlying disk content, which is recorded when the
+	// file is initially loaded and whenever it is saved back to disk. If the file
+	// is modified outside of Rule methods, Content must be manually updated in
+	// order to keep it in sync.
+	Content []byte
 }
 
 // EmptyFile creates a File wrapped around an empty syntax tree.
@@ -138,7 +144,9 @@ func LoadData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanAST(pkg, ast), nil
+	f := ScanAST(pkg, ast)
+	f.Content = data
+	return f, nil
 }
 
 // LoadWorkspaceData is similar to LoadData but parses the data as a
@@ -148,7 +156,9 @@ func LoadWorkspaceData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanAST(pkg, ast), nil
+	f := ScanAST(pkg, ast)
+	f.Content = data
+	return f, nil
 }
 
 // LoadMacroData parses a bzl file from a byte slice and scans for the load
@@ -161,7 +171,9 @@ func LoadMacroData(path, pkg, defName string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanASTBody(pkg, defName, ast), nil
+	f := ScanASTBody(pkg, defName, ast)
+	f.Content = data
+	return f, nil
 }
 
 // ScanAST creates a File wrapped around the given syntax tree. This tree
@@ -384,8 +396,8 @@ func (f *File) SortMacro() {
 // Save writes the build file to disk. This method calls Sync internally.
 func (f *File) Save(path string) error {
 	f.Sync()
-	data := bzl.Format(f.File)
-	return ioutil.WriteFile(path, data, 0666)
+	f.Content = bzl.Format(f.File)
+	return ioutil.WriteFile(path, f.Content, 0666)
 }
 
 // HasDefaultVisibility returns whether the File contains a "package" rule with

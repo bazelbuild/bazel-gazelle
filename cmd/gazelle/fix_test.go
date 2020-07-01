@@ -157,6 +157,53 @@ func TestUpdateFile(t *testing.T) {
 	}
 }
 
+func TestNoChanges(t *testing.T) {
+	// Create a directory with a BUILD file that doesn't need any changes.
+	tmpdir := os.Getenv("TEST_TMPDIR")
+	dir, err := ioutil.TempDir(tmpdir, "")
+	if err != nil {
+		t.Fatalf("ioutil.TempDir(%q, %q) failed with %v; want success", tmpdir, "", err)
+	}
+	defer os.RemoveAll(dir)
+
+	goFile := filepath.Join(dir, "main.go")
+	if err = ioutil.WriteFile(goFile, []byte("package main"), 0600); err != nil {
+		t.Fatalf("error writing file %q: %v", goFile, err)
+	}
+
+	buildFile := filepath.Join(dir, "BUILD")
+	if err = ioutil.WriteFile(buildFile, []byte(`load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["main.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "hello",
+    embed = [":go_default_library"],
+    visibility = ["//visibility:public"],
+)
+`), 0600); err != nil {
+		t.Fatalf("error writing file %q: %v", buildFile, err)
+	}
+	st, err := os.Stat(buildFile)
+	if err != nil {
+		t.Errorf("could not stat BUILD: %v", err)
+	}
+	modTime := st.ModTime()
+
+	// Ensure that Gazelle does not write to the BUILD file.
+	run(defaultArgs(dir))
+	if st, err := os.Stat(buildFile); err != nil {
+		t.Errorf("could not stat BUILD: %v", err)
+	} else if !modTime.Equal(st.ModTime()) {
+		t.Errorf("unexpected modificaiton to BUILD")
+	}
+}
+
 func TestFixReadWriteDir(t *testing.T) {
 	buildInFile := testtools.FileSpec{
 		Path: "in/BUILD.in",
