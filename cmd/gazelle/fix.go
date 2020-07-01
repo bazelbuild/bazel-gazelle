@@ -16,10 +16,10 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -27,7 +27,7 @@ import (
 
 func fixFile(c *config.Config, f *rule.File) error {
 	newContent := f.Format()
-	if reflect.DeepEqual(f.Content, newContent) {
+	if bytes.Equal(f.Content, newContent) {
 		return nil
 	}
 	outPath := findOutputPath(c, f)
