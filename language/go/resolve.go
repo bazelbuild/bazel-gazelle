@@ -133,7 +133,7 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 		return l, nil
 	}
 
-	if l, err := resolveWithIndexGo(c, ix, rc, imp, from); err == nil || err == skipImportError {
+	if l, err := resolveWithIndexGo(c, ix, imp, from); err == nil || err == skipImportError {
 		return l, err
 	} else if err != notFoundError {
 		return label.NoLabel, err
@@ -172,8 +172,8 @@ func IsStandard(imp string) bool {
 	return stdPackages[imp]
 }
 
-func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
-	matches := ix.FindRulesByImportCrslv(c, rc, resolve.ImportSpec{Lang: "go", Imp: imp}, "go")
+func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
+	matches := ix.FindRulesByImportWithConfig(c, resolve.ImportSpec{Lang: "go", Imp: imp}, "go")
 	var bestMatch resolve.FindResult
 	var bestMatchIsVendored bool
 	var bestMatchVendorRoot string
@@ -277,7 +277,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 		return l, nil
 	}
 
-	if l, err := resolveWithIndexProto(c, ix, rc, imp, from); err == nil || err == skipImportError {
+	if l, err := resolveWithIndexProto(c, ix, imp, from); err == nil || err == skipImportError {
 		return l, err
 	} else if err != notFoundError {
 		return label.NoLabel, err
@@ -316,8 +316,8 @@ var wellKnownProtos = map[string]bool{
 	"google/protobuf/wrappers.proto":        true,
 }
 
-func resolveWithIndexProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
-	matches := ix.FindRulesByImportCrslv(c, rc, resolve.ImportSpec{Lang: "proto", Imp: imp}, "go")
+func resolveWithIndexProto(c *config.Config, ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
+	matches := ix.FindRulesByImportWithConfig(c, resolve.ImportSpec{Lang: "proto", Imp: imp}, "go")
 	if len(matches) == 0 {
 		return label.NoLabel, notFoundError
 	}

@@ -1,6 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load(":def.bzl", "std_package_list")
-load("//language/proto/gen:def.bzl", "known_imports")
 
 # gazelle:exclude testdata
 

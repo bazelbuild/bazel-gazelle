@@ -357,7 +357,7 @@ proto_library(
 			c, lang, cexts := testConfig(t, ".")
 			mrslv := make(mapResolver)
 			mrslv["proto_library"] = lang
-			ix := resolve.NewRuleIndexCrslv(mrslv.Resolver, []resolve.CrossResolver{lang.(resolve.CrossResolver)})
+			ix := resolve.NewRuleIndex(mrslv.Resolver, []resolve.CrossResolver{lang.(resolve.CrossResolver)})
 			rc := (*repo.RemoteCache)(nil)
 			for _, bf := range tc.index {
 				f, err := rule.LoadData(filepath.Join(bf.rel, "BUILD.bazel"), bf.rel, []byte(bf.content))
@@ -467,8 +467,7 @@ func TestCrossResolve(t *testing.T) {
 			pc := GetProtoConfig(c)
 			pc.Mode = tc.protoMode
 			ix := (*resolve.RuleIndex)(nil)
-			rc := (*repo.RemoteCache)(nil)
-			got := lang.(resolve.CrossResolver).CrossResolve(c, ix, rc, tc.imp, tc.lang)
+			got := lang.(resolve.CrossResolver).CrossResolve(c, ix, tc.imp, tc.lang)
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %#v ; want %#v", got, tc.want)
 			}
