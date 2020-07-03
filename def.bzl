@@ -76,7 +76,8 @@ def _gazelle_runner_impl(ctx):
     runfiles = ctx.runfiles(files = [
         ctx.executable.gazelle,
         go_tool,
-    ])
+    ] + ctx.files._bash_runfile_helpers)
+    runfiles = runfiles.merge(ctx.attr.gazelle[DefaultInfo].default_runfiles)
     return [DefaultInfo(
         files = depset([out_file]),
         runfiles = runfiles,
@@ -109,6 +110,9 @@ _gazelle_runner = rule(
         "_template": attr.label(
             default = "@bazel_gazelle//internal:gazelle.bash.in",
             allow_single_file = True,
+        ),
+        "_bash_runfile_helpers": attr.label(
+            default = "@bazel_tools//tools/bash/runfiles",
         ),
     },
     executable = True,
