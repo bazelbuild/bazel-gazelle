@@ -56,6 +56,8 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 	}
 
 	for _, r := range f.Rules {
+		// TODO(jayconrod): support map_kind directive.
+		// We'll need to move the metaresolver from resolve.RuleIndex to config.Config so we can access it from here.
 		switch r.Kind() {
 		case "go_binary":
 			replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)

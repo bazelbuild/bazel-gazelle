@@ -193,6 +193,7 @@ go_repository = repository_rule(
     attrs = {
         # Fundamental attributes of a go repository
         "importpath": attr.string(mandatory = True),
+
         # Attributes for a repository that should be checked out from VCS
         "commit": attr.string(),
         "tag": attr.string(),
@@ -238,11 +239,11 @@ go_repository = repository_rule(
         ),
         "build_naming_convention": attr.string(
             values = [
-                "",
                 "go_default_library",
                 "import",
                 "import_alias",
             ],
+            default = "import_alias",
         ),
         "build_tags": attr.string_list(),
         "build_file_proto_mode": attr.string(
