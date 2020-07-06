@@ -114,6 +114,8 @@ def _go_repository_impl(ctx):
         # attribute of go_repository, so we don't need to look it up.
         fetch_repo_env = dict(env)
         fetch_repo_env["GOSUMDB"] = "off"
+        # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
+        fetch_repo_env["GO111MODULE"] = "on"
 
         fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
         result = env_execute(

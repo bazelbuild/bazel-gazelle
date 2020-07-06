@@ -30,6 +30,8 @@ import (
 // boundaries, so "/home/foo" is not a prefix is "/home/foobar/baz". If the
 // prefix is empty, this function always returns true.
 func HasPrefix(p, prefix string) bool {
+	p = trimTrailingSlash(p)
+	prefix = trimTrailingSlash(prefix)
 	return prefix == "" || p == prefix || strings.HasPrefix(p, prefix+"/")
 }
 
@@ -38,8 +40,11 @@ func HasPrefix(p, prefix string) bool {
 // respects component boundaries (assuming slash-separated paths), so
 // TrimPrefix("foo/bar", "foo") returns "baz".
 func TrimPrefix(p, prefix string) string {
+	origPath := p
+	p = trimTrailingSlash(p)
+	prefix = trimTrailingSlash(prefix)
 	if prefix == "" {
-		return p
+		return origPath
 	}
 	if prefix == p {
 		return ""
@@ -107,4 +112,11 @@ func Index(p, sub string) int {
 			return -1
 		}
 	}
+}
+
+func trimTrailingSlash(p string) string {
+	for len(p) > 1 && p[len(p)-1] == '/' {
+		p = p[:len(p)-1]
+	}
+	return p
 }

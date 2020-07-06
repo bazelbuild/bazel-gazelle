@@ -23,30 +23,40 @@ func TestHasPrefix(t *testing.T) {
 		want               bool
 	}{
 		{
-			desc:   "empty prefix",
+			desc:   "empty_prefix",
 			path:   "home/jr_hacker",
 			prefix: "",
 			want:   true,
 		}, {
-			desc:   "partial prefix",
+			desc:   "partial_prefix",
 			path:   "home/jr_hacker",
 			prefix: "home",
 			want:   true,
 		}, {
-			desc:   "full prefix",
+			desc:   "full_prefix",
 			path:   "home/jr_hacker",
 			prefix: "home/jr_hacker",
 			want:   true,
 		}, {
-			desc:   "too long",
+			desc:   "too_long",
 			path:   "home",
 			prefix: "home/jr_hacker",
 			want:   false,
 		}, {
-			desc:   "partial component",
+			desc:   "partial_component",
 			path:   "home/jr_hacker",
 			prefix: "home/jr_",
 			want:   false,
+		}, {
+			desc:   "trailing_slash_prefix",
+			path:   "home/jr_hacker",
+			prefix: "home/",
+			want:   true,
+		}, {
+			desc:   "trailing_slash_path",
+			path:   "home/jr_hacker/",
+			prefix: "home",
+			want:   true,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -62,25 +72,35 @@ func TestTrimPrefix(t *testing.T) {
 		desc, path, prefix, want string
 	}{
 		{
-			desc:   "empty prefix",
+			desc:   "empty_prefix",
 			path:   "home/jr_hacker",
 			prefix: "",
 			want:   "home/jr_hacker",
 		}, {
-			desc:   "partial prefix",
+			desc:   "partial_prefix",
 			path:   "home/jr_hacker",
 			prefix: "home",
 			want:   "jr_hacker",
 		}, {
-			desc:   "full prefix",
+			desc:   "full_prefix",
 			path:   "home/jr_hacker",
 			prefix: "home/jr_hacker",
 			want:   "",
 		}, {
-			desc:   "partial component",
+			desc:   "partial_component",
 			path:   "home/jr_hacker",
 			prefix: "home/jr_",
 			want:   "home/jr_hacker",
+		}, {
+			desc:   "trailing_slash_prefix",
+			path:   "home/jr_hacker",
+			prefix: "home/",
+			want:   "jr_hacker",
+		}, {
+			desc:   "trailing_slash_path",
+			path:   "home/jr_hacker/",
+			prefix: "home",
+			want:   "jr_hacker",
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

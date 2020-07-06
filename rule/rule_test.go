@@ -18,6 +18,7 @@ package rule
 import (
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -363,6 +364,52 @@ func TestInternalVisibility(t *testing.T) {
 	for _, tt := range tests {
 		if actual := CheckInternalVisibility(tt.rel, "default"); actual != tt.expected {
 			t.Errorf("got %v; want %v", actual, tt.expected)
+		}
+	}
+}
+
+func TestSortRulesByName(t *testing.T) {
+	f, err := LoadMacroData(
+		filepath.Join("third_party", "repos.bzl"),
+		"", "repos",
+		[]byte(`load("@bazel_gazelle//:deps.bzl", "go_repository")
+def repos():
+    go_repository(
+        name = "com_github_andybalholm_cascadia",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_buildtools",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_rules_go",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_bazel_gazelle",
+    )
+`))
+	if err != nil {
+		t.Error(err)
+	}
+	sort.Stable(byName{
+		rules: f.Rules,
+		exprs: f.function.stmt.Body,
+	})
+	repos := []string{
+		"com_github_andybalholm_cascadia",
+		"com_github_bazelbuild_bazel_gazelle",
+		"com_github_bazelbuild_buildtools",
+		"com_github_bazelbuild_rules_go",
+	}
+	for i, r := range repos {
+		rule := f.Rules[i]
+		if rule.Name() != r {
+			t.Errorf("expect rule %s at %d, got %s", r, i, rule.Name())
+		}
+		if rule.Index() != i {
+			t.Errorf("expect rule %s with index %d, got %d", r, i, rule.Index())
+		}
+		if f.function.stmt.Body[i] != rule.expr {
+			t.Errorf("underlying syntax tree of rule %s not sorted", r)
 		}
 	}
 }

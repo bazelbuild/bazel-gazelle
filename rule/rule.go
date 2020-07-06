@@ -71,6 +71,12 @@ type File struct {
 	// Rules is a list of rules within the file (or function calls that look like
 	// rules). This should not be modified directly; use Rule methods instead.
 	Rules []*Rule
+
+	// Content is the file's underlying disk content, which is recorded when the
+	// file is initially loaded and whenever it is saved back to disk. If the file
+	// is modified outside of Rule methods, Content must be manually updated in
+	// order to keep it in sync.
+	Content []byte
 }
 
 // EmptyFile creates a File wrapped around an empty syntax tree.
@@ -138,7 +144,9 @@ func LoadData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanAST(pkg, ast), nil
+	f := ScanAST(pkg, ast)
+	f.Content = data
+	return f, nil
 }
 
 // LoadWorkspaceData is similar to LoadData but parses the data as a
@@ -148,7 +156,9 @@ func LoadWorkspaceData(path, pkg string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanAST(pkg, ast), nil
+	f := ScanAST(pkg, ast)
+	f.Content = data
+	return f, nil
 }
 
 // LoadMacroData parses a bzl file from a byte slice and scans for the load
@@ -161,7 +171,9 @@ func LoadMacroData(path, pkg, defName string, data []byte) (*File, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ScanASTBody(pkg, defName, ast), nil
+	f := ScanASTBody(pkg, defName, ast)
+	f.Content = data
+	return f, nil
 }
 
 // ScanAST creates a File wrapped around the given syntax tree. This tree
@@ -369,11 +381,23 @@ func (f *File) Format() []byte {
 	return bzl.Format(f.File)
 }
 
+// SortMacro sorts rules in the macro of this File. It doesn't sort the rules if
+// this File does not have a macro, e.g., WORKSPACE.
+// This method calls Sync internally.
+func (f *File) SortMacro() {
+	f.Sync()
+	if f.function != nil {
+		sort.Stable(byName{f.Rules, f.function.stmt.Body})
+	} else {
+		panic(fmt.Sprintf("%s: not loaded as macro file", f.Path))
+	}
+}
+
 // Save writes the build file to disk. This method calls Sync internally.
 func (f *File) Save(path string) error {
 	f.Sync()
-	data := bzl.Format(f.File)
-	return ioutil.WriteFile(path, data, 0666)
+	f.Content = bzl.Format(f.File)
+	return ioutil.WriteFile(path, f.Content, 0666)
 }
 
 // HasDefaultVisibility returns whether the File contains a "package" rule with
@@ -416,6 +440,28 @@ func (s byIndex) Less(i, j int) bool {
 
 func (s byIndex) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
+}
+
+type byName struct {
+	rules []*Rule
+	exprs []bzl.Expr
+}
+
+// type checking
+var _ sort.Interface = byName{}
+
+func (s byName) Len() int {
+	return len(s.rules)
+}
+
+func (s byName) Less(i, j int) bool {
+	return s.rules[i].Name() < s.rules[j].Name()
+}
+
+func (s byName) Swap(i, j int) {
+	s.exprs[s.rules[i].index], s.exprs[s.rules[j].index] = s.exprs[s.rules[j].index], s.exprs[s.rules[i].index]
+	s.rules[i].index, s.rules[j].index = s.rules[j].index, s.rules[i].index
+	s.rules[i], s.rules[j] = s.rules[j], s.rules[i]
 }
 
 // identPair represents one symbol, with or without remapping, in a load
@@ -750,8 +796,6 @@ func (r *Rule) Args() []bzl.Expr {
 // Insert marks this statement for insertion at the end of the file. Multiple
 // statements will be inserted in the order Insert is called.
 func (r *Rule) Insert(f *File) {
-	// TODO(jayconrod): should rules always be inserted at the end? Should there
-	// be some sort order?
 	var stmt []bzl.Expr
 	if f.function == nil {
 		stmt = f.File.Stmt
