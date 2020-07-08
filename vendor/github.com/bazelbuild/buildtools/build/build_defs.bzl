@@ -16,7 +16,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 """
 
 load(
-    "@io_bazel_rules_go//go/private:providers.bzl",
+    "@io_bazel_rules_go//go:def.bzl",
     "GoSource",
 )
 
@@ -56,6 +56,7 @@ _go_yacc = rule(
     },
 )
 
+# buildifier: disable=unnamed-macro
 def go_yacc(src, out, visibility = None):
     """Runs go tool yacc -o $out $src."""
     _go_yacc(
@@ -78,8 +79,15 @@ extract_go_src = rule(
     },
 )
 
+# buildifier: disable=unnamed-macro
 def genfile_check_test(src, gen):
-    """Asserts that any checked-in generated code matches bazel gen."""
+    """
+    Asserts that any checked-in generated code matches bazel gen.
+
+    Args:
+      src: checked in file
+      gen: generated file
+    """
     if not src:
         fail("src is required", "src")
     if not gen:
@@ -145,8 +153,15 @@ eof
         data = [gen],
     )
 
+# buildifier: disable=unnamed-macro
 def go_proto_checkedin_test(src, proto = "go_default_library"):
-    """Asserts that any checked-in .pb.go code matches bazel gen."""
+    """
+    Asserts that any checked-in .pb.go code matches bazel gen.
+
+    Args:
+      src: checked in file
+      proto: generated file
+    """
     genfile = src + "_genfile"
     extract_go_src(
         name = genfile + "go",

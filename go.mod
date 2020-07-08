@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/bazelbuild/buildtools v0.0.0-20200612171844-a60df6e5d134
+	github.com/bazelbuild/buildtools v0.0.0-20200623222341-ce0cf814cb03
 	github.com/bazelbuild/rules_go v0.0.0-20190719190356-6dae44dc5cab
 	github.com/bmatcuk/doublestar v1.2.2
 	github.com/davecgh/go-spew v1.1.1 // indirect
