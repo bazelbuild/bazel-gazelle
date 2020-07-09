@@ -243,7 +243,7 @@ func runFixUpdate(cmd command, args []string) (err error) {
 	mrslv := newMetaResolver()
 	kinds := make(map[string]rule.KindInfo)
 	loads := genericLoads
-	var crossResolvers []resolve.CrossResolver
+	exts := make([]interface{}, 0, len(languages))
 	for _, lang := range languages {
 		cexts = append(cexts, lang)
 		for kind, info := range lang.Kinds() {
@@ -251,11 +251,9 @@ func runFixUpdate(cmd command, args []string) (err error) {
 			kinds[kind] = info
 		}
 		loads = append(loads, lang.Loads()...)
-		if c, ok := lang.(resolve.CrossResolver); ok {
-			crossResolvers = append(crossResolvers, c)
-		}
+		exts = append(exts, lang)
 	}
-	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, crossResolvers)
+	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)
 
 	c, err := newFixUpdateConfiguration(cmd, args, cexts)
 	if err != nil {

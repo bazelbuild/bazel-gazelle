@@ -110,8 +110,8 @@ type ruleRecord struct {
 func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...interface{}) *RuleIndex {
 	var crossResolvers []CrossResolver
 	for _, e := range exts {
-		if v, ok := e.([]CrossResolver); ok {
-			crossResolvers = v
+		if cr, ok := e.(CrossResolver); ok {
+			crossResolvers = append(crossResolvers, cr)
 		}
 	}
 	return &RuleIndex{
@@ -253,10 +253,11 @@ func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult
 // CrossResolve implementations are called.
 func (ix *RuleIndex) FindRulesByImportWithConfig(c *config.Config, imp ImportSpec, lang string) []FindResult {
 	results := ix.FindRulesByImport(imp, lang)
-	if len(results) == 0 {
-		for _, cr := range ix.crossResolvers {
-			results = append(results, cr.CrossResolve(c, ix, imp, lang)...)
-		}
+	if len(results) > 0 {
+		return results
+	}
+	for _, cr := range ix.crossResolvers {
+		results = append(results, cr.CrossResolve(c, ix, imp, lang)...)
 	}
 	return results
 }
