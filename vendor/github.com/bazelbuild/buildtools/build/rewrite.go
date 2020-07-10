@@ -53,48 +53,13 @@ func allowedSort(name string) bool {
 }
 
 // Rewrite applies the high-level Buildifier rewrites to f, modifying it in place.
-// If info is non-nil, Rewrite updates it with information about the rewrite.
-func Rewrite(f *File, info *RewriteInfo) {
-	// Allocate an info so that helpers can assume it's there.
-	if info == nil {
-		info = new(RewriteInfo)
-	}
-
+func Rewrite(f *File) {
 	for _, r := range rewrites {
 		if !disabled(r.name) {
 			if f.Type&r.scope != 0 {
-				r.fn(f, info)
+				r.fn(f)
 			}
 		}
-	}
-}
-
-// RewriteInfo collects information about what Rewrite did.
-type RewriteInfo struct {
-	EditLabel        int      // number of label strings edited
-	NameCall         int      // number of calls with argument names added
-	SortCall         int      // number of call argument lists sorted
-	SortStringList   int      // number of string lists sorted
-	UnsafeSort       int      // number of unsafe string lists sorted
-	SortLoad         int      // number of load argument lists sorted
-	FormatDocstrings int      // number of reindented docstrings
-	ReorderArguments int      // number of reordered function call arguments
-	EditOctal        int      // number of edited octals
-	Log              []string // log entries - may change
-}
-
-// Stats returns a map with statistics about applied rewrites
-func (info *RewriteInfo) Stats() map[string]int {
-	return map[string]int{
-		"label":            info.EditLabel,
-		"callname":         info.NameCall,
-		"callsort":         info.SortCall,
-		"listsort":         info.SortStringList,
-		"unsafesort":       info.UnsafeSort,
-		"sortload":         info.SortLoad,
-		"formatdocstrings": info.FormatDocstrings,
-		"reorderarguments": info.ReorderArguments,
-		"editoctal":        info.EditOctal,
 	}
 }
 
@@ -111,7 +76,7 @@ const (
 // before sorting lists of strings.
 var rewrites = []struct {
 	name  string
-	fn    func(*File, *RewriteInfo)
+	fn    func(*File)
 	scope FileType
 }{
 	{"callsort", sortCallArgs, scopeBuild},
@@ -122,18 +87,6 @@ var rewrites = []struct {
 	{"formatdocstrings", formatDocstrings, scopeBoth},
 	{"reorderarguments", reorderArguments, scopeBoth},
 	{"editoctal", editOctals, scopeBoth},
-}
-
-// DisableLoadSortForBuildFiles disables the loadsort transformation for BUILD files.
-// This is a temporary function for backward compatibility, can be called if there's plenty of
-// already formatted BUILD files that shouldn't be changed by the transformation.
-func DisableLoadSortForBuildFiles() {
-	for i := range rewrites {
-		if rewrites[i].name == "loadsort" {
-			rewrites[i].scope = scopeDefault
-			break
-		}
-	}
 }
 
 // leaveAlone reports whether any of the nodes on the stack are marked
@@ -188,7 +141,7 @@ func keepSorted(x Expr) bool {
 // "//third_party/m4:m4" into "//third_party/m4" as well as ones like
 // "@foo//:foo" into "@foo".
 //
-func fixLabels(f *File, info *RewriteInfo) {
+func fixLabels(f *File) {
 	joinLabel := func(p *Expr) {
 		add, ok := (*p).(*BinaryExpr)
 		if !ok || add.Op != "+" {
@@ -202,7 +155,6 @@ func fixLabels(f *File, info *RewriteInfo) {
 		if !ok || strings.Contains(str2.Value, " ") {
 			return
 		}
-		info.EditLabel++
 		str1.Value += str2.Value
 
 		// Deleting nodes add and str2.
@@ -232,11 +184,9 @@ func fixLabels(f *File, info *RewriteInfo) {
 		if !ok {
 			return
 		}
-		editPerformed := false
 
 		if tables.StripLabelLeadingSlashes && strings.HasPrefix(str.Value, "//") {
 			if filepath.Dir(f.Path) == "." || !strings.HasPrefix(str.Value, "//:") {
-				editPerformed = true
 				str.Value = str.Value[2:]
 			}
 		}
@@ -249,10 +199,8 @@ func fixLabels(f *File, info *RewriteInfo) {
 			}
 
 			if str.Value == thisPackage {
-				editPerformed = true
 				str.Value = ":" + path.Base(str.Value)
 			} else if strings.HasPrefix(str.Value, thisPackage+":") {
-				editPerformed = true
 				str.Value = str.Value[len(thisPackage):]
 			}
 		}
@@ -262,14 +210,9 @@ func fixLabels(f *File, info *RewriteInfo) {
 			return
 		}
 		if m[4] != "" && m[4] == m[5] { // e.g. //foo:foo
-			editPerformed = true
 			str.Value = m[1]
 		} else if m[3] != "" && m[4] == "" && m[3] == m[5] { // e.g. @foo//:foo
-			editPerformed = true
 			str.Value = "@" + m[3]
-		}
-		if editPerformed {
-			info.EditLabel++
 		}
 	}
 
@@ -331,7 +274,7 @@ func callName(call *CallExpr) string {
 }
 
 // sortCallArgs sorts lists of named arguments to a call.
-func sortCallArgs(f *File, info *RewriteInfo) {
+func sortCallArgs(f *File) {
 	Walk(f, func(v Expr, stk []Expr) {
 		call, ok := v.(*CallExpr)
 		if !ok {
@@ -362,7 +305,6 @@ func sortCallArgs(f *File, info *RewriteInfo) {
 		if sort.IsSorted(args) {
 			return
 		}
-		info.SortCall++
 		sort.Sort(args)
 		for i, x := range args {
 			call.List[start+i] = x.expr
@@ -432,10 +374,14 @@ func (x namedArgs) Less(i, j int) bool {
 }
 
 // sortStringLists sorts lists of string literals used as specific rule arguments.
-func sortStringLists(f *File, info *RewriteInfo) {
+func sortStringLists(f *File) {
 	Walk(f, func(v Expr, stk []Expr) {
 		switch v := v.(type) {
 		case *CallExpr:
+			if f.Type == TypeDefault || f.Type == TypeBzl {
+				// Rule parameters, not applicable to .bzl or default file types
+				return
+			}
 			if leaveAlone(stk, v) {
 				return
 			}
@@ -453,22 +399,22 @@ func sortStringLists(f *File, info *RewriteInfo) {
 					continue
 				}
 				context := rule + "." + key.Name
-				if !tables.IsSortableListArg[key.Name] || tables.SortableBlacklist[context] || f.Type == TypeDefault || f.Type == TypeBzl {
+				if tables.SortableBlacklist[context] {
 					continue
 				}
-				if disabled("unsafesort") && !tables.SortableWhitelist[context] && !allowedSort(context) {
-					continue
+				if tables.IsSortableListArg[key.Name] ||
+					tables.SortableWhitelist[context] ||
+					(!disabled("unsafesort") && allowedSort(context)) {
+					sortStringList(as.RHS, context)
 				}
-				sortStringList(as.RHS, info, context)
 			}
 		case *AssignExpr:
 			if disabled("unsafesort") {
 				return
 			}
 			// "keep sorted" comment on x = list forces sorting of list.
-			as := v
-			if keepSorted(as) {
-				sortStringList(as.RHS, info, "?")
+			if keepSorted(v) {
+				sortStringList(v.RHS, "?")
 			}
 		case *KeyValueExpr:
 			if disabled("unsafesort") {
@@ -476,7 +422,7 @@ func sortStringLists(f *File, info *RewriteInfo) {
 			}
 			// "keep sorted" before key: list also forces sorting of list.
 			if keepSorted(v) {
-				sortStringList(v.Value, info, "?")
+				sortStringList(v.Value, "?")
 			}
 		case *ListExpr:
 			if disabled("unsafesort") {
@@ -484,7 +430,7 @@ func sortStringLists(f *File, info *RewriteInfo) {
 			}
 			// "keep sorted" comment above first list element also forces sorting of list.
 			if len(v.List) > 0 && (keepSorted(v) || keepSorted(v.List[0])) {
-				sortStringList(v, info, "?")
+				sortStringList(v, "?")
 			}
 		}
 	})
@@ -492,13 +438,13 @@ func sortStringLists(f *File, info *RewriteInfo) {
 
 // SortStringList sorts x, a list of strings.
 func SortStringList(x Expr) {
-	sortStringList(x, nil, "")
+	sortStringList(x, "")
 }
 
 // sortStringList sorts x, a list of strings.
 // The list is broken by non-strings and by blank lines and comments into chunks.
 // Each chunk is sorted in place.
-func sortStringList(x Expr, info *RewriteInfo, context string) {
+func sortStringList(x Expr, context string) {
 	list, ok := x.(*ListExpr)
 	if !ok || len(list.List) < 2 || doNotSort(list.List[0]) {
 		return
@@ -536,13 +482,6 @@ func sortStringList(x Expr, info *RewriteInfo, context string) {
 			chunk = append(chunk, makeSortKey(index, x.(*StringExpr)))
 		}
 		if !sort.IsSorted(byStringExpr(chunk)) || !isUniq(chunk) {
-			if info != nil {
-				info.SortStringList++
-				if !tables.SortableWhitelist[context] {
-					info.UnsafeSort++
-					info.Log = append(info.Log, "sort:"+context)
-				}
-			}
 			before := chunk[0].x.Comment().Before
 			chunk[0].x.Comment().Before = nil
 
@@ -683,7 +622,7 @@ func (x byStringExpr) Less(i, j int) bool {
 //	)
 //
 // which typically works better with our aggressively compact formatting.
-func fixMultilinePlus(f *File, info *RewriteInfo) {
+func fixMultilinePlus(f *File) {
 
 	// List manipulation helpers.
 	// As a special case, we treat f([...]) as a list, mainly
@@ -823,12 +762,10 @@ func fixMultilinePlus(f *File, info *RewriteInfo) {
 }
 
 // sortAllLoadArgs sorts all load arguments in the file
-func sortAllLoadArgs(f *File, info *RewriteInfo) {
+func sortAllLoadArgs(f *File) {
 	Walk(f, func(v Expr, stk []Expr) {
 		if load, ok := v.(*LoadStmt); ok {
-			if SortLoadArgs(load) {
-				info.SortLoad++
-			}
+			SortLoadArgs(load)
 		}
 	})
 }
@@ -895,7 +832,7 @@ func SortLoadArgs(load *LoadStmt) bool {
 }
 
 // formatDocstrings fixes the indentation and trailing whitespace of docstrings
-func formatDocstrings(f *File, info *RewriteInfo) {
+func formatDocstrings(f *File) {
 	Walk(f, func(v Expr, stk []Expr) {
 		def, ok := v.(*DefStmt)
 		if !ok || len(def.Body) == 0 {
@@ -916,7 +853,6 @@ func formatDocstrings(f *File, info *RewriteInfo) {
 			docstring.Token = updatedToken
 			// Update the value to keep it consistent with Token
 			docstring.Value, _, _ = Unquote(updatedToken)
-			info.FormatDocstrings++
 		}
 	})
 }
@@ -970,7 +906,7 @@ func argumentType(expr Expr) int {
 
 // reorderArguments fixes the order of arguments of a function call
 // (positional, named, *args, **kwargs)
-func reorderArguments(f *File, info *RewriteInfo) {
+func reorderArguments(f *File) {
 	Walk(f, func(expr Expr, stack []Expr) {
 		call, ok := expr.(*CallExpr)
 		if !ok {
@@ -981,14 +917,13 @@ func reorderArguments(f *File, info *RewriteInfo) {
 		}
 		if !sort.SliceIsSorted(call.List, compare) {
 			sort.SliceStable(call.List, compare)
-			info.ReorderArguments++
 		}
 	})
 }
 
 // editOctals inserts 'o' into octal numbers to make it more obvious they are octal
 // 0123 -> 0o123
-func editOctals(f *File, info *RewriteInfo) {
+func editOctals(f *File) {
 	Walk(f, func(expr Expr, stack []Expr) {
 		l, ok := expr.(*LiteralExpr)
 		if !ok {
@@ -996,7 +931,6 @@ func editOctals(f *File, info *RewriteInfo) {
 		}
 		if len(l.Token) > 1 && l.Token[0] == '0' && l.Token[1] >= '0' && l.Token[1] <= '9' {
 			l.Token = "0o" + l.Token[1:]
-			info.EditOctal++
 		}
 	})
 }
