@@ -1,6 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load(":def.bzl", "std_package_list")
-load("//language/proto/gen:def.bzl", "known_imports")
 
 # gazelle:exclude testdata
 
@@ -10,26 +9,6 @@ load("//language/proto/gen:def.bzl", "known_imports")
 std_package_list(
     name = "std_package_list",
     out = "std_package_list.go",
-)
-
-known_imports(
-    name = "known_proto_imports",
-    src = "//language/proto:proto.csv",
-    out = "known_proto_imports.go",
-    key = 0,
-    package = "golang",
-    value = 3,
-    var = "knownProtoImports",
-)
-
-known_imports(
-    name = "known_go_imports",
-    src = "//language/proto:proto.csv",
-    out = "known_go_imports.go",
-    key = 2,
-    package = "golang",
-    value = 3,
-    var = "knownGoProtoImports",
 )
 
 go_library(
@@ -43,8 +22,6 @@ go_library(
         "generate.go",
         "godep.go",
         "kinds.go",
-        "known_go_imports.go",
-        "known_proto_imports.go",
         "lang.go",
         "modules.go",
         "package.go",
@@ -121,8 +98,6 @@ filegroup(
         "generate_test.go",
         "godep.go",
         "kinds.go",
-        "known_go_imports.go",
-        "known_proto_imports.go",
         "lang.go",
         "modules.go",
         "package.go",

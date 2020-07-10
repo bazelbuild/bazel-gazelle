@@ -17,6 +17,7 @@ package proto
 
 import (
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -356,7 +357,7 @@ proto_library(
 			c, lang, cexts := testConfig(t, ".")
 			mrslv := make(mapResolver)
 			mrslv["proto_library"] = lang
-			ix := resolve.NewRuleIndex(mrslv.Resolver)
+			ix := resolve.NewRuleIndex(mrslv.Resolver, []resolve.CrossResolver{lang.(resolve.CrossResolver)})
 			rc := (*repo.RemoteCache)(nil)
 			for _, bf := range tc.index {
 				f, err := rule.LoadData(filepath.Join(bf.rel, "BUILD.bazel"), bf.rel, []byte(bf.content))
@@ -390,6 +391,85 @@ proto_library(
 			want := strings.TrimSpace(tc.want)
 			if got != want {
 				t.Errorf("got:\n%s\nwant:\n%s", got, want)
+			}
+		})
+	}
+}
+
+func TestCrossResolve(t *testing.T) {
+	type testCase struct {
+		desc      string
+		protoMode Mode
+		imp       resolve.ImportSpec
+		lang      string
+		want      []resolve.FindResult
+	}
+	for _, tc := range []testCase{
+		{
+			desc:      "disable global mode go",
+			protoMode: DisableGlobalMode,
+			imp:       resolve.ImportSpec{Lang: "go", Imp: "github.com/golang/protobuf/proto"},
+			lang:      "go",
+			want:      nil,
+		},
+		{
+			desc:      "disable global mode proto",
+			protoMode: DisableGlobalMode,
+			imp:       resolve.ImportSpec{Lang: "proto", Imp: "google/protobuf/any.proto"},
+			lang:      "go",
+			want:      nil,
+		},
+		{
+			desc:      "proto source lang",
+			protoMode: DefaultMode,
+			imp:       resolve.ImportSpec{Lang: "proto", Imp: "google/protobuf/any.proto"},
+			lang:      "proto",
+			want:      nil,
+		},
+		{
+			desc:      "unsupported import lang",
+			protoMode: DefaultMode,
+			imp:       resolve.ImportSpec{Lang: "foo", Imp: "foo"},
+			lang:      "go",
+			want:      nil,
+		},
+		{
+			desc:      "go known import",
+			protoMode: DefaultMode,
+			imp:       resolve.ImportSpec{Lang: "go", Imp: "github.com/golang/protobuf/proto"},
+			lang:      "go",
+			want:      []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "proto", "go_default_library")}},
+		},
+		{
+			desc:      "go unknown import",
+			protoMode: DefaultMode,
+			imp:       resolve.ImportSpec{Lang: "go", Imp: "foo"},
+			lang:      "go",
+			want:      nil,
+		},
+		{
+			desc:      "proto known import",
+			protoMode: DefaultMode,
+			imp:       resolve.ImportSpec{Lang: "proto", Imp: "google/protobuf/any.proto"},
+			lang:      "go",
+			want:      []resolve.FindResult{{Label: label.New("io_bazel_rules_go", "proto/wkt", "any_go_proto")}},
+		},
+		{
+			desc:      "proto unknown import",
+			protoMode: DefaultMode,
+			imp:       resolve.ImportSpec{Lang: "proto", Imp: "foo.proto"},
+			lang:      "go",
+			want:      nil,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			c, lang, _ := testConfig(t, ".")
+			pc := GetProtoConfig(c)
+			pc.Mode = tc.protoMode
+			ix := (*resolve.RuleIndex)(nil)
+			got := lang.(resolve.CrossResolver).CrossResolve(c, ix, tc.imp, tc.lang)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("got %#v ; want %#v", got, tc.want)
 			}
 		})
 	}
