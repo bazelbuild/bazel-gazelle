@@ -66,7 +66,7 @@ func EditChildren(v Expr, f func(x Expr, stk []Expr) Expr) {
 
 // walk1 is a helper function for Walk, WalkWithPostfix, and Edit.
 func walk1(v *Expr, stack *[]Expr, f func(x *Expr, stk []Expr) Expr) Expr {
-	if v == nil {
+	if v == nil || *v == nil {
 		return nil
 	}
 
@@ -145,7 +145,8 @@ func WalkOnce(v Expr, f func(x *Expr)) {
 		}
 	case *DictExpr:
 		for i := range v.List {
-			f(&v.List[i])
+			e := Expr(v.List[i])
+			f(&e)
 		}
 	case *Comprehension:
 		f(&v.Body)

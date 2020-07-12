@@ -63,7 +63,7 @@ func (s SelectStringListValue) BzlExpr() bzl.Expr {
 		keys = append(keys, defaultKey)
 	}
 
-	args := make([]bzl.Expr, 0, len(s))
+	args := make([]*bzl.KeyValueExpr, 0, len(s))
 	for _, key := range keys {
 		value := ExprFromValue(s[key])
 		if key != defaultKey {
@@ -130,7 +130,7 @@ func ExprFromValue(val interface{}) bzl.Expr {
 	case reflect.Map:
 		rkeys := rv.MapKeys()
 		sort.Sort(byString(rkeys))
-		args := make([]bzl.Expr, len(rkeys))
+		args := make([]*bzl.KeyValueExpr, len(rkeys))
 		for i, rk := range rkeys {
 			k := &bzl.StringExpr{Value: mapKeyString(rk)}
 			v := ExprFromValue(rv.MapIndex(rk).Interface())

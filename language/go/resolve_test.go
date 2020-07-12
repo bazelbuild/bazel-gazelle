@@ -744,7 +744,7 @@ go_proto_library(
 )
 `,
 		}, {
-			desc: "proto_wkt",
+			desc: "proto_wkt_cross_resolve",
 			old: buildFile{content: `
 go_proto_library(
     name = "wkts_go_proto",
@@ -820,7 +820,7 @@ go_library(
 )
 `,
 		}, {
-			desc: "proto_special",
+			desc: "proto_special_cross_resolve",
 			old: buildFile{content: `
 go_library(
     name = "go_default_library",
@@ -938,12 +938,14 @@ go_proto_library(
 				fmt.Sprintf("-go_naming_convention=%s", tc.namingConvention),
 				"-external=vendored", fmt.Sprintf("-index=%v", !tc.skipIndex))
 			mrslv := make(mapResolver)
+			exts := make([]interface{}, 0, len(langs))
 			for _, lang := range langs {
 				for kind := range lang.Kinds() {
 					mrslv[kind] = lang
 				}
+				exts = append(exts, lang)
 			}
-			ix := resolve.NewRuleIndex(mrslv.Resolver)
+			ix := resolve.NewRuleIndex(mrslv.Resolver, exts...)
 			rc := testRemoteCache(nil)
 
 			for _, bf := range tc.index {
@@ -990,7 +992,11 @@ func TestResolveDisableGlobal(t *testing.T) {
 		t,
 		"-go_prefix=example.com/repo",
 		"-proto=disable_global")
-	ix := resolve.NewRuleIndex(nil)
+	exts := make([]interface{}, 0, len(langs))
+	for _, lang := range langs {
+		exts = append(exts, lang)
+	}
+	ix := resolve.NewRuleIndex(nil, exts...)
 	ix.Finish()
 	rc := testRemoteCache([]repo.Repo{
 		{

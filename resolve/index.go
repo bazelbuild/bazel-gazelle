@@ -61,13 +61,23 @@ type Resolver interface {
 	Resolve(c *config.Config, ix *RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label)
 }
 
+// CrossResolver is an interface that language extensions can implement to provide
+// custom dependency resolution logic for other languages.
+type CrossResolver interface {
+	// CrossResolve attempts to resolve an import string to a rule for languages
+	// other than the implementing extension. lang is the langauge of the rule
+	// with the dependency.
+	CrossResolve(c *config.Config, ix *RuleIndex, imp ImportSpec, lang string) []FindResult
+}
+
 // RuleIndex is a table of rules in a workspace, indexed by label and by
 // import path. Used by Resolver to map import paths to labels.
 type RuleIndex struct {
-	rules     []*ruleRecord
-	labelMap  map[label.Label]*ruleRecord
-	importMap map[ImportSpec][]*ruleRecord
-	mrslv     func(r *rule.Rule, pkgRel string) Resolver
+	rules          []*ruleRecord
+	labelMap       map[label.Label]*ruleRecord
+	importMap      map[ImportSpec][]*ruleRecord
+	mrslv          func(r *rule.Rule, pkgRel string) Resolver
+	crossResolvers []CrossResolver
 }
 
 // ruleRecord contains information about a rule relevant to import indexing.
@@ -97,10 +107,17 @@ type ruleRecord struct {
 //
 // kindToResolver is a map from rule kinds (for example, "go_library") to
 // Resolvers that support those kinds.
-func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver) *RuleIndex {
+func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...interface{}) *RuleIndex {
+	var crossResolvers []CrossResolver
+	for _, e := range exts {
+		if cr, ok := e.(CrossResolver); ok {
+			crossResolvers = append(crossResolvers, cr)
+		}
+	}
 	return &RuleIndex{
-		labelMap: make(map[label.Label]*ruleRecord),
-		mrslv:    mrslv,
+		labelMap:       make(map[label.Label]*ruleRecord),
+		mrslv:          mrslv,
+		crossResolvers: crossResolvers,
 	}
 }
 
@@ -214,6 +231,8 @@ type FindResult struct {
 // FindRulesByImport returns a list of rules, since any number of rules may
 // provide the same import. Callers may need to resolve ambiguities using
 // language-specific heuristics.
+//
+// DEPRECATED: use FindRulesByImportWithConfig instead
 func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult {
 	matches := ix.importMap[imp]
 	results := make([]FindResult, 0, len(matches))
@@ -225,6 +244,20 @@ func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult
 			Label:  m.label,
 			Embeds: m.embeds,
 		})
+	}
+	return results
+}
+
+// FindRulesByImportWithConfig attempts to resolve an import to a rule first by
+// checking the rule index, then if no matches are found any registered
+// CrossResolve implementations are called.
+func (ix *RuleIndex) FindRulesByImportWithConfig(c *config.Config, imp ImportSpec, lang string) []FindResult {
+	results := ix.FindRulesByImport(imp, lang)
+	if len(results) > 0 {
+		return results
+	}
+	for _, cr := range ix.crossResolvers {
+		results = append(results, cr.CrossResolve(c, ix, imp, lang)...)
 	}
 	return results
 }

@@ -16,22 +16,53 @@ distributed under the License is distributed on an "AS IS" BASIS,
 """
 
 load(
-    "@io_bazel_rules_go//go/private:providers.bzl",
+    "@io_bazel_rules_go//go:def.bzl",
     "GoSource",
 )
 
 _GO_YACC_TOOL = "@org_golang_x_tools//cmd/goyacc"
 
+def _go_yacc_impl(ctx):
+    args = ctx.actions.args()
+    args.add("-o", ctx.outputs.out)
+    args.add(ctx.file.src)
+    goroot = "%s/.." % ctx.executable._go_yacc_tool.dirname
+    ctx.actions.run(
+        executable = ctx.executable._go_yacc_tool,
+        arguments = [args],
+        inputs = [ctx.file.src],
+        outputs = [ctx.outputs.out],
+        env = {
+            "GOROOT": goroot,
+        },
+    )
+    return DefaultInfo(
+        files = depset([ctx.outputs.out]),
+    )
+
+_go_yacc = rule(
+    implementation = _go_yacc_impl,
+    attrs = {
+        "src": attr.label(
+            allow_single_file = True,
+        ),
+        "out": attr.output(),
+        "_go_yacc_tool": attr.label(
+            default = _GO_YACC_TOOL,
+            allow_single_file = True,
+            executable = True,
+            cfg = "host",
+        ),
+    },
+)
+
+# buildifier: disable=unnamed-macro
 def go_yacc(src, out, visibility = None):
     """Runs go tool yacc -o $out $src."""
-    native.genrule(
+    _go_yacc(
         name = src + ".go_yacc",
-        srcs = [src],
-        outs = [out],
-        tools = [_GO_YACC_TOOL],
-        cmd = ("export GOROOT=$$(dirname $(location " + _GO_YACC_TOOL + "))/..;" +
-               " $(location " + _GO_YACC_TOOL + ") " +
-               " -o $(location " + out + ") $(SRCS) > /dev/null"),
+        src = src,
+        out = out,
         visibility = visibility,
     )
 
@@ -48,8 +79,15 @@ extract_go_src = rule(
     },
 )
 
+# buildifier: disable=unnamed-macro
 def genfile_check_test(src, gen):
-    """Asserts that any checked-in generated code matches bazel gen."""
+    """
+    Asserts that any checked-in generated code matches bazel gen.
+
+    Args:
+      src: checked in file
+      gen: generated file
+    """
     if not src:
         fail("src is required", "src")
     if not gen:
@@ -115,8 +153,15 @@ eof
         data = [gen],
     )
 
+# buildifier: disable=unnamed-macro
 def go_proto_checkedin_test(src, proto = "go_default_library"):
-    """Asserts that any checked-in .pb.go code matches bazel gen."""
+    """
+    Asserts that any checked-in .pb.go code matches bazel gen.
+
+    Args:
+      src: checked in file
+      proto: generated file
+    """
     genfile = src + "_genfile"
     extract_go_src(
         name = genfile + "go",

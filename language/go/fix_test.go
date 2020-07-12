@@ -505,11 +505,11 @@ go_test(
 gomock(
     name = "stripe_mock",
     out = "stripe_mock_test.go",
-    library = ":go_default_library",
     interfaces = [
         "stSubscriptions",
         "stCustomers",
     ],
+    library = ":go_default_library",
     package = "main",
     source = "stripe.go",
 )
@@ -518,11 +518,11 @@ gomock(
 gomock(
     name = "stripe_mock",
     out = "stripe_mock_test.go",
-    library = ":go_default_library",
     interfaces = [
         "stSubscriptions",
         "stCustomers",
     ],
+    library = ":go_default_library",
     package = "main",
     source = "stripe.go",
 )
@@ -665,7 +665,7 @@ cgo_library(
     srcs = [
         "foo.go"  # keep
     ],
-    visibility = ["//visibility:private"],    
+    visibility = ["//visibility:private"],
 )
 # after comment
 `,
@@ -1163,7 +1163,7 @@ go_repository(name = "foo")
 		}, {
 			desc: "load after",
 			old: `
-load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
@@ -1172,7 +1172,7 @@ go_register_toolchains()
 go_repository(name = "foo")
 `,
 			want: `
-load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies", "go_register_toolchains")
+load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 

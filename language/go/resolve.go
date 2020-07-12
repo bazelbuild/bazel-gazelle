@@ -117,7 +117,6 @@ var (
 // (gomock). Gazelle calls Language.Resolve instead.
 func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
 	gc := getGoConfig(c)
-	pcMode := getProtoMode(c)
 	if build.IsLocalImport(imp) {
 		cleanRel := path.Clean(path.Join(from.Pkg, imp))
 		if build.IsLocalImport(cleanRel) {
@@ -134,33 +133,7 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 		return l, nil
 	}
 
-	if pcMode.ShouldUseKnownImports() {
-		// These are commonly used libraries that depend on Well Known Types.
-		// They depend on the generated versions of these protos to avoid conflicts.
-		// However, since protoc-gen-go depends on these libraries, we generate
-		// its rules in disable_global mode (to avoid cyclic dependency), so the
-		// "go_default_library" versions of these libraries depend on the
-		// pre-generated versions of the proto libraries.
-		switch imp {
-		case "github.com/golang/protobuf/proto":
-			return label.New("com_github_golang_protobuf", "proto", "go_default_library"), nil
-		case "github.com/golang/protobuf/jsonpb":
-			return label.New("com_github_golang_protobuf", "jsonpb", "go_default_library_gen"), nil
-		case "github.com/golang/protobuf/descriptor":
-			return label.New("com_github_golang_protobuf", "descriptor", "go_default_library_gen"), nil
-		case "github.com/golang/protobuf/ptypes":
-			return label.New("com_github_golang_protobuf", "ptypes", "go_default_library_gen"), nil
-		case "github.com/golang/protobuf/protoc-gen-go/generator":
-			return label.New("com_github_golang_protobuf", "protoc-gen-go/generator", "go_default_library_gen"), nil
-		case "google.golang.org/grpc":
-			return label.New("org_golang_google_grpc", "", "go_default_library"), nil
-		}
-		if l, ok := knownGoProtoImports[imp]; ok {
-			return l, nil
-		}
-	}
-
-	if l, err := resolveWithIndexGo(ix, imp, from); err == nil || err == skipImportError {
+	if l, err := resolveWithIndexGo(c, ix, imp, from); err == nil || err == skipImportError {
 		return l, err
 	} else if err != notFoundError {
 		return label.NoLabel, err
@@ -200,8 +173,8 @@ func IsStandard(imp string) bool {
 	return stdPackages[imp]
 }
 
-func resolveWithIndexGo(ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
-	matches := ix.FindRulesByImport(resolve.ImportSpec{Lang: "go", Imp: imp}, "go")
+func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
+	matches := ix.FindRulesByImportWithConfig(c, resolve.ImportSpec{Lang: "go", Imp: imp}, "go")
 	var bestMatch resolve.FindResult
 	var bestMatchIsVendored bool
 	var bestMatchVendorRoot string
@@ -309,8 +282,6 @@ func resolveVendored(gc *goConfig, imp string) (label.Label, error) {
 }
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
-	pcMode := getProtoMode(c)
-
 	if wellKnownProtos[imp] {
 		return label.NoLabel, skipImportError
 	}
@@ -319,15 +290,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 		return l, nil
 	}
 
-	if l, ok := knownProtoImports[imp]; ok && pcMode.ShouldUseKnownImports() {
-		if l.Equal(from) {
-			return label.NoLabel, skipImportError
-		} else {
-			return l, nil
-		}
-	}
-
-	if l, err := resolveWithIndexProto(ix, imp, from); err == nil || err == skipImportError {
+	if l, err := resolveWithIndexProto(c, ix, imp, from); err == nil || err == skipImportError {
 		return l, err
 	} else if err != notFoundError {
 		return label.NoLabel, err
@@ -367,8 +330,8 @@ var wellKnownProtos = map[string]bool{
 	"google/protobuf/wrappers.proto":        true,
 }
 
-func resolveWithIndexProto(ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
-	matches := ix.FindRulesByImport(resolve.ImportSpec{Lang: "proto", Imp: imp}, "go")
+func resolveWithIndexProto(c *config.Config, ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
+	matches := ix.FindRulesByImportWithConfig(c, resolve.ImportSpec{Lang: "proto", Imp: imp}, "go")
 	if len(matches) == 0 {
 		return label.NoLabel, notFoundError
 	}
