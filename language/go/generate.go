@@ -262,8 +262,8 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			libName = lib.Name()
 		}
 		rules = append(rules, lib)
-		if getGoConfig(c).goNamingConvention == importAliasNamingConvention && !pkg.isCommand() && libName != "" {
-			rules = append(rules, g.generateImportAlias(pkg, libName))
+		if r := g.generateAlias(pkg, libName); r != nil {
+			rules = append(rules, r)
 		}
 		rules = append(rules,
 			g.generateBin(pkg, binName, libName),
@@ -468,6 +468,22 @@ func (g *generator) generateLib(pkg *goPackage, binName, embed string) *rule.Rul
 	return goLibrary
 }
 
+func (g *generator) generateAlias(pkg *goPackage, libName string) *rule.Rule {
+	if pkg.isCommand() || libName == "" {
+		return nil
+	}
+	c := getGoConfig(g.c)
+	if c.goNamingConvention == goDefaultLibraryNamingConvention {
+		return nil
+	}
+	alias := rule.NewRule("alias", defaultLibName)
+	alias.SetAttr("visibility", g.commonVisibility(pkg.importPath))
+	if c.goNamingConvention == importAliasNamingConvention {
+		alias.SetAttr("actual", ":" + libName)
+	}
+	return alias
+}
+
 func (g *generator) generateBin(pkg *goPackage, binName, library string) *rule.Rule {
 	goBinary := rule.NewRule("go_binary", binName)
 	if !pkg.isCommand() || pkg.binary.sources.isEmpty() && library == "" {
@@ -493,13 +509,6 @@ func (g *generator) generateTest(pkg *goPackage, binName, library string) *rule.
 		goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
 	}
 	return goTest
-}
-
-func (g *generator) generateImportAlias(pkg *goPackage, library string) *rule.Rule {
-	alias := rule.NewRule("alias", defaultLibName)
-	alias.SetAttr("actual", ":"+library)
-	alias.SetAttr("visibility", g.commonVisibility(pkg.importPath))
-	return alias
 }
 
 func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embed string) {

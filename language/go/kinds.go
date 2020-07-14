@@ -18,6 +18,10 @@ package golang
 import "github.com/bazelbuild/bazel-gazelle/rule"
 
 var goKinds = map[string]rule.KindInfo{
+	"alias": {
+		NonEmptyAttrs:  map[string]bool{"actual": true},
+		MergeableAttrs: map[string]bool{"actual": true},
+	},
 	"filegroup": {
 		NonEmptyAttrs:  map[string]bool{"srcs": true},
 		MergeableAttrs: map[string]bool{"srcs": true},

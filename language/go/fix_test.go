@@ -208,12 +208,6 @@ go_test(
     srcs = ["foo_test.go"],
     embed = [":foo"],
 )
-
-alias(
-    name = "go_default_library",
-    actual = ":foo",
-    visibility = ["//visibility:private"],
-)
 `,
 		}, {
 			desc:             "go_naming_convention=import_alias -> go_default_library for lib",
@@ -224,11 +218,6 @@ go_library(
     name = "foo",
     srcs = ["foo.go"],
     importpath = "foo",
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":foo",
 )
 
 go_test(
@@ -322,11 +311,6 @@ go_test(
     srcs = ["foo_test.go"],
     embed = [":foo"],
 )
-
-alias(
-    name = "go_default_library",
-    actual = ":foo",
-)
 `,
 		}, {
 			desc:             "go_naming_convention import_alias -> import for lib",
@@ -337,11 +321,6 @@ go_library(
     name = "foo",
     srcs = ["foo.go"],
     importpath = "foo",
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":foo",
 )
 
 go_test(
@@ -439,11 +418,6 @@ go_library(
     importpath = "foo",
 )
 
-alias(
-    name = "go_default_library",
-    actual = ":foo",
-)
-
 go_test(
     name = "foo_test",
     srcs = ["foo_test.go"],
@@ -456,11 +430,6 @@ go_library(
     name = "foo",
     srcs = ["foo.go"],
     importpath = "foo",
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":foo",
 )
 
 go_test(

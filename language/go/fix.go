@@ -72,34 +72,6 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 			}
 		}
 	}
-
-	// Alias migration
-	if binName == "" {
-		var ar *rule.Rule
-		var lib *rule.Rule
-		for _, r := range f.Rules {
-			if r.Kind() == "alias" && r.Name() == defaultLibName {
-				ar = r
-			} else if r.Kind() == "go_library" && r.Name() == libName {
-				lib = r
-			}
-		}
-		if nc == importAliasNamingConvention {
-			if ar == nil && lib != nil {
-				r := rule.NewRule("alias", defaultLibName)
-				r.SetAttr("actual", ":"+lib.Name())
-				visibility := lib.Attr("visibility")
-				if visibility != nil {
-					r.SetAttr("visibility", visibility)
-				}
-				r.Insert(f)
-			}
-		} else {
-			if ar != nil {
-				ar.Delete()
-			}
-		}
-	}
 }
 
 // binName returns the name of a go_binary rule if one can be found.
