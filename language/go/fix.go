@@ -41,6 +41,9 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 
 	binName := binName(f)
 	importPath := importPath(f)
+	if importPath == "" {
+		return
+	}
 	libName := libNameByConvention(nc, binName, importPath)
 	testName := testNameByConvention(nc, binName, importPath)
 	var migrateLibName, migrateTestName string
@@ -94,7 +97,7 @@ func importPath(f *rule.File) string {
 			}
 		}
 	}
-	return f.Pkg
+	return ""
 }
 
 func replaceInStrListAttr(r *rule.Rule, attr, old, new string) {
@@ -151,9 +154,6 @@ func migrateGrpcCompilers(c *config.Config, f *rule.File) {
 // MergeFile will remove unused values and attributes later.
 func squashCgoLibrary(c *config.Config, f *rule.File) {
 	// Find the default cgo_library and go_library rules.
-	binName := binName(f)
-	importPath := importPath(f)
-	libName := libNameByConvention(getGoConfig(c).goNamingConvention, binName, importPath)
 	var cgoLibrary, goLibrary *rule.Rule
 	for _, r := range f.Rules {
 		if r.Kind() == "cgo_library" && r.Name() == "cgo_default_library" && !r.ShouldKeep() {
@@ -164,7 +164,7 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 			cgoLibrary = r
 			continue
 		}
-		if r.Kind() == "go_library" && r.Name() == libName {
+		if r.Kind() == "go_library" && r.Name() == defaultLibName {
 			if goLibrary != nil {
 				log.Printf("%s: when fixing existing file, multiple go_library rules with default name referencing cgo_library found", f.Path)
 			}
@@ -181,10 +181,9 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 		return
 	}
 
-	// If there wasn't an existing library to squash into, we'll have to guess at its name.
 	if goLibrary == nil {
 		cgoLibrary.SetKind("go_library")
-		cgoLibrary.SetName(libName)
+		cgoLibrary.SetName(defaultLibName)
 		cgoLibrary.SetAttr("cgo", true)
 		return
 	}
@@ -204,15 +203,12 @@ func squashCgoLibrary(c *config.Config, f *rule.File) {
 // renaming the old rule).
 func squashXtest(c *config.Config, f *rule.File) {
 	// Search for internal and external tests.
-	binName := binName(f)
-	importPath := importPath(f)
-	testName := testNameByConvention(getGoConfig(c).goNamingConvention, binName, importPath)
 	var itest, xtest *rule.Rule
 	for _, r := range f.Rules {
 		if r.Kind() != "go_test" {
 			continue
 		}
-		if r.Name() == testName {
+		if r.Name() == defaultTestName {
 			itest = r
 		} else if r.Name() == "go_default_xtest" {
 			xtest = r
@@ -224,16 +220,16 @@ func squashXtest(c *config.Config, f *rule.File) {
 	}
 	if !c.ShouldFix {
 		if itest == nil {
-			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to rename to %s.", f.Path, testName)
+			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to rename to go_default_test.", f.Path)
 		} else {
-			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to squash with %s.", f.Path, testName)
+			log.Printf("%s: go_default_xtest is no longer necessary. Run 'gazelle fix' to squash with go_default_test.", f.Path)
 		}
 		return
 	}
 
 	// If there was no internal test, we can just rename the external test.
 	if itest == nil {
-		xtest.SetName(testName)
+		xtest.SetName(defaultTestName)
 		return
 	}
 

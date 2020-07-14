@@ -472,13 +472,13 @@ func (g *generator) generateAlias(pkg *goPackage, libName string) *rule.Rule {
 	if pkg.isCommand() || libName == "" {
 		return nil
 	}
-	c := getGoConfig(g.c)
-	if c.goNamingConvention == goDefaultLibraryNamingConvention {
+	gc := getGoConfig(g.c)
+	if gc.goNamingConvention == goDefaultLibraryNamingConvention {
 		return nil
 	}
 	alias := rule.NewRule("alias", defaultLibName)
 	alias.SetAttr("visibility", g.commonVisibility(pkg.importPath))
-	if c.goNamingConvention == importAliasNamingConvention {
+	if gc.goNamingConvention == importAliasNamingConvention {
 		alias.SetAttr("actual", ":" + libName)
 	}
 	return alias
