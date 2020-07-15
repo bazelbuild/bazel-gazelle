@@ -66,14 +66,14 @@ func TestCommandLine(t *testing.T) {
 		"-go_prefix=example.com/repo",
 		"-external=vendored",
 		"-repo_root=.")
-	gc := getGoConfig(c)
+	gc := GetGoConfig(c)
 	for _, tag := range []string{"foo", "bar", "gc"} {
 		if !gc.genericTags[tag] {
 			t.Errorf("expected tag %q to be set", tag)
 		}
 	}
-	if gc.prefix != "example.com/repo" {
-		t.Errorf(`got prefix %q; want "example.com/repo"`, gc.prefix)
+	if gc.Prefix != "example.com/repo" {
+		t.Errorf(`got prefix %q; want "example.com/repo"`, gc.Prefix)
 	}
 	if gc.depMode != vendorMode {
 		t.Errorf("got dep mode %v; want %v", gc.depMode, vendorMode)
@@ -96,17 +96,17 @@ func TestDirectives(t *testing.T) {
 	for _, cext := range cexts {
 		cext.Configure(c, "test", f)
 	}
-	gc := getGoConfig(c)
+	gc := GetGoConfig(c)
 	for _, tag := range []string{"foo", "bar", "gc"} {
 		if !gc.genericTags[tag] {
 			t.Errorf("expected tag %q to be set", tag)
 		}
 	}
-	if gc.prefix != "y" {
-		t.Errorf(`got prefix %q; want "y"`, gc.prefix)
+	if gc.Prefix != "y" {
+		t.Errorf(`got prefix %q; want "y"`, gc.Prefix)
 	}
-	if gc.prefixRel != "test" {
-		t.Errorf(`got prefixRel %q; want "test"`, gc.prefixRel)
+	if gc.PrefixRel != "test" {
+		t.Errorf(`got PrefixRel %q; want "test"`, gc.PrefixRel)
 	}
 	if gc.importMapPrefix != "x" {
 		t.Errorf(`got importmapPrefix %q; want "x"`, gc.importMapPrefix)
@@ -138,7 +138,7 @@ func TestDirectives(t *testing.T) {
 	for _, cext := range cexts {
 		cext.Configure(c, "test/sub", f)
 	}
-	gc = getGoConfig(c)
+	gc = GetGoConfig(c)
 	if gc.goGrpcCompilersSet {
 		t.Error("expected goGrpcCompilersSet to be unset")
 	}
@@ -155,20 +155,20 @@ func TestDirectives(t *testing.T) {
 
 func TestVendorConfig(t *testing.T) {
 	c, _, cexts := testConfig(t)
-	gc := getGoConfig(c)
-	gc.prefix = "example.com/repo"
-	gc.prefixRel = ""
+	gc := GetGoConfig(c)
+	gc.Prefix = "example.com/repo"
+	gc.PrefixRel = ""
 	gc.importMapPrefix = "bad-importmap-prefix"
 	gc.importMapPrefixRel = ""
 	for _, cext := range cexts {
 		cext.Configure(c, "x/vendor", nil)
 	}
-	gc = getGoConfig(c)
-	if gc.prefix != "" {
-		t.Errorf(`prefix: got %q; want ""`, gc.prefix)
+	gc = GetGoConfig(c)
+	if gc.Prefix != "" {
+		t.Errorf(`prefix: got %q; want ""`, gc.Prefix)
 	}
-	if gc.prefixRel != "x/vendor" {
-		t.Errorf(`prefixRel: got %q; want "x/vendor"`, gc.prefixRel)
+	if gc.PrefixRel != "x/vendor" {
+		t.Errorf(`PrefixRel: got %q; want "x/vendor"`, gc.PrefixRel)
 	}
 	if gc.importMapPrefix != "example.com/repo/x/vendor" {
 		t.Errorf(`importMapPrefix: got %q; want "example.com/repo/x/vendor"`, gc.importMapPrefix)
@@ -307,15 +307,15 @@ gazelle(
 			for _, cext := range cexts {
 				cext.Configure(c, "x", f)
 			}
-			gc := getGoConfig(c)
+			gc := GetGoConfig(c)
 			if !gc.prefixSet {
 				t.Fatalf("prefix not set")
 			}
-			if gc.prefix != tc.want {
-				t.Errorf("prefix: want %q; got %q", gc.prefix, tc.want)
+			if gc.Prefix != tc.want {
+				t.Errorf("prefix: want %q; got %q", gc.Prefix, tc.want)
 			}
-			if gc.prefixRel != "x" {
-				t.Errorf("rel: got %q; want %q", gc.prefixRel, "x")
+			if gc.PrefixRel != "x" {
+				t.Errorf("rel: got %q; want %q", gc.PrefixRel, "x")
 			}
 		})
 	}

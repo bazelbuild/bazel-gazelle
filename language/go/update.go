@@ -48,7 +48,7 @@ func (*goLang) UpdateRepos(args language.UpdateReposArgs) language.UpdateReposRe
 			gen[i].SetAttr("importpath", modPath)
 			gen[i].SetAttr("version", version)
 			gen[i].SetAttr("sum", sum)
-			setBuildAttrs(getGoConfig(args.Config), gen[i])
+			setBuildAttrs(GetGoConfig(args.Config), gen[i])
 			return nil
 		})
 	}
@@ -71,7 +71,7 @@ func (*goLang) CanImport(path string) bool {
 func (*goLang) ImportRepos(args language.ImportReposArgs) language.ImportReposResult {
 	res := repoImportFuncs[filepath.Base(args.Path)](args)
 	for _, r := range res.Gen {
-		setBuildAttrs(getGoConfig(args.Config), r)
+		setBuildAttrs(GetGoConfig(args.Config), r)
 	}
 	if args.Prune {
 		genNamesSet := make(map[string]bool)
@@ -88,7 +88,7 @@ func (*goLang) ImportRepos(args language.ImportReposArgs) language.ImportReposRe
 	return res
 }
 
-func setBuildAttrs(gc *goConfig, r *rule.Rule) {
+func setBuildAttrs(gc *GoConfig, r *rule.Rule) {
 	if gc.buildExternalAttr != "" {
 		r.SetAttr("build_external", gc.buildExternalAttr)
 	}

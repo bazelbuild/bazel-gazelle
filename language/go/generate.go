@@ -381,8 +381,8 @@ func emptyPackage(c *config.Config, dir, rel string) *goPackage {
 }
 
 func defaultPackageName(c *config.Config, rel string) string {
-	gc := getGoConfig(c)
-	return pathtools.RelBaseName(rel, gc.prefix, "")
+	gc := GetGoConfig(c)
+	return pathtools.RelBaseName(rel, gc.Prefix, "")
 }
 
 type generator struct {
@@ -398,7 +398,7 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 		return "", nil
 	}
 
-	gc := getGoConfig(g.c)
+	gc := GetGoConfig(g.c)
 	filegroupName := legacyProtoFilegroupName
 	protoName := target.name
 	if protoName == "" {
@@ -460,7 +460,7 @@ func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
 }
 
 func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
-	name := pathtools.RelBaseName(pkg.rel, getGoConfig(g.c).prefix, g.c.RepoRoot)
+	name := pathtools.RelBaseName(pkg.rel, GetGoConfig(g.c).Prefix, g.c.RepoRoot)
 	goBinary := rule.NewRule("go_binary", name)
 	if !pkg.isCommand() || pkg.binary.sources.isEmpty() && library == "" {
 		return goBinary // empty
@@ -505,14 +505,14 @@ func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []str
 }
 
 func (g *generator) setImportAttrs(r *rule.Rule, importPath string) {
-	gc := getGoConfig(g.c)
+	gc := GetGoConfig(g.c)
 	r.SetAttr("importpath", importPath)
 
 	// Set importpath_aliases if we need minimal module compatibility.
 	// If a package is part of a module with a v2+ semantic import version
 	// suffix, packages that are not part of modules may import it without
 	// the suffix.
-	if gc.goRepositoryMode && gc.moduleMode && pathtools.HasPrefix(importPath, gc.prefix) && gc.prefixRel == "" {
+	if gc.goRepositoryMode && gc.moduleMode && pathtools.HasPrefix(importPath, gc.Prefix) && gc.PrefixRel == "" {
 		if mmcImportPath := pathWithoutSemver(importPath); mmcImportPath != "" {
 			r.SetAttr("importpath_aliases", []string{mmcImportPath})
 		}
@@ -534,7 +534,7 @@ func (g *generator) commonVisibility(importPath string) []string {
 	// probably an internal submodule. Add visibility for all subpackages.
 	relIndex := pathtools.Index(g.rel, "internal")
 	importIndex := pathtools.Index(importPath, "internal")
-	visibility := getGoConfig(g.c).goVisibility
+	visibility := GetGoConfig(g.c).goVisibility
 	if relIndex >= 0 {
 		parent := strings.TrimSuffix(g.rel[:relIndex], "/")
 		visibility = append(visibility, fmt.Sprintf("//%s:__subpackages__", parent))
@@ -547,7 +547,7 @@ func (g *generator) commonVisibility(importPath string) []string {
 	// Add visibility for any submodules that have the internal parent as
 	// a prefix of their module path.
 	if importIndex >= 0 {
-		gc := getGoConfig(g.c)
+		gc := GetGoConfig(g.c)
 		internalRoot := strings.TrimSuffix(importPath[:importIndex], "/")
 		for _, m := range gc.submodules {
 			if strings.HasPrefix(m.modulePath, internalRoot) {

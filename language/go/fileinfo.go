@@ -110,7 +110,7 @@ type tagGroup []string
 // are ignored. If the group contains an os or arch tag, but the os or arch
 // parameters are empty, check returns false even if the tag is negated.
 func (g tagGroup) check(c *config.Config, os, arch string) bool {
-	goConf := getGoConfig(c)
+	goConf := GetGoConfig(c)
 	for _, t := range g {
 		if strings.HasPrefix(t, "!!") { // bad syntax, reject always
 			return false

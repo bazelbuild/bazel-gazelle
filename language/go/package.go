@@ -151,28 +151,28 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 	if pkg.importPath != "" {
 		log.Panic("importPath already set")
 	}
-	gc := getGoConfig(c)
+	gc := GetGoConfig(c)
 	if !gc.prefixSet {
 		return fmt.Errorf("%s: go prefix is not set, so importpath can't be determined for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line", pkg.dir)
 	}
 	pkg.importPath = InferImportPath(c, pkg.rel)
 
-	if pkg.rel == gc.prefixRel {
-		pkg.importPath = gc.prefix
+	if pkg.rel == gc.PrefixRel {
+		pkg.importPath = gc.Prefix
 	} else {
-		fromPrefixRel := strings.TrimPrefix(pkg.rel, gc.prefixRel+"/")
-		pkg.importPath = path.Join(gc.prefix, fromPrefixRel)
+		fromPrefixRel := strings.TrimPrefix(pkg.rel, gc.PrefixRel+"/")
+		pkg.importPath = path.Join(gc.Prefix, fromPrefixRel)
 	}
 	return nil
 }
 
 func InferImportPath(c *config.Config, rel string) string {
-	gc := getGoConfig(c)
-	if rel == gc.prefixRel {
-		return gc.prefix
+	gc := GetGoConfig(c)
+	if rel == gc.PrefixRel {
+		return gc.Prefix
 	} else {
-		fromPrefixRel := strings.TrimPrefix(rel, gc.prefixRel+"/")
-		return path.Join(gc.prefix, fromPrefixRel)
+		fromPrefixRel := strings.TrimPrefix(rel, gc.PrefixRel+"/")
+		return path.Join(gc.Prefix, fromPrefixRel)
 	}
 }
 
@@ -250,7 +250,7 @@ func (t *protoTarget) addFile(c *config.Config, info fileInfo) {
 // performance optimization to avoid evaluating constraints repeatedly.
 func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags tagLine) func(sb *platformStringsBuilder, ss ...string) {
 	isOSSpecific, isArchSpecific := isOSArchSpecific(info, cgoTags)
-	v := getGoConfig(c).rulesGoVersion
+	v := GetGoConfig(c).rulesGoVersion
 
 	switch {
 	case !isOSSpecific && !isArchSpecific:

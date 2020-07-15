@@ -504,7 +504,7 @@ import "C"
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			c, _, _ := testConfig(t)
-			gc := getGoConfig(c)
+			gc := GetGoConfig(c)
 			gc.genericTags = tc.genericTags
 			if gc.genericTags == nil {
 				gc.genericTags = map[string]bool{"gc": true}

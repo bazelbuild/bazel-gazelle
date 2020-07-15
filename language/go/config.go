@@ -40,8 +40,8 @@ import (
 
 var minimumRulesGoVersion = version.Version{0, 20, 0}
 
-// goConfig contains configuration values related to Go rules.
-type goConfig struct {
+// GoConfig contains configuration values related to Go rules.
+type GoConfig struct {
 	// rulesGoVersion is the version of io_bazel_rules_go being used. Determined
 	// by reading go/def.bzl. May be unset if the version can't be read.
 	rulesGoVersion version.Version
@@ -50,13 +50,13 @@ type goConfig struct {
 	// -build_tags or # gazelle:build_tags. Some tags, like gc, are always on.
 	genericTags map[string]bool
 
-	// prefix is a prefix of an import path, used to generate importpath
+	// Prefix is a prefix of an import path, used to generate importpath
 	// attributes. Set with -go_prefix or # gazelle:prefix.
-	prefix string
+	Prefix string
 
-	// prefixRel is the package name of the directory where the prefix was set
+	// PrefixRel is the package name of the directory where the prefix was set
 	// ("" for the root directory).
-	prefixRel string
+	PrefixRel string
 
 	// prefixSet indicates whether the prefix was set explicitly. It is an error
 	// to infer an importpath for a rule without setting the prefix.
@@ -120,8 +120,8 @@ var (
 	defaultGoGrpcCompilers  = []string{"@io_bazel_rules_go//proto:go_grpc"}
 )
 
-func newGoConfig() *goConfig {
-	gc := &goConfig{
+func newGoConfig() *GoConfig {
+	gc := &GoConfig{
 		goProtoCompilers: defaultGoProtoCompilers,
 		goGrpcCompilers:  defaultGoGrpcCompilers,
 		goGenerateProto:  true,
@@ -130,11 +130,17 @@ func newGoConfig() *goConfig {
 	return gc
 }
 
-func getGoConfig(c *config.Config) *goConfig {
-	return c.Exts[goName].(*goConfig)
+// GetGoConfig returns the go language configuration. If the go
+// extension was not run, it will return nil.
+func GetGoConfig(c *config.Config) *GoConfig {
+	gc := c.Exts[goName]
+	if gc == nil {
+		return nil
+	}
+	return gc.(*GoConfig)
 }
 
-func (gc *goConfig) clone() *goConfig {
+func (gc *GoConfig) clone() *GoConfig {
 	gcCopy := *gc
 	gcCopy.genericTags = make(map[string]bool)
 	for k, v := range gc.genericTags {
@@ -148,7 +154,7 @@ func (gc *goConfig) clone() *goConfig {
 
 // preprocessTags adds some tags which are on by default before they are
 // used to match files.
-func (gc *goConfig) preprocessTags() {
+func (gc *GoConfig) preprocessTags() {
 	if gc.genericTags == nil {
 		gc.genericTags = make(map[string]bool)
 	}
@@ -158,7 +164,7 @@ func (gc *goConfig) preprocessTags() {
 // setBuildTags sets genericTags by parsing as a comma separated list. An
 // error will be returned for tags that wouldn't be recognized by "go build".
 // preprocessTags should be called before this.
-func (gc *goConfig) setBuildTags(tags string) error {
+func (gc *GoConfig) setBuildTags(tags string) error {
 	if tags == "" {
 		return nil
 	}
@@ -172,7 +178,7 @@ func (gc *goConfig) setBuildTags(tags string) error {
 }
 
 func getProtoMode(c *config.Config) proto.Mode {
-	if gc := getGoConfig(c); !gc.goGenerateProto {
+	if gc := GetGoConfig(c); !gc.goGenerateProto {
 		return proto.DisableMode
 	} else if pc := proto.GetProtoConfig(c); pc != nil {
 		return pc.Mode
@@ -265,7 +271,7 @@ func (*goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			"build_tags",
 			"comma-separated list of build tags. If not specified, Gazelle will not\n\tfilter sources with build constraints.")
 		fs.Var(
-			&gzflag.ExplicitFlag{Value: &gc.prefix, IsSet: &gc.prefixSet},
+			&gzflag.ExplicitFlag{Value: &gc.Prefix, IsSet: &gc.prefixSet},
 			"go_prefix",
 			"prefix of import paths in the current workspace")
 		fs.Var(
@@ -322,9 +328,9 @@ func (*goLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 	// rule names when there are no .proto sources (empty rules to be deleted)
 	// or when the package name can't be determined.
 	// TODO(jayconrod): deprecate and remove this behavior.
-	gc := getGoConfig(c)
+	gc := GetGoConfig(c)
 	if pc := proto.GetProtoConfig(c); pc != nil {
-		pc.GoPrefix = gc.prefix
+		pc.GoPrefix = gc.Prefix
 	}
 
 	// List modules that may refer to internal packages in this module.
@@ -333,7 +339,7 @@ func (*goLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 			continue
 		}
 		modulePath := r.AttrString("importpath")
-		if !strings.HasPrefix(modulePath, gc.prefix+"/") {
+		if !strings.HasPrefix(modulePath, gc.Prefix+"/") {
 			continue
 		}
 		m := moduleRepo{
@@ -347,11 +353,11 @@ func (*goLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 }
 
 func (*goLang) Configure(c *config.Config, rel string, f *rule.File) {
-	var gc *goConfig
+	var gc *GoConfig
 	if raw, ok := c.Exts[goName]; !ok {
 		gc = newGoConfig()
 	} else {
-		gc = raw.(*goConfig).clone()
+		gc = raw.(*GoConfig).clone()
 	}
 	c.Exts[goName] = gc
 
@@ -384,8 +390,8 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 	if path.Base(rel) == "vendor" {
 		gc.importMapPrefix = InferImportPath(c, rel)
 		gc.importMapPrefixRel = rel
-		gc.prefix = ""
-		gc.prefixRel = rel
+		gc.Prefix = ""
+		gc.PrefixRel = rel
 	}
 
 	if f != nil {
@@ -394,9 +400,9 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				log.Print(err)
 				return
 			}
-			gc.prefix = prefix
+			gc.Prefix = prefix
 			gc.prefixSet = true
-			gc.prefixRel = rel
+			gc.PrefixRel = rel
 		}
 		for _, d := range f.Directives {
 			switch d.Key {

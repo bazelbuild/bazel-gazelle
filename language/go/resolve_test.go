@@ -1062,7 +1062,7 @@ func TestResolveExternal(t *testing.T) {
 	c, langs, _ := testConfig(
 		t,
 		"-go_prefix=example.com/local")
-	gc := getGoConfig(c)
+	gc := GetGoConfig(c)
 	ix := resolve.NewRuleIndex(nil)
 	ix.Finish()
 	gl := langs[1].(*goLang)

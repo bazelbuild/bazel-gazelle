@@ -116,13 +116,13 @@ var (
 // This may be used directly by other language extensions related to Go
 // (gomock). Gazelle calls Language.Resolve instead.
 func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
-	gc := getGoConfig(c)
+	gc := GetGoConfig(c)
 	if build.IsLocalImport(imp) {
 		cleanRel := path.Clean(path.Join(from.Pkg, imp))
 		if build.IsLocalImport(cleanRel) {
 			return label.NoLabel, fmt.Errorf("relative import path %q from %q points outside of repository", imp, from.Pkg)
 		}
-		imp = path.Join(gc.prefix, cleanRel)
+		imp = path.Join(gc.Prefix, cleanRel)
 	}
 
 	if IsStandard(imp) {
@@ -154,8 +154,8 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 	if !c.IndexLibraries {
 		// packages in current repo were not indexed, relying on prefix to decide what may have been in
 		// current repo
-		if pathtools.HasPrefix(imp, gc.prefix) {
-			pkg := path.Join(gc.prefixRel, pathtools.TrimPrefix(imp, gc.prefix))
+		if pathtools.HasPrefix(imp, gc.Prefix) {
+			pkg := path.Join(gc.PrefixRel, pathtools.TrimPrefix(imp, gc.Prefix))
 			return label.New("", pkg, defaultLibName), nil
 		}
 	}
