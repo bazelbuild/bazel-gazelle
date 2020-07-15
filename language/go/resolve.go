@@ -156,14 +156,15 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 		// current repo
 		if pathtools.HasPrefix(imp, gc.prefix) {
 			pkg := path.Join(gc.prefixRel, pathtools.TrimPrefix(imp, gc.prefix))
-			return label.New("", pkg, defaultLibName), nil
+			libName := libNameByConvention(gc.goNamingConvention, "", imp)
+			return label.New("", pkg, libName), nil
 		}
 	}
 
 	if gc.depMode == externalMode {
-		return resolveExternal(gc.moduleMode, rc, imp)
+		return resolveExternal(c, rc, imp)
 	} else {
-		return resolveVendored(rc, imp)
+		return resolveVendored(gc, imp)
 	}
 }
 
@@ -228,7 +229,7 @@ func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, fro
 
 var modMajorRex = regexp.MustCompile(`/v\d+(?:/|$)`)
 
-func resolveExternal(moduleMode bool, rc *repo.RemoteCache, imp string) (label.Label, error) {
+func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.Label, error) {
 	// If we're in module mode, use "go list" to find the module path and
 	// repository name. Otherwise, use special cases (for github.com, golang.org)
 	// or send a GET with ?go-get=1 to find the root. If the path contains
@@ -237,6 +238,8 @@ func resolveExternal(moduleMode bool, rc *repo.RemoteCache, imp string) (label.L
 	// Eventually module mode will be the only mode. But for now, it's expensive
 	// and not the common case, especially when known repositories aren't
 	// listed in WORKSPACE (which is currently the case within go_repository).
+	gc := getGoConfig(c)
+	moduleMode := gc.moduleMode
 	if !moduleMode {
 		moduleMode = pathWithoutSemver(imp) != ""
 	}
@@ -261,11 +264,21 @@ func resolveExternal(moduleMode bool, rc *repo.RemoteCache, imp string) (label.L
 		pkg = pathtools.TrimPrefix(impWithoutSemver, prefix)
 	}
 
-	return label.New(repo, pkg, defaultLibName), nil
+	// Determine what naming convention is used by the go_repository rule.
+	// If none is specified with "build_naming_convention", the either naming convention
+	// can be used, so we'll default to whatever's used in the current workspace to avoid churn.
+	nc := gc.goNamingConvention
+	if rnc, ok := gc.repoNamingConvention[repo]; ok {
+		nc = rnc
+	}
+
+	name := libNameByConvention(nc, "", imp)
+	return label.New(repo, pkg, name), nil
 }
 
-func resolveVendored(rc *repo.RemoteCache, imp string) (label.Label, error) {
-	return label.New("", path.Join("vendor", imp), defaultLibName), nil
+func resolveVendored(gc *goConfig, imp string) (label.Label, error) {
+	name := libNameByConvention(gc.goNamingConvention, "", imp)
+	return label.New("", path.Join("vendor", imp), name), nil
 }
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
@@ -294,7 +307,8 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 	if from.Pkg == "vendor" || strings.HasPrefix(from.Pkg, "vendor/") {
 		rel = path.Join("vendor", rel)
 	}
-	return label.New("", rel, defaultLibName), nil
+	libName := libNameByConvention(getGoConfig(c).goNamingConvention, "", imp)
+	return label.New("", rel, libName), nil
 }
 
 // wellKnownProtos is the set of proto sets for which we don't need to add

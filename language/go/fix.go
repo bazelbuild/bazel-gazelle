@@ -30,8 +30,90 @@ func (_ *goLang) Fix(c *config.Config, f *rule.File) {
 	flattenSrcs(c, f)
 	squashCgoLibrary(c, f)
 	squashXtest(c, f)
+	migrateNamingConvention(c, f)
 	removeLegacyProto(c, f)
 	removeLegacyGazelle(c, f)
+}
+
+// migrateNamingConvention renames rules according to go_naming_convention directives.
+func migrateNamingConvention(c *config.Config, f *rule.File) {
+	nc := getGoConfig(c).goNamingConvention
+
+	binName := binName(f)
+	importPath := importPath(f)
+	if importPath == "" {
+		return
+	}
+	libName := libNameByConvention(nc, binName, importPath)
+	testName := testNameByConvention(nc, binName, importPath)
+	var migrateLibName, migrateTestName string
+	switch nc {
+	case goDefaultLibraryNamingConvention:
+		migrateLibName = libNameByConvention(importNamingConvention, binName, importPath)
+		migrateTestName = testNameByConvention(importNamingConvention, binName, importPath)
+	case importNamingConvention, importAliasNamingConvention:
+		migrateLibName = defaultLibName
+		migrateTestName = defaultTestName
+	default:
+		return
+	}
+
+	for _, r := range f.Rules {
+		// TODO(jayconrod): support map_kind directive.
+		// We'll need to move the metaresolver from resolve.RuleIndex to config.Config so we can access it from here.
+		switch r.Kind() {
+		case "go_binary":
+			replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
+		case "go_library":
+			if r.Name() == migrateLibName {
+				r.SetName(libName)
+			}
+		case "go_test":
+			if r.Name() == migrateTestName {
+				r.SetName(testName)
+				replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
+			}
+		}
+	}
+}
+
+// binName returns the name of a go_binary rule if one can be found.
+func binName(f *rule.File) string {
+	for _, r := range f.Rules {
+		if r.Kind() == "go_binary" {
+			return r.Name()
+		}
+	}
+	return ""
+}
+
+// import path returns the existing import path from the first encountered Go rule with the attribute set.
+func importPath(f *rule.File) string {
+	for _, r := range f.Rules {
+		switch r.Kind() {
+		case "go_binary", "go_library", "go_test":
+			if ip, ok := r.Attr("importpath").(*bzl.StringExpr); ok && ip.Value != "" {
+				return ip.Value
+			}
+		}
+	}
+	return ""
+}
+
+func replaceInStrListAttr(r *rule.Rule, attr, old, new string) {
+	l := r.AttrStrings(attr)
+	var shouldAdd = true
+	var items []string
+	for _, v := range l {
+		if v != old {
+			items = append(items, v)
+		}
+		shouldAdd = shouldAdd && v != new
+	}
+	if shouldAdd {
+		items = append(items, new)
+	}
+	r.SetAttr(attr, items)
 }
 
 // migrateLibraryEmbed converts "library" attributes to "embed" attributes,
