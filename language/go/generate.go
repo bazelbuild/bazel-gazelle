@@ -81,9 +81,12 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	genFiles := append([]string{}, args.GenFiles...)
 	if !pcMode.ShouldIncludePregeneratedFiles() {
 		keep := func(f string) bool {
-			if strings.HasSuffix(f, ".pb.go") {
-				_, ok := protoFileInfo[strings.TrimSuffix(f, ".pb.go")+".proto"]
-				return !ok
+			for _, suffix := range []string{".pb.go", "_grpc.pb.go"} {
+				if strings.HasSuffix(f, suffix) {
+					if _, ok := protoFileInfo[strings.TrimSuffix(f, suffix)+".proto"]; ok {
+						return false
+					}
+				}
 			}
 			return true
 		}
