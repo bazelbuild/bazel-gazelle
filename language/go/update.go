@@ -89,25 +89,29 @@ func (*goLang) ImportRepos(args language.ImportReposArgs) language.ImportReposRe
 }
 
 func setBuildAttrs(gc *goConfig, r *rule.Rule) {
+	if gc.buildDirectivesAttr != "" {
+		buildDirectives := strings.Split(gc.buildDirectivesAttr, ",")
+		r.SetAttr("build_directives", buildDirectives)
+	}
 	if gc.buildExternalAttr != "" {
 		r.SetAttr("build_external", gc.buildExternalAttr)
-	}
-	if gc.buildFileNamesAttr != "" {
-		r.SetAttr("build_file_name", gc.buildFileNamesAttr)
-	}
-	if gc.buildFileGenerationAttr != "" {
-		r.SetAttr("build_file_generation", gc.buildFileGenerationAttr)
-	}
-	if gc.buildTagsAttr != "" {
-		buildTags := strings.Split(gc.buildTagsAttr, ",")
-		r.SetAttr("build_tags", buildTags)
-	}
-	if gc.buildFileProtoModeAttr != "" {
-		r.SetAttr("build_file_proto_mode", gc.buildFileProtoModeAttr)
 	}
 	if gc.buildExtraArgsAttr != "" {
 		extraArgs := strings.Split(gc.buildExtraArgsAttr, ",")
 		r.SetAttr("build_extra_args", extraArgs)
+	}
+	if gc.buildFileGenerationAttr != "" {
+		r.SetAttr("build_file_generation", gc.buildFileGenerationAttr)
+	}
+	if gc.buildFileNamesAttr != "" {
+		r.SetAttr("build_file_name", gc.buildFileNamesAttr)
+	}
+	if gc.buildFileProtoModeAttr != "" {
+		r.SetAttr("build_file_proto_mode", gc.buildFileProtoModeAttr)
+	}
+	if gc.buildTagsAttr != "" {
+		buildTags := strings.Split(gc.buildTagsAttr, ",")
+		r.SetAttr("build_tags", buildTags)
 	}
 }
 
