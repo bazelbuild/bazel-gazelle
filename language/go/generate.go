@@ -264,6 +264,12 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			libName = lib.Name()
 		}
 		rules = append(rules, lib)
+		if r := g.maybeGenerateToolLib(lib, pkg); r != nil {
+			rules = append(rules, r)
+		}
+		if r := g.maybeGenerateExtraLib(lib, pkg); r != nil {
+			rules = append(rules, r)
+		}
 		rules = append(rules,
 			g.generateBin(pkg, libName),
 			g.generateTest(pkg, libName))
@@ -483,6 +489,118 @@ func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
 		goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
 	}
 	return goTest
+}
+
+// maybeGenerateToolLib generates a go_tool_library target equivalent to the
+// go_library in the same directory. maybeGenerateToolLib returns nil for
+// packages outside golang.org/x/tools and for packages that aren't known
+// dependencies of nogo.
+//
+// HACK(#834): This is only needed by golang.org/x/tools for dependencies of
+// nogo. go_tool_library should be removed when bazelbuild/rules_go#2374 is
+// resolved, so these targets shouldn't be generated in other repositories.
+// Generating them here automatically makes it easier to upgrade
+// org_golang_x_tools.
+func (g *generator) maybeGenerateToolLib(lib *rule.Rule, pkg *goPackage) *rule.Rule {
+	// Check whether we should generate go_tool_library.
+	gc := getGoConfig(g.c)
+	if gc.prefix != "golang.org/x/tools" || gc.prefixRel != "" {
+		return nil
+	}
+	pass := strings.TrimPrefix(pkg.importPath, "golang.org/x/tools/go/analysis/passes/")
+	if pass == pkg.importPath || strings.Index(pass, "/") >= 0 {
+		// Not a direct dependency of nogo, possibly an indirect dependency
+		switch pkg.importPath {
+		case "golang.org/x/tools/go/analysis",
+			"golang.org/x/tools/go/analysis/internal/facts",
+			"golang.org/x/tools/go/analysis/passes/internal/analysisutil",
+			"golang.org/x/tools/go/ast/astutil",
+			"golang.org/x/tools/go/ast/inspector",
+			"golang.org/x/tools/go/cfg",
+			"golang.org/x/tools/go/gcexportdata",
+			"golang.org/x/tools/go/internal/gcimporter",
+			"golang.org/x/tools/go/ssa",
+			"golang.org/x/tools/go/types/objectpath",
+			"golang.org/x/tools/go/types/typeutil",
+			"golang.org/x/tools/internal/analysisinternal":
+			// Indirect dependency
+		default:
+			return nil
+		}
+	}
+
+	// Generate the target.
+	toolLib := rule.NewRule("go_tool_library", "go_tool_library")
+	var visibility []string
+	if pkg.importPath == "golang.org/x/tools/go/analysis/internal/facts" {
+		// Imported by nogo main. We add a visibility exception.
+		visibility = []string{"//visibility:public"}
+	} else {
+		visibility = g.commonVisibility(pkg.importPath)
+	}
+	g.setCommonAttrs(toolLib, pkg.rel, visibility, pkg.library, "")
+	g.setImportAttrs(toolLib, pkg.importPath)
+	return toolLib
+}
+
+// maybeGenerateExtraLib generates extra equivalent library targets for
+// certain protobuf libraries. These "_gen" targets depend on Well Known Types
+// built with go_proto_library and are used together with go_proto_library.
+// The original targets are used when proto rule generation is disabled.
+func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.Rule {
+	gc := getGoConfig(g.c)
+	if gc.prefix != "github.com/golang/protobuf" || gc.prefixRel != "" {
+		return nil
+	}
+
+	var r *rule.Rule
+	switch pkg.importPath {
+	case "github.com/golang/protobuf/descriptor":
+		r = rule.NewRule("go_library", "go_default_library_gen")
+		r.SetAttr("srcs", pkg.library.sources.buildFlat())
+		r.SetAttr("importpath", pkg.importPath)
+		r.SetAttr("visibility", []string{"//visibility:public"})
+		r.SetAttr("deps", []string{
+			"//proto:go_default_library",
+			"@io_bazel_rules_go//proto/wkt:descriptor_go_proto",
+			"@org_golang_google_protobuf//reflect/protodesc:go_default_library",
+			"@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
+			"@org_golang_google_protobuf//runtime/protoimpl:go_default_library",
+		})
+
+	case "github.com/golang/protobuf/jsonpb":
+		r = rule.NewRule("alias", "go_default_library_gen")
+		r.SetAttr("actual", ":go_default_library")
+		r.SetAttr("visibility", []string{"//visibility:public"})
+
+	case "github.com/golang/protobuf/generator":
+		r = rule.NewRule("go_library", "go_default_library_gen")
+		r.SetAttr("srcs", pkg.library.sources.buildFlat())
+		r.SetAttr("importpath", pkg.importPath)
+		r.SetAttr("visibility", []string{"//visibility:public"})
+		r.SetAttr("deps", []string{
+			"//proto:go_default_library",
+			"//protoc-gen-go/generator/internal/remap:go_default_library",
+			"@io_bazel_rules_go//proto/wkt:compiler_plugin_go_proto",
+			"@io_bazel_rules_go//proto/wkt:descriptor_go_proto",
+		})
+
+	case "github.com/golang/protobuf/ptypes":
+		r = rule.NewRule("go_library", "go_default_library_gen")
+		r.SetAttr("srcs", pkg.library.sources.buildFlat())
+		r.SetAttr("importpath", pkg.importPath)
+		r.SetAttr("visibility", []string{"//visibility:public"})
+		r.SetAttr("deps", []string{
+			"//proto:go_default_library",
+			"@io_bazel_rules_go//proto/wkt:any_go_proto",
+			"@io_bazel_rules_go//proto/wkt:duration_go_proto",
+			"@io_bazel_rules_go//proto/wkt:timestamp_go_proto",
+			"@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
+			"@org_golang_google_protobuf//reflect/protoregistry:go_default_library",
+		})
+	}
+
+	return r
 }
 
 func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embed string) {

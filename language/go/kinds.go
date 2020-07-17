@@ -118,6 +118,28 @@ var goKinds = map[string]rule.KindInfo{
 		},
 		ResolveAttrs: map[string]bool{"deps": true},
 	},
+	// HACK(#834): remove when bazelbuild/rules_go#2374 is resolved.
+	"go_tool_library": {
+		MatchAttrs: []string{"importpath"},
+		NonEmptyAttrs: map[string]bool{
+			"deps":  true,
+			"embed": true,
+			"srcs":  true,
+		},
+		SubstituteAttrs: map[string]bool{
+			"embed": true,
+		},
+		MergeableAttrs: map[string]bool{
+			"cgo":        true,
+			"clinkopts":  true,
+			"copts":      true,
+			"embed":      true,
+			"importmap":  true,
+			"importpath": true,
+			"srcs":       true,
+		},
+		ResolveAttrs: map[string]bool{"deps": true},
+	},
 }
 
 var goLoads = []rule.LoadInfo{
@@ -130,6 +152,7 @@ var goLoads = []rule.LoadInfo{
 			"go_prefix",
 			"go_repository",
 			"go_test",
+			"go_tool_library",
 		},
 	}, {
 		Name: "@io_bazel_rules_go//proto:def.bzl",
