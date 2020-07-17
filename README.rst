@@ -73,10 +73,10 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "a8d6b1b354d371a646d2f7927319974e0f9e52f73a2452d2b3877118169eb6bb",
+        sha256 = "2d536797707dd1697441876b2e862c58839f975c8fc2f0f96636cbd428f45866",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.23.3/rules_go-v0.23.3.tar.gz",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.23.3/rules_go-v0.23.3.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.23.5/rules_go-v0.23.5.tar.gz",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.23.5/rules_go-v0.23.5.tar.gz",
         ],
     )
 
@@ -466,29 +466,33 @@ The following flags are accepted:
 |                                                                                                                                                         |
 | This flag can only be used with ``-from_file``.                                                                                                         |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
-| :flag:`-build_file_names file1,file2,...`                                                                |                                              |
+| :flag:`-build_directives arg1,arg2,...`                                                                  |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
-| Sets the ``build_file_name`` attribute for the generated `go_repository`_ rule(s).                                                                      |
+| Sets the ``build_directives attribute`` for the generated `go_repository`_ rule(s).                                                                     |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-build_external external|vendored`                                                                |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Sets the ``build_external`` attribute for the generated `go_repository`_ rule(s).                                                                       |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| :flag:`-build_extra_args arg1,arg2,...`                                                                  |                                              |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
+| Sets the ``build_extra_args attribute`` for the generated `go_repository`_ rule(s).                                                                     |
++----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-build_file_generation auto|on|off`                                                               |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Sets the ``build_file_generation`` attribute for the generated `go_repository`_ rule(s).                                                                |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
-| :flag:`-build_tags tag1,tag2,...`                                                                        |                                              |
+| :flag:`-build_file_names file1,file2,...`                                                                |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
-| Sets the ``build_tags`` attribute for the generated `go_repository`_ rule(s).                                                                           |
+| Sets the ``build_file_name`` attribute for the generated `go_repository`_ rule(s).                                                                      |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-build_file_proto_mode default|package|legacy|disable|disable_global`                             |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Sets the ``build_file_proto_mode`` attribute for the generated `go_repository`_ rule(s).                                                                |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
-| :flag:`-build_extra_args arg1,arg2,...`                                                                  |                                              |
+| :flag:`-build_tags tag1,tag2,...`                                                                        |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
-| Sets the ``build_exra_args attribute`` for the generated `go_repository`_ rule(s).                                                                      |
+| Sets the ``build_tags`` attribute for the generated `go_repository`_ rule(s).                                                                           |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 
 Directives

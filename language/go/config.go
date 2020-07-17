@@ -116,10 +116,11 @@ type goConfig struct {
 	// in internal packages.
 	submodules []moduleRepo
 
-	// buildExternalAttr, buildFileNamesAttr, buildFileGenerationAttr,
-	// buildTagsAttr, buildFileProtoModeAttr, and buildExtraArgsAttr are
-	// attributes for go_repository rules, set on the command line.
-	buildExternalAttr, buildFileNamesAttr, buildFileGenerationAttr, buildTagsAttr, buildFileProtoModeAttr, buildExtraArgsAttr string
+	// buildDirectives, buildExternalAttr, buildExtraArgsAttr,
+	// buildFileGenerationAttr, buildFileNamesAttr, buildFileProtoModeAttr and
+	// buildTagsAttr are attributes for go_repository rules, set on the command
+	// line.
+	buildDirectivesAttr, buildExternalAttr, buildExtraArgsAttr, buildFileGenerationAttr, buildFileNamesAttr, buildFileProtoModeAttr, buildTagsAttr string
 }
 
 var (
@@ -367,6 +368,10 @@ func (*goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			"controls generated library names. One of (go_default_library, import, import_alias)")
 
 	case "update-repos":
+		fs.StringVar(&gc.buildDirectivesAttr,
+			"build_directives",
+			"",
+			"Sets the build_directives attribute for the generated go_repository rule(s).")
 		fs.Var(&gzflag.AllowedStringFlag{Value: &gc.buildExternalAttr, Allowed: validBuildExternalAttr},
 			"build_external",
 			"Sets the build_external attribute for the generated go_repository rule(s).")
