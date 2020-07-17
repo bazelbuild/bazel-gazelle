@@ -524,11 +524,11 @@ import _ "golang.org/x/baz"
 			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     srcs = ["a.go"],
     importpath = "example.com/foo",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/golang.org/x/bar:go_default_library"],
+    deps = ["//vendor/golang.org/x/bar"],
 )
 `,
 		}, {
@@ -536,12 +536,12 @@ go_library(
 			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bar",
     srcs = ["bar.go"],
     importmap = "example.com/foo/vendor/golang.org/x/bar",
     importpath = "golang.org/x/bar",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/golang.org/x/baz:go_default_library"],
+    deps = ["//vendor/golang.org/x/baz"],
 )
 `,
 		},

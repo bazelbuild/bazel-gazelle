@@ -55,7 +55,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 # gazelle:prefix example.com/test
 
 go_library(
-    name = "go_default_library",
+    name = "test",
     srcs = ["foo.go"],
     importpath = "example.com/test",
     visibility = ["//visibility:public"],

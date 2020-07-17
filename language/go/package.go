@@ -159,13 +159,6 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 		return fmt.Errorf("%s: go prefix is not set, so importpath can't be determined for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line", pkg.dir)
 	}
 	pkg.importPath = InferImportPath(c, pkg.rel)
-
-	if pkg.rel == gc.prefixRel {
-		pkg.importPath = gc.prefix
-	} else {
-		fromPrefixRel := strings.TrimPrefix(pkg.rel, gc.prefixRel+"/")
-		pkg.importPath = path.Join(gc.prefix, fromPrefixRel)
-	}
 	return nil
 }
 

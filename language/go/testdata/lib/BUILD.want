@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "lib",
     srcs = [
         "asm.h",
         "asm.s",
@@ -19,7 +19,7 @@ go_library(
 )
 
 go_test(
-    name = "go_default_test",
+    name = "lib_test",
     srcs = [
         "lib_external_test.go",
         "lib_test.go",
@@ -28,5 +28,5 @@ go_test(
         "example.com/repo/lib",
         "testing",
     ],
-    embed = [":go_default_library"],
+    embed = [":lib"],
 )

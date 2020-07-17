@@ -262,7 +262,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			libName = lib.Name()
 		}
 		rules = append(rules, lib)
-		if r := g.generateAlias(pkg, libName); r != nil {
+		if r := g.maybeGenerateAlias(pkg, libName); r != nil {
 			rules = append(rules, r)
 		}
 		rules = append(rules,
@@ -451,7 +451,7 @@ func (g *generator) generateLib(pkg *goPackage, binName, embed string) *rule.Rul
 	if pkg.isCommand() {
 		bn = binName
 	}
-	name := libNameByConvention(getGoConfig(g.c).goNamingConvention, bn, pkg.name)
+	name := libNameByConvention(getGoConfig(g.c).goNamingConvention, bn, pkg.importPath)
 	goLibrary := rule.NewRule("go_library", name)
 	if !pkg.library.sources.hasGo() && embed == "" {
 		return goLibrary // empty
@@ -468,7 +468,7 @@ func (g *generator) generateLib(pkg *goPackage, binName, embed string) *rule.Rul
 	return goLibrary
 }
 
-func (g *generator) generateAlias(pkg *goPackage, libName string) *rule.Rule {
+func (g *generator) maybeGenerateAlias(pkg *goPackage, libName string) *rule.Rule {
 	if pkg.isCommand() || libName == "" {
 		return nil
 	}
@@ -479,7 +479,7 @@ func (g *generator) generateAlias(pkg *goPackage, libName string) *rule.Rule {
 	alias := rule.NewRule("alias", defaultLibName)
 	alias.SetAttr("visibility", g.commonVisibility(pkg.importPath))
 	if gc.goNamingConvention == importAliasNamingConvention {
-		alias.SetAttr("actual", ":" + libName)
+		alias.SetAttr("actual", ":"+libName)
 	}
 	return alias
 }
@@ -499,7 +499,7 @@ func (g *generator) generateTest(pkg *goPackage, binName, library string) *rule.
 	if pkg.isCommand() {
 		bn = binName
 	}
-	name := testNameByConvention(getGoConfig(g.c).goNamingConvention, bn, pkg.name)
+	name := testNameByConvention(getGoConfig(g.c).goNamingConvention, bn, pkg.importPath)
 	goTest := rule.NewRule("go_test", name)
 	if !pkg.test.sources.hasGo() {
 		return goTest // empty

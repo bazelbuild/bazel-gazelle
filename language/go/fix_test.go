@@ -105,6 +105,49 @@ go_test(
 )
 `,
 		}, {
+			desc:             "go_naming_convention=go_default_library -> import conflict",
+			namingConvention: importNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load(":build_defs.bzl", "x_binary")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "foo",
+    visibility = ["//visibility:private"],
+)
+
+x_binary(
+    name = "foo",
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load(":build_defs.bzl", "x_binary")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "foo",
+    visibility = ["//visibility:private"],
+)
+
+x_binary(
+    name = "foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+		}, {
 			desc:             "go_naming_convention=import -> go_default_library for lib",
 			namingConvention: goDefaultLibraryNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
