@@ -97,36 +97,22 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		return fmt.Errorf("-patch set but -mode is %s, not diff", ucr.mode)
 	}
 
-	var wd string
-	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
-		// If Gazelle was invoked by 'bazel run', the working directory is outside
-		// the repository, and we should use BUILD_WORKSPACE_DIRECTORY to resolve
-		// relative paths on the command line. We don't want to change the
-		// working directory, since it would interfere with runfiles lookups that
-		// some extensions may rely on.
-		wd = wsDir
-	} else {
-		var err error
-		if wd, err = os.Getwd(); err != nil {
-			return err
-		}
-	}
 	dirs := fs.Args()
 	if len(dirs) == 0 {
 		dirs = []string{"."}
 	}
 	uc.dirs = make([]string, len(dirs))
-	for i, arg := range dirs {
-		dir := arg
-		if !filepath.IsAbs(dir) {
-			dir = filepath.Join(wd, dir)
-		}
-		dir, err := filepath.EvalSymlinks(dir)
+	for i := range dirs {
+		dir, err := filepath.Abs(dirs[i])
 		if err != nil {
-			return fmt.Errorf("%s: failed to resolve symlinks: %v", arg, err)
+			return fmt.Errorf("%s: failed to find absolute path: %v", dirs[i], err)
+		}
+		dir, err = filepath.EvalSymlinks(dir)
+		if err != nil {
+			return fmt.Errorf("%s: failed to resolve symlinks: %v", dirs[i], err)
 		}
 		if !isDescendingDir(dir, c.RepoRoot) {
-			return fmt.Errorf("%s: not a subdirectory of repo root %s", arg, c.RepoRoot)
+			return fmt.Errorf("dir %q is not a subdirectory of repo root %q", dir, c.RepoRoot)
 		}
 		uc.dirs[i] = dir
 	}

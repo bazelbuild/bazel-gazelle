@@ -30,7 +30,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -197,11 +196,8 @@ func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Confi
 func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 	var err error
 	if cc.repoRoot == "" {
-		if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
-			cc.repoRoot = wsDir
-		} else if parent, err := wspace.FindRepoRoot("."); err == nil {
-			cc.repoRoot = parent
-		} else {
+		cc.repoRoot, err = wspace.FindRepoRoot(".")
+		if err != nil {
 			return fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
 		}
 	}
