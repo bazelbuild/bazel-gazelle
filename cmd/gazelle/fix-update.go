@@ -369,10 +369,8 @@ func runFixUpdate(cmd command, args []string) (err error) {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
 			mrslv.Resolver(r, v.pkgRel).Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
 		}
-		if err = merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve,
-			unionKindInfoMaps(kinds, v.mappedKindInfo)); err != nil {
-			return err
-		}
+		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve,
+			unionKindInfoMaps(kinds, v.mappedKindInfo))
 	}
 
 	// Emit merged files.

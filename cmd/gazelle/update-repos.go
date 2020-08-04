@@ -262,9 +262,7 @@ func updateRepos(args []string) (err error) {
 
 	updatedFiles := make(map[string]*rule.File)
 	for _, f := range sortedFiles {
-		if err = merger.MergeFile(f, emptyForFiles[f], genForFiles[f], merger.PreResolve, kinds); err != nil {
-			return err
-		}
+		merger.MergeFile(f, emptyForFiles[f], genForFiles[f], merger.PreResolve, kinds)
 		merger.FixLoads(f, loads)
 		if f == uc.workspace {
 			if err := merger.CheckGazelleLoaded(f); err != nil {

@@ -37,7 +37,6 @@ limitations under the License.
 package merger
 
 import (
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -97,7 +96,7 @@ const (
 // If an attribute is marked with a "# keep" comment, it will not be merged.
 // If a rule is marked with a "# keep" comment, the whole rule will not
 // be modified.
-func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, phase Phase, kinds map[string]rule.KindInfo) error {
+func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, phase Phase, kinds map[string]rule.KindInfo) {
 	getMergeAttrs := func(r *rule.Rule) map[string]bool {
 		if phase == PreResolve {
 			return kinds[r.Kind()].MergeableAttrs
@@ -127,9 +126,6 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, phase Phas
 	substitutions := make(map[string]string)
 	for i, genRule := range genRules {
 		oldRule, err := Match(oldFile.Rules, genRule, kinds[genRule.Kind()])
-		if err == duplicateErr {
-			return fmt.Errorf("could not match %s(%s) in %s: %v", genRule.Kind(), genRule.Name(), oldFile.Path, err)
-		}
 		if err != nil {
 			// TODO(jayconrod): add a verbose mode and log errors. They are too chatty
 			// to print by default.
@@ -162,7 +158,6 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, phase Phas
 			rule.MergeRules(genRule, matchRules[i], getMergeAttrs(genRule), oldFile.Path)
 		}
 	}
-	return nil
 }
 
 // substituteRule replaces local labels (those beginning with ":", referring to
@@ -185,7 +180,6 @@ func substituteRule(r *rule.Rule, substitutions map[string]string, info rule.Kin
 	}
 }
 
-var duplicateErr = errors.New("multiple rules have the same name")
 // Match searches for a rule that can be merged with x in rules.
 //
 // A rule is considered a match if its kind is equal to x's kind AND either its
@@ -224,7 +218,7 @@ func Match(rules []*rule.Rule, x *rule.Rule, info rule.KindInfo) (*rule.Rule, er
 		return y, nil
 	}
 	if len(nameMatches) > 1 {
-		return nil, duplicateErr
+		return nil, fmt.Errorf("could not merge %s(%s): multiple rules have the same name", xkind, xname)
 	}
 
 	for _, key := range info.MatchAttrs {

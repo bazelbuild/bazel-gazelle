@@ -884,9 +884,7 @@ func TestMergeFile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %v", tc.desc, err)
 			}
-			if err = merger.MergeFile(f, emptyFile.Rules, genFile.Rules, merger.PreResolve, testKinds); err != nil {
-				t.Fatalf("%s: %v", tc.desc, err)
-			}
+			merger.MergeFile(f, emptyFile.Rules, genFile.Rules, merger.PreResolve, testKinds)
 			merger.FixLoads(f, testLoads)
 
 			want := tc.expected
@@ -898,32 +896,6 @@ func TestMergeFile(t *testing.T) {
 				t.Fatalf("%s: got %s; want %s", tc.desc, got, want)
 			}
 		})
-	}
-}
-
-func TestMergeFileWithDuplicates(t *testing.T) {
-	oldFile, err := rule.LoadData(filepath.Join("previous", "BUILD.bazel"), "", []byte(`
-go_repository(
-	name = "com_google_cloud_go_pubsub",
-)
-
-go_repository(
-	name = "com_google_cloud_go_pubsub",
-)
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	newFile, err := rule.LoadData(filepath.Join("current", "BUILD.bazel"), "", []byte(`
-go_repository(
-	name = "com_google_cloud_go_pubsub",
-)
-`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = merger.MergeFile(oldFile, nil, newFile.Rules, merger.PreResolve, testKinds); err == nil {
-		t.Fatal("expect merging to fail with duplicate rule names")
 	}
 }
 
