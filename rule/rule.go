@@ -145,7 +145,7 @@ func LoadData(path, pkg string, data []byte) (*File, error) {
 		return nil, err
 	}
 	f := ScanAST(pkg, ast)
-	if err = checkFile(f); err != nil {
+	if err := checkFile(f); err != nil {
 		return nil, err
 	}
 	f.Content = data
@@ -160,7 +160,7 @@ func LoadWorkspaceData(path, pkg string, data []byte) (*File, error) {
 		return nil, err
 	}
 	f := ScanAST(pkg, ast)
-	if err = checkFile(f); err != nil {
+	if err := checkFile(f); err != nil {
 		return nil, err
 	}
 	f.Content = data
@@ -178,7 +178,7 @@ func LoadMacroData(path, pkg, defName string, data []byte) (*File, error) {
 		return nil, err
 	}
 	f := ScanASTBody(pkg, defName, ast)
-	if err = checkFile(f); err != nil {
+	if err := checkFile(f); err != nil {
 		return nil, err
 	}
 	f.Content = data
@@ -916,13 +916,14 @@ func (s byAttrName) Swap(i, j int) {
 func checkFile(f *File) error {
 	names := make(map[string]bool)
 	for _, r := range f.Rules {
-		if r.Name() == "" {
+		name := r.Name()
+		if name == "" {
 			continue
 		}
-		if names[r.Name()] {
-			return fmt.Errorf("multiple rules have the name %q in %s", r.Name(), f.Path)
+		if names[name] {
+			return fmt.Errorf("%s: multiple rules have the name %q", f.Path, name)
 		}
-		names[r.Name()] = true
+		names[name] = true
 	}
 	return nil
 }

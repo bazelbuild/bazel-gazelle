@@ -936,14 +936,6 @@ func TestMatch(t *testing.T) {
 			old:       `cc_library(name = "lib")`,
 			wantError: true,
 		}, {
-			desc: "multiple_name_match",
-			gen:  `go_library(name = "lib")`,
-			old: `
-go_library(name = "lib")
-go_library(name = "lib")
-`,
-			wantError: true,
-		}, {
 			desc:      "attr_match",
 			gen:       `go_library(name = "x", importpath = "foo")`,
 			old:       `go_library(name = "y", importpath = "foo")`,
