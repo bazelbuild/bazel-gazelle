@@ -633,17 +633,29 @@ var errRulesGoRepoNotFound = errors.New(config.RulesGoRepoName + " external repo
 
 // detectNamingConvention attempts to detect the naming convention in use by
 // reading build files in subdirectories of the repository root directory.
-// If no build files are found (for example, in a new project), or if multiple
-// naming conventions are found, importNamingConvention is returned.
+//
+// If detectNamingConvention can't detect the naming convention (for example,
+// because no build files are found or multiple naming conventions are found),
+// importNamingConvention is returned.
 func detectNamingConvention(c *config.Config, rootFile *rule.File) namingConvention {
+	if !c.IndexLibraries {
+		// Indexing is disabled, which usually means speed is important and I/O
+		// should be minimized. Let's not open extra files or directories.
+		return importNamingConvention
+	}
+
 	detectInFile := func(f *rule.File) namingConvention {
 		for _, r := range f.Rules {
-			if r.Kind() != "go_library" {
-				continue
-			}
-			if name := r.Name(); name == defaultLibName {
+			// NOTE: map_kind is not supported. c.KindMap will not be accurate in
+			// subdirectories.
+			kind := r.Kind()
+			name := r.Name()
+			if kind != "alias" && name == defaultLibName {
+				// Assume any kind of rule with the name "go_default_library" is some
+				// kind of go library. The old version of go_proto_library used this
+				// name, and it's possible with map_kind as well.
 				return goDefaultLibraryNamingConvention
-			} else if name == path.Base(r.AttrString("importpath")) {
+			} else if isGoLibrary(kind) && name == path.Base(r.AttrString("importpath")) {
 				return importNamingConvention
 			}
 		}

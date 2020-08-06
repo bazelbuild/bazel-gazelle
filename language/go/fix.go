@@ -40,18 +40,21 @@ func (_ *goLang) Fix(c *config.Config, f *rule.File) {
 func migrateNamingConvention(c *config.Config, f *rule.File) {
 	// Determine old and new names for go_library and go_test.
 	nc := getGoConfig(c).goNamingConvention
-	binName := findBinName(f)
 	importPath := findImportPath(f)
 	if importPath == "" {
 		return
 	}
-	libName := libNameByConvention(nc, binName, importPath)
-	testName := testNameByConvention(nc, binName, importPath)
+	var pkgName string // unknown unless there's a binary
+	if findBinary(f) {
+		pkgName = "main"
+	}
+	libName := libNameByConvention(nc, importPath, pkgName)
+	testName := testNameByConvention(nc, importPath)
 	var migrateLibName, migrateTestName string
 	switch nc {
 	case goDefaultLibraryNamingConvention:
-		migrateLibName = libNameByConvention(importNamingConvention, binName, importPath)
-		migrateTestName = testNameByConvention(importNamingConvention, binName, importPath)
+		migrateLibName = libNameByConvention(importNamingConvention, importPath, pkgName)
+		migrateTestName = testNameByConvention(importNamingConvention, importPath)
 	case importNamingConvention, importAliasNamingConvention:
 		migrateLibName = defaultLibName
 		migrateTestName = defaultTestName
@@ -107,14 +110,14 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 	}
 }
 
-// findBinName returns the name of a go_binary rule if one can be found.
-func findBinName(f *rule.File) string {
+// findBinary returns whether the file has a go_binary rule.
+func findBinary(f *rule.File) bool {
 	for _, r := range f.Rules {
 		if r.Kind() == "go_binary" {
-			return r.Name()
+			return true
 		}
 	}
-	return ""
+	return false
 }
 
 // findImportPath returns the existing import path from the first encountered Go

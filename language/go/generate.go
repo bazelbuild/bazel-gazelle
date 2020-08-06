@@ -255,8 +255,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			_, rs := g.generateProto(pcMode, pkg.proto, pkg.importPath)
 			rules = append(rules, rs...)
 		}
-		binName := pathtools.RelBaseName(pkg.rel, getGoConfig(g.c).prefix, g.c.RepoRoot)
-		lib := g.generateLib(pkg, binName, protoEmbed)
+		lib := g.generateLib(pkg, protoEmbed)
 		var libName string
 		if !lib.IsEmpty(goKinds[lib.Kind()]) {
 			libName = lib.Name()
@@ -266,8 +265,8 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			rules = append(rules, r)
 		}
 		rules = append(rules,
-			g.generateBin(pkg, binName, libName),
-			g.generateTest(pkg, binName, libName))
+			g.generateBin(pkg, libName),
+			g.generateTest(pkg, libName))
 	}
 
 	for _, r := range rules {
@@ -446,12 +445,9 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 	return goProtoName, []*rule.Rule{goProtoLibrary}
 }
 
-func (g *generator) generateLib(pkg *goPackage, binName, embed string) *rule.Rule {
-	var bn string
-	if pkg.isCommand() {
-		bn = binName
-	}
-	name := libNameByConvention(getGoConfig(g.c).goNamingConvention, bn, pkg.importPath)
+func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
+	gc := getGoConfig(g.c)
+	name := libNameByConvention(gc.goNamingConvention, pkg.importPath, pkg.name)
 	goLibrary := rule.NewRule("go_library", name)
 	if !pkg.library.sources.hasGo() && embed == "" {
 		return goLibrary // empty
@@ -484,8 +480,10 @@ func (g *generator) maybeGenerateAlias(pkg *goPackage, libName string) *rule.Rul
 	return alias
 }
 
-func (g *generator) generateBin(pkg *goPackage, binName, library string) *rule.Rule {
-	goBinary := rule.NewRule("go_binary", binName)
+func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
+	gc := getGoConfig(g.c)
+	name := binName(pkg.rel, gc.prefix, g.c.RepoRoot)
+	goBinary := rule.NewRule("go_binary", name)
 	if !pkg.isCommand() || pkg.binary.sources.isEmpty() && library == "" {
 		return goBinary // empty
 	}
@@ -494,12 +492,9 @@ func (g *generator) generateBin(pkg *goPackage, binName, library string) *rule.R
 	return goBinary
 }
 
-func (g *generator) generateTest(pkg *goPackage, binName, library string) *rule.Rule {
-	var bn string
-	if pkg.isCommand() {
-		bn = binName
-	}
-	name := testNameByConvention(getGoConfig(g.c).goNamingConvention, bn, pkg.importPath)
+func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
+	gc := getGoConfig(g.c)
+	name := testNameByConvention(gc.goNamingConvention, pkg.importPath)
 	goTest := rule.NewRule("go_test", name)
 	if !pkg.test.sources.hasGo() {
 		return goTest // empty

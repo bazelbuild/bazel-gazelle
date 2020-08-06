@@ -156,7 +156,7 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 		// current repo
 		if pathtools.HasPrefix(imp, gc.prefix) {
 			pkg := path.Join(gc.prefixRel, pathtools.TrimPrefix(imp, gc.prefix))
-			libName := libNameByConvention(gc.goNamingConvention, "", imp)
+			libName := libNameByConvention(gc.goNamingConvention, imp, "")
 			return label.New("", pkg, libName), nil
 		}
 	}
@@ -277,12 +277,12 @@ func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.
 		nc = gc.goNamingConvention
 	}
 
-	name := libNameByConvention(nc, "", imp)
+	name := libNameByConvention(nc, imp, "")
 	return label.New(repo, pkg, name), nil
 }
 
 func resolveVendored(gc *goConfig, imp string) (label.Label, error) {
-	name := libNameByConvention(gc.goNamingConvention, "", imp)
+	name := libNameByConvention(gc.goNamingConvention, imp, "")
 	return label.New("", path.Join("vendor", imp), name), nil
 }
 
@@ -312,7 +312,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 	if from.Pkg == "vendor" || strings.HasPrefix(from.Pkg, "vendor/") {
 		rel = path.Join("vendor", rel)
 	}
-	libName := libNameByConvention(getGoConfig(c).goNamingConvention, "", imp)
+	libName := libNameByConvention(getGoConfig(c).goNamingConvention, imp, "")
 	return label.New("", rel, libName), nil
 }
 
