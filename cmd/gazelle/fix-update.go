@@ -83,6 +83,7 @@ func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *conf
 	fs.StringVar(&uc.patchPath, "patch", "", "when set with -mode=diff, gazelle will write to a file instead of stdout")
 	fs.Var(&gzflag.MultiFlag{Values: &ucr.knownImports}, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
 	fs.StringVar(&ucr.repoConfigPath, "repo_config", "", "file where Gazelle should load repository configuration. Defaults to WORKSPACE.")
+	fs.BoolVar(&c.Quiet, "quiet", false, "when true, additional debug output during resolution is suppressed")
 }
 
 func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {

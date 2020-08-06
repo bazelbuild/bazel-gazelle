@@ -89,8 +89,10 @@ func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Remo
 		l = l.Rel(from.Repo, from.Pkg)
 		return l.String(), nil
 	})
-	for _, err := range errs {
-		log.Print(err)
+	if len(errs) > 0 && !c.Quiet {
+		for _, err := range errs {
+			log.Print(err)
+		}
 	}
 	if !deps.IsEmpty() {
 		if r.Kind() == "go_proto_library" {
