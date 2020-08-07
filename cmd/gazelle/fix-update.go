@@ -367,7 +367,9 @@ func runFixUpdate(cmd command, args []string) (err error) {
 	for _, v := range visits {
 		for i, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
-			mrslv.Resolver(r, v.pkgRel).Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
+			if rslv := mrslv.Resolver(r, v.pkgRel); rslv != nil {
+				rslv.Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
+			}
 		}
 		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve,
 			unionKindInfoMaps(kinds, v.mappedKindInfo))
