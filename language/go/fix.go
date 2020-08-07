@@ -30,27 +30,31 @@ func (_ *goLang) Fix(c *config.Config, f *rule.File) {
 	flattenSrcs(c, f)
 	squashCgoLibrary(c, f)
 	squashXtest(c, f)
-	migrateNamingConvention(c, f)
 	removeLegacyProto(c, f)
 	removeLegacyGazelle(c, f)
+	migrateNamingConvention(c, f)
 }
 
-// migrateNamingConvention renames rules according to go_naming_convention directives.
+// migrateNamingConvention renames rules according to go_naming_convention
+// directives.
 func migrateNamingConvention(c *config.Config, f *rule.File) {
+	// Determine old and new names for go_library and go_test.
 	nc := getGoConfig(c).goNamingConvention
-
-	binName := binName(f)
-	importPath := importPath(f)
+	importPath := findImportPath(f)
 	if importPath == "" {
 		return
 	}
-	libName := libNameByConvention(nc, binName, importPath)
-	testName := testNameByConvention(nc, binName, importPath)
+	var pkgName string // unknown unless there's a binary
+	if fileContainsGoBinary(c, f) {
+		pkgName = "main"
+	}
+	libName := libNameByConvention(nc, importPath, pkgName)
+	testName := testNameByConvention(nc, importPath)
 	var migrateLibName, migrateTestName string
 	switch nc {
 	case goDefaultLibraryNamingConvention:
-		migrateLibName = libNameByConvention(importNamingConvention, binName, importPath)
-		migrateTestName = testNameByConvention(importNamingConvention, binName, importPath)
+		migrateLibName = libNameByConvention(importNamingConvention, importPath, pkgName)
+		migrateTestName = testNameByConvention(importNamingConvention, importPath)
 	case importNamingConvention, importAliasNamingConvention:
 		migrateLibName = defaultLibName
 		migrateTestName = defaultTestName
@@ -58,37 +62,74 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 		return
 	}
 
+	// Check whether the new names are in use. If there are rules with both old
+	// and new names, there will be a conflict.
+	var haveLib, haveMigrateLib, haveTest, haveMigrateTest bool
+	for _, r := range f.Rules {
+		switch {
+		case r.Name() == libName:
+			haveLib = true
+		case r.Kind() == "go_library" && r.Name() == migrateLibName:
+			haveMigrateLib = true
+		case r.Name() == testName:
+			haveTest = true
+		case r.Kind() == "go_test" && r.Name() == migrateTestName:
+			haveMigrateTest = true
+		}
+	}
+	haveLibConflict := haveLib && haveMigrateLib
+	haveTestConflict := haveTest && haveMigrateTest
+	if haveLibConflict {
+		log.Printf("%[1]s: Tried to rename %[2]s to %[3]s, but %[3]s already exists.", f.Path, migrateLibName, libName)
+	}
+	if haveTestConflict {
+		log.Printf("%[1]s: Tried to rename %[2]s to %[3]s, but %[3]s already exists.", f.Path, migrateTestName, testName)
+	}
+
+	// Rename the targets and stuff in the same file that refers to them.
 	for _, r := range f.Rules {
 		// TODO(jayconrod): support map_kind directive.
 		// We'll need to move the metaresolver from resolve.RuleIndex to config.Config so we can access it from here.
 		switch r.Kind() {
 		case "go_binary":
-			replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
+			if !haveLibConflict {
+				replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
+			}
 		case "go_library":
-			if r.Name() == migrateLibName {
+			if r.Name() == migrateLibName && !haveLibConflict {
 				r.SetName(libName)
 			}
 		case "go_test":
-			if r.Name() == migrateTestName {
+			if r.Name() == migrateTestName && !haveTestConflict {
 				r.SetName(testName)
+			}
+			if !haveLibConflict {
 				replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
 			}
 		}
 	}
 }
 
-// binName returns the name of a go_binary rule if one can be found.
-func binName(f *rule.File) string {
+// fileContainsGoBinary returns whether the file has a go_binary rule.
+func fileContainsGoBinary(c *config.Config, f *rule.File) bool {
+	if f == nil {
+		return false
+	}
 	for _, r := range f.Rules {
-		if r.Kind() == "go_binary" {
-			return r.Name()
+		kind := r.Kind()
+		if mappedKind, ok := c.KindMap[kind]; ok {
+			kind = mappedKind.KindName
+		}
+		if kind == "go_binary" {
+			return true
 		}
 	}
-	return ""
+	return false
 }
 
-// import path returns the existing import path from the first encountered Go rule with the attribute set.
-func importPath(f *rule.File) string {
+// findImportPath returns the existing import path from the first encountered Go
+// rule with the attribute set.
+func findImportPath(f *rule.File) string {
 	for _, r := range f.Rules {
 		switch r.Kind() {
 		case "go_binary", "go_library", "go_test":

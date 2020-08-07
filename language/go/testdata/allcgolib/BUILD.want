@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "allcgolib",
     srcs = [
         "foo.c",
         "foo.go",
@@ -16,8 +16,8 @@ go_library(
 )
 
 go_test(
-    name = "go_default_test",
+    name = "allcgolib_test",
     srcs = ["foo_test.go"],
     _gazelle_imports = ["testing"],
-    embed = [":go_default_library"],
+    embed = [":allcgolib"],
 )

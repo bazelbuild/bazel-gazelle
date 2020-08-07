@@ -25,6 +25,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -159,13 +160,6 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 		return fmt.Errorf("%s: go prefix is not set, so importpath can't be determined for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line", pkg.dir)
 	}
 	pkg.importPath = InferImportPath(c, pkg.rel)
-
-	if pkg.rel == gc.prefixRel {
-		pkg.importPath = gc.prefix
-	} else {
-		fromPrefixRel := strings.TrimPrefix(pkg.rel, gc.prefixRel+"/")
-		pkg.importPath = path.Join(gc.prefix, fromPrefixRel)
-	}
 	return nil
 }
 
@@ -187,29 +181,42 @@ func libNameFromImportPath(dir string) string {
 	return name
 }
 
-// libNameByConvention returns a suitable lib name based on go_naming_convention
-// If go_default_library, "go_default_library" is returned.
-// Else if this is a 'main' package, 'foo_lib' is returned, where 'foo' is the name of the go_binary rule.
-// Else it is a regular package, the last segment of the importpath is returned. Major version suffixes (eg. "v1") are dropped.
-func libNameByConvention(nc namingConvention, binName, imp string) string {
+// libNameByConvention returns a suitable name for a go_library using the given
+// naming convention, the import path, and the package name.
+func libNameByConvention(nc namingConvention, imp string, pkgName string) string {
 	if nc == goDefaultLibraryNamingConvention {
 		return defaultLibName
 	}
-	if binName != "" {
-		return binName + "_lib"
+	name := libNameFromImportPath(imp)
+	isCommand := pkgName == "main"
+	if name == "" {
+		if isCommand {
+			name = "lib"
+		} else {
+			name = pkgName
+		}
+	} else if isCommand {
+		name += "_lib"
 	}
-	return libNameFromImportPath(imp)
+	return name
 }
 
-// testNameByConvention works like libNameByConvention, but always appends '_test'.
-func testNameByConvention(nc namingConvention, binName, imp string) string {
+// testNameByConvention returns a suitable name for a go_test using the given
+// naming convention and the import path.
+func testNameByConvention(nc namingConvention, imp string) string {
 	if nc == goDefaultLibraryNamingConvention {
 		return defaultTestName
 	}
-	if binName != "" {
-		return binName + "_test"
+	libName := libNameFromImportPath(imp)
+	if libName == "" {
+		libName = "lib"
 	}
-	return libNameFromImportPath(imp) + "_test"
+	return libName + "_test"
+}
+
+// binName returns a suitable name for a go_binary.
+func binName(rel, prefix, repoRoot string) string {
+	return pathtools.RelBaseName(rel, prefix, repoRoot)
 }
 
 func InferImportPath(c *config.Config, rel string) string {

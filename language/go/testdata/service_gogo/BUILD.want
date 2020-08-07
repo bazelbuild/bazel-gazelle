@@ -25,7 +25,7 @@ go_proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "service_gogo",
     srcs = ["extra.go"],
     _gazelle_imports = [],
     embed = [":service_gogo_go_proto"],

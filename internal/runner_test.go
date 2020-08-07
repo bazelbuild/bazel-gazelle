@@ -34,7 +34,7 @@ func TestRunner(t *testing.T) {
 	for _, target := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		got[target] = true
 	}
-	want := []string{"//:m", "//:go_default_library"}
+	want := []string{"//:m", "//:m_lib"}
 	for _, target := range want {
 		if !got[target] {
 			t.Errorf("target missing from query output: %s", target)

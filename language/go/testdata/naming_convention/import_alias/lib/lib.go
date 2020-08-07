@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package lib
+// Package libbbbb has a name that doens't match its import path. It shouldn't
+// appear in the build file.
+package libbbbb
 
 // Answer returns the ultimate answer to life, the universe and everything.
 func Answer() int {

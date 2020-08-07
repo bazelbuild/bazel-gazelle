@@ -156,7 +156,7 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 		// current repo
 		if pathtools.HasPrefix(imp, gc.prefix) {
 			pkg := path.Join(gc.prefixRel, pathtools.TrimPrefix(imp, gc.prefix))
-			libName := libNameByConvention(gc.goNamingConvention, "", imp)
+			libName := libNameByConvention(gc.goNamingConvention, imp, "")
 			return label.New("", pkg, libName), nil
 		}
 	}
@@ -264,20 +264,25 @@ func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.
 		pkg = pathtools.TrimPrefix(impWithoutSemver, prefix)
 	}
 
-	// Determine what naming convention is used by the go_repository rule.
-	// If none is specified with "build_naming_convention", the either naming convention
-	// can be used, so we'll default to whatever's used in the current workspace to avoid churn.
-	nc := gc.goNamingConvention
-	if rnc, ok := gc.repoNamingConvention[repo]; ok {
-		nc = rnc
+	// Determine what naming convention is used by the repository.
+	// If there is no known repository, it's probably declared in an http_archive
+	// somewhere like go_rules_dependencies. Use the old naming convention.
+	nc, ok := gc.repoNamingConvention[repo]
+	if !ok {
+		nc = goDefaultLibraryNamingConvention
+	}
+	if nc == importAliasNamingConvention {
+		// If the repository is compatible with either naming convention, use
+		// whichever is preferred in this directory to avoid churn.
+		nc = gc.goNamingConvention
 	}
 
-	name := libNameByConvention(nc, "", imp)
+	name := libNameByConvention(nc, imp, "")
 	return label.New(repo, pkg, name), nil
 }
 
 func resolveVendored(gc *goConfig, imp string) (label.Label, error) {
-	name := libNameByConvention(gc.goNamingConvention, "", imp)
+	name := libNameByConvention(gc.goNamingConvention, imp, "")
 	return label.New("", path.Join("vendor", imp), name), nil
 }
 
@@ -307,7 +312,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 	if from.Pkg == "vendor" || strings.HasPrefix(from.Pkg, "vendor/") {
 		rel = path.Join("vendor", rel)
 	}
-	libName := libNameByConvention(getGoConfig(c).goNamingConvention, "", imp)
+	libName := libNameByConvention(getGoConfig(c).goNamingConvention, imp, "")
 	return label.New("", rel, libName), nil
 }
 

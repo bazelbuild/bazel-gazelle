@@ -268,8 +268,11 @@ func (f *namingConventionFlag) String() string {
 type namingConvention int
 
 const (
+	// Try to detect the naming convention in use.
+	unknownNamingConvention namingConvention = iota
+
 	// 'go_default_library' and 'go_default_test'
-	goDefaultLibraryNamingConvention = iota
+	goDefaultLibraryNamingConvention
 
 	// For an import path that ends with foo, the go_library rules target is
 	// named 'foo', the go_test is named 'foo_test'.
@@ -296,6 +299,8 @@ func (nc namingConvention) String() string {
 
 func namingConventionFromString(s string) (namingConvention, error) {
 	switch s {
+	case "":
+		return unknownNamingConvention, nil
 	case "go_default_library":
 		return goDefaultLibraryNamingConvention, nil
 	case "import":
@@ -303,7 +308,7 @@ func namingConventionFromString(s string) (namingConvention, error) {
 	case "import_alias":
 		return importAliasNamingConvention, nil
 	default:
-		return goDefaultLibraryNamingConvention, fmt.Errorf("unknown naming convention %q", s)
+		return unknownNamingConvention, fmt.Errorf("unknown naming convention %q", s)
 	}
 }
 
@@ -456,7 +461,12 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 		for _, repo := range c.Repos {
 			if repo.Kind() == "go_repository" {
 				if attr := repo.AttrString("build_naming_convention"); attr == "" {
-					repoNamingConvention[repo.Name()] = goDefaultLibraryNamingConvention // default for go_repository
+					// No naming convention specified.
+					// go_repsitory uses importAliasNamingConvention by default, so we
+					// could use whichever name.
+					// resolveExternal should take that as a signal to follow the current
+					// naming convention to avoid churn.
+					repoNamingConvention[repo.Name()] = importAliasNamingConvention
 				} else if nc, err := namingConventionFromString(attr); err != nil {
 					log.Printf("in go_repository named %q: %v", repo.Name(), err)
 				} else {
@@ -543,6 +553,7 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				setPrefix(d.Value)
 			}
 		}
+
 		if !gc.prefixSet {
 			for _, r := range f.Rules {
 				switch r.Kind() {
@@ -564,6 +575,10 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				}
 			}
 		}
+	}
+
+	if gc.goNamingConvention == unknownNamingConvention {
+		gc.goNamingConvention = detectNamingConvention(c, f)
 	}
 }
 
@@ -615,3 +630,85 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 }
 
 var errRulesGoRepoNotFound = errors.New(config.RulesGoRepoName + " external repository not found")
+
+// detectNamingConvention attempts to detect the naming convention in use by
+// reading build files in subdirectories of the repository root directory.
+//
+// If detectNamingConvention can't detect the naming convention (for example,
+// because no build files are found or multiple naming conventions are found),
+// importNamingConvention is returned.
+func detectNamingConvention(c *config.Config, rootFile *rule.File) namingConvention {
+	if !c.IndexLibraries {
+		// Indexing is disabled, which usually means speed is important and I/O
+		// should be minimized. Let's not open extra files or directories.
+		return importNamingConvention
+	}
+
+	detectInFile := func(f *rule.File) namingConvention {
+		for _, r := range f.Rules {
+			// NOTE: map_kind is not supported. c.KindMap will not be accurate in
+			// subdirectories.
+			kind := r.Kind()
+			name := r.Name()
+			if kind != "alias" && name == defaultLibName {
+				// Assume any kind of rule with the name "go_default_library" is some
+				// kind of go library. The old version of go_proto_library used this
+				// name, and it's possible with map_kind as well.
+				return goDefaultLibraryNamingConvention
+			} else if isGoLibrary(kind) && name == path.Base(r.AttrString("importpath")) {
+				return importNamingConvention
+			}
+		}
+		return unknownNamingConvention
+	}
+
+	detectInDir := func(dir, rel string) namingConvention {
+		var f *rule.File
+		for _, name := range c.ValidBuildFileNames {
+			fpath := filepath.Join(dir, name)
+			data, err := ioutil.ReadFile(fpath)
+			if err != nil {
+				continue
+			}
+			f, err = rule.LoadData(fpath, rel, data)
+			if err != nil {
+				continue
+			}
+		}
+		if f == nil {
+			return unknownNamingConvention
+		}
+		return detectInFile(f)
+	}
+
+	nc := unknownNamingConvention
+	if rootFile != nil {
+		if rootNC := detectInFile(rootFile); rootNC != unknownNamingConvention {
+			return rootNC
+		}
+	}
+
+	infos, err := ioutil.ReadDir(c.RepoRoot)
+	if err != nil {
+		return importNamingConvention
+	}
+	for _, info := range infos {
+		if !info.IsDir() {
+			continue
+		}
+		dirName := info.Name()
+		dirNC := detectInDir(filepath.Join(c.RepoRoot, dirName), dirName)
+		if dirNC == unknownNamingConvention {
+			continue
+		}
+		if nc != unknownNamingConvention && dirNC != nc {
+			// Subdirectories use different conventions. Return the default.
+			return importNamingConvention
+		}
+		nc = dirNC
+	}
+	if nc == unknownNamingConvention {
+		return importNamingConvention
+	}
+	return nc
+}
