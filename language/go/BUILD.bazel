@@ -12,7 +12,7 @@ std_package_list(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "go",
     srcs = [
         "config.go",
         "constants.go",
@@ -32,16 +32,16 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/language/go",
     visibility = ["//visibility:public"],
     deps = [
-        "//config:go_default_library",
-        "//flag:go_default_library",
-        "//internal/version:go_default_library",
-        "//label:go_default_library",
-        "//language:go_default_library",
-        "//language/proto:go_default_library",
-        "//pathtools:go_default_library",
-        "//repo:go_default_library",
-        "//resolve:go_default_library",
-        "//rule:go_default_library",
+        "//config",
+        "//flag",
+        "//internal/version",
+        "//label",
+        "//language",
+        "//language/proto",
+        "//pathtools",
+        "//repo",
+        "//resolve",
+        "//rule",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@com_github_pelletier_go_toml//:go_default_library",
         "@org_golang_x_sync//errgroup:go_default_library",
@@ -49,7 +49,7 @@ go_library(
 )
 
 go_test(
-    name = "go_default_test",
+    name = "go_test",
     srcs = [
         "config_test.go",
         "fileinfo_go_test.go",
@@ -61,19 +61,19 @@ go_test(
         "update_import_test.go",
     ],
     data = glob(["testdata/**"]),
-    embed = [":go_default_library"],
+    embed = [":go"],
     deps = [
-        "//config:go_default_library",
-        "//label:go_default_library",
-        "//language:go_default_library",
-        "//language/proto:go_default_library",
-        "//merger:go_default_library",
-        "//pathtools:go_default_library",
-        "//repo:go_default_library",
-        "//resolve:go_default_library",
-        "//rule:go_default_library",
-        "//testtools:go_default_library",
-        "//walk:go_default_library",
+        "//config",
+        "//label",
+        "//language",
+        "//language/proto",
+        "//merger",
+        "//pathtools",
+        "//repo",
+        "//resolve",
+        "//rule",
+        "//testtools",
+        "//walk",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
         "@org_golang_x_tools//go/vcs:go_default_library",
     ],
@@ -109,5 +109,11 @@ filegroup(
         "update_import_test.go",
         "//language/go/gen_std_package_list:all_files",
     ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":go",
     visibility = ["//visibility:public"],
 )

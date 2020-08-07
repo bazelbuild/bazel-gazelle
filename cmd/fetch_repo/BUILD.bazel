@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "fetch_repo_lib",
     srcs = [
         "fetch_repo.go",
         "module.go",
@@ -14,14 +14,14 @@ go_library(
 
 go_binary(
     name = "fetch_repo",
-    embed = [":go_default_library"],
+    embed = [":fetch_repo_lib"],
     visibility = ["//visibility:public"],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "fetch_repo_test",
     srcs = ["fetch_repo_test.go"],
-    embed = [":go_default_library"],
+    embed = [":fetch_repo_lib"],
     deps = ["@org_golang_x_tools//go/vcs:go_default_library"],
 )
 
