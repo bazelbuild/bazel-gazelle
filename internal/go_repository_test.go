@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package bazel_test
+package go_repository_test
 
 import (
 	"bytes"
@@ -30,16 +30,6 @@ import (
 var testArgs = bazel_testing.Args{
 	Main: `
 -- BUILD.bazel --
-load("@bazel_gazelle//:def.bzl", "gazelle")
-
-# gazelle:prefix example.com/m
-
-gazelle(name = "gazelle")
-
--- hello.go --
-package main
-
-func main() {}
 `,
 	WorkspaceSuffix: `
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")

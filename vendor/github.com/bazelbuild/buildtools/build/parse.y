@@ -119,9 +119,7 @@ package build
 %type	<expr>		primary_expr
 %type	<expr>		expr
 %type	<expr>		expr_opt
-%type <exprs>		tests
-%type	<exprs>		exprs
-%type	<exprs>		exprs_opt
+%type	<exprs>		tests
 %type	<expr>		loop_vars
 %type	<expr>		for_clause
 %type	<exprs>		for_clause_with_if_clauses_opt
@@ -133,10 +131,10 @@ package build
 %type	<expr>		block_stmt    // a single for/if/def statement
 %type	<ifstmt>	if_else_block // a complete if-elif-else block
 %type	<ifstmt>	if_chain      // an elif-elif-else chain
-%type <pos>		elif          // `elif` or `else if` token(s)
+%type	<pos>		elif          // `elif` or `else if` token(s)
 %type	<exprs>		simple_stmt   // One or many small_stmts on one line, e.g. 'a = f(x); return str(a)'
 %type	<expr>		small_stmt    // A single statement, e.g. 'a = f(x)'
-%type <exprs>		small_stmts_continuation  // A sequence of `';' small_stmt`
+%type	<exprs>		small_stmts_continuation  // A sequence of `';' small_stmt`
 %type	<kv>		keyvalue
 %type	<kvs>		keyvalues
 %type	<kvs>		keyvalues_no_comma
@@ -179,8 +177,8 @@ package build
 %left  '+' '-'
 %left  '*' '/' '%' _INT_DIV
 %left  '.' '[' '('
-%right _UNARY
 %left  _STRING
+%right _UNARY
 
 %%
 
@@ -218,7 +216,7 @@ suite:
 		$$ = statements
 		$<lastStmt>$ = $<lastStmt>4
 	}
-|	simple_stmt linebreaks_opt
+|	simple_stmt linebreaks_opt %prec ShiftInstead
 	{
 		$$ = $1
 	}
@@ -724,7 +722,7 @@ parameter:
 	}
 
 expr:
-	test
+	test %prec ShiftInstead
 |	expr ',' test
 	{
 		tuple, ok := $1.(*TupleExpr)
@@ -745,25 +743,6 @@ expr_opt:
 		$$ = nil
 	}
 |	expr
-
-exprs:
-	expr
-	{
-		$$ = []Expr{$1}
-	}
-|	exprs ',' expr
-	{
-		$$ = append($1, $3)
-	}
-
-exprs_opt:
-	{
-		$$ = nil
-	}
-|	exprs comma_opt
-	{
-		$$ = $1
-	}
 
 test:
 	primary_expr
@@ -953,10 +932,12 @@ for_clause:
 	}
 
 for_clause_with_if_clauses_opt:
-	for_clause {
+	for_clause
+	{
 		$$ = []Expr{$1}
 	}
-|	for_clause_with_if_clauses_opt _IF test {
+|	for_clause_with_if_clauses_opt _IF test
+	{
 		$$ = append($1, &IfClause{
 			If: $2,
 			Cond: $3,
@@ -968,7 +949,8 @@ for_clauses_with_if_clauses_opt:
 	{
 		$$ = $1
 	}
-|	for_clauses_with_if_clauses_opt for_clause_with_if_clauses_opt {
+|	for_clauses_with_if_clauses_opt for_clause_with_if_clauses_opt
+	{
 		$$ = append($1, $2...)
 	}
 

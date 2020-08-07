@@ -1,0 +1,27 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "filter_pbgo_proto",
+    srcs = ["a.proto"],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "filter_pbgo_go_proto",
+    _gazelle_imports = [],
+    importpath = "example.com/repo/filter_pbgo",
+    proto = ":filter_pbgo_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "filter_pbgo",
+    srcs = ["b.pb.go"],
+    _gazelle_imports = [],
+    embed = [":filter_pbgo_go_proto"],
+    importpath = "example.com/repo/filter_pbgo",
+    visibility = ["//visibility:public"],
+)

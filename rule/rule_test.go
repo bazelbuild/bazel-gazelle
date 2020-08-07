@@ -413,3 +413,23 @@ def repos():
 		}
 	}
 }
+
+func TestCheckFile(t *testing.T) {
+	f := File{Rules: []*Rule{
+		NewRule("go_repository", "com_google_cloud_go_pubsub"),
+		NewRule("go_repository", "com_google_cloud_go_pubsub"),
+	}}
+	err := checkFile(&f)
+	if err == nil {
+		t.Errorf("muliple rules with the same name should not be tolerated")
+	}
+
+	f = File{Rules: []*Rule {
+		NewRule("go_rules_dependencies", ""),
+		NewRule("go_register_toolchains", ""),
+	}}
+	err = checkFile(&f)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
