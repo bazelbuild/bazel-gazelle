@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "resolve",
     srcs = [
         "config.go",
         "index.go",
@@ -9,10 +9,10 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/resolve",
     visibility = ["//visibility:public"],
     deps = [
-        "//config:go_default_library",
-        "//label:go_default_library",
-        "//repo:go_default_library",
-        "//rule:go_default_library",
+        "//config",
+        "//label",
+        "//repo",
+        "//rule",
     ],
 )
 
@@ -24,5 +24,11 @@ filegroup(
         "config.go",
         "index.go",
     ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":resolve",
     visibility = ["//visibility:public"],
 )

@@ -23,7 +23,7 @@ gazelle_binary(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "gazelle_lib",
     # keep
     srcs = [
         "diff.go",
@@ -38,25 +38,25 @@ go_library(
     tags = ["manual"],
     visibility = ["//visibility:public"],
     deps = [
-        "//config:go_default_library",
-        "//flag:go_default_library",
-        "//internal/wspace:go_default_library",
-        "//label:go_default_library",
-        "//language:go_default_library",
-        "//language/go:go_default_library",
-        "//language/proto:go_default_library",
-        "//merger:go_default_library",
-        "//repo:go_default_library",
-        "//resolve:go_default_library",
-        "//rule:go_default_library",
-        "//walk:go_default_library",
+        "//config",
+        "//flag",
+        "//internal/wspace",
+        "//label",
+        "//language",
+        "//language/go",
+        "//language/proto",
+        "//merger",
+        "//repo",
+        "//resolve",
+        "//rule",
+        "//walk",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
-        "@com_github_pmezard_go_difflib//difflib:go_default_library",
+        "@com_github_pmezard_go_difflib//difflib",
     ],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "gazelle_test",
     size = "small",
     srcs = [
         "diff_test.go",
@@ -66,11 +66,11 @@ go_test(
     ],
     args = ["-go_sdk=go_sdk"],
     data = ["@go_sdk//:files"],
-    embed = [":go_default_library"],
+    embed = [":gazelle_lib"],
     deps = [
-        "//config:go_default_library",
-        "//internal/wspace:go_default_library",
-        "//testtools:go_default_library",
+        "//config",
+        "//internal/wspace",
+        "//testtools",
         "@io_bazel_rules_go//go/tools/bazel:go_default_library",
     ],
 )

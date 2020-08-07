@@ -1,29 +1,29 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "move_labels_lib",
     srcs = ["move_labels.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/move_labels",
     visibility = ["//visibility:private"],
     deps = [
-        "//internal/wspace:go_default_library",
-        "//label:go_default_library",
-        "//pathtools:go_default_library",
+        "//internal/wspace",
+        "//label",
+        "//pathtools",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
     ],
 )
 
 go_binary(
     name = "move_labels",
-    embed = [":go_default_library"],
+    embed = [":move_labels_lib"],
     visibility = ["//visibility:public"],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "move_labels_test",
     srcs = ["move_labels_test.go"],
-    embed = [":go_default_library"],
-    deps = ["//testtools:go_default_library"],
+    embed = [":move_labels_lib"],
+    deps = ["//testtools"],
 )
 
 filegroup(

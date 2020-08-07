@@ -18,11 +18,6 @@ load(
     "go_context",
 )
 load(
-    "@io_bazel_rules_go//go/platform:list.bzl",
-    "GOARCH",
-    "GOOS",
-)
-load(
     "@io_bazel_rules_go//go/private:rules/transition.bzl",
     "go_transition_rule",
     "go_transition_wrapper",
@@ -95,7 +90,7 @@ _gazelle_binary_kwargs = {
         ),
         "_go_context_data": attr.label(default = "@io_bazel_rules_go//:go_context_data"),
         "_srcs": attr.label(
-            default = "//cmd/gazelle:go_default_library",
+            default = "//cmd/gazelle:gazelle_lib",
         ),
     },
     "executable": True,

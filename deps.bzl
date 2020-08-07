@@ -29,13 +29,6 @@ load(
     "go_repository_config",
 )
 load(
-    "@bazel_gazelle//internal:overlay_repository.bzl",
-    # Load overlay git_repository and http_archive in order to re-export.
-    # These may be removed at some point in the future.
-    "git_repository",
-    "http_archive",
-)
-load(
     "@bazel_tools//tools/build_defs/repo:git.bzl",
     _tools_git_repository = "git_repository",
 )
@@ -152,7 +145,7 @@ def gazelle_dependencies(
 
     _maybe(
         go_repository,
-        name = "com_github_google_go_cmp",
+        name = "org_golang_x_xerrors",
         importpath = "golang.org/x/xerrors",
         sum = "h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=",
         version = "v0.0.0-20191204190536-9bdfabe68543",
