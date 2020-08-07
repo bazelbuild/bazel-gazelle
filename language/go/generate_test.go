@@ -266,7 +266,7 @@ func prebuiltProtoRules() []*rule.Rule {
 		proto.Package{
 			Name: "foo",
 			Files: map[string]proto.FileInfo{
-				"foo.proto": proto.FileInfo{},
+				"foo.proto": {},
 			},
 			Imports: map[string]bool{},
 			Options: map[string]string{},

@@ -45,7 +45,7 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 		return
 	}
 	var pkgName string // unknown unless there's a binary
-	if findBinary(f) {
+	if fileContainsGoBinary(c, f) {
 		pkgName = "main"
 	}
 	libName := libNameByConvention(nc, importPath, pkgName)
@@ -110,10 +110,17 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 	}
 }
 
-// findBinary returns whether the file has a go_binary rule.
-func findBinary(f *rule.File) bool {
+// fileContainsGoBinary returns whether the file has a go_binary rule.
+func fileContainsGoBinary(c *config.Config, f *rule.File) bool {
+	if f == nil {
+		return false
+	}
 	for _, r := range f.Rules {
-		if r.Kind() == "go_binary" {
+		kind := r.Kind()
+		if mappedKind, ok := c.KindMap[kind]; ok {
+			kind = mappedKind.KindName
+		}
+		if kind == "go_binary" {
 			return true
 		}
 	}

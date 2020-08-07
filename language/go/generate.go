@@ -127,7 +127,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 						// if a go_proto_library rule already exists for this
 						// proto package, treat it as if the proto package
 						// doesn't exist.
-						pkg = emptyPackage(c, args.Dir, args.Rel)
+						pkg = emptyPackage(c, args.Dir, args.Rel, args.File)
 						break
 					}
 					pkg = &goPackage{
@@ -139,7 +139,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					break
 				}
 			} else {
-				pkg = emptyPackage(c, args.Dir, args.Rel)
+				pkg = emptyPackage(c, args.Dir, args.Rel, args.File)
 			}
 		} else {
 			log.Print(err)
@@ -373,9 +373,18 @@ func selectPackage(c *config.Config, dir string, packageMap map[string]*goPackag
 	return nil, err
 }
 
-func emptyPackage(c *config.Config, dir, rel string) *goPackage {
+func emptyPackage(c *config.Config, dir, rel string, f *rule.File) *goPackage {
+	var pkgName string
+	if fileContainsGoBinary(c, f) {
+		// If the file contained a go_binary, its library may have a "_lib" suffix.
+		// Set the package name to "main" so that we generate an empty library rule
+		// with that name.
+		pkgName = "main"
+	} else {
+		pkgName = defaultPackageName(c, dir)
+	}
 	pkg := &goPackage{
-		name: defaultPackageName(c, dir),
+		name: pkgName,
 		dir:  dir,
 		rel:  rel,
 	}

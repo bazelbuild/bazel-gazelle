@@ -3260,3 +3260,50 @@ go_library(
 		},
 	})
 }
+
+func TestGoMainLibraryRemoved(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		},
+		{
+			Path: "BUILD.bazel",
+			Content: `
+# gazelle:prefix example.com
+# gazelle:go_naming_convention import
+`,
+		},
+		{
+			Path: "cmd/foo/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+		name = "foo_lib",
+		srcs = ["foo.go"],
+		importpath = "example.com/cmd/foo",
+		visibility = ["//visibility:private"],
+)
+
+go_binary(
+		name = "foo",
+		embed = [":foo_lib"],
+		visibility = ["//visibility:public"],
+)
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path:    "cmd/foo/BUILD.bazel",
+			Content: "",
+		},
+	})
+}
