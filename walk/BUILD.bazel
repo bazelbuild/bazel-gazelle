@@ -13,7 +13,7 @@ go_library(
         "//flag",
         "//pathtools",
         "//rule",
-        "@com_github_bmatcuk_doublestar//:go_default_library",
+        "@com_github_bmatcuk_doublestar//:doublestar",
     ],
 )
 
@@ -28,7 +28,7 @@ go_test(
         "//config",
         "//rule",
         "//testtools",
-        "@com_github_bmatcuk_doublestar//:go_default_library",
+        "@com_github_bmatcuk_doublestar//:doublestar",
     ],
 )
 

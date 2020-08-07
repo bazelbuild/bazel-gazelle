@@ -8,7 +8,7 @@ go_bazel_test(
         "@bazel_gazelle//:all_files",
         "@io_bazel_rules_go//:all_files",
     ],
-    deps = ["//testtools:go_default_library"],
+    deps = ["//testtools"],
 )
 
 # TODO(jayconrod): test fetch_repo error cases.

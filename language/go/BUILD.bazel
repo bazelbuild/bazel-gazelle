@@ -43,8 +43,8 @@ go_library(
         "//resolve",
         "//rule",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
-        "@com_github_pelletier_go_toml//:go_default_library",
-        "@org_golang_x_sync//errgroup:go_default_library",
+        "@com_github_pelletier_go_toml//:go-toml",
+        "@org_golang_x_sync//errgroup",
     ],
 )
 
