@@ -36,6 +36,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/walk"
+	"github.com/karrick/godirwalk"
 )
 
 // updateConfig holds configuration information needed to run the fix and
@@ -539,7 +540,7 @@ func findOutputPath(c *config.Config, f *rule.File) string {
 	}
 	outputDir := filepath.Join(baseDir, filepath.FromSlash(f.Pkg))
 	defaultOutputPath := filepath.Join(outputDir, c.DefaultBuildFileName())
-	files, err := ioutil.ReadDir(outputDir)
+	files, err := godirwalk.ReadDirents(outputDir, nil)
 	if err != nil {
 		// Ignore error. Directory probably doesn't exist.
 		return defaultOutputPath

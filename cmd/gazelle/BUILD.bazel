@@ -51,6 +51,7 @@ go_library(
         "//rule:go_default_library",
         "//walk:go_default_library",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
+        "@com_github_karrick_godirwalk//:go_default_library",
         "@com_github_pmezard_go_difflib//difflib:go_default_library",
     ],
 )

@@ -35,6 +35,7 @@ import (
 
 	bzl "github.com/bazelbuild/buildtools/build"
 	bt "github.com/bazelbuild/buildtools/tables"
+	"github.com/karrick/godirwalk"
 )
 
 // File provides editing functionality for a build file. You can create a
@@ -257,7 +258,7 @@ func scanExprs(defName string, stmt []bzl.Expr) (rules []*Rule, loads []*Load, f
 // If there is at least one matching file, a path will be returned by joining
 // dir and the first matching name. If there are no matching files, the
 // empty string is returned.
-func MatchBuildFileName(dir string, names []string, files []os.FileInfo) string {
+func MatchBuildFileName(dir string, names []string, files godirwalk.Dirents) string {
 	for _, name := range names {
 		for _, fi := range files {
 			if fi.Name() == name && !fi.IsDir() {
