@@ -271,15 +271,24 @@ func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.
 
 	// Determine what naming convention is used by the repository.
 	// If there is no known repository, it's probably declared in an http_archive
-	// somewhere like go_rules_dependencies. Use the old naming convention.
-	nc, ok := gc.repoNamingConvention[repo]
-	if !ok {
-		nc = goDefaultLibraryNamingConvention
-	}
-	if nc == importAliasNamingConvention {
-		// If the repository is compatible with either naming convention, use
-		// whichever is preferred in this directory to avoid churn.
-		nc = gc.goNamingConvention
+	// somewhere like go_rules_dependencies, so use the old naming convention,
+	// unless the user has explicitly told us otherwise.
+	// If the repository uses the import_alias convention (default for
+	// go_repository), use the convention from the current directory unless the
+	// user has told us otherwise.
+	nc := gc.repoNamingConvention[repo]
+	if nc == unknownNamingConvention {
+		if gc.goNamingConventionExtern != unknownNamingConvention {
+			nc = gc.goNamingConventionExtern
+		} else {
+			nc = goDefaultLibraryNamingConvention
+		}
+	} else if nc == importAliasNamingConvention {
+		if gc.goNamingConventionExtern != unknownNamingConvention {
+			nc = gc.goNamingConventionExtern
+		} else {
+			nc = gc.goNamingConvention
+		}
 	}
 
 	name := libNameByConvention(nc, imp, "")

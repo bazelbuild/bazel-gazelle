@@ -1084,12 +1084,13 @@ func TestResolveExternal(t *testing.T) {
 	ix.Finish()
 	gl := langs[1].(*goLang)
 	for _, tc := range []struct {
-		desc, importpath     string
-		repos                []repo.Repo
-		moduleMode           bool
-		namingConvention     namingConvention
-		repoNamingConvention map[string]namingConvention
-		want                 string
+		desc, importpath       string
+		repos                  []repo.Repo
+		moduleMode             bool
+		namingConvention       namingConvention
+		namingConventionExtern namingConvention
+		repoNamingConvention   map[string]namingConvention
+		want                   string
 	}{
 		{
 			desc:       "top",
@@ -1142,6 +1143,24 @@ func TestResolveExternal(t *testing.T) {
 			},
 			importpath: "example.com/repo/lib",
 			want:       "@custom_repo_name//lib",
+		}, {
+			desc: "custom_repo_naming_convention_extern_import",
+			repos: []repo.Repo{{
+				Name:     "custom_repo_name",
+				GoPrefix: "example.com/repo",
+			}},
+			namingConventionExtern: importNamingConvention,
+			importpath:             "example.com/repo/lib",
+			want:                   "@custom_repo_name//lib",
+		}, {
+			desc: "custom_repo_naming_convention_extern_default",
+			repos: []repo.Repo{{
+				Name:     "custom_repo_name",
+				GoPrefix: "example.com/repo",
+			}},
+			namingConventionExtern: goDefaultLibraryNamingConvention,
+			importpath:             "example.com/repo/lib",
+			want:                   "@custom_repo_name//lib:go_default_library",
 		}, {
 			desc:       "qualified",
 			importpath: "example.com/repo.git/lib",
@@ -1200,6 +1219,7 @@ func TestResolveExternal(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			gc.moduleMode = tc.moduleMode
 			gc.goNamingConvention = tc.namingConvention
+			gc.goNamingConventionExtern = tc.namingConventionExtern
 			gc.repoNamingConvention = tc.repoNamingConvention
 			rc := testRemoteCache(tc.repos)
 			r := rule.NewRule("go_library", "x")
