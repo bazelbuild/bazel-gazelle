@@ -80,6 +80,10 @@ type goConfig struct {
 	// goNamingConvention controls the name of generated targets
 	goNamingConvention namingConvention
 
+	// goNamingConventionExtern controls the default naming convention for
+	// imports in external repositories with unknown naming conventions.
+	goNamingConventionExtern namingConvention
+
 	// goProtoCompilers is the protocol buffers compiler(s) to use for go code.
 	goProtoCompilers []string
 
@@ -326,6 +330,7 @@ func (*goLang) KnownDirectives() []string {
 		"go_generate_proto",
 		"go_grpc_compilers",
 		"go_naming_convention",
+		"go_naming_convention_extern",
 		"go_proto_compilers",
 		"go_visibility",
 		"importmap_prefix",
@@ -371,6 +376,10 @@ func (*goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			&namingConventionFlag{&gc.goNamingConvention},
 			"go_naming_convention",
 			"controls generated library names. One of (go_default_library, import, import_alias)")
+		fs.Var(
+			&namingConventionFlag{&gc.goNamingConventionExtern},
+			"go_naming_convention_extern",
+			"controls naming convention used when resolving libraries in external repositories with unknown conventions")
 
 	case "update-repos":
 		fs.StringVar(&gc.buildDirectivesAttr,
@@ -510,18 +519,28 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				}
 				gc.preprocessTags()
 				gc.setBuildTags(d.Value)
+
 			case "go_generate_proto":
 				if goGenerateProto, err := strconv.ParseBool(d.Value); err == nil {
 					gc.goGenerateProto = goGenerateProto
 				} else {
 					log.Printf("parsing go_generate_proto: %v", err)
 				}
+
 			case "go_naming_convention":
 				if nc, err := namingConventionFromString(d.Value); err == nil {
 					gc.goNamingConvention = nc
 				} else {
 					log.Print(err)
 				}
+
+			case "go_naming_convention_extern":
+				if nc, err := namingConventionFromString(d.Value); err == nil {
+					gc.goNamingConventionExtern = nc
+				} else {
+					log.Print(err)
+				}
+
 			case "go_grpc_compilers":
 				// Special syntax (empty value) to reset directive.
 				if d.Value == "" {

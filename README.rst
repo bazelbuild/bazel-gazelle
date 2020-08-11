@@ -341,6 +341,12 @@ The following flags are accepted:
 | Controls the names of generated Go targets. Equivalent to the                                         |
 | ``# gazelle:go_naming_convention`` directive.                                                         |
 +--------------------------------------------------------------+----------------------------------------+
+| :flag:`-go_naming_convention_extern`                         |                                        |
++--------------------------------------------------------------+----------------------------------------+
+| Controls the default naming convention used when resolving libraries in                               |
+| external repositories with unknown naming conventions. Equivalent to the                              |
+| ``# gazelle:go_naming_convention_extern`` directive.                                                  |
++--------------------------------------------------------------+----------------------------------------+
 | :flag:`-go_prefix example.com/repo`                          |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | A prefix of import paths for libraries in the repository that corresponds to                          |
@@ -601,6 +607,12 @@ The following directives are recognized:
 |   ``foobin_test``.                                                                         |
 | * ``import_alias``: Same as ``import``, but an ``alias`` target is generated named         |
 |   ``go_default_library`` to ensure backwards compatibility.                                |
++---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_naming_convention_extern`    | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Controls the default naming convention used when resolving libraries in                    |
+| external repositories with unknown naming conventions. Accepts the same values             |
+| as ``go_naming_convention``.                                                               |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:go_proto_compilers`             | ``@io_bazel_rules_go//proto:go_proto`` |
 +---------------------------------------------------+----------------------------------------+
