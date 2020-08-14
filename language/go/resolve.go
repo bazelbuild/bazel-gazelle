@@ -363,7 +363,7 @@ func isExtraLibrary(r *rule.Rule) bool {
 	}
 	switch r.AttrString("importpath") {
 	case "github.com/golang/protobuf/descriptor",
-		"github.com/golang/protobuf/generator",
+		"github.com/golang/protobuf/protoc-gen-go/generator",
 		"github.com/golang/protobuf/ptypes":
 		return true
 	default:
