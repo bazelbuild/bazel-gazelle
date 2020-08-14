@@ -573,7 +573,7 @@ func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.
 		r.SetAttr("actual", ":go_default_library")
 		r.SetAttr("visibility", []string{"//visibility:public"})
 
-	case "github.com/golang/protobuf/generator":
+	case "github.com/golang/protobuf/protoc-gen-go/generator":
 		r = rule.NewRule("go_library", "go_default_library_gen")
 		r.SetAttr("srcs", pkg.library.sources.buildFlat())
 		r.SetAttr("importpath", pkg.importPath)
