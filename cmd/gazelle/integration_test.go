@@ -3127,6 +3127,60 @@ func TestConfigLang(t *testing.T) {
 		{Path: "bar/bar.go", Content: "package bar"},
 		{Path: "baz/BUILD.bazel", Content: "# gazelle:lang go,proto"},
 		{Path: "baz/baz.go", Content: "package baz"},
+
+		// Verify that Gazelle does not index go_library rules in // or //baz/protos.
+		// In those directories, lang is set to proto by flag and directive, respectively.
+		// Confirm it does index and resolve a rule in a directory where go is activated.
+		{Path: "invisible1.go", Content: "package invisible1"},
+		{Path: "BUILD.bazel", Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:prefix root
+
+go_library(
+    name = "go_default_library",
+    srcs = ["invisible1.go"],
+    importpath = "root",
+    visibility = ["//visibility:public"],
+)
+`},
+		{Path: "baz/protos/invisible2.go", Content: "package invisible2"},
+		{Path: "baz/protos/BUILD.bazel", Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:lang proto
+# gazelle:prefix github.com/rule_indexing/invisible2
+
+go_library(
+    name = "go_default_library",
+    srcs = ["invisible2.go"],
+    importpath = "github.com/rule_indexing/invisible2",
+    visibility = ["//visibility:public"],
+)
+`},
+		{Path: "visible/visible.go", Content: "package visible"},
+		{Path: "visible/BUILD.bazel", Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:lang go,proto
+# gazelle:prefix github.com/rule_indexing/visible
+
+go_library(
+    name = "go_default_library",
+    srcs = ["visible.go"],
+    importpath = "github.com/rule_indexing/visible",
+    visibility = ["//visibility:public"],
+)
+`},
+		{Path: "baz/test_no_index/test_no_index.go", Content: `
+package test_no_index
+
+import (
+	_ "github.com/rule_indexing/invisible1"
+	_ "github.com/rule_indexing/invisible2"
+	_ "github.com/rule_indexing/visible"
+)
+`},
 	}
 
 	dir, cleanup := testtools.CreateFiles(t, files)
@@ -3161,7 +3215,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["bar.go"],
-    importpath = "",
+    importpath = "root/bar",
     visibility = ["//visibility:public"],
 )`,
 		},
@@ -3175,10 +3229,27 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["baz.go"],
-    importpath = "",
+    importpath = "root/baz",
     visibility = ["//visibility:public"],
 )`,
-		}})
+		},
+
+		{Path: "baz/test_no_index/BUILD.bazel", Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["test_no_index.go"],
+    importpath = "root/baz/test_no_index",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//visible:go_default_library",
+        "@com_github_rule_indexing_invisible1//:go_default_library",
+        "@com_github_rule_indexing_invisible2//:go_default_library",
+    ],
+)
+`},
+	})
 }
 
 func TestUpdateRepos_LangFilter(t *testing.T) {

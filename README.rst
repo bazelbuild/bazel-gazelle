@@ -395,7 +395,7 @@ The following flags are accepted:
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-lang lang1,lang2,...`                                | :value:`""`                            |
 +--------------------------------------------------------------+----------------------------------------+
-| Selects languages for which to compose rules.                                                         |
+| Selects languages for which to compose and index rules.                                               |
 |                                                                                                       |
 | By default, all languages that this Gazelle was built with are processed.                             |
 +--------------------------------------------------------------+----------------------------------------+
@@ -746,8 +746,8 @@ The following directives are recognized:
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:lang lang1,lang2,...`           | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
-| Sets the language selection flag for this and descendent packages, which gazelle to        |
-| process just the languages named in this directive.                                        |
+| Sets the language selection flag for this and descendent packages, which causes gazelle to |
+| index and generate rules for only the languages named in this directive.                   |
 +---------------------------------------------------+----------------------------------------+
 
 Gazelle also reads directives from the WORKSPACE file. They may be used to
