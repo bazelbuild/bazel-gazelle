@@ -60,6 +60,16 @@ const (
 	PostResolve
 )
 
+// UnstableInsertIndexKey is the name of an internal attribute that may be set
+// on newly generated rules. When MergeFile is given a generated rule that
+// doesn't match any existing rule, MergeFile will insert the rule at the index
+// indicated by this key instead of at the end of the file.
+//
+// This definition is unstable and may be removed in the future.
+//
+// TODO(jayconrod): make this stable *or* find a better way to express it.
+const UnstableInsertIndexKey = "_gazelle_insert_index"
+
 // MergeFile combines information from newly generated rules with matching
 // rules in an existing build file. MergeFile can also delete rules which
 // are empty after merging.
@@ -153,7 +163,11 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, phase Phas
 			continue
 		}
 		if matchRules[i] == nil {
-			genRule.Insert(oldFile)
+			if index, ok := genRule.PrivateAttr(UnstableInsertIndexKey).(int); ok {
+				genRule.InsertAt(oldFile, index)
+			} else {
+				genRule.Insert(oldFile)
+			}
 		} else {
 			rule.MergeRules(genRule, matchRules[i], getMergeAttrs(genRule), oldFile.Path)
 		}

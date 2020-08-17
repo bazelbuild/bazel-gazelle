@@ -331,9 +331,9 @@ func (f *File) Sync() {
 	f.Rules = f.Rules[:w]
 
 	if f.function == nil {
-		deletes := append(ruleDeletes, loadDeletes...)
-		inserts := append(ruleInserts, loadInserts...)
-		stmts := append(ruleStmts, loadStmts...)
+		deletes := append(loadDeletes, ruleDeletes...)
+		inserts := append(loadInserts, ruleInserts...)
+		stmts := append(loadStmts, ruleStmts...)
 		updateStmt(&f.File.Stmt, inserts, deletes, stmts)
 	} else {
 		updateStmt(&f.File.Stmt, loadInserts, loadDeletes, loadStmts)
@@ -424,6 +424,8 @@ func (f *File) HasDefaultVisibility() bool {
 type stmt struct {
 	index                      int
 	deleted, inserted, updated bool
+	comments                   []string
+	commentsUpdated            bool
 	expr                       bzl.Expr
 }
 
@@ -436,6 +438,43 @@ func (s *stmt) Index() int { return s.index }
 // Delete marks this statement for deletion. It will be removed from the
 // syntax tree when File.Sync is called.
 func (s *stmt) Delete() { s.deleted = true }
+
+// Comments returns the text of the comments that appear before the statement.
+// Each comment includes the leading "#".
+func (s *stmt) Comments() []string {
+	return s.comments
+}
+
+// AddComment adds a new comment above the statement, after other comments.
+// The new comment must start with "#".
+func (s *stmt) AddComment(token string) {
+	if !strings.HasPrefix(token, "#") {
+		panic(fmt.Sprintf("comment must start with '#': got %q", token))
+	}
+	s.comments = append(s.comments, token)
+	s.commentsUpdated = true
+}
+
+func commentsFromExpr(e bzl.Expr) []string {
+	before := e.Comment().Before
+	tokens := make([]string, len(before))
+	for i, c := range before {
+		tokens[i] = c.Token
+	}
+	return tokens
+}
+
+func (s *stmt) syncComments() {
+	if !s.commentsUpdated {
+		return
+	}
+	s.commentsUpdated = false
+	before := make([]bzl.Comment, len(s.comments))
+	for i, token := range s.comments {
+		before[i].Token = token
+	}
+	s.expr.Comment().Before = before
+}
 
 type byIndex []*stmt
 
@@ -502,7 +541,11 @@ func NewLoad(name string) *Load {
 
 func loadFromExpr(index int, loadStmt *bzl.LoadStmt) *Load {
 	l := &Load{
-		stmt:    stmt{index: index, expr: loadStmt},
+		stmt: stmt{
+			index:    index,
+			expr:     loadStmt,
+			comments: commentsFromExpr(loadStmt),
+		},
 		name:    loadStmt.Module.Value,
 		symbols: make(map[string]identPair),
 	}
@@ -518,7 +561,9 @@ func (l *Load) Name() string {
 	return l.name
 }
 
-// Symbols returns a list of symbols this statement loads.
+// Symbols returns a sorted list of symbols this statement loads.
+// If the symbol is loaded with a name different from its definition, the
+// loaded name is returned, not the original name.
 func (l *Load) Symbols() []string {
 	syms := make([]string, 0, len(l.symbols))
 	for sym := range l.symbols {
@@ -526,6 +571,19 @@ func (l *Load) Symbols() []string {
 	}
 	sort.Strings(syms)
 	return syms
+}
+
+// SymbolPairs returns a list of symbol pairs loaded by this statement.
+// Each pair contains the symbol defined in the loaded module (From) and the
+// symbol declared in the loading module (To). The pairs are sorted by To
+// (same order as Symbols).
+func (l *Load) SymbolPairs() []struct{ From, To string } {
+	toSyms := l.Symbols()
+	pairs := make([]struct{ From, To string }, 0, len(toSyms))
+	for _, toSym := range toSyms {
+		pairs = append(pairs, struct{ From, To string }{l.symbols[toSym].from.Name, toSym})
+	}
+	return pairs
 }
 
 // Has returns true if sym is loaded by this statement.
@@ -569,6 +627,7 @@ func (l *Load) Insert(f *File, index int) {
 }
 
 func (l *Load) sync() {
+	l.syncComments()
 	if !l.updated {
 		return
 	}
@@ -613,21 +672,21 @@ type Rule struct {
 
 // NewRule creates a new, empty rule with the given kind and name.
 func NewRule(kind, name string) *Rule {
-	nameAttr := &bzl.AssignExpr{
-		LHS: &bzl.Ident{Name: "name"},
-		RHS: &bzl.StringExpr{Value: name},
-		Op:  "=",
-	}
+	call := &bzl.CallExpr{X: &bzl.Ident{Name: kind}}
 	r := &Rule{
-		stmt: stmt{
-			expr: &bzl.CallExpr{
-				X:    &bzl.Ident{Name: kind},
-				List: []bzl.Expr{nameAttr},
-			},
-		},
+		stmt:    stmt{expr: call},
 		kind:    kind,
-		attrs:   map[string]*bzl.AssignExpr{"name": nameAttr},
+		attrs:   map[string]*bzl.AssignExpr{},
 		private: map[string]interface{}{},
+	}
+	if name != "" {
+		nameAttr := &bzl.AssignExpr{
+			LHS: &bzl.Ident{Name: "name"},
+			RHS: &bzl.StringExpr{Value: name},
+			Op:  "=",
+		}
+		call.List = []bzl.Expr{nameAttr}
+		r.attrs["name"] = nameAttr
 	}
 	return r
 }
@@ -654,8 +713,9 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 	}
 	return &Rule{
 		stmt: stmt{
-			index: index,
-			expr:  call,
+			index:    index,
+			expr:     call,
+			comments: commentsFromExpr(expr),
 		},
 		kind:    kind,
 		args:    args,
@@ -811,7 +871,14 @@ func (r *Rule) Insert(f *File) {
 	} else {
 		stmt = f.function.stmt.Body
 	}
-	r.index = len(stmt)
+	r.InsertAt(f, len(stmt))
+}
+
+// InsertAt marks this statement for insertion before the statement at index.
+// Multiple rules inserted at the same index will be inserted in the order
+// Insert is called. Loads inserted at the same index will be inserted first.
+func (r *Rule) InsertAt(f *File, index int) {
+	r.index = index
 	r.inserted = true
 	f.Rules = append(f.Rules, r)
 }
@@ -832,6 +899,7 @@ func (r *Rule) IsEmpty(info KindInfo) bool {
 }
 
 func (r *Rule) sync() {
+	r.syncComments()
 	if !r.updated {
 		return
 	}
