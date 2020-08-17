@@ -5,9 +5,6 @@ Gazelle build file generator
 .. _Architecture of Gazelle: Design.rst
 .. _Repository rules: repository.rst
 .. _go_repository: repository.rst#go_repository
-.. _git_repository: repository.rst#git_repository
-.. _http_archive: repository.rst#http_archive
-.. _Gazelle in rules_go: https://github.com/bazelbuild/rules_go/tree/master/go/tools/gazelle
 .. _fix: #fix-and-update
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
@@ -89,13 +86,12 @@ should look like this:
         ],
     )
 
-    load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+    load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
     go_rules_dependencies()
 
     go_register_toolchains()
-
-    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
     gazelle_dependencies()
 
@@ -126,7 +122,7 @@ rule cannot run directly.
 
 .. code::
 
-  $ bazel run //:gazelle -- update-repos -from_file=go.mod
+  $ bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro=deps.bzl%go_dependencies
 
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -399,6 +395,7 @@ The following flags are accepted:
 |                                                                                                       |
 | By default, all languages that this Gazelle was built with are processed.                             |
 +--------------------------------------------------------------+----------------------------------------+
+
 .. _Predefined plugins: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#predefined-plugins
 
 ``update-repos``
