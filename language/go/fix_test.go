@@ -16,7 +16,6 @@ limitations under the License.
 package golang
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -40,7 +39,7 @@ func TestFixFile(t *testing.T) {
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -54,7 +53,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -75,7 +74,7 @@ go_binary(
 
 go_library(
     name = "go_default_library",
-    importpath = "foo",
+    importpath = "example.com/foo",
     srcs = ["foo.go"],
 )
 
@@ -95,7 +94,7 @@ go_binary(
 go_library(
     name = "foo_lib",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -113,7 +112,7 @@ load(":build_defs.bzl", "x_binary")
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
     visibility = ["//visibility:private"],
 )
 
@@ -133,7 +132,7 @@ load(":build_defs.bzl", "x_binary")
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
     visibility = ["//visibility:private"],
 )
 
@@ -155,7 +154,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -169,7 +168,7 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -191,7 +190,7 @@ go_binary(
 go_library(
     name = "foo_lib",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -210,7 +209,7 @@ go_binary(
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -227,7 +226,7 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
     visibility = ["//visibility:private"],
 )
 
@@ -242,7 +241,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
     visibility = ["//visibility:private"],
 )
 
@@ -260,7 +259,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -274,7 +273,7 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -296,7 +295,7 @@ go_binary(
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -315,7 +314,7 @@ go_binary(
 go_library(
     name = "foo_lib",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -332,7 +331,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -346,7 +345,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -363,7 +362,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -377,7 +376,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -394,7 +393,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -408,7 +407,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -425,7 +424,7 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
     visibility = ["//visibility:private"],
 )
 
@@ -440,7 +439,7 @@ go_test(
 go_library(
     name = "go_default_library",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
     visibility = ["//visibility:private"],
 )
 
@@ -458,7 +457,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -472,7 +471,7 @@ go_test(
 go_library(
     name = "foo",
     srcs = ["foo.go"],
-    importpath = "foo",
+    importpath = "example.com/foo",
 )
 
 go_test(
@@ -861,7 +860,9 @@ go_proto_library(name = "foo_proto")
 		t.Run(tc.desc, func(t *testing.T) {
 			testFix(t, tc, func(f *rule.File) {
 				c, langs, _ := testConfig(t,
-					fmt.Sprintf("-go_naming_convention=%s", tc.namingConvention))
+					"-go_naming_convention="+tc.namingConvention.String(),
+					"-go_prefix=example.com/foo",
+				)
 				c.ShouldFix = true
 				for _, lang := range langs {
 					lang.Fix(c, f)
