@@ -5,9 +5,6 @@ Gazelle build file generator
 .. _Architecture of Gazelle: Design.rst
 .. _Repository rules: repository.rst
 .. _go_repository: repository.rst#go_repository
-.. _git_repository: repository.rst#git_repository
-.. _http_archive: repository.rst#http_archive
-.. _Gazelle in rules_go: https://github.com/bazelbuild/rules_go/tree/master/go/tools/gazelle
 .. _fix: #fix-and-update
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
@@ -73,10 +70,10 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "0310e837aed522875791750de44408ec91046c630374990edd51827cb169f616",
+        sha256 = "2697f6bc7c529ee5e6a2d9799870b9ec9eaeb3ee7d70ed50b87a2c2c97e13d9e",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.23.7/rules_go-v0.23.7.tar.gz",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.23.7/rules_go-v0.23.7.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.23.8/rules_go-v0.23.8.tar.gz",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.23.8/rules_go-v0.23.8.tar.gz",
         ],
     )
 
@@ -89,13 +86,12 @@ should look like this:
         ],
     )
 
-    load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+    load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
     go_rules_dependencies()
 
     go_register_toolchains()
-
-    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
     gazelle_dependencies()
 
@@ -126,7 +122,7 @@ rule cannot run directly.
 
 .. code::
 
-  $ bazel run //:gazelle -- update-repos -from_file=go.mod
+  $ bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro=deps.bzl%go_dependencies
 
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -406,10 +402,11 @@ The following flags are accepted:
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-lang lang1,lang2,...`                                | :value:`""`                            |
 +--------------------------------------------------------------+----------------------------------------+
-| Selects languages for which to compose rules.                                                         |
+| Selects languages for which to compose and index rules.                                               |
 |                                                                                                       |
 | By default, all languages that this Gazelle was built with are processed.                             |
 +--------------------------------------------------------------+----------------------------------------+
+
 .. _Predefined plugins: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#predefined-plugins
 
 ``update-repos``
@@ -781,8 +778,8 @@ The following directives are recognized:
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:lang lang1,lang2,...`           | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
-| Sets the language selection flag for this and descendent packages, which gazelle to        |
-| process just the languages named in this directive.                                        |
+| Sets the language selection flag for this and descendent packages, which causes gazelle to |
+| index and generate rules for only the languages named in this directive.                   |
 +---------------------------------------------------+----------------------------------------+
 
 Gazelle also reads directives from the WORKSPACE file. They may be used to

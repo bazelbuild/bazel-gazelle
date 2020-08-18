@@ -129,7 +129,9 @@ func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...inte
 func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	var imps []ImportSpec
 	if rslv := ix.mrslv(r, f.Pkg); rslv != nil {
-		imps = rslv.Imports(c, r, f)
+		if passesLanguageFilter(c.Langs, rslv.Name()) {
+			imps = rslv.Imports(c, r, f)
+		}
 	}
 	// If imps == nil, the rule is not importable. If imps is the empty slice,
 	// it may still be importable if it embeds importable libraries.
@@ -272,6 +274,20 @@ func (r FindResult) IsSelfImport(from label.Label) bool {
 	}
 	for _, e := range r.Embeds {
 		if from.Equal(e) {
+			return true
+		}
+	}
+	return false
+}
+
+// passesLanguageFilter returns true if the filter is empty (disabled) or if the
+// given language name appears in it.
+func passesLanguageFilter(langFilter []string, langName string) bool {
+	if len(langFilter) == 0 {
+		return true
+	}
+	for _, l := range langFilter {
+		if l == langName {
 			return true
 		}
 	}
