@@ -40,7 +40,7 @@ func (_ *goLang) Fix(c *config.Config, f *rule.File) {
 func migrateNamingConvention(c *config.Config, f *rule.File) {
 	// Determine old and new names for go_library and go_test.
 	nc := getGoConfig(c).goNamingConvention
-	importPath := findImportPath(f)
+	importPath := InferImportPath(c, f.Pkg)
 	if importPath == "" {
 		return
 	}
@@ -69,22 +69,22 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 		switch {
 		case r.Name() == libName:
 			haveLib = true
-		case r.Kind() == "go_library" && r.Name() == migrateLibName:
+		case r.Kind() == "go_library" && r.Name() == migrateLibName && r.AttrString("importpath") == importPath:
 			haveMigrateLib = true
 		case r.Name() == testName:
 			haveTest = true
-		case r.Kind() == "go_test" && r.Name() == migrateTestName:
+		case r.Kind() == "go_test" && r.Name() == migrateTestName && strListAttrContains(r, "embed", ":"+migrateLibName):
 			haveMigrateTest = true
 		}
 	}
-	haveLibConflict := haveLib && haveMigrateLib
-	haveTestConflict := haveTest && haveMigrateTest
-	if haveLibConflict {
+	if haveLib && haveMigrateLib {
 		log.Printf("%[1]s: Tried to rename %[2]s to %[3]s, but %[3]s already exists.", f.Path, migrateLibName, libName)
 	}
-	if haveTestConflict {
+	if haveTest && haveMigrateTest {
 		log.Printf("%[1]s: Tried to rename %[2]s to %[3]s, but %[3]s already exists.", f.Path, migrateTestName, testName)
 	}
+	shouldMigrateLib := haveMigrateLib && !haveLib
+	shouldMigrateTest := haveMigrateTest && !haveTest
 
 	// Rename the targets and stuff in the same file that refers to them.
 	for _, r := range f.Rules {
@@ -92,18 +92,18 @@ func migrateNamingConvention(c *config.Config, f *rule.File) {
 		// We'll need to move the metaresolver from resolve.RuleIndex to config.Config so we can access it from here.
 		switch r.Kind() {
 		case "go_binary":
-			if !haveLibConflict {
+			if haveMigrateLib && shouldMigrateLib {
 				replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
 			}
 		case "go_library":
-			if r.Name() == migrateLibName && !haveLibConflict {
+			if r.Name() == migrateLibName && shouldMigrateLib {
 				r.SetName(libName)
 			}
 		case "go_test":
-			if r.Name() == migrateTestName && !haveTestConflict {
+			if r.Name() == migrateTestName && shouldMigrateTest {
 				r.SetName(testName)
 			}
-			if !haveLibConflict {
+			if shouldMigrateLib {
 				replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
 			}
 		}
@@ -127,34 +127,28 @@ func fileContainsGoBinary(c *config.Config, f *rule.File) bool {
 	return false
 }
 
-// findImportPath returns the existing import path from the first encountered Go
-// rule with the attribute set.
-func findImportPath(f *rule.File) string {
-	for _, r := range f.Rules {
-		switch r.Kind() {
-		case "go_binary", "go_library", "go_test":
-			if ip, ok := r.Attr("importpath").(*bzl.StringExpr); ok && ip.Value != "" {
-				return ip.Value
-			}
+func replaceInStrListAttr(r *rule.Rule, attr, old, new string) {
+	items := r.AttrStrings(attr)
+	changed := false
+	for i := range items {
+		if items[i] == old {
+			changed = true
+			items[i] = new
 		}
 	}
-	return ""
+	if changed {
+		r.SetAttr(attr, items)
+	}
 }
 
-func replaceInStrListAttr(r *rule.Rule, attr, old, new string) {
-	l := r.AttrStrings(attr)
-	var shouldAdd = true
-	var items []string
-	for _, v := range l {
-		if v != old {
-			items = append(items, v)
+func strListAttrContains(r *rule.Rule, attr, s string) bool {
+	items := r.AttrStrings(attr)
+	for _, item := range items {
+		if item == s {
+			return true
 		}
-		shouldAdd = shouldAdd && v != new
 	}
-	if shouldAdd {
-		items = append(items, new)
-	}
-	r.SetAttr(attr, items)
+	return false
 }
 
 // migrateLibraryEmbed converts "library" attributes to "embed" attributes,

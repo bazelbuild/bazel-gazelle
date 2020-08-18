@@ -278,14 +278,14 @@ func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.
 	// user has told us otherwise.
 	nc := gc.repoNamingConvention[repo]
 	if nc == unknownNamingConvention {
-		if gc.goNamingConventionExtern != unknownNamingConvention {
-			nc = gc.goNamingConventionExtern
+		if gc.goNamingConventionExternal != unknownNamingConvention {
+			nc = gc.goNamingConventionExternal
 		} else {
 			nc = goDefaultLibraryNamingConvention
 		}
 	} else if nc == importAliasNamingConvention {
-		if gc.goNamingConventionExtern != unknownNamingConvention {
-			nc = gc.goNamingConventionExtern
+		if gc.goNamingConventionExternal != unknownNamingConvention {
+			nc = gc.goNamingConventionExternal
 		} else {
 			nc = gc.goNamingConvention
 		}
