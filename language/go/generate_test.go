@@ -95,6 +95,7 @@ func TestGenerateRules(t *testing.T) {
 				t.Fatalf("error reading %s: %v", wantPath, err)
 			}
 			want := string(wantBytes)
+			want = strings.ReplaceAll(want, "\r\n", "\n")
 
 			if got != want {
 				t.Errorf("GenerateRules %q: got:\n%s\nwant:\n%s", rel, got, want)
@@ -104,7 +105,7 @@ func TestGenerateRules(t *testing.T) {
 }
 
 func TestGenerateRulesEmpty(t *testing.T) {
-	c, langs, _ := testConfig(t)
+	c, langs, _ := testConfig(t, "-go_prefix=example.com/repo")
 	goLang := langs[1].(*goLang)
 	res := goLang.GenerateRules(language.GenerateArgs{
 		Config: c,
@@ -124,11 +125,11 @@ filegroup(name = "go_default_library_protos")
 
 go_proto_library(name = "foo_go_proto")
 
-go_library(name = "go_default_library")
+go_library(name = "foo")
 
 go_binary(name = "foo")
 
-go_test(name = "go_default_test")
+go_test(name = "foo_test")
 `)
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
@@ -150,7 +151,7 @@ func TestGenerateRulesEmptyLegacyProto(t *testing.T) {
 }
 
 func TestGenerateRulesEmptyPackageProto(t *testing.T) {
-	c, langs, _ := testConfig(t, "-proto=package")
+	c, langs, _ := testConfig(t, "-proto=package", "-go_prefix=example.com/repo")
 	oldContent := []byte(`
 proto_library(
     name = "dead_proto",
@@ -186,11 +187,11 @@ filegroup(name = "go_default_library_protos")
 
 go_proto_library(name = "foo_go_proto")
 
-go_library(name = "go_default_library")
+go_library(name = "foo")
 
 go_binary(name = "foo")
 
-go_test(name = "go_default_test")
+go_test(name = "foo_test")
 `)
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
@@ -265,7 +266,7 @@ func prebuiltProtoRules() []*rule.Rule {
 		proto.Package{
 			Name: "foo",
 			Files: map[string]proto.FileInfo{
-				"foo.proto": proto.FileInfo{},
+				"foo.proto": {},
 			},
 			Imports: map[string]bool{},
 			Options: map[string]string{},

@@ -257,13 +257,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_binary(
     name = "hello",
-    embed = [":go_default_library"],
+    embed = [":repo_lib"],
     pure = "on",
     visibility = ["//visibility:public"],
 )
 
 go_library(
-    name = "go_default_library",
+    name = "repo_lib",
     srcs = ["hello.go"],
     importpath = "example.com/repo",
     visibility = ["//visibility:private"],
@@ -291,7 +291,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 # src build file
 
 go_library(
-    name = "go_default_library",
+    name = "repo_lib",
     srcs = ["hello.go"],
     importpath = "example.com/repo",
     visibility = ["//visibility:private"],
@@ -299,7 +299,7 @@ go_library(
 
 go_binary(
     name = "repo",
-    embed = [":go_default_library"],
+    embed = [":repo_lib"],
     visibility = ["//visibility:public"],
 )
 `,
@@ -324,13 +324,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_binary(
     name = "hello",
-    embed = [":go_default_library"],
+    embed = [":repo_lib"],
     pure = "on",
     visibility = ["//visibility:public"],
 )
 
 go_library(
-    name = "go_default_library",
+    name = "repo_lib",
     srcs = ["hello.go"],
     importpath = "example.com/repo",
     visibility = ["//visibility:private"],

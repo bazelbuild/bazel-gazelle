@@ -524,11 +524,11 @@ import _ "golang.org/x/baz"
 			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     srcs = ["a.go"],
     importpath = "example.com/foo",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/golang.org/x/bar:go_default_library"],
+    deps = ["//vendor/golang.org/x/bar"],
 )
 `,
 		}, {
@@ -536,12 +536,12 @@ go_library(
 			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bar",
     srcs = ["bar.go"],
     importmap = "example.com/foo/vendor/golang.org/x/bar",
     importpath = "golang.org/x/bar",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/golang.org/x/baz:go_default_library"],
+    deps = ["//vendor/golang.org/x/baz"],
 )
 `,
 		},
@@ -898,11 +898,11 @@ import (
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bar",
     srcs = ["bar.go"],
     importpath = "bar",
     visibility = ["//visibility:public"],
-    deps = ["//foo:go_default_library"],
+    deps = ["//foo"],
 )
 `,
 	}})
@@ -1007,7 +1007,7 @@ import _ "example.com/foo"
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     srcs = ["foo.go"],
     importmap = "example.com/repo/sub/vendor/example.com/foo",
     importpath = "example.com/foo",
@@ -1020,11 +1020,11 @@ go_library(
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bar",
     srcs = ["bar.go"],
     importpath = "example.com/repo/sub/bar",
     visibility = ["//visibility:public"],
-    deps = ["//sub/vendor/example.com/foo:go_default_library"],
+    deps = ["//sub/vendor/example.com/foo"],
 )
 `,
 		},
@@ -1140,11 +1140,11 @@ import _ "example.com/bar"
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     srcs = ["foo.go"],
     importpath = "example.com/foo",
     visibility = ["//visibility:public"],
-    deps = ["@custom_repo//:go_default_library"],
+    deps = ["@custom_repo//:bar"],
 )
 `,
 		},
@@ -1179,6 +1179,7 @@ import _ "example.com/bar"
 	extDir := filepath.Join(dir, "ext")
 	args := []string{
 		"-go_prefix=example.com/foo",
+		"-go_naming_convention=import_alias",
 		"-mode=fix",
 		"-repo_root=" + extDir,
 		"-repo_config=" + filepath.Join(dir, "main", "WORKSPACE"),
@@ -1194,11 +1195,17 @@ import _ "example.com/bar"
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     srcs = ["foo.go"],
     importpath = "example.com/foo",
     visibility = ["//visibility:public"],
-    deps = ["@custom_repo//:go_default_library"],
+    deps = ["@custom_repo//:bar"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":foo",
+    visibility = ["//visibility:public"],
 )
 `,
 		},
@@ -2286,7 +2293,7 @@ import _ "example.com/bar"
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bar",
     srcs = ["bar.go"],
     importpath = "example.com/bar",
     visibility = ["//visibility:public"],
@@ -2312,11 +2319,11 @@ go_library(
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     srcs = ["foo.go"],
     importpath = "example.com/repo/foo",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/example.com/bar:go_default_library"],
+    deps = ["//vendor/example.com/bar"],
 )
 `,
 	}})
@@ -2351,7 +2358,7 @@ import (
 
 # this should be ignored because -index=false
 go_library(
-    name = "go_default_library",
+    name = "baz",
     srcs = ["baz.go"],
     importpath = "example.com/dep/baz",
     visibility = ["//visibility:public"],
@@ -2382,11 +2389,11 @@ go_library(
 			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     srcs = ["foo.go"],
     importpath = "example.com/repo/foo",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/example.com/dep/baz:go_default_library"],
+    deps = ["//vendor/example.com/dep/baz"],
 )
 `,
 		},
@@ -2434,13 +2441,13 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 # gazelle:prefix example.com/sub
 
 go_library(
-    name = "go_default_library",
+    name = "sub",
     srcs = ["sub.go"],
     importpath = "example.com/sub",
     visibility = ["//visibility:public"],
     deps = [
-        "//sub/missing:go_default_library",
-        "//vendor/example.com/external:go_default_library",
+        "//sub/missing",
+        "//vendor/example.com/external",
     ],
 )
 `,
@@ -2604,8 +2611,11 @@ func TestMapKind(t *testing.T) {
 		{
 			Path: "WORKSPACE",
 		}, {
-			Path:    "BUILD.bazel",
-			Content: "# gazelle:prefix example.com/mapkind",
+			Path: "BUILD.bazel",
+			Content: `
+# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+`,
 		}, {
 			Path:    "root_lib.go",
 			Content: `package mapkind`,
@@ -2694,6 +2704,7 @@ go_library(
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 # gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
 
 go_library(
     name = "go_default_library",
@@ -2860,7 +2871,7 @@ func TestMinimalModuleCompatibilityAliases(t *testing.T) {
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     srcs = ["foo.go"],
     importpath = "example.com/foo/v2",
     importpath_aliases = ["example.com/foo"],
@@ -2873,7 +2884,7 @@ go_library(
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bar",
     srcs = ["bar.go"],
     importpath = "example.com/foo/v2/bar",
     importpath_aliases = ["example.com/foo/bar"],
@@ -2920,7 +2931,7 @@ go_repository(
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "version",
     srcs = ["version.go"],
     importpath = "example.com/m/internal/version",
     visibility = [
@@ -2930,9 +2941,9 @@ go_library(
 )
 
 go_test(
-    name = "go_default_test",
+    name = "version_test",
     srcs = ["version_test.go"],
-    embed = [":go_default_library"],
+    embed = [":version"],
 )
 `,
 	}})
@@ -3141,7 +3152,7 @@ go_proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "foo",
     embed = [":foo_go_proto"],
     importpath = "example.com/foo",
     visibility = ["//visibility:public"],
@@ -3352,11 +3363,58 @@ proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "proto",
     srcs = ["foo.pb.go"],
     importpath = "example.com/proto",
     visibility = ["//visibility:public"],
 )`,
+		},
+	})
+}
+
+func TestGoMainLibraryRemoved(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		},
+		{
+			Path: "BUILD.bazel",
+			Content: `
+# gazelle:prefix example.com
+# gazelle:go_naming_convention import
+`,
+		},
+		{
+			Path: "cmd/foo/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+		name = "foo_lib",
+		srcs = ["foo.go"],
+		importpath = "example.com/cmd/foo",
+		visibility = ["//visibility:private"],
+)
+
+go_binary(
+		name = "foo",
+		embed = [":foo_lib"],
+		visibility = ["//visibility:public"],
+)
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path:    "cmd/foo/BUILD.bazel",
+			Content: "",
 		},
 	})
 }

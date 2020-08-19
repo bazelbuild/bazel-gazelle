@@ -19,7 +19,7 @@ go_proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "protos_gogo",
     _gazelle_imports = [],
     embed = [":protos_gogo_go_proto"],
     importpath = "example.com/repo/protos_gogo",

@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "config",
     srcs = [
         "config.go",
         "constants.go",
@@ -9,16 +9,16 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/config",
     visibility = ["//visibility:public"],
     deps = [
-        "//internal/wspace:go_default_library",
-        "//rule:go_default_library",
+        "//internal/wspace",
+        "//rule",
     ],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "config_test",
     srcs = ["config_test.go"],
-    embed = [":go_default_library"],
-    deps = ["//rule:go_default_library"],
+    embed = [":config"],
+    deps = ["//rule"],
 )
 
 filegroup(
@@ -30,5 +30,11 @@ filegroup(
         "config_test.go",
         "constants.go",
     ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":config",
     visibility = ["//visibility:public"],
 )

@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "repo",
     srcs = [
         "remote.go",
         "repo.go",
@@ -9,25 +9,25 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/repo",
     visibility = ["//visibility:public"],
     deps = [
-        "//label:go_default_library",
-        "//pathtools:go_default_library",
-        "//rule:go_default_library",
+        "//label",
+        "//pathtools",
+        "//rule",
         "@org_golang_x_tools//go/vcs:go_default_library",
     ],
 )
 
 go_test(
-    name = "go_default_test",
+    name = "repo_test",
     srcs = [
         "remote_test.go",
         "repo_test.go",
         "stubs_test.go",
     ],
-    embed = [":go_default_library"],
+    embed = [":repo"],
     deps = [
-        "//pathtools:go_default_library",
-        "//rule:go_default_library",
-        "//testtools:go_default_library",
+        "//pathtools",
+        "//rule",
+        "//testtools",
         "@org_golang_x_tools//go/vcs:go_default_library",
     ],
 )
@@ -43,5 +43,11 @@ filegroup(
         "repo_test.go",
         "stubs_test.go",
     ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":repo",
     visibility = ["//visibility:public"],
 )

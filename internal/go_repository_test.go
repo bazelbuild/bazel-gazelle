@@ -44,6 +44,7 @@ go_repository(
     commit = "30136e27e2ac8d167177e8a583aa4c3fea5be833",
     patches = ["@bazel_gazelle//internal:repository_rules_test_errors.patch"],
     patch_args = ["-p1"],
+    build_naming_convention = "go_default_library",
 )
 
 go_repository(

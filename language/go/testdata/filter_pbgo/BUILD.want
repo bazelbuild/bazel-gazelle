@@ -18,7 +18,7 @@ go_proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "filter_pbgo",
     srcs = ["b.pb.go"],
     _gazelle_imports = [],
     embed = [":filter_pbgo_go_proto"],

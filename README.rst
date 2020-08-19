@@ -332,6 +332,17 @@ The following flags are accepted:
 | See `Predefined plugins`_ for available options; commonly used options include                        |
 | ``@io_bazel_rules_go//proto:gofast_grpc`` and ``@io_bazel_rules_go//proto:gogofaster_grpc``.          |
 +--------------------------------------------------------------+----------------------------------------+
+| :flag:`-go_naming_convention`                                |                                        |
++--------------------------------------------------------------+----------------------------------------+
+| Controls the names of generated Go targets. Equivalent to the                                         |
+| ``# gazelle:go_naming_convention`` directive.                                                         |
++--------------------------------------------------------------+----------------------------------------+
+| :flag:`-go_naming_convention_extern`                         |                                        |
++--------------------------------------------------------------+----------------------------------------+
+| Controls the default naming convention used when resolving libraries in                               |
+| external repositories with unknown naming conventions. Equivalent to the                              |
+| ``# gazelle:go_naming_convention_extern`` directive.                                                  |
++--------------------------------------------------------------+----------------------------------------+
 | :flag:`-go_prefix example.com/repo`                          |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | A prefix of import paths for libraries in the repository that corresponds to                          |
@@ -575,6 +586,30 @@ The following directives are recognized:
 | See `Predefined plugins`_ for available options; commonly used options include             |
 | ``@io_bazel_rules_go//proto:gofast_grpc`` and                                              |
 | ``@io_bazel_rules_go//proto:gogofaster_grpc``.                                             |
++---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_naming_convention`           | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Controls the names of generated Go targets. By default, library targets are named          |
+| ``go_default_library`` and test targets ``go_default_test``.                               |
+|                                                                                            |
+| Valid values are:                                                                          |
+|                                                                                            |
+| * ``go_default_library``: Library targets are named ``go_default_library``, test targets   |
+|   are named ``go_default_test``.                                                           |
+| * ``import``: Library and test targets are named after the last segment of their import    |
+|   path.                                                                                    |
+|   For example, ``example.repo/foo`` is named ``foo``, and the test target is ``foo_test``. |
+|   Major version suffixes like ``/v2`` are dropped.                                         |
+|   For a main package with a binary ``foobin``, the names are instead ``foobin_lib`` and    |
+|   ``foobin_test``.                                                                         |
+| * ``import_alias``: Same as ``import``, but an ``alias`` target is generated named         |
+|   ``go_default_library`` to ensure backwards compatibility.                                |
++---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_naming_convention_extern`    | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Controls the default naming convention used when resolving libraries in                    |
+| external repositories with unknown naming conventions. Accepts the same values             |
+| as ``go_naming_convention``.                                                               |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:go_proto_compilers`             | ``@io_bazel_rules_go//proto:go_proto`` |
 +---------------------------------------------------+----------------------------------------+

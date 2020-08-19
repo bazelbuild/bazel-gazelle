@@ -25,6 +25,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
+	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -78,6 +79,9 @@ const (
 	archSet
 	platformSet
 )
+
+// Matches a package version, eg. the end segment of 'example.com/foo/v1'
+var pkgVersionRe = regexp.MustCompile("^v[0-9]+$")
 
 // addFile adds the file described by "info" to a target in the package "p" if
 // the file is buildable.
@@ -156,14 +160,63 @@ func (pkg *goPackage) inferImportPath(c *config.Config) error {
 		return fmt.Errorf("%s: go prefix is not set, so importpath can't be determined for rules. Set a prefix with a '# gazelle:prefix' comment or with -go_prefix on the command line", pkg.dir)
 	}
 	pkg.importPath = InferImportPath(c, pkg.rel)
-
-	if pkg.rel == gc.prefixRel {
-		pkg.importPath = gc.prefix
-	} else {
-		fromPrefixRel := strings.TrimPrefix(pkg.rel, gc.prefixRel+"/")
-		pkg.importPath = path.Join(gc.prefix, fromPrefixRel)
-	}
 	return nil
+}
+
+// libNameFromImportPath returns a a suitable go_library name based on the import path.
+// Major version suffixes (eg. "v1") are dropped.
+func libNameFromImportPath(dir string) string {
+	i := strings.LastIndexAny(dir, "/\\")
+	if i < 0 {
+		return dir
+	}
+	name := dir[i+1:]
+	if pkgVersionRe.MatchString(name) {
+		dir := dir[:i]
+		i = strings.LastIndexAny(dir, "/\\")
+		if i >= 0 {
+			name = dir[i+1:]
+		}
+	}
+	return name
+}
+
+// libNameByConvention returns a suitable name for a go_library using the given
+// naming convention, the import path, and the package name.
+func libNameByConvention(nc namingConvention, imp string, pkgName string) string {
+	if nc == goDefaultLibraryNamingConvention {
+		return defaultLibName
+	}
+	name := libNameFromImportPath(imp)
+	isCommand := pkgName == "main"
+	if name == "" {
+		if isCommand {
+			name = "lib"
+		} else {
+			name = pkgName
+		}
+	} else if isCommand {
+		name += "_lib"
+	}
+	return name
+}
+
+// testNameByConvention returns a suitable name for a go_test using the given
+// naming convention and the import path.
+func testNameByConvention(nc namingConvention, imp string) string {
+	if nc == goDefaultLibraryNamingConvention {
+		return defaultTestName
+	}
+	libName := libNameFromImportPath(imp)
+	if libName == "" {
+		libName = "lib"
+	}
+	return libName + "_test"
+}
+
+// binName returns a suitable name for a go_binary.
+func binName(rel, prefix, repoRoot string) string {
+	return pathtools.RelBaseName(rel, prefix, repoRoot)
 }
 
 func InferImportPath(c *config.Config, rel string) string {

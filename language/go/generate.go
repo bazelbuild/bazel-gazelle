@@ -130,7 +130,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 						// if a go_proto_library rule already exists for this
 						// proto package, treat it as if the proto package
 						// doesn't exist.
-						pkg = emptyPackage(c, args.Dir, args.Rel)
+						pkg = emptyPackage(c, args.Dir, args.Rel, args.File)
 						break
 					}
 					pkg = &goPackage{
@@ -142,7 +142,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					break
 				}
 			} else {
-				pkg = emptyPackage(c, args.Dir, args.Rel)
+				pkg = emptyPackage(c, args.Dir, args.Rel, args.File)
 			}
 		} else {
 			log.Print(err)
@@ -270,6 +270,9 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		if r := g.maybeGenerateExtraLib(lib, pkg); r != nil {
 			rules = append(rules, r)
 		}
+		if r := g.maybeGenerateAlias(pkg, libName); r != nil {
+			rules = append(rules, r)
+		}
 		rules = append(rules,
 			g.generateBin(pkg, libName),
 			g.generateTest(pkg, libName))
@@ -379,9 +382,18 @@ func selectPackage(c *config.Config, dir string, packageMap map[string]*goPackag
 	return nil, err
 }
 
-func emptyPackage(c *config.Config, dir, rel string) *goPackage {
+func emptyPackage(c *config.Config, dir, rel string, f *rule.File) *goPackage {
+	var pkgName string
+	if fileContainsGoBinary(c, f) {
+		// If the file contained a go_binary, its library may have a "_lib" suffix.
+		// Set the package name to "main" so that we generate an empty library rule
+		// with that name.
+		pkgName = "main"
+	} else {
+		pkgName = defaultPackageName(c, dir)
+	}
 	pkg := &goPackage{
-		name: defaultPackageName(c, dir),
+		name: pkgName,
 		dir:  dir,
 		rel:  rel,
 	}
@@ -452,7 +464,9 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 }
 
 func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
-	goLibrary := rule.NewRule("go_library", defaultLibName)
+	gc := getGoConfig(g.c)
+	name := libNameByConvention(gc.goNamingConvention, pkg.importPath, pkg.name)
+	goLibrary := rule.NewRule("go_library", name)
 	if !pkg.library.sources.hasGo() && embed == "" {
 		return goLibrary // empty
 	}
@@ -468,8 +482,25 @@ func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
 	return goLibrary
 }
 
+func (g *generator) maybeGenerateAlias(pkg *goPackage, libName string) *rule.Rule {
+	if pkg.isCommand() || libName == "" {
+		return nil
+	}
+	gc := getGoConfig(g.c)
+	if gc.goNamingConvention == goDefaultLibraryNamingConvention {
+		return nil
+	}
+	alias := rule.NewRule("alias", defaultLibName)
+	alias.SetAttr("visibility", g.commonVisibility(pkg.importPath))
+	if gc.goNamingConvention == importAliasNamingConvention {
+		alias.SetAttr("actual", ":"+libName)
+	}
+	return alias
+}
+
 func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
-	name := pathtools.RelBaseName(pkg.rel, getGoConfig(g.c).prefix, g.c.RepoRoot)
+	gc := getGoConfig(g.c)
+	name := binName(pkg.rel, gc.prefix, g.c.RepoRoot)
 	goBinary := rule.NewRule("go_binary", name)
 	if !pkg.isCommand() || pkg.binary.sources.isEmpty() && library == "" {
 		return goBinary // empty
@@ -480,7 +511,9 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
 }
 
 func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
-	goTest := rule.NewRule("go_test", defaultTestName)
+	gc := getGoConfig(g.c)
+	name := testNameByConvention(gc.goNamingConvention, pkg.importPath)
+	goTest := rule.NewRule("go_test", name)
 	if !pkg.test.sources.hasGo() {
 		return goTest // empty
 	}

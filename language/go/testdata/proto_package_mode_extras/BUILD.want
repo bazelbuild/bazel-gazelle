@@ -41,15 +41,15 @@ go_proto_library(
 )
 
 go_library(
-    name = "go_default_library",
+    name = "proto_package_mode_extras",
     _gazelle_imports = [],
     embed = [":foo_go_proto"],
     importpath = "example.com/repo/proto_package_mode_extras",
 )
 
 go_test(
-    name = "go_default_test",
+    name = "proto_package_mode_extras_test",
     srcs = ["foo_test.go"],
     _gazelle_imports = [],
-    embed = [":go_default_library"],
+    embed = [":proto_package_mode_extras"],
 )

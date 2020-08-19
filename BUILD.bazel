@@ -6,6 +6,7 @@ load("//:def.bzl", "gazelle", "gazelle_binary")
 # gazelle:exclude third_party
 # gazelle:exclude .bazelci
 # gazelle:exclude .github
+# gazelle:go_naming_convention import_alias
 gazelle(
     name = "gazelle",
     command = "fix",
@@ -15,9 +16,9 @@ gazelle(
 gazelle_binary(
     name = "gazelle_local",
     languages = [
-        "//language/proto:go_default_library",
-        "//language/go:go_default_library",
-        "//internal/language/test_filegroup:go_default_library",
+        "//language/proto",
+        "//language/go",
+        "//internal/language/test_filegroup",
     ],
 )
 

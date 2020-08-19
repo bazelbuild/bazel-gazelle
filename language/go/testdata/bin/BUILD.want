@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "bin_lib",
     srcs = ["main.go"],
     _gazelle_imports = [
         "example.com/repo/lib",
@@ -14,6 +14,6 @@ go_library(
 go_binary(
     name = "bin",
     _gazelle_imports = [],
-    embed = [":go_default_library"],
+    embed = [":bin_lib"],
     visibility = ["//visibility:public"],
 )
