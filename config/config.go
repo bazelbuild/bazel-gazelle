@@ -94,6 +94,10 @@ type Config struct {
 	// extensions as well. Values in here may be populated by command line
 	// arguments, directives in build files, or other mechanisms.
 	Exts map[string]interface{}
+
+	// Quiet indicates that non-error output should be suppressed; this does
+	// not change any underlying operation.
+	Quiet bool
 }
 
 // MappedKind describes a replacement to use for a built-in kind.
