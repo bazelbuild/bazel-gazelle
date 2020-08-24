@@ -18,7 +18,7 @@ load(
     "go_context",
 )
 load(
-    "@io_bazel_rules_go//go/private:rules/transition.bzl",
+    "@io_bazel_rules_go//go/private/rules:transition.bzl",
     "go_transition_rule",
     "go_transition_wrapper",
 )
