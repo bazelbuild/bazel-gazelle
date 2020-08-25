@@ -331,14 +331,16 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache,
 }
 
 func resolveGoTool(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
-	l, err := ResolveGo(c, ix, rc, imp, from)
-	if err != nil {
-		return l, err
+	if isToolLibImportPath(imp) {
+		gc := getGoConfig(c)
+		var repo string
+		if gc.prefix != "golang.org/x/tools" {
+			repo = "org_golang_x_tools"
+		}
+		pkg := strings.TrimPrefix(imp, "golang.org/x/tools/")
+		return label.Label{Repo: repo, Pkg: pkg, Name: "go_tool_library"}, nil
 	}
-	if l.Name == "go_default_library" {
-		l.Name = "go_tool_library"
-	}
-	return l, nil
+	return ResolveGo(c, ix, rc, imp, from)
 }
 
 // wellKnownProtos is the set of proto sets for which we don't need to add
