@@ -537,29 +537,8 @@ func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
 func (g *generator) maybeGenerateToolLib(lib *rule.Rule, pkg *goPackage) *rule.Rule {
 	// Check whether we should generate go_tool_library.
 	gc := getGoConfig(g.c)
-	if gc.prefix != "golang.org/x/tools" || gc.prefixRel != "" {
+	if gc.prefix != "golang.org/x/tools" || gc.prefixRel != "" || !isToolLibImportPath(pkg.importPath) {
 		return nil
-	}
-	pass := strings.TrimPrefix(pkg.importPath, "golang.org/x/tools/go/analysis/passes/")
-	if pass == pkg.importPath || strings.Index(pass, "/") >= 0 {
-		// Not a direct dependency of nogo, possibly an indirect dependency
-		switch pkg.importPath {
-		case "golang.org/x/tools/go/analysis",
-			"golang.org/x/tools/go/analysis/internal/facts",
-			"golang.org/x/tools/go/analysis/passes/internal/analysisutil",
-			"golang.org/x/tools/go/ast/astutil",
-			"golang.org/x/tools/go/ast/inspector",
-			"golang.org/x/tools/go/cfg",
-			"golang.org/x/tools/go/gcexportdata",
-			"golang.org/x/tools/go/internal/gcimporter",
-			"golang.org/x/tools/go/ssa",
-			"golang.org/x/tools/go/types/objectpath",
-			"golang.org/x/tools/go/types/typeutil",
-			"golang.org/x/tools/internal/analysisinternal":
-			// Indirect dependency
-		default:
-			return nil
-		}
 	}
 
 	// Generate the target.
@@ -574,6 +553,36 @@ func (g *generator) maybeGenerateToolLib(lib *rule.Rule, pkg *goPackage) *rule.R
 	g.setCommonAttrs(toolLib, pkg.rel, visibility, pkg.library, "")
 	g.setImportAttrs(toolLib, pkg.importPath)
 	return toolLib
+}
+
+func isToolLibImportPath(imp string) bool {
+	if !strings.HasPrefix(imp, "golang.org/x/tools/") {
+		return false
+	}
+	pass := strings.TrimPrefix(imp, "golang.org/x/tools/go/analysis/passes/")
+	if pass != imp && strings.Index(pass, "/") < 0 {
+		// Direct dependency of nogo
+		return true
+	}
+	switch imp {
+	case "golang.org/x/tools/go/analysis",
+		"golang.org/x/tools/go/analysis/internal/facts",
+		"golang.org/x/tools/go/analysis/passes/internal/analysisutil",
+		"golang.org/x/tools/go/ast/astutil",
+		"golang.org/x/tools/go/ast/inspector",
+		"golang.org/x/tools/go/cfg",
+		"golang.org/x/tools/go/gcexportdata",
+		"golang.org/x/tools/go/internal/gcimporter",
+		"golang.org/x/tools/go/ssa",
+		"golang.org/x/tools/go/types/objectpath",
+		"golang.org/x/tools/go/types/typeutil",
+		"golang.org/x/tools/internal/analysisinternal",
+		"golang.org/x/tools/internal/lsp/fuzzy":
+		// Indirect dependency of nogo.
+		return true
+	default:
+		return false
+	}
 }
 
 // maybeGenerateExtraLib generates extra equivalent library targets for
