@@ -4,21 +4,6 @@ load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle_binary")
 gazelle_binary(
     name = "gazelle",
     languages = DEFAULT_LANGUAGES,
-    msan = "off",
-    pure = "off",
-    race = "off",
-    static = "off",
-    visibility = ["//visibility:public"],
-)
-
-gazelle_binary(
-    name = "gazelle_pure",
-    languages = DEFAULT_LANGUAGES,
-    msan = "off",
-    pure = "on",
-    race = "off",
-    static = "off",
-    tags = ["manual"],
     visibility = ["//visibility:public"],
 )
 
