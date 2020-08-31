@@ -589,10 +589,9 @@ The following directives are recognized:
 | ``@io_bazel_rules_go//proto:gofast_grpc`` and                                              |
 | ``@io_bazel_rules_go//proto:gogofaster_grpc``.                                             |
 +---------------------------------------------------+----------------------------------------+
-| :direc:`# gazelle:go_naming_convention`           | n/a                                    |
+| :direc:`# gazelle:go_naming_convention`           | inferred automatically                 |
 +---------------------------------------------------+----------------------------------------+
-| Controls the names of generated Go targets. By default, library targets are named          |
-| ``go_default_library`` and test targets ``go_default_test``.                               |
+| Controls the names of generated Go targets.                                                |
 |                                                                                            |
 | Valid values are:                                                                          |
 |                                                                                            |
@@ -606,6 +605,10 @@ The following directives are recognized:
 |   ``foobin_test``.                                                                         |
 | * ``import_alias``: Same as ``import``, but an ``alias`` target is generated named         |
 |   ``go_default_library`` to ensure backwards compatibility.                                |
+|                                                                                            |
+| If no naming convention is set, Gazelle attempts to infer the convention in                |
+| use by reading the root build file and build files in immediate                            |
+| subdirectories. If no Go targets are found, Gazelle defaults to ``import``.                |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:go_naming_convention_external`  | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
