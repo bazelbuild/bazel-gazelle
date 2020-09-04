@@ -18,6 +18,8 @@ package golang
 import (
 	"fmt"
 	"go/build"
+	"go/parser"
+	"go/token"
 	"log"
 	"path"
 	"path/filepath"
@@ -517,7 +519,16 @@ func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
 	if !pkg.test.sources.hasGo() {
 		return goTest // empty
 	}
-	g.setCommonAttrs(goTest, pkg.rel, nil, pkg.test, library)
+	var embed string
+	for src := range pkg.test.sources.strs {
+		f, err := parser.ParseFile(token.NewFileSet(), filepath.Join(pkg.dir, src), nil, parser.PackageClauseOnly)
+		if err == nil && !strings.HasSuffix(f.Name.Name, "_test") {
+			// there are internal tests
+			embed = library
+			break
+		}
+	}
+	g.setCommonAttrs(goTest, pkg.rel, nil, pkg.test, embed)
 	if pkg.hasTestdata {
 		goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
 	}
