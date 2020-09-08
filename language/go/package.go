@@ -43,7 +43,7 @@ type goPackage struct {
 // (library, binary, or test).
 type goTarget struct {
 	sources, imports, copts, clinkopts platformStringsBuilder
-	cgo                                bool
+	cgo, hasInternalTest               bool
 }
 
 // protoTarget contains information used to generate a go_proto_library rule.
@@ -108,6 +108,9 @@ func (pkg *goPackage) addFile(c *config.Config, info fileInfo, cgo bool) error {
 			return fmt.Errorf("%s: use of cgo in test not supported", info.path)
 		}
 		pkg.test.addFile(c, info)
+		if !info.isExternalTest {
+			pkg.test.hasInternalTest = true
+		}
 	default:
 		pkg.library.addFile(c, info)
 	}
