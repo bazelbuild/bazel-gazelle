@@ -5,6 +5,7 @@ load("//:def.bzl", "gazelle", "gazelle_binary")
 # gazelle:exclude vendor
 # gazelle:exclude third_party
 # gazelle:exclude .bazelci
+# gazelle:exclude .idea
 # gazelle:exclude .github
 # gazelle:exclude .vscode
 # gazelle:go_naming_convention import_alias
