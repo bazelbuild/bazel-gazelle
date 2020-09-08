@@ -3792,8 +3792,23 @@ import _ "example.com/foo"
 `,
 		},
 		{
-			Path:    "BUILD.bazel",
-			Content: "# gazelle:prefix example.com",
+			Path: "foo/BUILD.bazel",
+			Content: `# gazelle:prefix example.com/foo
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+    deps = ["@org_golang_x_baz//:go_default_library"],
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+	embed = [":foo"],
+)`,
 		},
 	}
 	dir, cleanup := testtools.CreateFiles(t, files)
@@ -3807,7 +3822,8 @@ import _ "example.com/foo"
 	testtools.CheckFiles(t, dir, []testtools.FileSpec{
 		{
 			Path: "foo/BUILD.bazel",
-			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+			Content: `# gazelle:prefix example.com/foo
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "foo",
