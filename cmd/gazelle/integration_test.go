@@ -3807,7 +3807,7 @@ go_library(
 go_test(
     name = "foo_test",
     srcs = ["foo_test.go"],
-	embed = [":foo"],
+    embed = [":foo"],
 )`,
 		},
 	}
