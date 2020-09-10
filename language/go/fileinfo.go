@@ -62,6 +62,10 @@ type fileInfo struct {
 	// ends with "_test.go". This is never true for non-Go files.
 	isTest bool
 
+	// isExternalTest is true when the file isTest and the original package
+	// name ends with "_test"
+	isExternalTest bool
+
 	// imports is a list of packages imported by a file. It does not include
 	// "C" or anything from the standard library.
 	imports []string
@@ -285,6 +289,7 @@ func goFileInfo(path, rel string) fileInfo {
 	info.packageName = pf.Name.Name
 	if info.isTest && strings.HasSuffix(info.packageName, "_test") {
 		info.packageName = info.packageName[:len(info.packageName)-len("_test")]
+		info.isExternalTest = true
 	}
 
 	for _, decl := range pf.Decls {

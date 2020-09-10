@@ -3772,3 +3772,75 @@ gazelle_dependencies()
 		},
 	})
 }
+
+func TestExternalOnly(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		},
+		{
+			Path: "foo/foo.go",
+			Content: `package foo
+import _ "golang.org/x/baz"
+`,
+		},
+		{
+			Path: "foo/foo_test.go",
+			Content: `package foo_test
+import _ "golang.org/x/baz"
+import _ "example.com/foo"
+`,
+		},
+		{
+			Path: "foo/BUILD.bazel",
+			Content: `# gazelle:prefix example.com/foo
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+    deps = ["@org_golang_x_baz//:go_default_library"],
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	var args []string
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "foo/BUILD.bazel",
+			Content: `# gazelle:prefix example.com/foo
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+    deps = ["@org_golang_x_baz//:go_default_library"],
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    deps = [
+        ":foo",
+        "@org_golang_x_baz//:go_default_library",
+    ],
+)`,
+		},
+	})
+}
