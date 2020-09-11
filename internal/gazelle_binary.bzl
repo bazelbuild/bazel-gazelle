@@ -84,6 +84,9 @@ _gazelle_binary_kwargs = {
             allow_empty = False,
         ),
         "_go_context_data": attr.label(default = "@io_bazel_rules_go//:go_context_data"),
+        # _stdlib is needed for rules_go versions before v0.23.0. After that,
+        # _go_context_data includes a dependency on stdlib.
+        "_stdlib": attr.label(default = "@io_bazel_rules_go//:stdlib"),
         "_srcs": attr.label(
             default = "//cmd/gazelle:gazelle_lib",
         ),
