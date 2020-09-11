@@ -1,9 +1,12 @@
 load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
-# gazelle:exclude go_repository_test.go
+# gazelle:exclude *_test.go
 go_bazel_test(
-    name = "go_repository_test",
-    srcs = ["go_repository_test.go"],
+    name = "bazel_test",
+    srcs = [
+        "go_repository_test.go",
+        "runner_test.go",
+    ],
     rule_files = [
         "@bazel_gazelle//:all_files",
         "@io_bazel_rules_go//:all_files",

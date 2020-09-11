@@ -18,6 +18,8 @@ package golang
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"go/build"
 	"io"
 	"io/ioutil"
@@ -146,22 +148,15 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 
 // goListModules invokes "go list" in a directory containing a go.mod file.
 var goListModules = func(dir string) ([]byte, error) {
-	goTool := findGoTool()
-	cmd := exec.Command(goTool, "list", "-m", "-json", "all")
-	cmd.Stderr = os.Stderr
-	cmd.Dir = dir
-	return cmd.Output()
+	return runGoCommandForOutput(dir, "list", "-m", "-json", "all")
 }
 
 // goModDownload invokes "go mod download" in a directory containing a
 // go.mod file.
 var goModDownload = func(dir string, args []string) ([]byte, error) {
-	goTool := findGoTool()
-	cmd := exec.Command(goTool, "mod", "download", "-json")
-	cmd.Args = append(cmd.Args, args...)
-	cmd.Stderr = os.Stderr
-	cmd.Dir = dir
-	return cmd.Output()
+	dlArgs := []string{"mod", "download", "-json"}
+	dlArgs = append(dlArgs, args...)
+	return runGoCommandForOutput(dir, dlArgs...)
 }
 
 // copyGoModToTemp copies to given go.mod file to a temporary directory.
@@ -211,4 +206,43 @@ func findGoTool() string {
 		path += ".exe"
 	}
 	return path
+}
+
+func runGoCommandForOutput(dir string, args ...string) ([]byte, error) {
+	goTool := findGoTool()
+	env := os.Environ()
+	env = append(env, "GO111MODULE=on")
+	if os.Getenv("GOCACHE") == "" && os.Getenv("HOME") == "" {
+		gocache, err := ioutil.TempDir("", "")
+		if err != nil {
+			return nil, err
+		}
+		env = append(env, "GOCACHE="+gocache)
+		defer os.RemoveAll(gocache)
+	}
+	if os.Getenv("GOPATH") == "" && os.Getenv("HOME") == "" {
+		gopath, err := ioutil.TempDir("", "")
+		if err != nil {
+			return nil, err
+		}
+		env = append(env, "GOPATH="+gopath)
+		defer os.RemoveAll(gopath)
+	}
+	cmd := exec.Command(goTool, args...)
+	stderr := &bytes.Buffer{}
+	cmd.Stderr = stderr
+	cmd.Dir = dir
+	cmd.Env = env
+	out, err := cmd.Output()
+	if err != nil {
+		var errStr string
+		var xerr *exec.ExitError
+		if errors.As(err, &xerr) {
+			errStr = strings.TrimSpace(stderr.String())
+		} else {
+			errStr = err.Error()
+		}
+		return nil, fmt.Errorf("running '%s %s': %s", cmd.Path, strings.Join(cmd.Args, " "), errStr)
+	}
+	return out, nil
 }

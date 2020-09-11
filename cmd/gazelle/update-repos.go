@@ -88,6 +88,9 @@ func (*updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) err
 		if len(fs.Args()) != 0 {
 			return fmt.Errorf("got %d positional arguments with -from_file; wanted 0.\nTry -help for more information.", len(fs.Args()))
 		}
+		if !filepath.IsAbs(uc.repoFilePath) {
+			uc.repoFilePath = filepath.Join(c.WorkDir, uc.repoFilePath)
+		}
 
 	default:
 		if len(fs.Args()) == 0 {
@@ -117,7 +120,7 @@ func (*updateReposConfigurer) KnownDirectives() []string { return nil }
 
 func (*updateReposConfigurer) Configure(c *config.Config, rel string, f *rule.File) {}
 
-func updateRepos(args []string) (err error) {
+func updateRepos(wd string, args []string) (err error) {
 	// Build configuration with all languages.
 	cexts := make([]config.Configurer, 0, len(languages)+2)
 	cexts = append(cexts, &config.CommonConfigurer{}, &updateReposConfigurer{})
@@ -130,7 +133,7 @@ func updateRepos(args []string) (err error) {
 			kinds[kind] = info
 		}
 	}
-	c, err := newUpdateReposConfiguration(args, cexts)
+	c, err := newUpdateReposConfiguration(wd, args, cexts)
 	if err != nil {
 		return err
 	}
@@ -298,8 +301,9 @@ func updateRepos(args []string) (err error) {
 	return nil
 }
 
-func newUpdateReposConfiguration(args []string, cexts []config.Configurer) (*config.Config, error) {
+func newUpdateReposConfiguration(wd string, args []string, cexts []config.Configurer) (*config.Config, error) {
 	c := config.New()
+	c.WorkDir = wd
 	fs := flag.NewFlagSet("gazelle", flag.ContinueOnError)
 	// Flag will call this on any parse error. Don't print usage unless
 	// -h or -help were passed explicitly.
