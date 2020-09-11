@@ -114,6 +114,7 @@ def _go_repository_impl(ctx):
         # attribute of go_repository, so we don't need to look it up.
         fetch_repo_env = dict(env)
         fetch_repo_env["GOSUMDB"] = "off"
+
         # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
         fetch_repo_env["GO111MODULE"] = "on"
 
@@ -162,7 +163,7 @@ def _go_repository_impl(ctx):
             "-repo_root",
             ctx.path(""),
             "-repo_config",
-            ctx.path(ctx.attr.build_config)
+            ctx.path(ctx.attr.build_config),
         ]
         if ctx.attr.version:
             cmd.append("-go_repository_module_mode")
@@ -259,7 +260,7 @@ go_repository = repository_rule(
             ],
         ),
         "build_extra_args": attr.string_list(),
-        "build_config": attr.label(default= "@bazel_gazelle_go_repository_config//:WORKSPACE"),
+        "build_config": attr.label(default = "@bazel_gazelle_go_repository_config//:WORKSPACE"),
         "build_directives": attr.string_list(default = []),
 
         # Patches to apply after running gazelle.
