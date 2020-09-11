@@ -73,9 +73,9 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 	repoFileMap = make(map[string]*rule.File)
 	for _, repo := range workspace.Rules {
 		if name := repo.Name(); name != "" {
-				repos = append(repos, repo)
-				repoFileMap[name] = workspace
-				repoIndexMap[name] = len(repos) - 1
+			repos = append(repos, repo)
+			repoFileMap[name] = workspace
+			repoIndexMap[name] = len(repos) - 1
 		}
 	}
 	extraRepos, err := parseRepositoryDirectives(workspace.Directives)
