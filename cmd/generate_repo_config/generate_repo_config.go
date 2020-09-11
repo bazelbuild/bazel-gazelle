@@ -105,9 +105,15 @@ func generateRepoConfig(configDest, configSource string) error {
 
 	destFile := rule.EmptyFile(configDest, "")
 	for _, rsrc := range repos {
+		var rdst *rule.Rule
 		if rsrc.Kind() == "go_repository" {
-			rdst := rule.NewRule("go_repository", rsrc.Name())
+			rdst = rule.NewRule("go_repository", rsrc.Name())
 			rdst.SetAttr("importpath", rsrc.AttrString("importpath"))
+		} else if rsrc.Kind() == "http_archive" && rsrc.Name() == "io_bazel_rules_go" {
+			rdst = rule.NewRule("http_archive", "io_bazel_rules_go")
+			rdst.SetAttr("urls", rsrc.AttrStrings("urls"))
+		}
+		if rdst != nil {
 			rdst.Insert(destFile)
 		}
 	}

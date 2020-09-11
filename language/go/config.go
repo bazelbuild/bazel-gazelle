@@ -453,7 +453,7 @@ func (*goLang) Configure(c *config.Config, rel string, f *rule.File) {
 		const message = `Gazelle may not be compatible with this version of rules_go.
 Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 		var err error
-		gc.rulesGoVersion, err = findRulesGoVersion(c.RepoRoot)
+		gc.rulesGoVersion, err = findRulesGoVersion(c)
 		if c.ShouldFix {
 			// Only check the version when "fix" is run. Generated build files
 			// frequently work with older version of rules_go, and we don't want to
@@ -622,29 +622,51 @@ func splitValue(value string) []string {
 	return values
 }
 
-// findRulesGoVersion reads the version of io_bazel_rules_go being used from
-// the bazel external workspace directory.
-func findRulesGoVersion(repoRoot string) (version.Version, error) {
+// findRulesGoVersion attempts to infer the version of io_bazel_rules_go.
+// It can read the external directory (if bazel has fetched it), or it can
+// read WORKSPACE. Neither method is completely reliable.
+func findRulesGoVersion(c *config.Config) (version.Version, error) {
 	const message = `Gazelle may not be compatible with this version of rules_go.
 Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 
-	rulesGoPath, err := repo.FindExternalRepo(repoRoot, config.RulesGoRepoName)
-	if err != nil {
-		// This is likely because io_bazel_rules_go hasn't been fetched yet.
-		// This error should generally not be reported.
-		return version.Version{}, errRulesGoRepoNotFound
+	var vstr string
+	if rulesGoPath, err := repo.FindExternalRepo(c.RepoRoot, config.RulesGoRepoName); err == nil {
+		// Bazel has already fetched io_bazel_rules_go. We can read its version
+		// from //go:def.bzl.
+		defBzlPath := filepath.Join(rulesGoPath, "go", "def.bzl")
+		defBzlContent, err := ioutil.ReadFile(defBzlPath)
+		if err != nil {
+			return nil, err
+		}
+		versionRe := regexp.MustCompile(`(?m)^RULES_GO_VERSION = ['"]([0-9.]*)['"]`)
+		match := versionRe.FindSubmatch(defBzlContent)
+		if match == nil {
+			return nil, fmt.Errorf("RULES_GO_VERSION not found in @%s//go:def.bzl.\n%s", config.RulesGoRepoName, message)
+		}
+		vstr = string(match[1])
+	} else {
+		// Bazel has not fetched io_bazel_rules_go. Maybe we can find it in the
+		// WORKSPACE file.
+		re := regexp.MustCompile(`github\.com/bazelbuild/rules_go/releases/download/v([0-9.]+)/`)
+	RepoLoop:
+		for _, r := range c.Repos {
+			if r.Kind() == "http_archive" && r.Name() == "io_bazel_rules_go" {
+				for _, u := range r.AttrStrings("urls") {
+					if m := re.FindStringSubmatch(u); m != nil {
+						vstr = m[1]
+						break RepoLoop
+					}
+				}
+			}
+		}
 	}
-	defBzlPath := filepath.Join(rulesGoPath, "go", "def.bzl")
-	defBzlContent, err := ioutil.ReadFile(defBzlPath)
-	if err != nil {
-		return version.Version{}, err
+
+	if vstr == "" {
+		// Couldn't find a version. We return a specific value since this is not
+		// usually a useful error to report.
+		return nil, errRulesGoRepoNotFound
 	}
-	versionRe := regexp.MustCompile(`(?m)^RULES_GO_VERSION = ['"]([0-9.]*)['"]`)
-	match := versionRe.FindSubmatch(defBzlContent)
-	if match == nil {
-		return version.Version{}, fmt.Errorf("RULES_GO_VERSION not found in @%s//go:def.bzl.\n%s", config.RulesGoRepoName, message)
-	}
-	vstr := string(match[1])
+
 	return version.ParseVersion(vstr)
 }
 

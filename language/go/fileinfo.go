@@ -645,7 +645,7 @@ func rulesGoSupportsOS(v version.Version, os string) bool {
 		return true
 	}
 	if v.Compare(version.Version{0, 23, 0}) < 0 &&
-		os == "illumos" {
+		(os == "aix" || os == "illumos") {
 		return false
 	}
 	return true
