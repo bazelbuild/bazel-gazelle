@@ -46,16 +46,7 @@ func skipIfWorkspaceVisible(t *testing.T, dir string) {
 }
 
 func runGazelle(wd string, args []string) error {
-	oldWd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	if err := os.Chdir(wd); err != nil {
-		return err
-	}
-	defer os.Chdir(oldWd)
-
-	return run(args)
+	return run(wd, args)
 }
 
 // TestHelp checks that help commands do not panic due to nil flag values.

@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 @@GENERATED_MESSAGE@@
 
 set -euo pipefail
@@ -41,16 +40,6 @@ function find_runfile {
   # printing nothing indicates failure
 }
 
-# bazel_build_get_path builds a given target and prints the absolute path
-# to the generated binary. This only works for rules that produce a single file.
-function bazel_build_get_path {
-  local build_log=$(mktemp gazelle_build.XXXX.json --tmpdir)
-  bazel build --build_event_json_file="$build_log" "$1"
-  grep "^{\"id\":{\"targetCompleted\":{\"label\":\"$1\"" "$build_log" | \
-    sed -e 's!^.*file://\([^"]*\).*$!\1!'
-  rm -f "$build_log"
-}
-
 # set_goroot attempts to set GOROOT to the SDK used by rules_go. gazelle
 # invokes tools inside the Go SDK for dependency management. It's good to
 # use the SDK used by the workspace in case the Go SDK is not installed
@@ -68,14 +57,6 @@ function set_goroot {
   fi
 }
 
-# Check whether the script was executed by Bazel. The gazelle macro prepends
-# an argument that tells us this.
-is_bazel_run=false
-if [ "${1-}" = "-bazel_run" ]; then
-  is_bazel_run=true
-  shift
-fi
-
 # If arguments were provided on the command line, either replace or augment
 # the generated args.
 if [ "${1-}" = "-args" ]; then
@@ -85,35 +66,18 @@ elif [ $# -ne 0 ]; then
   ARGS=("$@")
 fi
 
-if [ "$is_bazel_run" = true ]; then
-  # If the script was invoked by "bazel run", jump out of the execroot, into
-  # the workspace before running Gazelle.
-  # TODO(jayconrod): detect when a command can't be run this way.
-  set_goroot
-  gazelle_short_path=$(find_runfile "$GAZELLE_SHORT_PATH")
-  if [ -z "$gazelle_short_path" ]; then
-    echo "error: could not locate gazelle binary" >&2
-    exit 1
-  fi
-  if [ -z "${BUILD_WORKSPACE_DIRECTORY-}" ]; then
-    echo "error: BUILD_WORKSPACE_DIRECOTRY not set" >&2
-    exit 1
-  fi
-  cd "$BUILD_WORKSPACE_DIRECTORY"
-  "$gazelle_short_path" "${ARGS[@]}"
-else
-  # If the script was invoked directly, check whether the script is out of
-  # date before proceeding.
-  new_runner_script=$(bazel_build_get_path "$RUNNER_LABEL")
-  if ! diff "$new_runner_script" "$0" &>/dev/null; then
-    cat - >&2 <<EOF
-error: $0: script is out of date. Refresh it with the command:
-  bazel build $RUNNER_LABEL && cp -fv "$new_runner_script" "$0"
-EOF
-    exit 1
-  fi
-
-  # Rebuild and run Gazelle.
-  gazelle_exe=$(bazel_build_get_path "$GAZELLE_LABEL")
-  "$gazelle_exe" "${ARGS[@]}"
+# Invoke Gazelle.
+# Note that we don't change directories first; if we did, Gazelle wouldn't be
+# able to find runfiles, and some extensions rely on that. Gazelle can use
+# BUILD_WORKSPACE_DIRECTORY to interpret relative paths on the command line.
+set_goroot
+gazelle_short_path=$(find_runfile "$GAZELLE_SHORT_PATH")
+if [ -z "$gazelle_short_path" ]; then
+  echo "error: could not locate gazelle binary" >&2
+  exit 1
 fi
+if [ -z "${BUILD_WORKSPACE_DIRECTORY-}" ]; then
+  echo "error: BUILD_WORKSPACE_DIRECTORY not set" >&2
+  exit 1
+fi
+"$gazelle_short_path" "${ARGS[@]}"

@@ -27,4 +27,4 @@ platforms:
     # It requires UNIX domain sockets.
     - "-//cmd/autogazelle/..."
     # Fails to execute, apparently due to command-line length limit.
-    - "-//internal:go_repository_test"
+    - "-//internal:bazel_test"

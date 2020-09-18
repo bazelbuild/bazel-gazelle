@@ -132,6 +132,5 @@ def gazelle(name, **kwargs):
     native.sh_binary(
         name = name,
         srcs = [runner_name],
-        args = ["-bazel_run"],
         tags = ["manual"],
     )

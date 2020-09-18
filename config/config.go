@@ -30,6 +30,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -47,6 +48,11 @@ import (
 // information is language-specific and is stored in Exts. This information
 // is modified by extensions that implement Configurer.
 type Config struct {
+	// WorkDir is the effective working directory, used to resolve relative
+	// paths on the command line. When Gazelle is invoked with 'bazel run',
+	// this is set by BUILD_WORKSPACE_DIRECTORY.
+	WorkDir string
+
 	// RepoRoot is the absolute, canonical path to the root directory of the
 	// repository with all symlinks resolved.
 	RepoRoot string
@@ -196,14 +202,18 @@ func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Confi
 func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 	var err error
 	if cc.repoRoot == "" {
-		cc.repoRoot, err = wspace.FindRepoRoot(".")
-		if err != nil {
+		if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
+			cc.repoRoot = wsDir
+		} else if parent, err := wspace.FindRepoRoot(c.WorkDir); err == nil {
+			cc.repoRoot = parent
+		} else {
 			return fmt.Errorf("-repo_root not specified, and WORKSPACE cannot be found: %v", err)
 		}
 	}
-	c.RepoRoot, err = filepath.Abs(cc.repoRoot)
-	if err != nil {
-		return fmt.Errorf("%s: failed to find absolute path of repo root: %v", cc.repoRoot, err)
+	if filepath.IsAbs(cc.repoRoot) {
+		c.RepoRoot = cc.repoRoot
+	} else {
+		c.RepoRoot = filepath.Join(c.WorkDir, cc.repoRoot)
 	}
 	c.RepoRoot, err = filepath.EvalSymlinks(c.RepoRoot)
 	if err != nil {
@@ -211,15 +221,17 @@ func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 	}
 	c.ValidBuildFileNames = strings.Split(cc.buildFileNames, ",")
 	if cc.readBuildFilesDir != "" {
-		c.ReadBuildFilesDir, err = filepath.Abs(cc.readBuildFilesDir)
-		if err != nil {
-			return fmt.Errorf("%s: failed to find absolute path of -read_build_files_dir: %v", cc.readBuildFilesDir, err)
+		if filepath.IsAbs(cc.readBuildFilesDir) {
+			c.ReadBuildFilesDir = cc.readBuildFilesDir
+		} else {
+			c.ReadBuildFilesDir = filepath.Join(c.WorkDir, cc.readBuildFilesDir)
 		}
 	}
 	if cc.writeBuildFilesDir != "" {
-		c.WriteBuildFilesDir, err = filepath.Abs(cc.writeBuildFilesDir)
-		if err != nil {
-			return fmt.Errorf("%s: failed to find absolute path of -write_build_files_dir: %v", cc.writeBuildFilesDir, err)
+		if filepath.IsAbs(cc.writeBuildFilesDir) {
+			c.WriteBuildFilesDir = cc.writeBuildFilesDir
+		} else {
+			c.WriteBuildFilesDir = filepath.Join(c.WorkDir, cc.writeBuildFilesDir)
 		}
 	}
 	c.IndexLibraries = cc.indexLibraries

@@ -59,7 +59,17 @@ func main() {
 	log.SetPrefix("gazelle: ")
 	log.SetFlags(0) // don't print timestamps
 
-	if err := run(os.Args[1:]); err != nil && err != flag.ErrHelp {
+	var wd string
+	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
+		wd = wsDir
+	} else {
+		var err error
+		if wd, err = os.Getwd(); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if err := run(wd, os.Args[1:]); err != nil && err != flag.ErrHelp {
 		if err == exitError {
 			os.Exit(1)
 		} else {
@@ -68,7 +78,7 @@ func main() {
 	}
 }
 
-func run(args []string) error {
+func run(wd string, args []string) error {
 	cmd := updateCmd
 	if len(args) == 1 && (args[0] == "-h" || args[0] == "-help" || args[0] == "--help") {
 		cmd = helpCmd
@@ -82,11 +92,11 @@ func run(args []string) error {
 
 	switch cmd {
 	case fixCmd, updateCmd:
-		return runFixUpdate(cmd, args)
+		return runFixUpdate(wd, cmd, args)
 	case helpCmd:
 		return help()
 	case updateReposCmd:
-		return updateRepos(args)
+		return updateRepos(wd, args)
 	default:
 		log.Panicf("unknown command: %v", cmd)
 	}

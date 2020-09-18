@@ -96,23 +96,26 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 	if uc.patchPath != "" && ucr.mode != "diff" {
 		return fmt.Errorf("-patch set but -mode is %s, not diff", ucr.mode)
 	}
+	if uc.patchPath != "" && !filepath.IsAbs(uc.patchPath) {
+		uc.patchPath = filepath.Join(c.WorkDir, uc.patchPath)
+	}
 
 	dirs := fs.Args()
 	if len(dirs) == 0 {
 		dirs = []string{"."}
 	}
 	uc.dirs = make([]string, len(dirs))
-	for i := range dirs {
-		dir, err := filepath.Abs(dirs[i])
-		if err != nil {
-			return fmt.Errorf("%s: failed to find absolute path: %v", dirs[i], err)
+	for i, arg := range dirs {
+		dir := arg
+		if !filepath.IsAbs(dir) {
+			dir = filepath.Join(c.WorkDir, dir)
 		}
-		dir, err = filepath.EvalSymlinks(dir)
+		dir, err := filepath.EvalSymlinks(dir)
 		if err != nil {
-			return fmt.Errorf("%s: failed to resolve symlinks: %v", dirs[i], err)
+			return fmt.Errorf("%s: failed to resolve symlinks: %v", arg, err)
 		}
 		if !isDescendingDir(dir, c.RepoRoot) {
-			return fmt.Errorf("dir %q is not a subdirectory of repo root %q", dir, c.RepoRoot)
+			return fmt.Errorf("%s: not a subdirectory of repo root %s", arg, c.RepoRoot)
 		}
 		uc.dirs[i] = dir
 	}
@@ -233,7 +236,7 @@ var genericLoads = []rule.LoadInfo{
 	},
 }
 
-func runFixUpdate(cmd command, args []string) (err error) {
+func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	cexts := make([]config.Configurer, 0, len(languages)+3)
 	cexts = append(cexts,
 		&config.CommonConfigurer{},
@@ -255,7 +258,7 @@ func runFixUpdate(cmd command, args []string) (err error) {
 	}
 	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)
 
-	c, err := newFixUpdateConfiguration(cmd, args, cexts)
+	c, err := newFixUpdateConfiguration(wd, cmd, args, cexts)
 	if err != nil {
 		return err
 	}
@@ -396,8 +399,9 @@ func runFixUpdate(cmd command, args []string) (err error) {
 	return exit
 }
 
-func newFixUpdateConfiguration(cmd command, args []string, cexts []config.Configurer) (*config.Config, error) {
+func newFixUpdateConfiguration(wd string, cmd command, args []string, cexts []config.Configurer) (*config.Config, error) {
 	c := config.New()
+	c.WorkDir = wd
 
 	fs := flag.NewFlagSet("gazelle", flag.ContinueOnError)
 	// Flag will call this on any parse error. Don't print usage unless

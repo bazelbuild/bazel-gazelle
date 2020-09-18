@@ -117,7 +117,7 @@ func TestCreateFile(t *testing.T) {
 	}
 
 	// Check that Gazelle creates a new file named "BUILD.bazel".
-	run(defaultArgs(dir))
+	run(dir, defaultArgs(dir))
 
 	buildFile := filepath.Join(dir, "BUILD.bazel")
 	if _, err = os.Stat(buildFile); err != nil {
@@ -145,7 +145,7 @@ func TestUpdateFile(t *testing.T) {
 	}
 
 	// Check that Gazelle updates the BUILD file in place.
-	run(defaultArgs(dir))
+	run(dir, defaultArgs(dir))
 	if st, err := os.Stat(buildFile); err != nil {
 		t.Errorf("could not stat BUILD: %v", err)
 	} else if st.Size() == 0 {
@@ -196,7 +196,7 @@ go_binary(
 	modTime := st.ModTime()
 
 	// Ensure that Gazelle does not write to the BUILD file.
-	run(defaultArgs(dir))
+	run(dir, defaultArgs(dir))
 	if st, err := os.Stat(buildFile); err != nil {
 		t.Errorf("could not stat BUILD: %v", err)
 	} else if !modTime.Equal(st.ModTime()) {
@@ -350,7 +350,7 @@ go_library(
 				}
 				tc.args[i] = replacer.Replace(tc.args[i])
 			}
-			if err := run(tc.args); err != nil {
+			if err := run(dir, tc.args); err != nil {
 				t.Error(err)
 			}
 			testtools.CheckFiles(t, dir, tc.want)
@@ -388,7 +388,7 @@ go_library(
 	defer cleanup()
 
 	// Check that Gazelle does not update the BUILD file, due to lang filter.
-	run([]string{
+	run(dir, []string{
 		"-repo_root", dir,
 		"-go_prefix", "example.com/repo",
 		"-lang=proto",
