@@ -181,7 +181,7 @@ func libNameFromImportPath(dir string) string {
 			name = dir[i+1:]
 		}
 	}
-	return name
+	return strings.ReplaceAll(name, ".", "_")
 }
 
 // libNameByConvention returns a suitable name for a go_library using the given

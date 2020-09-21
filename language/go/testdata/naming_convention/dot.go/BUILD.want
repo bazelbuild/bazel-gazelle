@@ -1,0 +1,15 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "dot_go",
+    srcs = ["dot.go"],
+    _gazelle_imports = [],
+    importpath = "example.com/repo/naming_convention/dot.go",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "dot_go_test",
+    srcs = ["dot_test.go"],
+    _gazelle_imports = ["testing"],
+)
