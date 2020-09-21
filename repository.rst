@@ -108,194 +108,194 @@ returned by ``go env GOPATH``.
 
 **Attributes**
 
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| **Name**                       | **Type**             | **Default value**                                             |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`name`                  | :type:`string`       | |mandatory|                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A unique name for this rule. This should usually be the Java-package-style                                            |
-| name of the URL, with underscores as separators, for example,                                                         |
-| ``com_github_example_project``.                                                                                       |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`importpath`            | :type:`string`       | |mandatory|                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| The Go import path that matches the root directory of this repository. In                                             |
-| module mode (when ``version`` is set), this must be the module path. If                                               |
-| neither ``urls`` nor ``remote`` is specified, ``go_repository`` will                                                  |
-| automatically find the true path of the module, applying import path                                                  |
-| redirection.                                                                                                          |
-|                                                                                                                       |
-| If build files are generated for this repository, libraries will have their                                           |
-| ``importpath`` attributes prefixed with this ``importpath`` string.                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`version`               | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| If specified, ``go_repository`` will download the module at this version                                              |
-| using ``go mod download``. ``sum`` must also be set. ``commit``, ``tag``,                                             |
-| and ``urls`` may not be set.                                                                                          |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`sum`                   | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A hash of the module contents. In module mode, ``go_repository`` will verify                                          |
-| the downloaded module matches this sum. May only be set when ``version``                                              |
-| is also set.                                                                                                          |
-|                                                                                                                       |
-| A value for ``sum`` may be found in the ``go.sum`` file or by running                                                 |
-| ``go mod download -json <module>@<version>``.                                                                         |
-+-----------------------------------+----------------------+------------------------------------------------------------+
-| :param:`build_naming_convention`  | :type:`string`       | :value:`""`                                                |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| Sets the library naming convention to use when resolving dependencies against this external                           |
-| repository. If unset, the convention from the external workspace is used.                                             |
-| Legal values are ``go_default_library``, ``import``, and ``import_alias``.                                            |
-|                                                                                                                       |
-| See ``-go_naming_convention`` for more information.                                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`replace`               | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A replacement for the module named by ``importpath``. The module named by                                             |
-| ``replace`` will be downloaded at ``version`` and verified with ``sum``.                                              |
-|                                                                                                                       |
-| NOTE: There is no ``go_repository`` equivalent to file path ``replace``                                               |
-| directives. Use ``local_repository`` instead.                                                                         |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`commit`                | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| If the repository is downloaded using a version control tool, this is the                                             |
-| commit or revision to check out. With git, this would be a sha1 commit id.                                            |
-| ``commit`` and ``tag`` may not both be set.                                                                           |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`tag`                   | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| If the repository is downloaded using a version control tool, this is the                                             |
-| named revision to check out. ``commit`` and ``tag`` may not both be set.                                              |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`vcs`                   | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| One of ``"git"``, ``"hg"``, ``"svn"``, ``"bzr"``.                                                                     |
-|                                                                                                                       |
-| The version control system to use. This is usually determined automatically,                                          |
-| but it may be necessary to set this when ``remote`` is set and the VCS cannot                                         |
-| be inferred. You must have the corresponding tool installed on your host.                                             |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`remote`                | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| The VCS location where the repository should be downloaded from. This is                                              |
-| usually inferred from ``importpath``, but you can set ``remote`` to download                                          |
-| from a private repository or a fork.                                                                                  |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`urls`                  | :type:`string list`  | :value:`[]`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A list of HTTP(S) URLs where an archive containing the project can be                                                 |
-| downloaded. Bazel will attempt to download from the first URL; the others                                             |
-| are mirrors.                                                                                                          |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`strip_prefix`          | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| If the repository is downloaded via HTTP (``urls`` is set), this is a                                                 |
-| directory prefix to strip. See `http_archive.strip_prefix`_.                                                          |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`type`                  | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| One of ``"zip"``, ``"tar.gz"``, ``"tgz"``, ``"tar.bz2"``, ``"tar.xz"``.                                               |
-|                                                                                                                       |
-| If the repository is downloaded via HTTP (``urls`` is set), this is the                                               |
-| file format of the repository archive. This is normally inferred from the                                             |
-| downloaded file name.                                                                                                 |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`sha256`                | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| If the repository is downloaded via HTTP (``urls`` is set), this is the                                               |
-| SHA-256 sum of the downloaded archive. When set, Bazel will verify the archive                                        |
-| against this sum before extracting it.                                                                                |
-|                                                                                                                       |
-| **CAUTION:** Do not use this with services that prepare source archives on                                            |
-| demand, such as codeload.github.com. Any minor change in the server software                                          |
-| can cause differences in file order, alignment, and compression that break                                            |
-| SHA-256 sums.                                                                                                         |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_file_generation` | :type:`string`       | :value:`"auto"`                                               |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| One of ``"auto"``, ``"on"``, ``"off"``.                                                                               |
-|                                                                                                                       |
-| Whether Gazelle should generate build files in the repository. In ``"auto"``                                          |
-| mode, Gazelle will run if there is no build file in the repository root                                               |
-| directory.                                                                                                            |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_config`          | :type:`label`        | :value:`@bazel_gazelle_go_repository_config//:WORKSPACE`      |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A file that Gazelle should read to learn about external repositories before                                           |
-| generating build files. This is useful for dependency resolution. For example,                                        |
-| a ``go_repository`` rule in this file establishes a mapping between a                                                 |
-| repository name like ``golang.org/x/tools`` and a workspace name like                                                 |
-| ``org_golang_x_tools``. Workspace directives like                                                                     |
-| ``# gazelle:repository_macro`` are recognized.                                                                        |
-|                                                                                                                       |
-| ``go_repository`` rules will be re-evaluated when parts of WORKSPACE related                                          |
-| to Gazelle's configuration are changed, including Gazelle directives and                                              |
-| ``go_repository`` ``name`` and ``importpath`` attributes.                                                             |
-| Their content should still be fetched from a local cache, but build files                                             |
-| will be regenerated. If this is not desirable, ``build_config`` may be set                                            |
-| to a less frequently updated file or ``None`` to disable this functionality.                                          |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_file_name`       | :type:`string`       | :value:`BUILD.bazel,BUILD`                                    |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| Comma-separated list of names Gazelle will consider to be build files.                                                |
-| If a repository contains files named ``build`` that aren't related to Bazel,                                          |
-| it may help to set this to ``"BUILD.bazel"``, especially on case-insensitive                                          |
-| file systems.                                                                                                         |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_external`        | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| One of ``"external"``, ``"vendored"``.                                                                                |
-|                                                                                                                       |
-| This sets Gazelle's ``-external`` command line flag.                                                                  |
-|                                                                                                                       |
-| **NOTE:** This cannot be used to ignore the ``vendor`` directory in a                                                 |
-| repository. The ``-external`` flag only controls how Gazelle resolves                                                 |
-| imports which are not present in the repository. Use                                                                  |
-| ``build_extra_args = ["-exclude=vendor"]`` instead.                                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_tags`            | :type:`string list`  | :value:`[]`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| This sets Gazelle's ``-build_tags`` command line flag.                                                                |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_file_proto_mode` | :type:`string`       | :value:`""`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| One of ``"default"``, ``"legacy"``, ``"disable"``, ``"disable_global"`` or                                            |
-| ``"package"``.                                                                                                        |
-|                                                                                                                       |
-| This sets Gazelle's ``-proto`` command line flag. See Directives_ for more                                            |
-| information on each mode.                                                                                             |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_extra_args`      | :type:`string list`  | :value:`[]`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A list of additional command line arguments to pass to Gazelle when                                                   |
-| generating build files.                                                                                               |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`build_directives`      | :type:`string list`  | :value:`[]`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A list of directives to be written to the root level build file before                                                |
-| Calling Gazelle to generate build files. Each string in the list will be                                              |
-| prefixed with `#` automatically. A common use case is to pass a list of                                               |
-| Gazelle directives.                                                                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`patches`               | :type:`label list`   | :value:`[]`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| A list of patches to apply to the repository after gazelle runs.                                                      |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`patch_tool`            | :type:`string`       | :value:`"patch"`                                              |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| The patch tool used to apply ``patches``.                                                                             |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`patch_args`            | :type:`string list`  | :value:`["-p0"]`                                              |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| Arguments passed to the patch tool when applying patches.                                                             |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| :param:`patch_cmds`            | :type:`string list`  | :value:`[]`                                                   |
-+--------------------------------+----------------------+---------------------------------------------------------------+
-| Commands to run in the repository after patches are applied.                                                          |
-+--------------------------------+----------------------+---------------------------------------------------------------+
++------------------------------------+----------------------+---------------------------------------------------------------+
+| **Name**                           | **Type**             | **Default value**                                             |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`name`                      | :type:`string`       | |mandatory|                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| A unique name for this rule. This should usually be the Java-package-style                                                |
+| name of the URL, with underscores as separators, for example,                                                             |
+| ``com_github_example_project``.                                                                                           |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`importpath`                | :type:`string`       | |mandatory|                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| The Go import path that matches the root directory of this repository. In                                                 |
+| module mode (when ``version`` is set), this must be the module path. If                                                   |
+| neither ``urls`` nor ``remote`` is specified, ``go_repository`` will                                                      |
+| automatically find the true path of the module, applying import path                                                      |
+| redirection.                                                                                                              |
+|                                                                                                                           |
+| If build files are generated for this repository, libraries will have their                                               |
+| ``importpath`` attributes prefixed with this ``importpath`` string.                                                       |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`version`                   | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| If specified, ``go_repository`` will download the module at this version                                                  |
+| using ``go mod download``. ``sum`` must also be set. ``commit``, ``tag``,                                                 |
+| and ``urls`` may not be set.                                                                                              |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`sum`                       | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| A hash of the module contents. In module mode, ``go_repository`` will verify                                              |
+| the downloaded module matches this sum. May only be set when ``version``                                                  |
+| is also set.                                                                                                              |
+|                                                                                                                           |
+| A value for ``sum`` may be found in the ``go.sum`` file or by running                                                     |
+| ``go mod download -json <module>@<version>``.                                                                             |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_naming_convention`   | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| Sets the library naming convention to use when resolving dependencies against this external                               |
+| repository. If unset, the convention from the external workspace is used.                                                 |
+| Legal values are ``go_default_library``, ``import``, and ``import_alias``.                                                |
+|                                                                                                                           |
+| See ``-go_naming_convention`` for more information.                                                                       |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`replace`                   | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| A replacement for the module named by ``importpath``. The module named by                                                 |
+| ``replace`` will be downloaded at ``version`` and verified with ``sum``.                                                  |
+|                                                                                                                           |
+| NOTE: There is no ``go_repository`` equivalent to file path ``replace``                                                   |
+| directives. Use ``local_repository`` instead.                                                                             |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`commit`                    | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| If the repository is downloaded using a version control tool, this is the                                                 |
+| commit or revision to check out. With git, this would be a sha1 commit id.                                                |
+| ``commit`` and ``tag`` may not both be set.                                                                               |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`tag`                       | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| If the repository is downloaded using a version control tool, this is the                                                 |
+| named revision to check out. ``commit`` and ``tag`` may not both be set.                                                  |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`vcs`                       | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| One of ``"git"``, ``"hg"``, ``"svn"``, ``"bzr"``.                                                                         |
+|                                                                                                                           |
+| The version control system to use. This is usually determined automatically,                                              |
+| but it may be necessary to set this when ``remote`` is set and the VCS cannot                                             |
+| be inferred. You must have the corresponding tool installed on your host.                                                 |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`remote`                    | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| The VCS location where the repository should be downloaded from. This is                                                  |
+| usually inferred from ``importpath``, but you can set ``remote`` to download                                              |
+| from a private repository or a fork.                                                                                      |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`urls`                      | :type:`string list`  | :value:`[]`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| A list of HTTP(S) URLs where an archive containing the project can be                                                     |
+| downloaded. Bazel will attempt to download from the first URL; the others                                                 |
+| are mirrors.                                                                                                              |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`strip_prefix`              | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| If the repository is downloaded via HTTP (``urls`` is set), this is a                                                     |
+| directory prefix to strip. See `http_archive.strip_prefix`_.                                                              |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`type`                      | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| One of ``"zip"``, ``"tar.gz"``, ``"tgz"``, ``"tar.bz2"``, ``"tar.xz"``.                                                   |
+|                                                                                                                           |
+| If the repository is downloaded via HTTP (``urls`` is set), this is the                                                   |
+| file format of the repository archive. This is normally inferred from the                                                 |
+| downloaded file name.                                                                                                     |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`sha256`                    | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| If the repository is downloaded via HTTP (``urls`` is set), this is the                                                   |
+| SHA-256 sum of the downloaded archive. When set, Bazel will verify the archive                                            |
+| against this sum before extracting it.                                                                                    |
+|                                                                                                                           |
+| **CAUTION:** Do not use this with services that prepare source archives on                                                |
+| demand, such as codeload.github.com. Any minor change in the server software                                              |
+| can cause differences in file order, alignment, and compression that break                                                |
+| SHA-256 sums.                                                                                                             |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_file_generation`     | :type:`string`       | :value:`"auto"`                                               |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| One of ``"auto"``, ``"on"``, ``"off"``.                                                                                   |
+|                                                                                                                           |
+| Whether Gazelle should generate build files in the repository. In ``"auto"``                                              |
+| mode, Gazelle will run if there is no build file in the repository root                                                   |
+| directory.                                                                                                                |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_config`              | :type:`label`        | :value:`@bazel_gazelle_go_repository_config//:WORKSPACE`      |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| A file that Gazelle should read to learn about external repositories before                                               |
+| generating build files. This is useful for dependency resolution. For example,                                            |
+| a ``go_repository`` rule in this file establishes a mapping between a                                                     |
+| repository name like ``golang.org/x/tools`` and a workspace name like                                                     |
+| ``org_golang_x_tools``. Workspace directives like                                                                         |
+| ``# gazelle:repository_macro`` are recognized.                                                                            |
+|                                                                                                                           |
+| ``go_repository`` rules will be re-evaluated when parts of WORKSPACE related                                              |
+| to Gazelle's configuration are changed, including Gazelle directives and                                                  |
+| ``go_repository`` ``name`` and ``importpath`` attributes.                                                                 |
+| Their content should still be fetched from a local cache, but build files                                                 |
+| will be regenerated. If this is not desirable, ``build_config`` may be set                                                |
+| to a less frequently updated file or ``None`` to disable this functionality.                                              |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_file_name`           | :type:`string`       | :value:`BUILD.bazel,BUILD`                                    |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| Comma-separated list of names Gazelle will consider to be build files.                                                    |
+| If a repository contains files named ``build`` that aren't related to Bazel,                                              |
+| it may help to set this to ``"BUILD.bazel"``, especially on case-insensitive                                              |
+| file systems.                                                                                                             |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_external`            | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| One of ``"external"``, ``"vendored"``.                                                                                    |
+|                                                                                                                           |
+| This sets Gazelle's ``-external`` command line flag.                                                                      |
+|                                                                                                                           |
+| **NOTE:** This cannot be used to ignore the ``vendor`` directory in a                                                     |
+| repository. The ``-external`` flag only controls how Gazelle resolves                                                     |
+| imports which are not present in the repository. Use                                                                      |
+| ``build_extra_args = ["-exclude=vendor"]`` instead.                                                                       |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_tags`                | :type:`string list`  | :value:`[]`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| This sets Gazelle's ``-build_tags`` command line flag.                                                                    |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_file_proto_mode`     | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| One of ``"default"``, ``"legacy"``, ``"disable"``, ``"disable_global"`` or                                                |
+| ``"package"``.                                                                                                            |
+|                                                                                                                           |
+| This sets Gazelle's ``-proto`` command line flag. See Directives_ for more                                                |
+| information on each mode.                                                                                                 |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_extra_args`          | :type:`string list`  | :value:`[]`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| A list of additional command line arguments to pass to Gazelle when                                                       |
+| generating build files.                                                                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`build_directives`          | :type:`string list`  | :value:`[]`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| A list of directives to be written to the root level build file before                                                    |
+| Calling Gazelle to generate build files. Each string in the list will be                                                  |
+| prefixed with `#` automatically. A common use case is to pass a list of                                                   |
+| Gazelle directives.                                                                                                       |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`patches`                   | :type:`label list`   | :value:`[]`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| A list of patches to apply to the repository after gazelle runs.                                                          |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`patch_tool`                | :type:`string`       | :value:`"patch"`                                              |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| The patch tool used to apply ``patches``.                                                                                 |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`patch_args`                | :type:`string list`  | :value:`["-p0"]`                                              |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| Arguments passed to the patch tool when applying patches.                                                                 |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`patch_cmds`                | :type:`string list`  | :value:`[]`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| Commands to run in the repository after patches are applied.                                                              |
++------------------------------------+----------------------+---------------------------------------------------------------+
 
 git_repository
 --------------
