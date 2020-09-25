@@ -29,6 +29,9 @@ func TestLabelString(t *testing.T) {
 			l:    Label{Name: "foo"},
 			want: "//:foo",
 		}, {
+			l:    Label{Pkg: "foo/bar"},
+			want: "//foo/bar",
+		}, {
 			l:    Label{Pkg: "foo/bar", Name: "baz"},
 			want: "//foo/bar:baz",
 		}, {
@@ -37,6 +40,9 @@ func TestLabelString(t *testing.T) {
 		}, {
 			l:    Label{Repo: "com_example_repo", Pkg: "foo/bar", Name: "baz"},
 			want: "@com_example_repo//foo/bar:baz",
+		}, {
+			l:    Label{Repo: "com_example_repo", Pkg: "foo/bar"},
+			want: "@com_example_repo//foo/bar",
 		}, {
 			l:    Label{Repo: "com_example_repo", Pkg: "foo/bar", Name: "bar"},
 			want: "@com_example_repo//foo/bar",
