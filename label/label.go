@@ -134,7 +134,7 @@ func (l Label) String() string {
 		repo = fmt.Sprintf("@%s", l.Repo)
 	}
 
-	if path.Base(l.Pkg) == l.Name {
+	if path.Base(l.Pkg) == l.Name || l.Name == "" {
 		return fmt.Sprintf("%s//%s", repo, l.Pkg)
 	}
 	return fmt.Sprintf("%s//%s:%s", repo, l.Pkg, l.Name)
