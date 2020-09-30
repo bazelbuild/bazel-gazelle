@@ -17,6 +17,7 @@ Gazelle build file generator
 .. _import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.import_prefix
 .. _strip_import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.strip_import_prefix
 .. _buildozer: https://github.com/bazelbuild/buildtools/tree/master/buildozer
+.. _Go Release Policy: https://golang.org/doc/devel/release.html#policy
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -152,6 +153,16 @@ your root build files to avoid having to type ``-go_prefix`` every time.
 .. code:: bzl
 
   # gazelle:prefix github.com/example/project
+
+Compatibility with Go
+---------------------
+
+Gazelle is compatible with supported releases of Go, per the
+`Go Release Policy`_. The Go Team officially supports the current and previous
+minor releases. Older releases are not supported and don't receive bug fixes
+or security updates.
+
+Gazelle may use language and library features from the oldest supported release.
 
 Compatibility with rules_go
 ---------------------------
