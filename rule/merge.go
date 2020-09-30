@@ -46,6 +46,20 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 		return
 	}
 
+	// If src has private attrs, copy them into dst
+	for k, v := range src.private {
+		dst.private[k] = v
+	}
+
+	// Merge the private attrs from src into dest
+	for k, v := range src.private {
+		if _, ok := dst.private[k]; ok {
+			start, _ := dst.expr.Span()
+			log.Printf("%s:%d: Private attribute \"%s\" overridden during merge", filename, start.Line, k)
+		}
+		dst.private[k] = v
+	}
+
 	// Process attributes that are in dst but not in src.
 	for key, dstAttr := range dst.attrs {
 		if _, ok := src.attrs[key]; ok || !mergeable[key] || ShouldKeep(dstAttr) {
