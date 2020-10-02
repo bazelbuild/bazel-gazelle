@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_context", "go_rule")
+load("@io_bazel_rules_go//go:def.bzl", "go_context")
 
 def _std_package_list_impl(ctx):
     go = go_context(ctx)
@@ -13,8 +13,8 @@ def _std_package_list_impl(ctx):
     )
     return [DefaultInfo(files = depset([ctx.outputs.out]))]
 
-std_package_list = go_rule(
-    _std_package_list_impl,
+std_package_list = rule(
+    implementation = _std_package_list_impl,
     attrs = {
         "out": attr.output(mandatory = True),
         "_gen_std_package_list": attr.label(
@@ -22,5 +22,9 @@ std_package_list = go_rule(
             cfg = "host",
             executable = True,
         ),
+        "_go_context_data": attr.label(
+            default = "@io_bazel_rules_go//:go_context_data",
+        ),
     },
+    toolchains = ["@io_bazel_rules_go//go:toolchain"],
 )
