@@ -97,7 +97,9 @@ should look like this:
     gazelle_dependencies()
 
 Add the code below to the BUILD or BUILD.bazel file in the root directory
-of your repository. For Go projects, replace the string after ``prefix`` with
+of your repository. 
+
+**Important:** For Go projects, replace the string after ``prefix`` with
 the portion of your import path that corresponds to your repository.
 
 .. code:: bzl
@@ -124,6 +126,9 @@ rule cannot run directly.
 .. code::
 
   $ bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro=deps.bzl%go_dependencies
+
+After running ``update-repos``, you might want to run ``bazel run //:gazelle`` again, as the
+``update-repos`` command can affect the output of a normal run of Gazelle.
 
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
