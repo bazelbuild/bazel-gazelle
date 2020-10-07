@@ -659,8 +659,14 @@ func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []str
 	if !target.clinkopts.isEmpty() {
 		r.SetAttr("clinkopts", g.options(target.clinkopts.build(), pkgRel))
 	}
+	if !target.cppopts.isEmpty() {
+		r.SetAttr("cppopts", g.options(target.cppopts.build(), pkgRel))
+	}
 	if !target.copts.isEmpty() {
 		r.SetAttr("copts", g.options(target.copts.build(), pkgRel))
+	}
+	if !target.cxxopts.isEmpty() {
+		r.SetAttr("cxxopts", g.options(target.cxxopts.build(), pkgRel))
 	}
 	if g.shouldSetVisibility && len(visibility) > 0 {
 		r.SetAttr("visibility", visibility)
