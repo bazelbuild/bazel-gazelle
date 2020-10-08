@@ -222,9 +222,13 @@ import "C"
 `,
 			fileInfo{
 				isCgo: true,
+				cppopts: []taggedOpts{
+					{opts: "-O1"},
+				},
 				copts: []taggedOpts{
 					{opts: "-O0"},
-					{opts: "-O1"},
+				},
+				cxxopts: []taggedOpts{
 					{opts: "-O2"},
 				},
 				clinkopts: []taggedOpts{
@@ -299,7 +303,13 @@ import ("C")
 			got := goFileInfo(path, "")
 
 			// Clear fields we don't care about for testing.
-			got = fileInfo{isCgo: got.isCgo, copts: got.copts, clinkopts: got.clinkopts}
+			got = fileInfo{
+				isCgo:     got.isCgo,
+				copts:     got.copts,
+				cppopts:   got.cppopts,
+				cxxopts:   got.cxxopts,
+				clinkopts: got.clinkopts,
+			}
 
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("case %q: got %#v; want %#v", tc.desc, got, tc.want)

@@ -81,9 +81,9 @@ type fileInfo struct {
 	// a line after a "+build" prefix.
 	tags []tagLine
 
-	// copts and clinkopts contain flags that are part of CFLAGS, CPPFLAGS,
-	// CXXFLAGS, and LDFLAGS directives in cgo comments.
-	copts, clinkopts []taggedOpts
+	// cppopts, copts, cxxopts and clinkopts contain flags that are part
+	// of CPPFLAGS, CFLAGS, CXXFLAGS, and LDFLAGS directives in cgo comments.
+	cppopts, copts, cxxopts, clinkopts []taggedOpts
 
 	// hasServices indicates whether a .proto file has service definitions.
 	hasServices bool
@@ -387,8 +387,12 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 
 		// Add tags to appropriate list.
 		switch verb {
-		case "CFLAGS", "CPPFLAGS", "CXXFLAGS":
+		case "CPPFLAGS":
+			info.cppopts = append(info.cppopts, taggedOpts{tags, joinedStr})
+		case "CFLAGS":
 			info.copts = append(info.copts, taggedOpts{tags, joinedStr})
+		case "CXXFLAGS":
+			info.cxxopts = append(info.cxxopts, taggedOpts{tags, joinedStr})
 		case "LDFLAGS":
 			info.clinkopts = append(info.clinkopts, taggedOpts{tags, joinedStr})
 		case "pkg-config":

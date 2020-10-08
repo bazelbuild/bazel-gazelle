@@ -42,8 +42,8 @@ type goPackage struct {
 // goTarget contains information used to generate an individual Go rule
 // (library, binary, or test).
 type goTarget struct {
-	sources, imports, copts, clinkopts platformStringsBuilder
-	cgo, hasInternalTest               bool
+	sources, imports, cppopts, copts, cxxopts, clinkopts platformStringsBuilder
+	cgo, hasInternalTest                                 bool
 }
 
 // protoTarget contains information used to generate a go_proto_library rule.
@@ -265,12 +265,26 @@ func (t *goTarget) addFile(c *config.Config, info fileInfo) {
 	add := getPlatformStringsAddFunction(c, info, nil)
 	add(&t.sources, info.name)
 	add(&t.imports, info.imports...)
+	for _, cppopts := range info.cppopts {
+		optAdd := add
+		if len(cppopts.tags) > 0 {
+			optAdd = getPlatformStringsAddFunction(c, info, cppopts.tags)
+		}
+		optAdd(&t.cppopts, cppopts.opts)
+	}
 	for _, copts := range info.copts {
 		optAdd := add
 		if len(copts.tags) > 0 {
 			optAdd = getPlatformStringsAddFunction(c, info, copts.tags)
 		}
 		optAdd(&t.copts, copts.opts)
+	}
+	for _, cxxopts := range info.cxxopts {
+		optAdd := add
+		if len(cxxopts.tags) > 0 {
+			optAdd = getPlatformStringsAddFunction(c, info, cxxopts.tags)
+		}
+		optAdd(&t.cxxopts, cxxopts.opts)
 	}
 	for _, clinkopts := range info.clinkopts {
 		optAdd := add

@@ -16,7 +16,9 @@ limitations under the License.
 package cgolib
 
 /**
-#cgo CFLAGS: -I/weird/path -Isub/../sub -I${SRCDIR}/../othersub
+#cgo CFLAGS: -Isub/../sub -I${SRCDIR}/../othersub
+#cgo CPPFLAGS: -I/weird/include/path
+#cgo CXXFLAGS: -std=c++14
 #cgo CFLAGS: -I sub/../sub -iquote sub/../sub
 #cgo LDFLAGS: -lweird
 **/
