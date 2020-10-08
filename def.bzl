@@ -41,11 +41,9 @@ DEFAULT_LANGUAGES = [
 ]
 
 def _gazelle_runner_impl(ctx):
-    args = [
-        ctx.attr.command,
-        "-mode",
-        ctx.attr.mode,
-    ]
+    args = [ctx.attr.command]
+    if ctx.attr.mode:
+        args.extend(["-mode", ctx.attr.mode])
     if ctx.attr.external:
         args.extend(["-external", ctx.attr.external])
     if ctx.attr.prefix:
@@ -92,12 +90,16 @@ _gazelle_runner = rule(
             cfg = "host",
         ),
         "command": attr.string(
-            values = ["update", "fix"],
+            values = [
+                "fix",
+                "update",
+                "update-repos",
+            ],
             default = "update",
         ),
         "mode": attr.string(
-            values = ["print", "fix", "diff"],
-            default = "fix",
+            values = ["", "print", "fix", "diff"],
+            default = "",
         ),
         "external": attr.string(
             values = ["", "external", "vendored"],

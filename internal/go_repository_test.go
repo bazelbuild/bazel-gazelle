@@ -36,6 +36,15 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 
 gazelle(name = "gazelle")
 
+gazelle(
+    name = "gazelle-update-repos",
+    args = [
+        "-from_file=go.mod",
+        "-to_macro=deps.bzl%go_repositories",
+    ],
+    command = "update-repos",
+)
+
 -- go.mod --
 module example.com/m
 
