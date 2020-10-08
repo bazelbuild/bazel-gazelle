@@ -68,3 +68,19 @@ func TestRunnerUpdateReposFromGoMod(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestRunnerUpdateReposCommand(t *testing.T) {
+	origWorkspaceData, err := ioutil.ReadFile("WORKSPACE")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := ioutil.WriteFile("WORKSPACE", origWorkspaceData, 0666); err != nil {
+			t.Fatalf("restoring WORKSPACE: %v", err)
+		}
+	}()
+
+	if err := bazel_testing.RunBazel("run", "//:gazelle-update-repos"); err != nil {
+		t.Fatal(err)
+	}
+}
