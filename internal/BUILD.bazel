@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
 # gazelle:exclude *_test.go
@@ -46,4 +47,18 @@ filegroup(
         "//internal/wspace:all_files",
     ],
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "bzl_srcs",
+    srcs = [
+        "gazelle_binary.bzl",
+        "go_repository.bzl",
+        "go_repository_cache.bzl",
+        "go_repository_config.bzl",
+        "go_repository_tools.bzl",
+        "go_repository_tools_srcs.bzl",
+        "overlay_repository.bzl",
+    ],
+    visibility = ["//:__pkg__"],
 )

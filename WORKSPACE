@@ -23,6 +23,22 @@ load("//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
 
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+
+maybe(
+    http_archive,
+    name = "bazel_skylib",
+    sha256 = "1c531376ac7e5a180e0237938a2536de0c54d93f5c278634818e0efc952dd56c",
+    urls = [
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.0.3/bazel-skylib-1.0.3.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.0.3/bazel-skylib-1.0.3.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
 # gazelle:repository go_repository name=org_golang_x_sync importpath=golang.org/x/sync
 # gazelle:repository go_repository name=org_golang_x_sys importpath=golang.org/x/sys
 # gazelle:repository go_repository name=org_golang_x_xerrors importpath=golang.org/x/xerrors
