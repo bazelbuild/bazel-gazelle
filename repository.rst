@@ -156,6 +156,12 @@ returned by ``go env GOPATH``.
 | A replacement for the module named by ``importpath``. The module named by                                                 |
 | ``replace`` will be downloaded at ``version`` and verified with ``sum``.                                                  |
 |                                                                                                                           |
+| NOTE: Replace does not work with `commit` or `tag`, or other git selection params                                         |
+| since in this mode, bazel doesn't need to resolve dependencies like go does                                               |
+| where replace would make a difference. To get replace behaviour simply change                                             |
+| the importpath in a rule downloading the dependency without a replace                                                     |
+| replace attribute. See the "Download from git fork" example above.                                                        |
+|                                                                                                                           |
 | NOTE: There is no ``go_repository`` equivalent to file path ``replace``                                                   |
 | directives. Use ``local_repository`` instead.                                                                             |
 +------------------------------------+----------------------+---------------------------------------------------------------+
