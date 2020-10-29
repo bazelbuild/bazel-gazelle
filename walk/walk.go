@@ -48,6 +48,12 @@ const (
 	// Build files in parent directories are read in order to produce a complete
 	// configuration, but the callback is not called for parent directories.
 	UpdateDirsMode
+
+	// In UpdateSubdirsMode, Walk visits and updates the directories given to Walk
+	// and their subdirectories. Build files in parent directories are read in
+	// order to produce a complete configuration, but the callback is not called
+	// for parent directories.
+	UpdateSubdirsMode
 )
 
 // WalkFunc is a callback called by Walk in each visited directory.
@@ -157,13 +163,13 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 
 		shouldUpdate := shouldUpdate(rel, mode, updateParent, updateRels)
 		for _, sub := range subdirs {
-			if subRel := path.Join(rel, sub); shouldVisit(subRel, mode, updateRels) {
+			if subRel := path.Join(rel, sub); shouldVisit(subRel, mode, shouldUpdate, updateRels) {
 				visit(c, filepath.Join(dir, sub), subRel, shouldUpdate)
 			}
 		}
 
 		update := !haveError && !wc.ignore && shouldUpdate
-		if shouldCall(rel, mode, updateRels) {
+		if shouldCall(rel, mode, updateParent, updateRels) {
 			genFiles := findGenFiles(wc, f)
 			wf(dir, rel, c, update, f, subdirs, regularFiles, genFiles)
 		}
@@ -208,23 +214,35 @@ func buildUpdateRelMap(root string, dirs []string) map[string]bool {
 
 // shouldCall returns true if Walk should call the callback in the
 // directory rel.
-func shouldCall(rel string, mode Mode, updateRels map[string]bool) bool {
-	return mode != UpdateDirsMode || updateRels[rel]
+func shouldCall(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
+	if mode != UpdateDirsMode && mode != UpdateSubdirsMode {
+		return true
+	}
+	if mode == UpdateSubdirsMode {
+		return updateParent || updateRels[rel]
+	}
+	return updateRels[rel]
 }
 
 // shouldUpdate returns true if Walk should pass true to the callback's update
 // parameter in the directory rel. This indicates the build file should be
 // updated.
 func shouldUpdate(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
-	return mode == VisitAllUpdateSubdirsMode && updateParent || updateRels[rel]
+	if (mode == VisitAllUpdateSubdirsMode || mode == UpdateSubdirsMode) && updateParent {
+		return true
+	}
+	return updateRels[rel]
 }
 
 // shouldVisit returns true if Walk should visit the subdirectory rel.
-func shouldVisit(rel string, mode Mode, updateRels map[string]bool) bool {
-	if mode != UpdateDirsMode {
+func shouldVisit(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
+	if mode != UpdateDirsMode && mode != UpdateSubdirsMode {
 		return true
 	}
 	_, ok := updateRels[rel]
+	if mode == UpdateSubdirsMode {
+		return ok || updateParent
+	}
 	return ok
 }
 
