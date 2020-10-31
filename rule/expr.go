@@ -18,6 +18,7 @@ package rule
 import (
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/label"
@@ -147,7 +148,7 @@ func FlattenExpr(e bzl.Expr) bzl.Expr {
 		return true
 	}
 
-	if ps.generic != nil {
+	if ps.generic != nil && !reflect.ValueOf(ps.generic).IsNil() {
 		if !addList(ps.generic) {
 			return e
 		}
@@ -173,7 +174,7 @@ func isScalar(e bzl.Expr) bool {
 	}
 }
 
-func dictEntryKeyValue(e bzl.Expr) (string, *bzl.ListExpr, error) {
+func dictEntryKeyValue(e bzl.Expr) (string, bzl.Expr, error) {
 	kv, ok := e.(*bzl.KeyValueExpr)
 	if !ok {
 		return "", nil, fmt.Errorf("dict entry was not a key-value pair: %#v", e)
@@ -182,11 +183,7 @@ func dictEntryKeyValue(e bzl.Expr) (string, *bzl.ListExpr, error) {
 	if !ok {
 		return "", nil, fmt.Errorf("dict key was not string: %#v", kv.Key)
 	}
-	v, ok := kv.Value.(*bzl.ListExpr)
-	if !ok {
-		return "", nil, fmt.Errorf("dict value was not list: %#v", kv.Value)
-	}
-	return k.Value, v, nil
+	return k.Value, kv.Value, nil
 }
 
 func stringValue(e bzl.Expr) string {
@@ -209,7 +206,7 @@ func stringValue(e bzl.Expr) string {
 // The four collections may appear in any order, and some or all of them may
 // be omitted (all fields are nil for a nil expression).
 type platformStringsExprs struct {
-	generic            *bzl.ListExpr
+	generic            bzl.Expr
 	os, arch, platform *bzl.DictExpr
 }
 
@@ -241,7 +238,13 @@ func extractPlatformStringsExprs(expr bzl.Expr) (platformStringsExprs, error) {
 		switch part := part.(type) {
 		case *bzl.ListExpr:
 			if ps.generic != nil {
-				return platformStringsExprs{}, fmt.Errorf("expression could not be matched: multiple list expressions")
+				return platformStringsExprs{}, fmt.Errorf("expression could not be matched: multiple generic expressions")
+			}
+			ps.generic = part
+
+		case *bzl.DictExpr:
+			if ps.generic != nil {
+				return platformStringsExprs{}, fmt.Errorf("expression could not be matched: multiple generic expressions")
 			}
 			ps.generic = part
 
@@ -310,13 +313,15 @@ func makePlatformStringsExpr(ps platformStringsExprs) bzl.Expr {
 		switch e := e.(type) {
 		case *bzl.ListExpr:
 			e.ForceMultiLine = true
+		case *bzl.DictExpr:
+			e.ForceMultiLine = true
 		case *bzl.CallExpr:
 			e.List[0].(*bzl.DictExpr).ForceMultiLine = true
 		}
 	}
 
 	var parts []bzl.Expr
-	if ps.generic != nil {
+	if ps.generic != nil && !reflect.ValueOf(ps.generic).IsNil() {
 		parts = append(parts, ps.generic)
 	}
 	if ps.os != nil {

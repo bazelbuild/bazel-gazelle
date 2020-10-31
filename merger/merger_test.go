@@ -116,6 +116,55 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
+    srcs = {
+        "darwin_amd64": [
+            "foo_darwin_amd64.go", # keep
+            "bar_darwin_amd64.go",
+        ],
+        "linux_arm": [
+            "foo_linux_arm.go", # keep
+            "bar_linux_arm.go",
+        ],
+    },
+)
+`,
+		current: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = {
+        "linux_arm": ["baz_linux_arm.go"],
+        "darwin_amd64": ["baz_darwin_amd64.go"],
+        "//conditions:default": [],
+    },
+)
+`,
+		expected: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = {
+        "darwin_amd64": [
+            "baz_darwin_amd64.go",
+            "foo_darwin_amd64.go",  # keep
+        ],
+        "linux_arm": [
+            "baz_linux_arm.go",
+            "foo_linux_arm.go",  # keep
+        ],
+        "//conditions:default": [],
+    },
+)
+`,
+	}, {
+		desc: "merge select dicts",
+		previous: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
     srcs = select({
         "darwin_amd64": [
             "foo_darwin_amd64.go", # keep
@@ -408,6 +457,31 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
+    srcs = {
+        "linux_arm": ["foo_linux_arm.go"],
+        "//conditions:default": [],
+    },
+)
+`,
+		current: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+)
+`,
+		expected: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(name = "go_default_library")
+`,
+	}, {
+		desc: "delete empty select dict",
+		previous: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
     srcs = select({
         "linux_arm": ["foo_linux_arm.go"],
         "//conditions:default": [],
@@ -654,6 +728,46 @@ go_library(
 `,
 	}, {
 		desc: "keep dict list multiline",
+		previous: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = {
+        "darwin_amd64": [
+            "one_darwin.go",  # keep
+        ],
+        "linux_arm": [
+            "one_linux.go",  # keep
+            "two_linux.go",
+        ],
+    },
+)
+`,
+		current: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+)
+`,
+		expected: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = {
+        "darwin_amd64": [
+            "one_darwin.go",  # keep
+        ],
+        "linux_arm": [
+            "one_linux.go",  # keep
+        ],
+    },
+)
+`,
+	}, {
+		desc: "keep select dict list multiline",
 		previous: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 

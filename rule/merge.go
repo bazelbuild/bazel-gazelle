@@ -71,7 +71,7 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 			dstValue := dstAttr.RHS
 			if mergedValue, err := mergeExprs(srcValue, dstValue); err != nil {
 				start, end := dstValue.Span()
-				log.Printf("%s:%d.%d-%d.%d: could not merge expression", filename, start.Line, start.LineRune, end.Line, end.LineRune)
+				log.Printf("%s:%d.%d-%d.%d: could not merge expression %s", filename, start.Line, start.LineRune, end.Line, end.LineRune, err)
 			} else {
 				dst.SetAttr(key, mergedValue)
 			}
@@ -124,7 +124,9 @@ func mergeExprs(src, dst bzl.Expr) (bzl.Expr, error) {
 func mergePlatformStringsExprs(src, dst platformStringsExprs) (platformStringsExprs, error) {
 	var ps platformStringsExprs
 	var err error
-	ps.generic = mergeList(src.generic, dst.generic)
+	if ps.generic, err = mergeGeneric(src.generic, dst.generic); err != nil {
+		return platformStringsExprs{}, err
+	}
 	if ps.os, err = mergeDict(src.os, dst.os); err != nil {
 		return platformStringsExprs{}, err
 	}
@@ -135,6 +137,32 @@ func mergePlatformStringsExprs(src, dst platformStringsExprs) (platformStringsEx
 		return platformStringsExprs{}, err
 	}
 	return ps, nil
+}
+
+func mergeGeneric(src, dst bzl.Expr) (bzl.Expr, error) {
+	if dst == nil {
+		return src, nil
+	}
+
+	if dst, ok := dst.(*bzl.ListExpr); ok {
+		if src == nil {
+			return mergeList(&bzl.ListExpr{List: []bzl.Expr{}}, dst), nil
+		}
+		if src, ok := src.(*bzl.ListExpr); ok {
+			return mergeList(src, dst), nil
+		}
+	}
+
+	if dst, ok := dst.(*bzl.DictExpr); ok {
+		if src == nil {
+			return mergeDict(&bzl.DictExpr{List: []*bzl.KeyValueExpr{}}, dst)
+		}
+		if src, ok := src.(*bzl.DictExpr); ok {
+			return mergeDict(src, dst)
+		}
+	}
+
+	return nil, fmt.Errorf("cannot merge generic expressions of different types")
 }
 
 func mergeList(src, dst *bzl.ListExpr) *bzl.ListExpr {
@@ -227,7 +255,14 @@ func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
 	keys := make([]string, 0, len(entries))
 	haveDefault := false
 	for _, e := range entries {
-		e.mergedValue = mergeList(e.srcValue, e.dstValue)
+		if e.dstValue == nil {
+			e.mergedValue = e.srcValue
+		} else {
+			var err error
+			if e.mergedValue, err = mergeExprs(e.srcValue, e.dstValue); err != nil {
+				return nil, err
+			}
+		}
 		if e.key == "//conditions:default" {
 			// Keep the default case, even if it's empty.
 			haveDefault = true
@@ -238,9 +273,17 @@ func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
 			keys = append(keys, e.key)
 		}
 	}
-	if len(keys) == 0 && (!haveDefault || len(entryMap["//conditions:default"].mergedValue.List) == 0) {
+	var entryMapDefaultLabelIsEmpty bool
+	if e, ok := entryMap["//conditions:default"]; ok {
+		if l, ok := e.mergedValue.(*bzl.ListExpr); ok {
+			entryMapDefaultLabelIsEmpty = len(l.List) == 0
+		}
+	}
+
+	if len(keys) == 0 && (!haveDefault || entryMapDefaultLabelIsEmpty) {
 		return nil, nil
 	}
+
 	sort.Strings(keys)
 	// Always put the default case last.
 	if haveDefault {
@@ -261,7 +304,7 @@ func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
 
 type dictEntry struct {
 	key                             string
-	dstValue, srcValue, mergedValue *bzl.ListExpr
+	dstValue, srcValue, mergedValue bzl.Expr
 }
 
 // SquashRules copies information from src into dst without discarding
@@ -320,7 +363,7 @@ func squashExprs(src, dst bzl.Expr) (bzl.Expr, error) {
 func squashPlatformStringsExprs(x, y platformStringsExprs) (platformStringsExprs, error) {
 	var ps platformStringsExprs
 	var err error
-	if ps.generic, err = squashList(x.generic, y.generic); err != nil {
+	if ps.generic, err = squashGeneric(x.generic, y.generic); err != nil {
 		return platformStringsExprs{}, err
 	}
 	if ps.os, err = squashDict(x.os, y.os); err != nil {
@@ -333,6 +376,29 @@ func squashPlatformStringsExprs(x, y platformStringsExprs) (platformStringsExprs
 		return platformStringsExprs{}, err
 	}
 	return ps, nil
+}
+
+func squashGeneric(src, dst bzl.Expr) (bzl.Expr, error) {
+	if src == nil {
+		return dst, nil
+	}
+	if dst == nil {
+		return src, nil
+	}
+
+	if dst, ok := dst.(*bzl.ListExpr); ok {
+		if src, ok := src.(*bzl.ListExpr); ok {
+			return squashList(src, dst)
+		}
+	}
+
+	if dst, ok := dst.(*bzl.DictExpr); ok {
+		if src, ok := src.(*bzl.DictExpr); ok {
+			return squashDict(src, dst)
+		}
+	}
+
+	return nil, fmt.Errorf("cannot squash generic expressions of different types")
 }
 
 func squashList(x, y *bzl.ListExpr) (*bzl.ListExpr, error) {
