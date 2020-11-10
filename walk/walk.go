@@ -215,13 +215,14 @@ func buildUpdateRelMap(root string, dirs []string) map[string]bool {
 // shouldCall returns true if Walk should call the callback in the
 // directory rel.
 func shouldCall(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
-	if mode != UpdateDirsMode && mode != UpdateSubdirsMode {
+	switch mode {
+	case VisitAllUpdateSubdirsMode, VisitAllUpdateDirsMode:
 		return true
-	}
-	if mode == UpdateSubdirsMode {
+	case UpdateSubdirsMode:
 		return updateParent || updateRels[rel]
+	default: // UpdateDirsMode
+		return updateRels[rel]
 	}
-	return updateRels[rel]
 }
 
 // shouldUpdate returns true if Walk should pass true to the callback's update
@@ -236,14 +237,16 @@ func shouldUpdate(rel string, mode Mode, updateParent bool, updateRels map[strin
 
 // shouldVisit returns true if Walk should visit the subdirectory rel.
 func shouldVisit(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
-	if mode != UpdateDirsMode && mode != UpdateSubdirsMode {
+	switch mode {
+	case UpdateSubdirsMode:
+		_, ok := updateRels[rel]
+		return ok || updateParent
+	case UpdateDirsMode:
+		_, ok := updateRels[rel]
+		return ok
+	default: // VisitAllUpdateSubdirsMode, VisitAllUpdateDirsMode
 		return true
 	}
-	_, ok := updateRels[rel]
-	if mode == UpdateSubdirsMode {
-		return ok || updateParent
-	}
-	return ok
 }
 
 func loadBuildFile(c *config.Config, pkg, dir string, files []os.FileInfo) (*rule.File, error) {

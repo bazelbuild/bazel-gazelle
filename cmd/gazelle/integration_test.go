@@ -2397,8 +2397,7 @@ go_library(
 // and subdirectories, but should not resolve dependencies to local libraries.
 func TestNoIndexRecurse(t *testing.T) {
 	files := []testtools.FileSpec{
-		{Path: "WORKSPACE"},
-		{
+		{Path: "WORKSPACE"}, {
 			Path: "foo/foo.go",
 			Content: `package foo
 
@@ -2406,8 +2405,7 @@ import (
 	_ "example.com/dep/baz"
 )
 `,
-		},
-		{
+		}, {
 			Path:    "foo/bar/bar.go",
 			Content: "package bar",
 		}, {
@@ -2454,8 +2452,7 @@ go_library(
     deps = ["//vendor/example.com/dep/baz"],
 )
 `,
-		},
-		{
+		}, {
 			Path: "foo/bar/BUILD.bazel",
 			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
