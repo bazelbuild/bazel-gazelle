@@ -238,14 +238,14 @@ func shouldUpdate(rel string, mode Mode, updateParent bool, updateRels map[strin
 // shouldVisit returns true if Walk should visit the subdirectory rel.
 func shouldVisit(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
 	switch mode {
+	case VisitAllUpdateSubdirsMode, VisitAllUpdateDirsMode:
+		return true
 	case UpdateSubdirsMode:
 		_, ok := updateRels[rel]
 		return ok || updateParent
-	case UpdateDirsMode:
+	default: // UpdateDirsMode
 		_, ok := updateRels[rel]
 		return ok
-	default: // VisitAllUpdateSubdirsMode, VisitAllUpdateDirsMode
-		return true
 	}
 }
 
