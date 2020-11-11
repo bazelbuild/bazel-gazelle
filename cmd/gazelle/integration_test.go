@@ -2392,6 +2392,80 @@ go_library(
 	})
 }
 
+// TestNoIndexRecurse checks that gazelle behaves correctly with the flags
+// -r=true -index=false. Gazelle should generate build files in directories
+// and subdirectories, but should not resolve dependencies to local libraries.
+func TestNoIndexRecurse(t *testing.T) {
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"}, {
+			Path: "foo/foo.go",
+			Content: `package foo
+
+import (
+	_ "example.com/dep/baz"
+)
+`,
+		}, {
+			Path:    "foo/bar/bar.go",
+			Content: "package bar",
+		}, {
+			Path: "third_party/baz/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# this should be ignored because -index=false
+go_library(
+    name = "baz",
+    srcs = ["baz.go"],
+    importpath = "example.com/dep/baz",
+    visibility = ["//visibility:public"],
+)
+`,
+		}, {
+			Path:    "third_party/baz/baz.go",
+			Content: "package baz",
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{
+		"-go_prefix=example.com/repo",
+		"-external=vendored",
+		"-r=true",
+		"-index=false",
+		"foo",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "foo/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/repo/foo",
+    visibility = ["//visibility:public"],
+    deps = ["//vendor/example.com/dep/baz"],
+)
+`,
+		}, {
+			Path: "foo/bar/BUILD.bazel",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "bar",
+    srcs = ["bar.go"],
+    importpath = "example.com/repo/foo/bar",
+    visibility = ["//visibility:public"],
+)
+`,
+		}})
+}
+
 // TestSubdirectoryPrefixExternal checks that directives set in subdirectories
 // may be used in dependency resolution. Verifies #412.
 func TestSubdirectoryPrefixExternal(t *testing.T) {
