@@ -117,10 +117,12 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		uc.dirs[i] = dir
 	}
 
-	if ucr.recursive {
+	if ucr.recursive && c.IndexLibraries {
 		uc.walkMode = walk.VisitAllUpdateSubdirsMode
 	} else if c.IndexLibraries {
 		uc.walkMode = walk.VisitAllUpdateDirsMode
+	} else if ucr.recursive {
+		uc.walkMode = walk.UpdateSubdirsMode
 	} else {
 		uc.walkMode = walk.UpdateDirsMode
 	}

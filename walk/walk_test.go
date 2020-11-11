@@ -51,6 +51,7 @@ func TestConfigureCallbackOrder(t *testing.T) {
 func TestUpdateDirs(t *testing.T) {
 	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
 		{Path: "update/sub/"},
+		{Path: "update/sub/sub/"},
 		{
 			Path:    "update/ignore/BUILD.bazel",
 			Content: "# gazelle:ignore",
@@ -83,6 +84,7 @@ func TestUpdateDirs(t *testing.T) {
 				{"update/error", false},
 				{"update/ignore/sub", true},
 				{"update/ignore", false},
+				{"update/sub/sub", true},
 				{"update/sub", true},
 				{"update", true},
 				{"", false},
@@ -96,6 +98,7 @@ func TestUpdateDirs(t *testing.T) {
 				{"update/error", false},
 				{"update/ignore/sub", true},
 				{"update/ignore", false},
+				{"update/sub/sub", false},
 				{"update/sub", false},
 				{"update", true},
 				{"", false},
@@ -107,6 +110,16 @@ func TestUpdateDirs(t *testing.T) {
 			want: []visitSpec{
 				{"update/ignore/sub", true},
 				{"update", true},
+			},
+		}, {
+			desc: "update_subdirs",
+			rels: []string{"update/ignore", "update/sub"},
+			mode: UpdateSubdirsMode,
+			want: []visitSpec{
+				{"update/ignore/sub", true},
+				{"update/ignore", false},
+				{"update/sub/sub", true},
+				{"update/sub", true},
 			},
 		},
 	} {
