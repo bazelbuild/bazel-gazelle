@@ -43,9 +43,6 @@ go_library(
         "@io_bazel_rules_go//go/platform:linux": [
             "example.com/repo/lib/deep",
         ],
-        "@io_bazel_rules_go//go/platform:nacl": [
-            "example.com/repo/lib/deep",
-        ],
         "@io_bazel_rules_go//go/platform:netbsd": [
             "example.com/repo/lib/deep",
         ],
