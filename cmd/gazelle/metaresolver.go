@@ -17,6 +17,8 @@ package main
 
 import (
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
@@ -51,11 +53,61 @@ func (mr *metaResolver) MappedKind(pkgRel string, kind config.MappedKind) {
 // Resolver returns a resolver for the given rule and package, and a bool
 // indicating whether one was found. Empty string may be passed for pkgRel,
 // which results in consulting the builtin kinds only.
-func (mr metaResolver) Resolver(r *rule.Rule, pkgRel string) resolve.Resolver {
+func (mr *metaResolver) Resolver(r *rule.Rule, pkgRel string) resolve.Resolver {
 	for _, mappedKind := range mr.mappedKinds[pkgRel] {
 		if mappedKind.KindName == r.Kind() {
-			return mr.builtins[mappedKind.FromKind]
+			fromKindResolver := mr.builtins[mappedKind.FromKind]
+			if fromKindResolver == nil {
+				return nil
+			}
+			return inverseMapKindResolver{
+				fromKind: mappedKind.FromKind,
+				delegate: fromKindResolver,
+			}
 		}
 	}
 	return mr.builtins[r.Kind()]
+}
+
+// inverseMapKindResolver applies an inverse of the map_kind
+// operations to provided rules. This enables language
+// modules to remain ignorant of mapped kinds.
+type inverseMapKindResolver struct {
+	fromKind string
+	delegate resolve.Resolver
+}
+
+var _ resolve.Resolver = inverseMapKindResolver{}
+
+func (imkr inverseMapKindResolver) Name() string {
+	return imkr.delegate.Name()
+}
+
+func (imkr inverseMapKindResolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+	var imports []resolve.ImportSpec
+	imkr.inverseMapKind(r, func(r *rule.Rule) {
+		imports = imkr.delegate.Imports(c, r, f)
+	})
+	return imports
+}
+
+func (imkr inverseMapKindResolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
+	var labels []label.Label
+	imkr.inverseMapKind(r, func(r *rule.Rule) {
+		labels = imkr.delegate.Embeds(r, from)
+	})
+	return labels
+}
+
+func (imkr inverseMapKindResolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
+	imkr.inverseMapKind(r, func(r *rule.Rule) {
+		imkr.delegate.Resolve(c, ix, rc, r, imports, from)
+	})
+}
+
+func (imkr inverseMapKindResolver) inverseMapKind(r *rule.Rule, fn func(r *rule.Rule)) {
+	origKind := r.Kind()
+	r.SetKind(imkr.fromKind)
+	fn(r)
+	r.SetKind(origKind)
 }

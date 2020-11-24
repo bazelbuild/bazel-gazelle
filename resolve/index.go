@@ -101,6 +101,12 @@ type ruleRecord struct {
 	embedded bool
 
 	didCollectEmbeds bool
+
+	// lang records the language that this import is relevant for.
+	// Due to the presence of mapped kinds, it's otherwise
+	// impossible to know the underlying builtin rule type for an
+	// arbitrary import.
+	lang string
 }
 
 // NewRuleIndex creates a new index.
@@ -127,9 +133,11 @@ func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...inte
 //
 // AddRule may only be called before Finish.
 func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
+	var lang string
 	var imps []ImportSpec
 	if rslv := ix.mrslv(r, f.Pkg); rslv != nil {
-		if passesLanguageFilter(c.Langs, rslv.Name()) {
+		lang = rslv.Name()
+		if passesLanguageFilter(c.Langs, lang) {
 			imps = rslv.Imports(c, r, f)
 		}
 	}
@@ -144,6 +152,7 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 		label:      label.New(c.RepoName, f.Pkg, r.Name()),
 		file:       f,
 		importedAs: imps,
+		lang:       lang,
 	}
 	if _, ok := ix.labelMap[record.label]; ok {
 		log.Printf("multiple rules found with label %s", record.label)
@@ -239,7 +248,7 @@ func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult
 	matches := ix.importMap[imp]
 	results := make([]FindResult, 0, len(matches))
 	for _, m := range matches {
-		if ix.mrslv(m.rule, "").Name() != lang {
+		if m.lang != lang {
 			continue
 		}
 		results = append(results, FindResult{
