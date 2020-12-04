@@ -54,11 +54,7 @@ func diffFile(c *config.Config, f *rule.File) error {
 	} else if err != nil {
 		return fmt.Errorf("error reading original file: %v", err)
 	} else if c.ReadBuildFilesDir == "" {
-		path, err := filepath.Rel(c.RepoRoot, f.Path)
-		if err != nil {
-			return fmt.Errorf("error getting old path for file %q: %v", f.Path, err)
-		}
-		diff.FromFile = filepath.ToSlash(path)
+		diff.FromFile = rel
 	} else {
 		diff.FromFile = f.Path
 	}
@@ -70,11 +66,7 @@ func diffFile(c *config.Config, f *rule.File) error {
 	diff.B = difflib.SplitLines(string(newContent))
 	outPath := findOutputPath(c, f)
 	if c.WriteBuildFilesDir == "" {
-		path, err := filepath.Rel(c.RepoRoot, f.Path)
-		if err != nil {
-			return fmt.Errorf("error getting new path for file %q: %v", f.Path, err)
-		}
-		diff.ToFile = filepath.ToSlash(path)
+		diff.ToFile = rel
 	} else {
 		diff.ToFile = outPath
 	}
