@@ -106,8 +106,7 @@ func (imkr inverseMapKindResolver) Resolve(c *config.Config, ix *resolve.RuleInd
 }
 
 func (imkr inverseMapKindResolver) inverseMapKind(r *rule.Rule, fn func(r *rule.Rule)) {
-	origKind := r.Kind()
-	r.SetKind(imkr.fromKind)
-	fn(r)
-	r.SetKind(origKind)
+	rCopy := *r
+	rCopy.SetKind(imkr.fromKind)
+	fn(&rCopy)
 }
