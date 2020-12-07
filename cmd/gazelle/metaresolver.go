@@ -84,29 +84,22 @@ func (imkr inverseMapKindResolver) Name() string {
 }
 
 func (imkr inverseMapKindResolver) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
-	var imports []resolve.ImportSpec
-	imkr.inverseMapKind(r, func(r *rule.Rule) {
-		imports = imkr.delegate.Imports(c, r, f)
-	})
-	return imports
+	r = imkr.inverseMapKind(r)
+	return imkr.delegate.Imports(c, r, f)
 }
 
 func (imkr inverseMapKindResolver) Embeds(r *rule.Rule, from label.Label) []label.Label {
-	var labels []label.Label
-	imkr.inverseMapKind(r, func(r *rule.Rule) {
-		labels = imkr.delegate.Embeds(r, from)
-	})
-	return labels
+	r = imkr.inverseMapKind(r)
+	return imkr.delegate.Embeds(r, from)
 }
 
 func (imkr inverseMapKindResolver) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
-	imkr.inverseMapKind(r, func(r *rule.Rule) {
-		imkr.delegate.Resolve(c, ix, rc, r, imports, from)
-	})
+	r = imkr.inverseMapKind(r)
+	imkr.delegate.Resolve(c, ix, rc, r, imports, from)
 }
 
-func (imkr inverseMapKindResolver) inverseMapKind(r *rule.Rule, fn func(r *rule.Rule)) {
+func (imkr inverseMapKindResolver) inverseMapKind(r *rule.Rule) *rule.Rule {
 	rCopy := *r
 	rCopy.SetKind(imkr.fromKind)
-	fn(&rCopy)
+	return &rCopy
 }
