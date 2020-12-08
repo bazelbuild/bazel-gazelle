@@ -2723,7 +2723,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["unmapped_lib.go"],
-    importpath = "example.com/mapkind/enabled/existing_rules",
+    importpath = "example.com/mapkind/enabled/existing_rules/unmapped",
     visibility = ["//visibility:public"],
 )
 `,
@@ -2754,11 +2754,22 @@ go_library(
 			Path:    "enabled/multiple_mappings/multiple_mappings.go",
 			Content: `package main`,
 		},
+		{
+			Path: "depend_on_mapped_kind/lib.go",
+			Content: `package depend_on_mapped_kind
+import (
+	_ "example.com/mapkind/disabled"
+	_ "example.com/mapkind/enabled"
+	_ "example.com/mapkind/enabled/existing_rules/mapped"
+	_ "example.com/mapkind/enabled/existing_rules/unmapped"
+	_ "example.com/mapkind/enabled/overridden"
+)`,
+		},
 	}
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	if err := runGazelle(dir, []string{"-external=vendored", "-index=false"}); err != nil {
+	if err := runGazelle(dir, []string{"-external=vendored"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -2861,7 +2872,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library")
 go_library(
     name = "go_default_library",
     srcs = ["unmapped_lib.go"],
-    importpath = "example.com/mapkind/enabled/existing_rules",
+    importpath = "example.com/mapkind/enabled/existing_rules/unmapped",
     visibility = ["//visibility:public"],
 )
 `,
@@ -2901,6 +2912,27 @@ go_binary(
 )
 `,
 		},
+		{
+			Path: "depend_on_mapped_kind/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["lib.go"],
+    importpath = "example.com/mapkind/depend_on_mapped_kind",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//disabled:go_default_library",
+        "//enabled:go_default_library",
+        "//enabled/existing_rules/mapped:go_default_library",
+        "//enabled/existing_rules/unmapped:go_default_library",
+        "//enabled/overridden:go_default_library",
+    ],
+)
+`,
+		},
+
 	})
 }
 
