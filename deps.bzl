@@ -38,11 +38,13 @@ go_repository = _go_repository
 
 def gazelle_dependencies(
         go_sdk = "",
-        go_repository_default_config = "@//:WORKSPACE"):
+        go_repository_default_config = "@//:WORKSPACE",
+        go_env = {}):
     if go_sdk:
         go_repository_cache(
             name = "bazel_gazelle_go_repository_cache",
             go_sdk_name = go_sdk,
+            go_env = go_env,
         )
     else:
         go_sdk_info = {}
@@ -60,6 +62,7 @@ def gazelle_dependencies(
         go_repository_cache(
             name = "bazel_gazelle_go_repository_cache",
             go_sdk_info = go_sdk_info,
+            go_env = go_env,
         )
 
     go_repository_tools(

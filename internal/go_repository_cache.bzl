@@ -54,16 +54,17 @@ def _go_repository_cache_impl(ctx):
             fail("GOCACHE must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.")
         go_cache = res.stdout.strip()
 
-    env_tpl = """
-GOROOT='{goroot}'
-GOPATH='{gopath}'
-GOCACHE='{gocache}'
-"""
-    env_content = env_tpl.format(
-        goroot = go_root,
-        gopath = go_path,
-        gocache = go_cache,
-    )
+    cache_env = {
+        "GOROOT": go_root,
+        "GOPATH": go_path,
+        "GOCACHE": go_cache,
+    }
+    for key, value in ctx.attr.go_env.items():
+        if key in cache_env:
+            fail("{} cannot be set in go_env".format(key))
+        cache_env[key] = value
+    env_content = "\n".join(["{k}='{v}'\n".format(k = k, v = v) for k, v in cache_env.items()])
+
     ctx.file("go.env", env_content)
     ctx.file("BUILD.bazel", 'exports_files(["go.env"])')
 
@@ -72,6 +73,7 @@ go_repository_cache = repository_rule(
     attrs = {
         "go_sdk_name": attr.string(),
         "go_sdk_info": attr.string_dict(),
+        "go_env": attr.string_dict(),
     },
     # Don't put anything in environ. If we switch between the host cache
     # and Bazel's cache, it shouldn't actually invalidate Bazel's cache.

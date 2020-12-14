@@ -96,6 +96,9 @@ should look like this:
 
     gazelle_dependencies()
 
+``gazelle_dependencies`` supports optional argument ``go_env`` (dict-mapping)
+to set project specific go environment variables.
+
 Add the code below to the BUILD or BUILD.bazel file in the root directory
 of your repository. 
 
