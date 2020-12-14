@@ -17,6 +17,7 @@ package bazel_test
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,7 +58,12 @@ func main() {}
 	WorkspaceSuffix: `
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
-gazelle_dependencies()
+gazelle_dependencies(
+	go_env = {
+		"GOPRIVATE": "example.com/m",
+		"GOSUMDB": "off",
+	},
+)
 
 # gazelle:repo test
 
@@ -158,6 +164,26 @@ func TestModcacheRW(t *testing.T) {
 	}
 	if info.Mode()&0200 == 0 {
 		t.Fatal("module cache is read-only")
+	}
+}
+
+func TestRepoCacheContainsGoEnv(t *testing.T) {
+	if err := bazel_testing.RunBazel("query", "@errors_go_mod//:go_default_library"); err != nil {
+		t.Fatal(err)
+	}
+	outputBase, err := getBazelOutputBase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	goEnvPath := filepath.Join(outputBase, "external/bazel_gazelle_go_repository_cache", "go.env")
+	gotBytes, err := ioutil.ReadFile(goEnvPath)
+	if err != nil {
+		t.Fatalf("could not read file %s: %v", goEnvPath, err)
+	}
+	for _, want := range []string{"GOPRIVATE='example.com/m'", "GOSUMDB='off'"} {
+		if !strings.Contains(string(gotBytes), want) {
+			t.Fatalf("go.env did not contain %s", want)
+		}
 	}
 }
 
