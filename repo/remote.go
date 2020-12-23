@@ -18,6 +18,7 @@ package repo
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -337,11 +338,7 @@ func defaultHeadCmd(remote, vcs string) (string, error) {
 		cmd := exec.Command("git", "ls-remote", remote, "HEAD")
 		out, err := cmd.Output()
 		if err != nil {
-			var stdErr []byte
-			if e, ok := err.(*exec.ExitError); ok {
-				stdErr = e.Stderr
-			}
-			return "", fmt.Errorf("git ls-remote for %s : %v : %s", remote, err, stdErr)
+			return "", fmt.Errorf("git ls-remote for %s: %v", remote, cleanCmdError(err))
 		}
 		ix := bytes.IndexByte(out, '\t')
 		if ix < 0 {
@@ -414,18 +411,28 @@ func defaultModInfo(rc *RemoteCache, importPath string) (modPath string, err err
 	if rc.tmpErr != nil {
 		return "", rc.tmpErr
 	}
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("finding module path for import %s: %v", importPath, cleanCmdError(err))
+		}
+	}()
 
 	goTool := findGoTool()
-	cmd := exec.Command(goTool, "list", "-find", "-f", "{{.Module.Path}}", "--", importPath)
+	env := append(os.Environ(), "GO111MODULE=on")
+
+	cmd := exec.Command(goTool, "get", "-d", "--", importPath)
 	cmd.Dir = rc.tmpDir
-	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	cmd.Env = env
+	if _, err := cmd.Output(); err != nil {
+		return "", err
+	}
+
+	cmd = exec.Command(goTool, "list", "-find", "-f", "{{.Module.Path}}", "--", importPath)
+	cmd.Dir = rc.tmpDir
+	cmd.Env = env
 	out, err := cmd.Output()
 	if err != nil {
-		var stdErr []byte
-		if e, ok := err.(*exec.ExitError); ok {
-			stdErr = e.Stderr
-		}
-		return "", fmt.Errorf("finding module path for import %s: %v: %s", importPath, err, stdErr)
+		return "", fmt.Errorf("finding module path for import %s: %v", importPath, cleanCmdError(err))
 	}
 	return strings.TrimSpace(string(out)), nil
 }
@@ -472,6 +479,11 @@ func defaultModVersionInfo(rc *RemoteCache, modPath, query string) (version, sum
 	if rc.tmpErr != nil {
 		return "", "", rc.tmpErr
 	}
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("finding module version and sum for %s@%s: %v", modPath, query, cleanCmdError(err))
+		}
+	}()
 
 	goTool := findGoTool()
 	cmd := exec.Command(goTool, "mod", "download", "-json", "--", modPath+"@"+query)
@@ -479,17 +491,12 @@ func defaultModVersionInfo(rc *RemoteCache, modPath, query string) (version, sum
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	out, err := cmd.Output()
 	if err != nil {
-		var stdErr []byte
-		if e, ok := err.(*exec.ExitError); ok {
-			stdErr = e.Stderr
-		}
-		return "", "", fmt.Errorf("finding module version and sum for %s@%s: %v: %s", modPath, query, err, stdErr)
+		return "", "", err
 	}
 
 	var result struct{ Version, Sum string }
 	if err := json.Unmarshal(out, &result); err != nil {
-		fmt.Println(out)
-		return "", "", fmt.Errorf("finding module version and sum for %s@%s: invalid output from 'go mod download': %v", modPath, query, err)
+		return "", "", fmt.Errorf("invalid output from 'go mod download': %v", err)
 	}
 	return result.Version, result.Sum, nil
 }
@@ -538,7 +545,7 @@ func (rc *RemoteCache) initTmp() {
 		if rc.tmpErr != nil {
 			return
 		}
-		rc.tmpErr = ioutil.WriteFile(filepath.Join(rc.tmpDir, "go.mod"), []byte(`module gazelle_remote_cache__\n`), 0666)
+		rc.tmpErr = ioutil.WriteFile(filepath.Join(rc.tmpDir, "go.mod"), []byte("module gazelle_remote_cache\ngo 1.15\n"), 0666)
 	})
 }
 
@@ -580,4 +587,19 @@ func findGoTool() string {
 		path += ".exe"
 	}
 	return path
+}
+
+// cleanCmdError simplifies error messages from os/exec.Cmd.Run.
+// For ExitErrors, it trims and returns stderr. This is useful for go commands
+// that print well-formatted errors. By default, ExitError prints the exit
+// status but not stderr.
+//
+// cleanCmdError returns other errors unmodified.
+func cleanCmdError(err error) error {
+	if xerr, ok := err.(*exec.ExitError); ok {
+		if stderr := strings.TrimSpace(string(xerr.Stderr)); stderr != "" {
+			return errors.New(stderr)
+		}
+	}
+	return err
 }
