@@ -17,8 +17,11 @@ package walk
 
 import (
 	"flag"
+	"io/ioutil"
 	"log"
+	"os"
 	"path"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -83,6 +86,21 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	wcCopy := &walkConfig{}
 	*wcCopy = *wc
 	wcCopy.ignore = false
+
+	// Extract patterns to ignore from .bazelrc, and add it to the list of excludes.
+	bazelIgnore, err := ioutil.ReadFile(path.Join(c.RepoRoot, ".bazelignore"))
+	if err != nil && !os.IsNotExist(err) {
+		log.Fatalf(".bazelignore exists but couldn't be read: %v", err)
+	}
+	ignoreAll := strings.Split(strings.TrimSpace(string(bazelIgnore)), "\n")
+	for _, ignore := range ignoreAll {
+		ignore = strings.TrimSpace(ignore)
+		if err := checkPathMatchPattern(path.Join(rel, ignore)); err != nil {
+			log.Printf("the .bazelignore exclusion pattern is not valid %q: %s", path.Join(rel, ignore), err)
+			continue			
+		}
+		wcCopy.excludes = append(wcCopy.excludes, path.Join(rel, ignore))
+	}
 
 	if f != nil {
 		for _, d := range f.Directives {
