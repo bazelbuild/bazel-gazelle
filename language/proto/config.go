@@ -282,7 +282,7 @@ func checkStripImportPrefix(prefix, rel string) error {
 	if !strings.HasPrefix(prefix, "/") {
 		return fmt.Errorf("proto_strip_import_prefix should start with '/' for a prefix relative to the repository root")
 	}
-	if !pathtools.HasPrefix(rel, prefix[1:]) {
+	if rel != "" && !pathtools.HasPrefix(rel, prefix[1:]) {
 		return fmt.Errorf("proto_strip_import_prefix %q not in directory %s", prefix, rel)
 	}
 	return nil
