@@ -59,12 +59,13 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 	// Make a map of all the symbols from known files used in this file.
 	usedKinds := make(map[string]map[string]bool)
 	for _, r := range f.Rules {
-		kind := r.Kind()
-		if file, ok := knownKinds[kind]; ok && !otherLoadedKinds[kind] {
-			if usedKinds[file] == nil {
-				usedKinds[file] = make(map[string]bool)
+		for _, symbol := range r.CalledSymbols() {
+			if file, ok := knownKinds[symbol]; ok && !otherLoadedKinds[symbol] {
+				if usedKinds[file] == nil {
+					usedKinds[file] = make(map[string]bool)
+				}
+				usedKinds[file][symbol] = true
 			}
-			usedKinds[file][kind] = true
 		}
 	}
 

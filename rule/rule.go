@@ -691,6 +691,20 @@ func NewRule(kind, name string) *Rule {
 	return r
 }
 
+// CalledSymbols returns a list of every identifier called in the rule, including the rule's name
+func (r *Rule) CalledSymbols() (symbols []string) {
+	symbols = append(symbols, r.kind)
+	bzl.WalkOnce(r.expr, func(x *bzl.Expr) {
+		if call, ok := (*x).(*bzl.CallExpr); ok {
+			if symbol, ok := call.X.(*bzl.Ident); ok {
+				symbols = append(symbols, symbol.Name)
+			}
+		}
+	})
+
+	return
+}
+
 func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 	call, ok := expr.(*bzl.CallExpr)
 	if !ok {
