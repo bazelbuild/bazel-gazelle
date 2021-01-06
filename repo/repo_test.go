@@ -128,6 +128,15 @@ git_repository(
 `,
 			want: `custom_repo example.com/repo1
 custom_repo_2 example.com/repo2`,
+		}, {
+			desc: "directive_prefer_latest",
+			workspace: `
+			# gazelle:repository go_repository name=custom_repo importpath=example.com/repo1
+			# gazelle:repository go_repository name=custom_repo_2 importpath=example.com/repo2
+			# gazelle:repository go_repository name=custom_repo importpath=example.com/repo3
+`,
+			want: `custom_repo example.com/repo3
+custom_repo_2 example.com/repo2`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

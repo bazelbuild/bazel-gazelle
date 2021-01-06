@@ -24,4 +24,8 @@ const (
 	// GazelleImportsKey is an internal attribute that lists imported packages
 	// on generated rules. It is replaced with "deps" during import resolution.
 	GazelleImportsKey = "_gazelle_imports"
+
+	// GazelleDirectiveKey is an internal attribute that is set to true on rules
+	// which were produced by a gazelle:repository directive.
+	GazelleFromDirectiveKey = "_gazelle_from_directive"
 )
