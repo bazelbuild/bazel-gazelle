@@ -18,9 +18,32 @@ package proto
 import "testing"
 
 func TestCheckStripImportPrefix(t *testing.T) {
-	e := checkStripImportPrefix("/example.com/idl", "example.com")
-	wantErr := `proto_strip_import_prefix "/example.com/idl" not in directory example.com`
-	if e == nil || e.Error() != wantErr {
-		t.Errorf("got:\n%v\n\nwant:\n%s\n", e, wantErr)
+	testCases := []struct{
+		name, prefix, rel, wantErr string
+	}{
+		{
+			name: "not in directory",
+			prefix: "/example.com/idl",
+			rel: "example.com",
+			wantErr: `proto_strip_import_prefix "/example.com/idl" not in directory example.com`,
+		},
+		{
+			name: "strip prefix at root",
+			prefix: "/include",
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(tt *testing.T) {
+			e := checkStripImportPrefix(tc.prefix, tc.rel)
+			if tc.wantErr == "" {
+				if e != nil {
+					t.Errorf("got:\n%v\n\nwant: nil\n", e)
+				}
+			} else {
+				if e == nil || e.Error() != tc.wantErr {
+					t.Errorf("got:\n%v\n\nwant:\n%s\n", e, tc.wantErr)
+				}
+			}
+		})
 	}
 }
