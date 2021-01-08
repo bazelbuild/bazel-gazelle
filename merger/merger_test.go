@@ -866,7 +866,83 @@ go_proto_library(
     proto = ":foo_proto",
 )
 `,
-	},
+	}, {
+		desc: "allow single argument macros",
+		previous: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_prefix", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "lex.go",  # comment about this line
+        "print.go",
+        "debug.go",
+        # go_binary isn't valid here, we are testing the loading and sorting
+        # of single argument macros. e.g. requirement("package_name")
+        go_binary("keep"),  # keep
+        go_binary("xyz"),
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    size = "small",
+    srcs = [
+        "gen_test.go",  # keep
+        "parse_test.go",
+    ],
+    data = glob(["testdata/*"]),
+    embed = [":go_default_library"],
+)
+`,
+		current: `
+load("@io_bazel_rules_go//go:def.bzl", "go_test", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "lex.go",
+        "print.go",
+        go_binary("asdf"),
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "parse_test.go",
+        "print_test.go",
+    ],
+    embed = [":go_default_library"],
+)
+`,
+		expected: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = [
+        "lex.go",  # comment about this line
+        "print.go",
+        go_binary("asdf"),
+        # go_binary isn't valid here, we are testing the loading and sorting
+        # of single argument macros. e.g. requirement("package_name")
+        go_binary("keep"),  # keep
+    ],
+)
+
+go_test(
+    name = "go_default_test",
+    size = "small",
+    srcs = [
+        "gen_test.go",  # keep
+        "parse_test.go",
+        "print_test.go",
+    ],
+    data = glob(["testdata/*"]),
+    embed = [":go_default_library"],
+)
+`},
 }
 
 func TestMergeFile(t *testing.T) {
