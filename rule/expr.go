@@ -189,21 +189,21 @@ func dictEntryKeyValue(e bzl.Expr) (string, *bzl.ListExpr, error) {
 	return k.Value, v, nil
 }
 
-// simpleValue is a string or a call expression with a single string argument
-// e.g. "string" or call_expression("string")
+// simpleValue encapsulates information about a string or a call expression
+// with a single string argument. e.g. "string" or call_expression("string")
 // Some bazel language rules (e.g. rules_python) use macro expansions of this
 // nature to hide mangled labels that might change from version to version.
 type simpleValue struct {
 	symbol, str string
 }
 
-// parses `identifier("string")`
+// simpleValueFromExpr tries to create a simpleValue from an unknown bzl.Expr.
 func simpleValueFromExpr(e bzl.Expr) (simpleValue, error) {
 	switch expr := e.(type) {
 	case *bzl.StringExpr:
 		return simpleValue{str: expr.Value}, nil
 	case *bzl.CallExpr:
-		// is calling an identifier and only one argument which is a string
+		// Check if calling an identifier with one string argument.
 		if id, ok := expr.X.(*bzl.Ident); ok && len(expr.List) == 1 {
 			if arg, ok := expr.List[0].(*bzl.StringExpr); ok {
 				return simpleValue{id.Name, arg.Value}, nil
