@@ -31,18 +31,18 @@ func sortExprLabels(e bzl.Expr, _ []bzl.Expr) {
 		return
 	}
 
-	keys := make([]stringSortKey, len(list.List))
+	keys := make([]simpleValueSortKey, len(list.List))
 	for i, elem := range list.List {
-		s, ok := elem.(*bzl.StringExpr)
-		if !ok {
-			return // don't sort lists unless all elements are strings
+		sv, err := simpleValueFromExpr(elem)
+		if err != nil {
+			return // don't sort lists unless all elements are simple values
 		}
-		keys[i] = makeSortKey(i, s)
+		keys[i] = makeSortKey(i, sv, elem)
 	}
 
 	before := keys[0].x.Comment().Before
 	keys[0].x.Comment().Before = nil
-	sort.Sort(byStringExpr(keys))
+	sort.Sort(bySimpleValue(keys))
 	keys[0].x.Comment().Before = append(before, keys[0].x.Comment().Before...)
 	for i, k := range keys {
 		list.List[i] = k.x
@@ -52,13 +52,19 @@ func sortExprLabels(e bzl.Expr, _ []bzl.Expr) {
 // Code below this point is adapted from
 // github.com/bazelbuild/buildtools/build/rewrite.go
 
-// A stringSortKey records information about a single string literal to be
-// sorted. The strings are first grouped into four phases: most strings,
-// strings beginning with ":", strings beginning with "//", and strings
-// beginning with "@". The next significant part of the comparison is the list
-// of elements in the value, where elements are split at `.' and `:'. Finally
-// we compare by value and break ties by original index.
-type stringSortKey struct {
+// A simpleValueSortKey records information about a single simpleValue to be
+// sorted. The simpleValues are first grouped into five phases:
+//  - most strings
+//  - strings beginning with ":"
+//  - strings beginning with "//"
+//  - strings beginning with "@"
+//  - call expressions of the form `call_expression("string")`
+// The next significant part of the comparison is the list of elements in the
+// value, where elements are split at `.' and `:'. Finally we compare by value
+// and break ties by original index.
+// simpleValue call expressions are sorted by identifier then string literal,
+// but aren't split by
+type simpleValueSortKey struct {
 	phase    int
 	split    []string
 	value    string
@@ -66,33 +72,46 @@ type stringSortKey struct {
 	x        bzl.Expr
 }
 
-func makeSortKey(index int, x *bzl.StringExpr) stringSortKey {
-	key := stringSortKey{
-		value:    x.Value,
+const (
+	phaseDefault = iota
+	phaseLocal
+	phaseAbsolute
+	phaseExternal
+	phaseSimpleCall
+)
+
+func makeSortKey(index int, sv simpleValue, x bzl.Expr) simpleValueSortKey {
+	key := simpleValueSortKey{
+		value:    sv.str,
 		original: index,
 		x:        x,
 	}
 
 	switch {
-	case strings.HasPrefix(x.Value, ":"):
-		key.phase = 1
-	case strings.HasPrefix(x.Value, "//"):
-		key.phase = 2
-	case strings.HasPrefix(x.Value, "@"):
-		key.phase = 3
+	case sv.symbol != "":
+		// all simple calls are pushed to the back of the list
+		key.phase = phaseSimpleCall
+		key.split = append(key.split, sv.symbol, sv.str)
+		return key
+	case strings.HasPrefix(sv.str, ":"):
+		key.phase = phaseLocal
+	case strings.HasPrefix(sv.str, "//"):
+		key.phase = phaseAbsolute
+	case strings.HasPrefix(sv.str, "@"):
+		key.phase = phaseExternal
 	}
 
-	key.split = strings.Split(strings.Replace(x.Value, ":", ".", -1), ".")
+	key.split = strings.Split(strings.Replace(sv.str, ":", ".", -1), ".")
 	return key
 }
 
-// byStringExpr implements sort.Interface for a list of stringSortKey.
-type byStringExpr []stringSortKey
+// bySimpleValue implements sort.Interface for a list of simpleExprSortKey.
+type bySimpleValue []simpleValueSortKey
 
-func (x byStringExpr) Len() int      { return len(x) }
-func (x byStringExpr) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
+func (x bySimpleValue) Len() int      { return len(x) }
+func (x bySimpleValue) Swap(i, j int) { x[i], x[j] = x[j], x[i] }
 
-func (x byStringExpr) Less(i, j int) bool {
+func (x bySimpleValue) Less(i, j int) bool {
 	xi := x[i]
 	xj := x[j]
 

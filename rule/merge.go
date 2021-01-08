@@ -145,33 +145,34 @@ func mergeList(src, dst *bzl.ListExpr) *bzl.ListExpr {
 		src = &bzl.ListExpr{List: []bzl.Expr{}}
 	}
 
-	// Build a list of strings from the src list and keep matching strings
-	// in the dst list. This preserves comments. Also keep anything with
-	// a "# keep" comment, whether or not it's in the src list.
-	srcSet := make(map[string]bool)
+	// Build a list of simple expressions from the src list and keep matching
+	// equivalent expressions in the dst list. This preserves comments.
+	// Also keep anything with a "# keep" comment, whether or not it's in the
+	// src list.
+	srcSet := make(map[simpleValue]bool)
 	for _, v := range src.List {
-		if s := stringValue(v); s != "" {
-			srcSet[s] = true
+		if sv, err := simpleValueFromExpr(v); err == nil {
+			srcSet[sv] = true
 		}
 	}
 
 	var merged []bzl.Expr
-	kept := make(map[string]bool)
+	kept := make(map[simpleValue]bool)
 	keepComment := false
 	for _, v := range dst.List {
-		s := stringValue(v)
-		if keep := ShouldKeep(v); keep || srcSet[s] {
+		sv, err := simpleValueFromExpr(v)
+		if keep := ShouldKeep(v); keep || srcSet[sv] {
 			keepComment = keepComment || keep
 			merged = append(merged, v)
-			if s != "" {
-				kept[s] = true
+			if err == nil {
+				kept[sv] = true
 			}
 		}
 	}
 
 	// Add anything in the src list that wasn't kept.
 	for _, v := range src.List {
-		if s := stringValue(v); kept[s] {
+		if sv, err := simpleValueFromExpr(v); err == nil && kept[sv] {
 			continue
 		}
 		merged = append(merged, v)
@@ -436,42 +437,67 @@ func squashDict(x, y *bzl.DictExpr) (*bzl.DictExpr, error) {
 // a string expression is added multiple times, comments are consolidated.
 // The original expressions are not modified.
 type listSquasher struct {
-	unique       map[string]*bzl.StringExpr
-	seenComments map[elemComment]bool
+	unique       map[simpleValue]uniqueExpr // track unique expressions
+	seenComments map[elemComment]bool       // track unique comments on expressions
 }
 
+// uniqueExpr tracks unique expressions and has a reference to their comments
+type uniqueExpr struct {
+	expr     bzl.Expr
+	comments *bzl.Comments
+}
 type elemComment struct {
-	elem, com string
+	elem simpleValue
+	com  string
 }
 
 func makeListSquasher() listSquasher {
 	return listSquasher{
-		unique:       make(map[string]*bzl.StringExpr),
+		unique:       make(map[simpleValue]uniqueExpr),
 		seenComments: make(map[elemComment]bool),
 	}
 }
 
-func (ls *listSquasher) add(s *bzl.StringExpr) {
-	sCopy, ok := ls.unique[s.Value]
-	if !ok {
-		// Make a copy of s. We may modify it when we consolidate comments from
-		// duplicate strings. We don't want to modify the original in case this
-		// function fails (due to a later failed pattern match).
-		sCopy = new(bzl.StringExpr)
-		*sCopy = *s
-		sCopy.Comments.Before = make([]bzl.Comment, 0, len(s.Comments.Before))
-		sCopy.Comments.Suffix = make([]bzl.Comment, 0, len(s.Comments.Suffix))
-		ls.unique[s.Value] = sCopy
+func (ls *listSquasher) add(expr bzl.Expr) {
+	sv, err := simpleValueFromExpr(expr)
+	if err != nil {
+		return
 	}
-	for _, c := range s.Comment().Before {
-		if key := (elemComment{s.Value, c.Token}); !ls.seenComments[key] {
-			sCopy.Comments.Before = append(sCopy.Comments.Before, c)
+
+	uniqueExpr, isDuplicate := ls.unique[sv]
+	if !isDuplicate {
+		// Make a copy of expr. We may modify it when we consolidate comments
+		// from duplicate list elements. We don't want to modify the original
+		// in case this function fails (due to a later failed pattern match).
+		switch e := expr.(type) {
+		case *bzl.StringExpr:
+			stringCopy := new(bzl.StringExpr)
+			*stringCopy = *e
+			uniqueExpr.expr = stringCopy
+			uniqueExpr.comments = &stringCopy.Comments
+		case *bzl.CallExpr:
+			callCopy := new(bzl.CallExpr)
+			*callCopy = *e
+			uniqueExpr.expr = callCopy
+			uniqueExpr.comments = &callCopy.Comments
+		default:
+			return // bail if type is unknown
+		}
+		ls.unique[sv] = uniqueExpr
+		uniqueExpr.comments.Before = make([]bzl.Comment, 0, len(expr.Comment().Before))
+		uniqueExpr.comments.Suffix = make([]bzl.Comment, 0, len(expr.Comment().Suffix))
+	}
+
+	// merge comments on possibly deduplicated expression
+	for _, c := range expr.Comment().Before {
+		if key := (elemComment{sv, c.Token}); !ls.seenComments[key] {
+			uniqueExpr.comments.Before = append(uniqueExpr.comments.Before, c)
 			ls.seenComments[key] = true
 		}
 	}
-	for _, c := range s.Comment().Suffix {
-		if key := (elemComment{s.Value, c.Token}); !ls.seenComments[key] {
-			sCopy.Comments.Suffix = append(sCopy.Comments.Suffix, c)
+	for _, c := range expr.Comment().Suffix {
+		if key := (elemComment{sv, c.Token}); !ls.seenComments[key] {
+			uniqueExpr.comments.Suffix = append(uniqueExpr.comments.Suffix, c)
 			ls.seenComments[key] = true
 		}
 	}
@@ -480,10 +506,14 @@ func (ls *listSquasher) add(s *bzl.StringExpr) {
 func (ls *listSquasher) list() *bzl.ListExpr {
 	sortedExprs := make([]bzl.Expr, 0, len(ls.unique))
 	for _, e := range ls.unique {
-		sortedExprs = append(sortedExprs, e)
+		sortedExprs = append(sortedExprs, e.expr)
 	}
 	sort.Slice(sortedExprs, func(i, j int) bool {
-		return sortedExprs[i].(*bzl.StringExpr).Value < sortedExprs[j].(*bzl.StringExpr).Value
+		iExpr, _ := simpleValueFromExpr(sortedExprs[i])
+		jExpr, _ := simpleValueFromExpr(sortedExprs[j])
+
+		// call expressions after plain strings and then lexical order
+		return (iExpr.symbol < jExpr.symbol) && (iExpr.str < jExpr.str)
 	})
 	return &bzl.ListExpr{List: sortedExprs}
 }
