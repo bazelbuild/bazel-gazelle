@@ -433,15 +433,16 @@ func squashDict(x, y *bzl.DictExpr) (*bzl.DictExpr, error) {
 	return &squashed, nil
 }
 
-// listSquasher builds a sorted, deduplicated list of string expressions. If
-// a string expression is added multiple times, comments are consolidated.
+// listSquasher builds a sorted, deduplicated list of simpleValues (string
+// expressions and single string argument call expressions).
+// If a simpleValue is added multiple times, comments are consolidated.
 // The original expressions are not modified.
 type listSquasher struct {
 	unique       map[simpleValue]uniqueExpr // track unique expressions
 	seenComments map[elemComment]bool       // track unique comments on expressions
 }
 
-// uniqueExpr tracks unique expressions and has a reference to their comments
+// uniqueExpr tracks unique expressions and has a reference to their comments.
 type uniqueExpr struct {
 	expr     bzl.Expr
 	comments *bzl.Comments
