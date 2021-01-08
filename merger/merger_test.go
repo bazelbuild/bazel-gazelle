@@ -867,7 +867,7 @@ go_proto_library(
 )
 `,
 	}, {
-		desc: "allow single argument macros",
+		desc: "allow single string argument macros",
 		previous: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_prefix", "go_test")
 
@@ -903,7 +903,7 @@ go_library(
     srcs = [
         "lex.go",
         "print.go",
-        go_binary("asdf"),
+        go_binary("fake_macro_expansion"),
     ],
 )
 
@@ -924,7 +924,7 @@ go_library(
     srcs = [
         "lex.go",  # comment about this line
         "print.go",
-        go_binary("asdf"),
+        go_binary("fake_macro_expansion"),
         # go_binary isn't valid here, we are testing the loading and sorting
         # of single argument macros. e.g. requirement("package_name")
         go_binary("keep"),  # keep
