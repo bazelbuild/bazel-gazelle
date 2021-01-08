@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 // FixLoads removes loads of unused go rules and adds loads of newly used rules.
@@ -57,17 +58,27 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 	}
 
 	// Make a map of all the symbols from known files used in this file.
+	// We walk the whole AST to find every call expression that LHS is an
+	// identifier.
 	usedKinds := make(map[string]map[string]bool)
-	for _, r := range f.Rules {
-		for _, symbol := range r.CalledSymbols() {
-			if file, ok := knownKinds[symbol]; ok && !otherLoadedKinds[symbol] {
-				if usedKinds[file] == nil {
-					usedKinds[file] = make(map[string]bool)
-				}
-				usedKinds[file][symbol] = true
-			}
+	bzl.WalkPointers(f.File, func(x *bzl.Expr, _ []bzl.Expr) {
+		call, ok := (*x).(*bzl.CallExpr)
+		if !ok {
+			return
 		}
-	}
+		ident, ok := call.X.(*bzl.Ident)
+		if !ok {
+			return
+		}
+		symbol := ident.Name
+
+		if file, ok := knownKinds[symbol]; ok && !otherLoadedKinds[symbol] {
+			if usedKinds[file] == nil {
+				usedKinds[file] = make(map[string]bool)
+			}
+			usedKinds[file][symbol] = true
+		}
+	})
 
 	// Fix the load statements. The order is important, so we iterate over
 	// knownLoads instead of knownFiles.
