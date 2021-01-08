@@ -58,7 +58,7 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 	}
 
 	// Make a map of all the symbols from known files used in this file.
-	// We walk the whole AST to find every call expression that LHS is an
+	// We walk the whole AST to find every call expression where LHS is an
 	// identifier.
 	usedKinds := make(map[string]map[string]bool)
 	bzl.WalkPointers(f.File, func(x *bzl.Expr, _ []bzl.Expr) {
