@@ -136,6 +136,7 @@ go_repository(
 
 go_repository(
     name = "errors_go_git",
+    build_naming_convention = "go_default_library",
     importpath = "github.com/pkg/errors",
 )
 

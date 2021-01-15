@@ -109,6 +109,9 @@ func generateRepoConfig(configDest, configSource string) error {
 		if rsrc.Kind() == "go_repository" {
 			rdst = rule.NewRule("go_repository", rsrc.Name())
 			rdst.SetAttr("importpath", rsrc.AttrString("importpath"))
+			if namingConvention := rsrc.AttrString("build_naming_convention"); namingConvention != "" {
+				rdst.SetAttr("build_naming_convention", namingConvention)
+			}
 		} else if rsrc.Kind() == "http_archive" && rsrc.Name() == "io_bazel_rules_go" {
 			rdst = rule.NewRule("http_archive", "io_bazel_rules_go")
 			rdst.SetAttr("urls", rsrc.AttrStrings("urls"))
