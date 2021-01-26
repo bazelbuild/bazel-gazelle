@@ -2932,7 +2932,6 @@ go_library(
 )
 `,
 		},
-
 	})
 }
 
@@ -3044,6 +3043,73 @@ go_test(
 )
 `,
 	}})
+}
+
+// TestGoInternalVisibility_TopLevel checks that modules that are
+// named internal/ expand visibility to repos that have a sibling
+// importpath.
+//
+// Verifies #960
+func TestGoInternalVisibility_TopLevel(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path:    "WORKSPACE",
+			Content: `go_repository(name="org_modernc_ccgo", importpath="modernc.org/ccgo")`,
+		}, {
+			Path:    "BUILD.bazel",
+			Content: `# gazelle:prefix modernc.org/internal`,
+		}, {
+			Path:    "internal.go",
+			Content: "package internal",
+		}, {
+			Path:    "buffer/buffer.go",
+			Content: "package buffer",
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{"update"}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:prefix modernc.org/internal
+
+go_library(
+    name = "internal",
+    srcs = ["internal.go"],
+    importpath = "modernc.org/internal",
+    visibility = [
+        "//:__subpackages__",
+        "@org_modernc_ccgo//:__subpackages__",
+    ],
+)
+`,
+		},
+		{
+			Path: "buffer/BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "buffer",
+    srcs = ["buffer.go"],
+    importpath = "modernc.org/internal/buffer",
+    visibility = [
+        "//:__subpackages__",
+        "@org_modernc_ccgo//:__subpackages__",
+    ],
+)
+`,
+		},
+	})
 }
 
 func TestImportCollision(t *testing.T) {
