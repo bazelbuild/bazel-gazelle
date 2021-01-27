@@ -18,6 +18,9 @@ Gazelle build file generator
 .. _strip_import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.strip_import_prefix
 .. _buildozer: https://github.com/bazelbuild/buildtools/tree/master/buildozer
 .. _Go Release Policy: https://golang.org/doc/devel/release.html#policy
+.. _bazel-go-discuss: https://groups.google.com/forum/#!forum/bazel-go-discuss
+.. _#bazel on Go Slack: https://gophers.slack.com/archives/C1SCQE54N
+.. _#go on Bazel Slack: https://bazelbuild.slack.com/archives/CDBP88Z0D
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -40,6 +43,15 @@ external repositories as part of the `go_repository`_ rule.
 
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
+
+Mailing list: `bazel-go-discuss`_
+
+Slack: `#go on Bazel Slack`_, `#bazel on Go Slack`_
+
+*rules_go and Gazelle are getting community maintainers! If you are a regular
+user of either project and are interested in helping out with development,
+code reviews, and issue triag,e please drop by our Slack channels (linked above)
+and say hello!*
 
 .. contents:: **Contents**
   :depth: 2
