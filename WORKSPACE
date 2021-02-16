@@ -17,7 +17,7 @@ go_rules_dependencies()
 
 go_register_toolchains(
     nogo = "@bazel_gazelle//:nogo",
-    version = "1.16beta1",
+    version = "1.16",
 )
 
 load("//:deps.bzl", "gazelle_dependencies")

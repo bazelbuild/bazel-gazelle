@@ -104,7 +104,7 @@ should look like this:
 
     go_rules_dependencies()
 
-    go_register_toolchains(version = "1.15.5")
+    go_register_toolchains(version = "1.16")
 
     gazelle_dependencies()
 
