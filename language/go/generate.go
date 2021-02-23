@@ -712,7 +712,15 @@ func (g *generator) commonVisibility(importPath string) []string {
 		parent := strings.TrimSuffix(g.rel[:relIndex], "/")
 		visibility = append(visibility, fmt.Sprintf("//%s:__subpackages__", parent))
 	} else if importIndex >= 0 {
+		// This entire module is within an internal directory.
+		// Identify other repos which should have access too.
 		visibility = append(visibility, "//:__subpackages__")
+		for _, repo := range g.c.Repos {
+			if pathtools.HasPrefix(repo.AttrString("importpath"), importPath[:importIndex]) {
+				visibility = append(visibility, "@"+repo.Name()+"//:__subpackages__")
+			}
+		}
+
 	} else {
 		return []string{"//visibility:public"}
 	}
