@@ -116,7 +116,16 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	}
 
 	// Build a set of packages from files in this directory.
-	goPackageMap, goFilesWithUnknownPackage := buildPackages(c, args.Dir, args.Rel, goFiles, hasTestdata)
+	goFileInfos := make([]fileInfo, len(goFiles))
+	var er *embedResolver
+	for i, name := range goFiles {
+		path := filepath.Join(args.Dir, name)
+		goFileInfos[i] = goFileInfo(path, args.Rel)
+		if len(goFileInfos[i].embeds) > 0 && er == nil {
+			er = newEmbedResolver(args.Dir, args.Rel, c.ValidBuildFileNames, gl.goPkgRels, args.Subdirs, args.RegularFiles, args.GenFiles)
+		}
+	}
+	goPackageMap, goFilesWithUnknownPackage := buildPackages(c, args.Dir, args.Rel, hasTestdata, er, goFileInfos)
 
 	// Select a package to generate rules for. If there is no package, create
 	// an empty package so we can generate empty rules.
@@ -212,7 +221,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		// compiler deal with the error.
 		cgo := pkg.haveCgo()
 		for _, info := range goFilesWithUnknownPackage {
-			if err := pkg.addFile(c, info, cgo); err != nil {
+			if err := pkg.addFile(c, er, info, cgo); err != nil {
 				log.Print(err)
 			}
 		}
@@ -220,7 +229,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		// Process the other static files.
 		for _, file := range otherFiles {
 			info := otherFileInfo(filepath.Join(args.Dir, file))
-			if err := pkg.addFile(c, info, cgo); err != nil {
+			if err := pkg.addFile(c, er, info, cgo); err != nil {
 				log.Print(err)
 			}
 		}
@@ -247,7 +256,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				continue
 			}
 			info := fileNameInfo(filepath.Join(args.Dir, f))
-			if err := pkg.addFile(c, info, cgo); err != nil {
+			if err := pkg.addFile(c, er, info, cgo); err != nil {
 				log.Print(err)
 			}
 		}
@@ -313,30 +322,28 @@ func filterFiles(files *[]string, pred func(string) bool) {
 	*files = (*files)[:w]
 }
 
-func buildPackages(c *config.Config, dir, rel string, goFiles []string, hasTestdata bool) (packageMap map[string]*goPackage, goFilesWithUnknownPackage []fileInfo) {
+func buildPackages(c *config.Config, dir, rel string, hasTestdata bool, er *embedResolver, goFiles []fileInfo) (packageMap map[string]*goPackage, goFilesWithUnknownPackage []fileInfo) {
 	// Process .go and .proto files first, since these determine the package name.
 	packageMap = make(map[string]*goPackage)
 	for _, f := range goFiles {
-		path := filepath.Join(dir, f)
-		info := goFileInfo(path, rel)
-		if info.packageName == "" {
-			goFilesWithUnknownPackage = append(goFilesWithUnknownPackage, info)
+		if f.packageName == "" {
+			goFilesWithUnknownPackage = append(goFilesWithUnknownPackage, f)
 			continue
 		}
-		if info.packageName == "documentation" {
+		if f.packageName == "documentation" {
 			// go/build ignores this package
 			continue
 		}
 
-		if _, ok := packageMap[info.packageName]; !ok {
-			packageMap[info.packageName] = &goPackage{
-				name:        info.packageName,
+		if _, ok := packageMap[f.packageName]; !ok {
+			packageMap[f.packageName] = &goPackage{
+				name:        f.packageName,
 				dir:         dir,
 				rel:         rel,
 				hasTestdata: hasTestdata,
 			}
 		}
-		if err := packageMap[info.packageName].addFile(c, info, false); err != nil {
+		if err := packageMap[f.packageName].addFile(c, er, f, false); err != nil {
 			log.Print(err)
 		}
 	}
@@ -652,6 +659,9 @@ func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.
 func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embed string) {
 	if !target.sources.isEmpty() {
 		r.SetAttr("srcs", target.sources.buildFlat())
+	}
+	if !target.embedSrcs.isEmpty() {
+		r.SetAttr("embedsrcs", target.embedSrcs.build())
 	}
 	if target.cgo {
 		r.SetAttr("cgo", true)

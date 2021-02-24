@@ -2932,7 +2932,6 @@ go_library(
 )
 `,
 		},
-
 	})
 }
 
@@ -4005,6 +4004,76 @@ package foo
 			Path: "BUILD.bazel",
 			Content: `
 # gazelle:prefix example.com/foo
+`,
+		},
+	})
+}
+
+func TestPlatformSpecificEmbedsrcs(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		},
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:prefix example.com/foo
+
+go_library(
+    name = "foo",
+    embedsrcs = ["deleted.txt"],
+    importpath = "example.com/foo",
+    srcs = ["foo.go"],
+)
+`,
+		},
+		{
+			Path: "foo.go",
+			Content: `
+// +build windows
+
+package foo
+
+import _ "embed"
+
+//go:embed windows.txt
+var s string
+`,
+		},
+		{
+			Path: "windows.txt",
+		},
+	}
+
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"update"}); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:prefix example.com/foo
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    embedsrcs = select({
+        "@io_bazel_rules_go//go/platform:windows": [
+            "windows.txt",
+        ],
+        "//conditions:default": [],
+    }),
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+)
 `,
 		},
 	})

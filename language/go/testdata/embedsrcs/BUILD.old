@@ -1,0 +1,5 @@
+# m_gen.txt should be embedded because it's an explicitly declared output file.
+genrule(
+    name = "gen",
+    outs = ["m_gen.txt"],
+)

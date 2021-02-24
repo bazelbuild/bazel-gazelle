@@ -136,6 +136,22 @@ package route
 				tags:        []tagLine{{{"darwin"}, {"dragonfly"}, {"freebsd"}, {"netbsd"}, {"openbsd"}}},
 			},
 		},
+		{
+			"embed",
+			"embed.go",
+			`package foo
+
+import _ "embed"
+
+//go:embed embed.go
+var src string
+`,
+			fileInfo{
+				packageName: "foo",
+				imports:     []string{"embed"},
+				embeds:      []fileEmbed{{path: "embed.go"}},
+			},
+		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestGoFileInfo")
@@ -154,8 +170,12 @@ package route
 				packageName: got.packageName,
 				isTest:      got.isTest,
 				imports:     got.imports,
+				embeds:      got.embeds,
 				isCgo:       got.isCgo,
 				tags:        got.tags,
+			}
+			for i := range got.embeds {
+				got.embeds[i] = fileEmbed{path: got.embeds[i].path}
 			}
 
 			if !reflect.DeepEqual(got, tc.want) {
@@ -375,7 +395,8 @@ import "C"
 		t,
 		"-repo_root="+repo,
 		"-go_prefix=example.com/repo")
-	pkgs, _ := buildPackages(c, sub, "sub", []string{"sub.go"}, false)
+	fi := goFileInfo(filepath.Join(sub, "sub.go"), "sub")
+	pkgs, _ := buildPackages(c, sub, "sub", false, nil, []fileInfo{fi})
 	got, ok := pkgs["sub"]
 	if !ok {
 		t.Fatal("did not build package 'sub'")

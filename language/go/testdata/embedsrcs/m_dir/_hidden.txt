@@ -1,0 +1,2 @@
+# m_dir/_hidden.txt should not be embedded even though m_dir is embedded,
+# since it's a hidden file.
