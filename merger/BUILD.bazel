@@ -15,8 +15,8 @@ go_test(
     name = "merger_test",
     size = "small",
     srcs = ["merger_test.go"],
-    embed = [":merger"],
     deps = [
+        ":merger",
         "//language",
         "//language/go",
         "//language/proto",
