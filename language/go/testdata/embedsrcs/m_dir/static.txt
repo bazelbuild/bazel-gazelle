@@ -1,0 +1,1 @@
+# m_dir/static.txt should be embedded because m_dir matches the embed pattern.

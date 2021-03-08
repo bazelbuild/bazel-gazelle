@@ -70,6 +70,9 @@ type fileInfo struct {
 	// "C" or anything from the standard library.
 	imports []string
 
+	// embeds is a list of //go:embed patterns and their positions.
+	embeds []fileEmbed
+
 	// isCgo is true for .go files that import "C".
 	isCgo bool
 
@@ -87,6 +90,14 @@ type fileInfo struct {
 
 	// hasServices indicates whether a .proto file has service definitions.
 	hasServices bool
+}
+
+// fileEmbed represents an individual go:embed pattern.
+// A go:embed directive may contain multiple patterns. A pattern may match
+// multiple files.
+type fileEmbed struct {
+	path string
+	pos  token.Position
 }
 
 // tagLine represents the space-separated disjunction of build tag groups
@@ -292,6 +303,7 @@ func goFileInfo(path, rel string) fileInfo {
 		info.isExternalTest = true
 	}
 
+	importsEmbed := false
 	for _, decl := range pf.Decls {
 		d, ok := decl.(*ast.GenDecl)
 		if !ok {
@@ -325,6 +337,9 @@ func goFileInfo(path, rel string) fileInfo {
 				}
 				continue
 			}
+			if path == "embed" {
+				importsEmbed = true
+			}
 			info.imports = append(info.imports, path)
 		}
 	}
@@ -335,6 +350,35 @@ func goFileInfo(path, rel string) fileInfo {
 		return info
 	}
 	info.tags = tags
+
+	if importsEmbed {
+		pf, err = parser.ParseFile(fset, info.path, nil, parser.ParseComments)
+		if err != nil {
+			log.Printf("%s: error reading go file: %v", info.path, err)
+			return info
+		}
+		for _, cg := range pf.Comments {
+			for _, c := range cg.List {
+				if !strings.HasPrefix(c.Text, "//go:embed") {
+					continue
+				}
+				args := c.Text[len("//go:embed"):]
+				p := c.Pos()
+				for len(args) > 0 && (args[0] == ' ' || args[0] == '\t') {
+					args = args[1:]
+					p++
+				}
+				args = strings.TrimSpace(args) // trim right side
+				pos := fset.Position(p)
+				embeds, err := parseGoEmbed(args, pos)
+				if err != nil {
+					log.Printf("%v: parsing //go:embed directive: %v", pos, err)
+					continue
+				}
+				info.embeds = append(info.embeds, embeds...)
+			}
+		}
+	}
 
 	return info
 }
@@ -750,4 +794,79 @@ func protoFileInfo(path_ string, protoInfo proto.FileInfo) fileInfo {
 	info.imports = protoInfo.Imports
 	info.hasServices = protoInfo.HasServices
 	return info
+}
+
+// parseGoEmbed parses the text following "//go:embed" to extract the glob patterns.
+// It accepts unquoted space-separated patterns as well as double-quoted and back-quoted Go strings.
+// This is based on a similar function in cmd/compile/internal/gc/noder.go;
+// this version calculates position information as well.
+//
+// Copied from go/build.parseGoEmbed.
+func parseGoEmbed(args string, pos token.Position) ([]fileEmbed, error) {
+	trimBytes := func(n int) {
+		pos.Offset += n
+		pos.Column += utf8.RuneCountInString(args[:n])
+		args = args[n:]
+	}
+	trimSpace := func() {
+		trim := strings.TrimLeftFunc(args, unicode.IsSpace)
+		trimBytes(len(args) - len(trim))
+	}
+
+	var list []fileEmbed
+	for trimSpace(); args != ""; trimSpace() {
+		var path string
+		pathPos := pos
+	Switch:
+		switch args[0] {
+		default:
+			i := len(args)
+			for j, c := range args {
+				if unicode.IsSpace(c) {
+					i = j
+					break
+				}
+			}
+			path = args[:i]
+			trimBytes(i)
+
+		case '`':
+			i := strings.Index(args[1:], "`")
+			if i < 0 {
+				return nil, fmt.Errorf("invalid quoted string in //go:embed: %s", args)
+			}
+			path = args[1 : 1+i]
+			trimBytes(1 + i + 1)
+
+		case '"':
+			i := 1
+			for ; i < len(args); i++ {
+				if args[i] == '\\' {
+					i++
+					continue
+				}
+				if args[i] == '"' {
+					q, err := strconv.Unquote(args[:i+1])
+					if err != nil {
+						return nil, fmt.Errorf("invalid quoted string in //go:embed: %s", args[:i+1])
+					}
+					path = q
+					trimBytes(i + 1)
+					break Switch
+				}
+			}
+			if i >= len(args) {
+				return nil, fmt.Errorf("invalid quoted string in //go:embed: %s", args)
+			}
+		}
+
+		if args != "" {
+			r, _ := utf8.DecodeRuneInString(args)
+			if !unicode.IsSpace(r) {
+				return nil, fmt.Errorf("invalid quoted string in //go:embed: %s", args)
+			}
+		}
+		list = append(list, fileEmbed{path, pathPos})
+	}
+	return list, nil
 }

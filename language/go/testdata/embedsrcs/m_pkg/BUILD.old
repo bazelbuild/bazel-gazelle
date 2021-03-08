@@ -1,0 +1,2 @@
+# m_pkg/BUILD.old should not be embedded because it defines a Bazel package,
+# and we can't reliably embed files across Bazel packages.

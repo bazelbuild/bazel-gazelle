@@ -12,7 +12,7 @@ go_library(
         "//label",
         "//pathtools",
         "//rule",
-        "@org_golang_x_tools//go/vcs:go_default_library",
+        "@org_golang_x_tools//go/vcs",
     ],
 )
 
@@ -28,7 +28,7 @@ go_test(
         "//pathtools",
         "//rule",
         "//testtools",
-        "@org_golang_x_tools//go/vcs:go_default_library",
+        "@org_golang_x_tools//go/vcs",
     ],
 )
 
