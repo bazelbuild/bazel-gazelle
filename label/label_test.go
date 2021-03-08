@@ -59,7 +59,6 @@ func TestParse(t *testing.T) {
 	}{
 		{str: "", wantErr: true},
 		{str: "@//:", wantErr: true},
-		{str: "@//:a", wantErr: true},
 		{str: "@a:b", wantErr: true},
 		{str: "@//:a", want: Label{Name: "a", Relative: false}},
 		{str: "@//a:b", want: Label{Repo: "", Pkg: "a", Name: "b"}},
