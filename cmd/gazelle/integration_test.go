@@ -4078,3 +4078,68 @@ go_library(
 		},
 	})
 }
+
+// Checks that go:embed directives with spaces and quotes are parsed correctly.
+// This probably belongs in //language/go:go_test, but we need file names with
+// spaces, and Bazel doesn't allow those in runfiles, which that test depends
+// on.
+func TestQuotedEmbedsrcs(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		},
+		{
+			Path:    "BUILD.bazel",
+			Content: "# gazelle:prefix example.com/foo",
+		},
+		{
+			Path: "foo.go",
+			Content: strings.Join([]string{
+				"package foo",
+				"import \"embed\"",
+				"//go:embed q1.txt q2.txt \"q 3.txt\" `q 4.txt`",
+				"var fs embed.FS",
+			}, "\n"),
+		},
+		{
+			Path: "q1.txt",
+		},
+		{
+			Path: "q2.txt",
+		},
+		{
+			Path: "q 3.txt",
+		},
+		{
+			Path: "q 4.txt",
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"update"}); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: "BUILD.bazel",
+		Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:prefix example.com/foo
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    embedsrcs = [
+        "q 3.txt",
+        "q 4.txt",
+        "q1.txt",
+        "q2.txt",
+    ],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+)
+`,
+	}})
+}
