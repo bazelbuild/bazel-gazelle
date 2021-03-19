@@ -4210,3 +4210,47 @@ go_library(
 `,
 	}})
 }
+
+// TestUpdateReposDoesNotModifyGoSum verifies that commands executed by
+// update-repos do not modify go.sum, particularly 'go mod download' when
+// a sum is missing. Verifies #990.
+//
+// This could also be tested in language/go/update_import_test.go, but that
+// test relies on stubs for speed, and it's important to run the real
+// go command here.
+func TestUpdateReposDoesNotModifyGoSum(t *testing.T) {
+	if testing.Short() {
+		// Test may download small files over network.
+		t.Skip()
+	}
+	goSumFile := testtools.FileSpec{
+		// go.sum only contains the sum for the mod file, not the content.
+		// This is common for transitive dependencies not needed by the main module.
+		Path:    "go.sum",
+		Content: "golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=\n",
+	}
+	files := []testtools.FileSpec{
+		{
+			Path:    "WORKSPACE",
+			Content: "# gazelle:repo bazel_gazelle",
+		},
+		{
+			Path: "go.mod",
+			Content: `
+module test
+
+go 1.16
+
+require golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+`,
+		},
+		goSumFile,
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"update-repos", "-from_file=go.mod"}); err != nil {
+		t.Fatal(err)
+	}
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{goSumFile})
+}
