@@ -73,6 +73,7 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 			pathToModule[mod.Path+"@"+mod.Version] = mod
 		}
 	}
+
 	// Load sums from go.sum. Ideally, they're all there.
 	goSumPath := filepath.Join(filepath.Dir(args.Path), "go.sum")
 	data, _ = ioutil.ReadFile(goSumPath)
@@ -91,15 +92,24 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 			mod.Sum = sum
 		}
 	}
-	// If sums are missing, run go mod download to get them.
+
+	// If sums are missing, run 'go mod download' to get them.
+	// This must be done in a temporary directory because 'go mod download'
+	// may modify go.mod and go.sum. It does not support -mod=readonly.
 	var missingSumArgs []string
 	for pathVer, mod := range pathToModule {
 		if mod.Sum == "" {
 			missingSumArgs = append(missingSumArgs, pathVer)
 		}
 	}
+
 	if len(missingSumArgs) > 0 {
-		data, err := goModDownload(dir, missingSumArgs)
+		tmpDir, err := ioutil.TempDir("", "")
+		if err != nil {
+			return language.ImportReposResult{Error: fmt.Errorf("finding module sums: %v", err)}
+		}
+		defer os.RemoveAll(tmpDir)
+		data, err := goModDownload(tmpDir, missingSumArgs)
 		if err != nil {
 			return language.ImportReposResult{Error: err}
 		}
