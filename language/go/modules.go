@@ -151,7 +151,7 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 
 // goListModules invokes "go list" in a directory containing a go.mod file.
 var goListModules = func(dir string) ([]byte, error) {
-	return runGoCommandForOutput(dir, "list", "-mod=readonly", "-m", "-json", "all")
+	return runGoCommandForOutput(dir, "list", "-mod=readonly", "-e", "-m", "-json", "all")
 }
 
 // goModDownload invokes "go mod download" in a directory containing a
