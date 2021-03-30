@@ -77,14 +77,16 @@ func Parse(s string) (Label, error) {
 	if strings.HasPrefix(s, "@") {
 		relative = false
 		endRepo := strings.Index(s, "//")
-		if endRepo < 0 {
-			return NoLabel, fmt.Errorf("label parse error: repository does not end with '//': %q", origStr)
+		if endRepo > 0 {
+			repo = s[len("@"):endRepo]
+			s = s[endRepo:]
+		} else {
+			repo = s[len("@"):]
+			s = "//:" + repo
 		}
-		repo = s[len("@"):endRepo]
 		if !labelRepoRegexp.MatchString(repo) {
 			return NoLabel, fmt.Errorf("label parse error: repository has invalid characters: %q", origStr)
 		}
-		s = s[endRepo:]
 	}
 
 	var pkg string
