@@ -32,19 +32,19 @@ import (
 type embedResolver struct {
 	// files is a list of embeddable files and directory trees, rooted in the
 	// package directory.
-	files []*embeddableFile
+	files []*embeddableNode
 }
 
-type embeddableFile struct {
+type embeddableNode struct {
 	path    string
-	entries []*embeddableFile // non-nil for directories
+	entries []*embeddableNode // non-nil for directories
 }
 
-func (f *embeddableFile) isDir() bool {
+func (f *embeddableNode) isDir() bool {
 	return f.entries != nil
 }
 
-func (f *embeddableFile) isHidden() bool {
+func (f *embeddableNode) isHidden() bool {
 	base := path.Base(f.path)
 	return strings.HasPrefix(base, ".") || strings.HasPrefix(base, "_")
 }
@@ -76,11 +76,11 @@ func (f *embeddableFile) isHidden() bool {
 // subdirs, regFiles, and genFiles are lists of subdirectories, regular files,
 // and declared generated files in dir, respectively.
 func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map[string]bool, subdirs, regFiles, genFiles []string) *embedResolver {
-	root := &embeddableFile{entries: []*embeddableFile{}}
-	index := make(map[string]*embeddableFile)
+	root := &embeddableNode{entries: []*embeddableNode{}}
+	index := make(map[string]*embeddableNode)
 
-	var add func(string, bool) *embeddableFile
-	add = func(rel string, isDir bool) *embeddableFile {
+	var add func(string, bool) *embeddableNode
+	add = func(rel string, isDir bool) *embeddableNode {
 		if n := index[rel]; n != nil {
 			return n
 		}
@@ -89,9 +89,9 @@ func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map
 		if dir != "." {
 			parent = add(dir, true)
 		}
-		f := &embeddableFile{path: rel}
+		f := &embeddableNode{path: rel}
 		if isDir {
-			f.entries = []*embeddableFile{}
+			f.entries = []*embeddableNode{}
 		}
 		parent.entries = append(parent.entries, f)
 		index[rel] = f
@@ -168,8 +168,8 @@ func (er *embedResolver) resolve(embed fileEmbed) (list []string, err error) {
 	// For example, the pattern "*" matches "a", ".b", and "_c". If "a" is a
 	// directory, we would include "a/d", even though it doesn't match "*". We
 	// would not include "a/.e".
-	var visit func(*embeddableFile, bool)
-	visit = func(f *embeddableFile, add bool) {
+	var visit func(*embeddableNode, bool)
+	visit = func(f *embeddableNode, add bool) {
 		match, _ := path.Match(embed.path, f.path)
 		add = match || (add && !f.isHidden())
 		if !f.isDir() {
