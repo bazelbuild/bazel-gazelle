@@ -16,8 +16,9 @@ limitations under the License.
 package walk
 
 import (
+	"bufio"
 	"flag"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"os"
 	"path"
@@ -87,26 +88,8 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	*wcCopy = *wc
 	wcCopy.ignore = false
 
-	// Extract patterns to ignore from .bazelrc, and add it to the list of excludes.
-
-	bazelIgnore, err := ioutil.ReadFile(path.Join(c.RepoRoot, ".bazelignore"))
-	if err != nil && !os.IsNotExist(err) {
-		log.Fatalf(".bazelignore exists but couldn't be read: %v", err)
-	}
-	if err == nil {
-		wcCopy.excludes = append(wcCopy.excludes, path.Join(rel, ".bazelignore"))
-		ignoreAll := strings.Split(strings.TrimSpace(string(bazelIgnore)), "\n")
-		for _, ignore := range ignoreAll {
-			ignore = strings.TrimSpace(ignore)
-			if ignore == "" || string(ignore[0]) == "#" {
-				continue
-			}
-			if err := checkPathMatchPattern(path.Join(rel, ignore)); err != nil {
-				log.Printf("the .bazelignore exclusion pattern is not valid %q: %s", path.Join(rel, ignore), err)
-				continue			
-			}
-			wcCopy.excludes = append(wcCopy.excludes, path.Join(rel, ignore))
-		}
+	if err := cr.loadBazelIgnore(c.RepoRoot, rel, wcCopy); err != nil {
+		log.Fatalf("loading .bazelignore failed: %v", err)
 	}
 
 	if f != nil {
@@ -127,6 +110,33 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	c.Exts[walkName] = wcCopy
+}
+
+func (c *Configurer) loadBazelIgnore(repoRoot, rel string, wc *walkConfig) error {
+	file, err := os.Open(path.Join(repoRoot, ".bazelignore"))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf(".bazelignore exists but couldn't be read: %v", err)
+	}
+	defer file.Close()
+
+	wc.excludes = append(wc.excludes, path.Join(rel, ".bazelignore"))
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		ignore := strings.TrimSpace(scanner.Text())
+		if ignore == "" || string(ignore[0]) == "#" {
+			continue
+		}
+		if err := checkPathMatchPattern(path.Join(rel, ignore)); err != nil {
+			log.Printf("the .bazelignore exclusion pattern is not valid %q: %s", path.Join(rel, ignore), err)
+			continue			
+		}
+		wc.excludes = append(wc.excludes, path.Join(rel, ignore))
+	}
+	return nil
 }
 
 func checkPathMatchPattern(pattern string) error {
