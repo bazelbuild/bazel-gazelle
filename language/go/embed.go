@@ -30,18 +30,26 @@ import (
 // embedResolver maps go:embed patterns in source files to lists of files that
 // should appear in embedsrcs attributes.
 type embedResolver struct {
-	// files is a list of embeddable files and directories, stored in
-	// depth-first pre-order (nearly the same order as filepath.Walk, except
-	// files in the top-level directory appear before subdirectories.
-	files []embeddableFile
+	// files is a list of embeddable files and directory trees, rooted in the
+	// package directory.
+	files []*embeddableNode
 }
 
-type embeddableFile struct {
-	path  string
-	isDir bool
+type embeddableNode struct {
+	path    string
+	entries []*embeddableNode // non-nil for directories
 }
 
-// newEmbedResolver builds a list of files that may be embedded. This is
+func (f *embeddableNode) isDir() bool {
+	return f.entries != nil
+}
+
+func (f *embeddableNode) isHidden() bool {
+	base := path.Base(f.path)
+	return strings.HasPrefix(base, ".") || strings.HasPrefix(base, "_")
+}
+
+// newEmbedResolver builds a set of files that may be embedded. This is
 // approximately all files in a Bazel package including explicitly declared
 // generated files and files in subdirectories without build files.
 // Files in other Bazel packages are not listed, since it might not be possible
@@ -68,11 +76,32 @@ type embeddableFile struct {
 // subdirs, regFiles, and genFiles are lists of subdirectories, regular files,
 // and declared generated files in dir, respectively.
 func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map[string]bool, subdirs, regFiles, genFiles []string) *embedResolver {
-	var files []embeddableFile
+	root := &embeddableNode{entries: []*embeddableNode{}}
+	index := make(map[string]*embeddableNode)
+
+	var add func(string, bool) *embeddableNode
+	add = func(rel string, isDir bool) *embeddableNode {
+		if n := index[rel]; n != nil {
+			return n
+		}
+		dir := path.Dir(rel)
+		parent := root
+		if dir != "." {
+			parent = add(dir, true)
+		}
+		f := &embeddableNode{path: rel}
+		if isDir {
+			f.entries = []*embeddableNode{}
+		}
+		parent.entries = append(parent.entries, f)
+		index[rel] = f
+		return f
+	}
+
 	for _, fs := range [...][]string{regFiles, genFiles} {
 		for _, f := range fs {
 			if !isBadEmbedName(f) {
-				files = append(files, embeddableFile{path: f})
+				add(f, false)
 			}
 		}
 	}
@@ -86,7 +115,8 @@ func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map
 			base := filepath.Base(p)
 			if !info.IsDir() {
 				if !isBadEmbedName(base) {
-					files = append(files, embeddableFile{path: fileRel})
+					add(fileRel, false)
+					return nil
 				}
 				return nil
 			}
@@ -104,7 +134,7 @@ func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map
 					return filepath.SkipDir
 				}
 			}
-			files = append(files, embeddableFile{path: fileRel, isDir: true})
+			add(fileRel, true)
 			return nil
 		})
 		if err != nil {
@@ -112,7 +142,7 @@ func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map
 		}
 	}
 
-	return &embedResolver{files: files}
+	return &embedResolver{files: root.entries}
 }
 
 // resolve expands a single go:embed pattern into a list of files that should
@@ -130,7 +160,7 @@ func (er *embedResolver) resolve(embed fileEmbed) (list []string, err error) {
 		return nil, fmt.Errorf("invalid pattern syntax")
 	}
 
-	// Match the pattern against each path in the list. If the pattern matches a
+	// Match the pattern against each path in the tree. If the pattern matches a
 	// directory, we need to include each file in that directory, even if the file
 	// doesn't match the pattern separate, unless it is a hidden file (starting
 	// with . or _).
@@ -138,40 +168,26 @@ func (er *embedResolver) resolve(embed fileEmbed) (list []string, err error) {
 	// For example, the pattern "*" matches "a", ".b", and "_c". If "a" is a
 	// directory, we would include "a/d", even though it doesn't match "*". We
 	// would not include "a/.e".
-	//
-	// There may be many patterns, so we avoid I/O here. Instead, the list is
-	// in depth-first pre-order, so iterating over it is analogous to
-	// filepath.Walk. We still use a recursive function, advance, to keep track
-	// of whether we're embedding all files in the current directory. Each call
-	// to advance increments i.
-	i := 0
-	var advance func(bool)
-	advance = func(add bool) {
-		f := er.files[i]
-		i++
-		if !f.isDir {
+	var visit func(*embeddableNode, bool)
+	visit = func(f *embeddableNode, add bool) {
+		match, _ := path.Match(embed.path, f.path)
+		add = match || (add && !f.isHidden())
+		if !f.isDir() {
 			if add {
 				list = append(list, f.path)
 			}
 			return
 		}
-		prefix := f.path + "/"
-		for i < len(er.files) && strings.HasPrefix(er.files[i].path, prefix) {
-			base := er.files[i].path[len(prefix):]
-			hidden := base[0] == '.' || base[0] == '_'
-			advance(add && !hidden)
+		for _, e := range f.entries {
+			visit(e, add)
 		}
 	}
-
-	for i < len(er.files) {
-		matched, _ := path.Match(embed.path, er.files[i].path)
-		advance(matched)
+	for _, f := range er.files {
+		visit(f, false)
 	}
-
 	if len(list) == 0 {
 		return nil, fmt.Errorf("matched no files")
 	}
-
 	return list, nil
 }
 
