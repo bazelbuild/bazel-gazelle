@@ -193,6 +193,16 @@ gen(
 )
 `,
 		},
+		{
+			Path: ".bazelignore",
+			Content: `
+dir
+dir2/**
+# Random comment followed by a line
+
+a.file
+`,
+		},
 		{Path: ".dot"},       // not ignored
 		{Path: "_blank"},     // not ignored
 		{Path: "a/a.proto"},  // not ignored
@@ -208,6 +218,9 @@ gen(
 		{Path: "c/x/y/b/foo/bar"}, // ignored by 'c/**/b'
 		{Path: "ign/bad"},         // ignored by 'ign'
 		{Path: "sub/b.go"},        // ignored by 'sub/b.go'
+		{Path: "dir/contents"},    // ignored by .bazelignore 'dir'
+		{Path: "dir2/a/b"},        // ignored by .bazelignore 'dir2/**'
+		{Path: "a.file"},          // ignored by .bazelignore 'a.file'
 	})
 	defer cleanup()
 

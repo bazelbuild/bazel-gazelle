@@ -16,9 +16,13 @@ limitations under the License.
 package walk
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"log"
+	"os"
 	"path"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -84,6 +88,10 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	*wcCopy = *wc
 	wcCopy.ignore = false
 
+	if err := cr.loadBazelIgnore(c.RepoRoot, rel, wcCopy); err != nil {
+		log.Fatalf("loading .bazelignore failed: %v", err)
+	}
+
 	if f != nil {
 		for _, d := range f.Directives {
 			switch d.Key {
@@ -102,6 +110,33 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	c.Exts[walkName] = wcCopy
+}
+
+func (c *Configurer) loadBazelIgnore(repoRoot, rel string, wc *walkConfig) error {
+	file, err := os.Open(path.Join(repoRoot, ".bazelignore"))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf(".bazelignore exists but couldn't be read: %v", err)
+	}
+	defer file.Close()
+
+	wc.excludes = append(wc.excludes, path.Join(rel, ".bazelignore"))
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		ignore := strings.TrimSpace(scanner.Text())
+		if ignore == "" || string(ignore[0]) == "#" {
+			continue
+		}
+		if err := checkPathMatchPattern(path.Join(rel, ignore)); err != nil {
+			log.Printf("the .bazelignore exclusion pattern is not valid %q: %s", path.Join(rel, ignore), err)
+			continue			
+		}
+		wc.excludes = append(wc.excludes, path.Join(rel, ignore))
+	}
+	return nil
 }
 
 func checkPathMatchPattern(pattern string) error {
