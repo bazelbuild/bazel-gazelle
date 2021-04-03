@@ -19,13 +19,13 @@ import (
 	"flag"
 	"path"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/testtools"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestConfigureCallbackOrder(t *testing.T) {
@@ -40,11 +40,13 @@ func TestConfigureCallbackOrder(t *testing.T) {
 	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		callbackRels = append(callbackRels, rel)
 	})
-	if want := []string{"", "a", "a/b"}; !reflect.DeepEqual(configureRels, want) {
-		t.Errorf("configure order: got %#v; want %#v", configureRels, want)
+	configureWant := []string{"", "a", "a/b"}
+	if diff := cmp.Diff(configureWant, configureRels); diff != "" {
+		t.Errorf("configure order (-want +got):\n%s", diff)
 	}
-	if want := []string{"a/b", "a", ""}; !reflect.DeepEqual(callbackRels, want) {
-		t.Errorf("callback order: got %#v; want %#v", callbackRels, want)
+	callbackWant := []string{"a/b", "a", ""}
+	if diff := cmp.Diff(callbackWant, callbackRels); diff != "" {
+		t.Errorf("callback order (-want +got):\n%s", diff)
 	}
 }
 
@@ -66,8 +68,8 @@ func TestUpdateDirs(t *testing.T) {
 	defer cleanup()
 
 	type visitSpec struct {
-		rel    string
-		update bool
+		Rel    string
+		Update bool
 	}
 	for _, tc := range []struct {
 		desc string
@@ -133,8 +135,8 @@ func TestUpdateDirs(t *testing.T) {
 			Walk(c, cexts, dirs, tc.mode, func(_ string, rel string, _ *config.Config, update bool, _ *rule.File, _, _, _ []string) {
 				visits = append(visits, visitSpec{rel, update})
 			})
-			if !reflect.DeepEqual(visits, tc.want) {
-				t.Errorf("got %#v; want %#v", visits, tc.want)
+			if diff := cmp.Diff(tc.want, visits); diff != "" {
+				t.Errorf("Walk visits (-want +got):\n%s", diff)
 			}
 		})
 	}
@@ -156,21 +158,21 @@ func TestCustomBuildName(t *testing.T) {
 	defer cleanup()
 
 	c, cexts := testConfig(t, dir)
-	var buildRels []string
+	var rels []string
 	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, _ string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
 		rel, err := filepath.Rel(c.RepoRoot, f.Path)
 		if err != nil {
 			t.Error(err)
 		} else {
-			buildRels = append(buildRels, filepath.ToSlash(rel))
+			rels = append(rels, filepath.ToSlash(rel))
 		}
 	})
 	want := []string{
 		"sub/BUILD.test",
 		"BUILD.bazel",
 	}
-	if !reflect.DeepEqual(buildRels, want) {
-		t.Errorf("got %#v; want %#v", buildRels, want)
+	if diff := cmp.Diff(want, rels); diff != "" {
+		t.Errorf("Walk relative paths (-want +got):\n%s", diff)
 	}
 }
 
@@ -235,8 +237,8 @@ a.file
 		}
 	})
 	want := []string{"a/a.proto", "a/b.gen.go", ".dot", "BUILD.bazel", "_blank"}
-	if !reflect.DeepEqual(files, want) {
-		t.Errorf("got %#v; want %#v", files, want)
+	if diff := cmp.Diff(want, files); diff != "" {
+		t.Errorf("Walk files (-want +got):\n%s", diff)
 	}
 }
 
@@ -254,13 +256,14 @@ func TestExcludeSelf(t *testing.T) {
 	defer cleanup()
 
 	c, cexts := testConfig(t, dir)
-	var buildRels []string
+	var rels []string
 	Walk(c, cexts, []string{dir}, VisitAllUpdateDirsMode, func(_ string, rel string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
-		buildRels = append(buildRels, rel)
+		rels = append(rels, rel)
 	})
 
-	if len(buildRels) != 1 || buildRels[0] != "" {
-		t.Errorf("Walk: got %#v; want %#v", buildRels, []string{""})
+	want := []string{""}
+	if diff := cmp.Diff(want, rels); diff != "" {
+		t.Errorf("Walk relative paths (-want +got):\n%s", diff)
 	}
 }
 
@@ -298,11 +301,13 @@ unknown_rule(
 			genFiles = append(genFiles, path.Join(rel, f))
 		}
 	})
-	if want := []string{"BUILD.bazel", "gen-and-static", "static"}; !reflect.DeepEqual(regularFiles, want) {
-		t.Errorf("regularFiles: got %#v; want %#v", regularFiles, want)
+	regWant := []string{"BUILD.bazel", "gen-and-static", "static"}
+	if diff := cmp.Diff(regWant, regularFiles); diff != "" {
+		t.Errorf("Walk regularFiles (-want +got):\n%s", diff)
 	}
-	if want := []string{"gen1", "gen2", "gen-and-static"}; !reflect.DeepEqual(genFiles, want) {
-		t.Errorf("genFiles: got %#v; want %#v", genFiles, want)
+	genWant := []string{"gen1", "gen2", "gen-and-static"}
+	if diff := cmp.Diff(genWant, genFiles); diff != "" {
+		t.Errorf("Walk genFiles (-want +got):\n%s", diff)
 	}
 }
 
@@ -332,8 +337,8 @@ func TestSymlinksBasic(t *testing.T) {
 		rels = append(rels, rel)
 	})
 	want := []string{"b/d", "b", "e", ""}
-	if !reflect.DeepEqual(rels, want) {
-		t.Errorf("got %#v; want %#v", rels, want)
+	if diff := cmp.Diff(want, rels); diff != "" {
+		t.Errorf("Walk relative paths (-want +got):\n%s", diff)
 	}
 }
 
@@ -359,8 +364,8 @@ func TestSymlinksIgnore(t *testing.T) {
 		rels = append(rels, rel)
 	})
 	want := []string{""}
-	if !reflect.DeepEqual(rels, want) {
-		t.Errorf("got %#v; want %#v", rels, want)
+	if diff := cmp.Diff(want, rels); diff != "" {
+		t.Errorf("Walk relative paths (-want +got):\n%s", diff)
 	}
 }
 
@@ -387,8 +392,8 @@ func TestSymlinksMixIgnoredAndNonIgnored(t *testing.T) {
 		rels = append(rels, rel)
 	})
 	want := []string{"b2", ""}
-	if !reflect.DeepEqual(rels, want) {
-		t.Errorf("got %#v; want %#v", rels, want)
+	if diff := cmp.Diff(want, rels); diff != "" {
+		t.Errorf("Walk relative paths (-want +got):\n%s", diff)
 	}
 }
 
@@ -412,8 +417,8 @@ func TestSymlinksChained(t *testing.T) {
 		rels = append(rels, rel)
 	})
 	want := []string{"b", ""}
-	if !reflect.DeepEqual(rels, want) {
-		t.Errorf("got %#v; want %#v", rels, want)
+	if diff := cmp.Diff(want, rels); diff != "" {
+		t.Errorf("Walk relative paths (-want +got):\n%s", diff)
 	}
 }
 
@@ -434,8 +439,8 @@ func TestSymlinksDangling(t *testing.T) {
 		rels = append(rels, rel)
 	})
 	want := []string{""}
-	if !reflect.DeepEqual(rels, want) {
-		t.Errorf("got %#v; want %#v", rels, want)
+	if diff := cmp.Diff(want, rels); diff != "" {
+		t.Errorf("Walk relative paths (-want +got):\n%s", diff)
 	}
 }
 
@@ -466,8 +471,8 @@ func TestSymlinksFollow(t *testing.T) {
 		"vendor",
 		"",
 	}
-	if !reflect.DeepEqual(rels, want) {
-		t.Errorf("got %#v; want %#v", rels, want)
+	if diff := cmp.Diff(want, rels); diff != "" {
+		t.Errorf("Walk relative paths (-want +got):\n%s", diff)
 	}
 }
 
