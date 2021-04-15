@@ -72,6 +72,8 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 			if mergedValue, err := mergeExprs(srcValue, dstValue); err != nil {
 				start, end := dstValue.Span()
 				log.Printf("%s:%d.%d-%d.%d: could not merge expression", filename, start.Line, start.LineRune, end.Line, end.LineRune)
+			} else if mergedValue == nil {
+				dst.DelAttr(key)
 			} else {
 				dst.SetAttr(key, mergedValue)
 			}
