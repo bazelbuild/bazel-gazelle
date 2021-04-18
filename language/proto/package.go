@@ -21,6 +21,7 @@ import "path/filepath"
 // same package name. This translates to a proto_library rule.
 type Package struct {
 	Name        string
+	RuleName    string // if not set, defaults to Name
 	Files       map[string]FileInfo
 	Imports     map[string]bool
 	Options     map[string]string

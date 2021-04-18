@@ -126,11 +126,17 @@ func buildPackages(pc *ProtoConfig, dir, rel string, protoFiles, genFiles []stri
 					break
 				}
 			}
+		} else if pc.Mode == FileMode {
+			key = strings.TrimSuffix(name, ".proto")
 		}
+
 		if packageMap[key] == nil {
 			packageMap[key] = newPackage(info.PackageName)
 		}
 		packageMap[key].addFile(info)
+		if key != info.PackageName {
+			packageMap[key].RuleName = key
+		}
 	}
 
 	switch pc.Mode {
@@ -147,7 +153,7 @@ func buildPackages(pc *ProtoConfig, dir, rel string, protoFiles, genFiles []stri
 		}
 		return []*Package{pkg}
 
-	case PackageMode:
+	case PackageMode, FileMode:
 		pkgs := make([]*Package, 0, len(packageMap))
 		for _, pkg := range packageMap {
 			pkgs = append(pkgs, pkg)
@@ -212,7 +218,7 @@ func generateProto(pc *ProtoConfig, rel string, pkg *Package, shouldSetVisibilit
 	if pc.Mode == DefaultMode {
 		name = RuleName(goPackageName(pkg), pc.GoPrefix, rel)
 	} else {
-		name = RuleName(pkg.Options[pc.groupOption], pkg.Name, rel)
+		name = RuleName(pkg.RuleName, pkg.Name, rel)
 	}
 	r := rule.NewRule("proto_library", name)
 	srcs := make([]string, 0, len(pkg.Files))
