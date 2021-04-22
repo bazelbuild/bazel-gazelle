@@ -90,6 +90,7 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 //   * nil
 //   * strings (can only be merged with strings)
 //   * lists of strings
+//   * globs
 //   * a call to select with a dict argument. The dict keys must be strings,
 //     and the values must be lists of strings.
 //   * a list of strings combined with a select call using +. The list must
@@ -106,6 +107,9 @@ func mergeExprs(src, dst bzl.Expr) (bzl.Expr, error) {
 	}
 	if isScalar(src) {
 		return src, nil
+	}
+	if (src == nil || isGlob(src)) && (dst == nil || isGlob(dst)) {
+		return mergeGlob(src, dst), nil
 	}
 
 	srcExprs, err := extractPlatformStringsExprs(src)
@@ -186,6 +190,31 @@ func mergeList(src, dst *bzl.ListExpr) *bzl.ListExpr {
 		List:           merged,
 		ForceMultiLine: src.ForceMultiLine || dst.ForceMultiLine || keepComment,
 	}
+}
+
+// May modify the argument list of dst.
+func mergeGlob(src, dst bzl.Expr) bzl.Expr {
+	if dst == nil {
+		return src
+	}
+	dstInclude, dstExclude, _ := parseGlob(dst)
+	var srcInclude, srcExclude *bzl.ListExpr
+	var otherArgs []bzl.Expr
+	if src != nil {
+		srcInclude, srcExclude, otherArgs = parseGlob(src)
+	}
+	include := mergeList(srcInclude, dstInclude)
+	exclude := mergeList(srcExclude, dstExclude)
+	if include == nil && exclude == nil {
+		return nil
+	}
+	list := []bzl.Expr{
+		include,
+		&bzl.AssignExpr{LHS: &bzl.Ident{Name: "exclude"}, RHS: exclude, Op: "="},
+	}
+	list = append(list, otherArgs...)
+	dst.(*bzl.CallExpr).List = list
+	return dst
 }
 
 func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
