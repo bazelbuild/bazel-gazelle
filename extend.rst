@@ -12,6 +12,7 @@ Extending Gazelle
 .. _proto godoc: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto
 .. _proto.GetProtoConfig: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#GetProtoConfig
 .. _proto.Package: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#Package
+.. _rules_r: https://github.com/grailbio/rules_r
 .. _rules_sass: https://github.com/bazelbuild/rules_sass
 .. _#75: https://github.com/bazelbuild/rules_sass/pull/75
 .. _bazel_rules_nodejs_contrib: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
@@ -48,6 +49,8 @@ Some extensions have been published by the community.
 
 * `rules_sass`_ has an extension for generating ``sass_library`` and
   ``sass_binary`` rules (currently pending in PR `#75`_).
+* `rules_r`_ has an extension for generating rules for R package builds and
+  tests.
 * Ecosia's `bazel_rules_nodejs_contrib`_ has an extension for generating
   ``js_library``, ``jest_node_test``, ``js_import``, and ``ts_library`` rules.
 
