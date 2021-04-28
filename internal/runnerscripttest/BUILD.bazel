@@ -1,0 +1,25 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("//:def.bzl", "gazelle")
+
+go_binary(
+    name = "fake_gazelle_binary",
+    srcs = ["fake_gazelle_binary.go"],
+)
+
+gazelle(
+    name = "fake_gazelle",
+    gazelle = ":fake_gazelle_binary",
+)
+
+go_test(
+    name = "runner_script_test",
+    srcs = ["runner_script_test.go"],
+    data = [
+        ":fake_gazelle",
+        ":fake_gazelle_binary",
+    ],
+    rundir = ".",
+    deps = [
+        "@io_bazel_rules_go//go/tools/bazel",
+    ],
+)
