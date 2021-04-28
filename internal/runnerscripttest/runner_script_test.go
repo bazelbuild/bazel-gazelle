@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -16,12 +17,15 @@ import (
 
 var fakeBinRunfilesPath = "internal/runnerscripttest/fake_gazelle_binary_/fake_gazelle_binary"
 
+// this test fails on windows without the fix
 func TestNoManifest(t *testing.T) {
 	fakeGazellePath := findGazelle(t)
 
-	runGazelle(t, fakeGazellePath, "")
+	// run at the root of the runfiles tree
+	runGazelle(t, fakeGazellePath, "..")
 }
 
+// this test fails on all platforms because it forces the manifest evaluation
 func TestManifest(t *testing.T) {
 	fakeGazellePath := findGazelle(t)
 
@@ -31,34 +35,42 @@ func TestManifest(t *testing.T) {
 		fakeBinRunfilesPath += exe
 	}
 
-	fakeBinPath, err := bazel.Runfile(fakeBinRunfilesPath)
-	if err != nil {
-		t.Fatalf("failed to find fake binary: %v", err)
-	}
-
 	tmpDir, err := bazel.NewTmpDir(t.Name())
 
 	if err != nil {
 		t.Fatalf("failed to setup tmp dir: %v", err)
 	}
 
-	fakeGazelleContents, err := os.ReadFile(fakeGazellePath)
-	if err != nil {
-		t.Fatalf("failed to read fake gazelle: %v", err)
+	copyToTmp := func(src, dest string) string {
+		dest = filepath.Join(tmpDir, dest)
+
+		srcContents, err := os.ReadFile(src)
+		if err != nil {
+			t.Fatalf("failed to read fake gazelle: %v", err)
+		}
+
+		err = os.WriteFile(dest, srcContents, 0777)
+		if err != nil {
+			t.Fatalf("failed to read fake gazelle: %v", err)
+		}
+		return dest
 	}
 
-	copiedRunner := path.Join(tmpDir, "fake_gazelle")
-	err = os.WriteFile(copiedRunner, fakeGazelleContents, 0755)
-	if err != nil {
-		t.Fatalf("failed to read fake gazelle: %v", err)
+	copiedRunner := copyToTmp(fakeGazellePath, "fake_gazelle")
+	if exe != "" {
+		copiedRunner = copyToTmp(fakeGazellePath+exe, "fake_gazelle"+exe)
 	}
 
-	manifest := strings.Join([]string{
-		// required
-		fmt.Sprintf("go_sdk/bin/go%s foo/bar", exe),
-		// subject under test
-		fmt.Sprintf("bazel_gazelle/%s %s", fakeBinRunfilesPath, fakeBinPath),
-	}, "\n")
+	entries, err := bazel.ListRunfiles()
+	if err != nil {
+		t.Fatalf("failed to list runfiles %v", err)
+	}
+	var lines []string
+	for _, e := range entries {
+		lines = append(lines, fmt.Sprintf("%s %s", path.Join(e.Workspace, e.ShortPath), e.Path))
+	}
+
+	manifest := strings.Join(lines, "\n") + "\n"
 
 	err = os.WriteFile(path.Join(tmpDir, "MANIFEST"), []byte(manifest), 0666)
 	if err != nil {
@@ -81,7 +93,8 @@ func runGazelle(t *testing.T, fakeGazellePath, dir string) {
 	if dir != "" {
 		cmd.Dir = dir
 	}
-	cmd.Env = []string{"BUILD_WORKSPACE_DIRECTORY=foo"}
+
+	cmd.Env = append(os.Environ(), "BUILD_WORKSPACE_DIRECTORY=foo")
 	cmd.Stdin = nil
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
