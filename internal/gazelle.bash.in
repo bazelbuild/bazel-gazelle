@@ -17,6 +17,7 @@
 @@GENERATED_MESSAGE@@
 
 set -euo pipefail
+shopt -s extglob
 
 RUNNER_LABEL=@@RUNNER_LABEL@@
 GAZELLE_SHORT_PATH=@@GAZELLE_SHORT_PATH@@
@@ -32,7 +33,7 @@ function find_runfile {
     readlink "$runfile" || echo "$runfile"
     return
   fi
-  runfile=$(echo "$runfile" | sed -e 's!^\(\.\./\|external/\)!!')
+  runfile=${runfile/+(..\/|external\/)}
   if grep -q "^$runfile" MANIFEST; then
     grep "^$runfile" MANIFEST | head -n 1 | cut -d' ' -f2
     return
