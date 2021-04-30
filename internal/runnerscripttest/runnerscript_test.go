@@ -23,6 +23,14 @@ func setupExe() {
 	}
 }
 
+// these tests construct four scenarios of runfiles and asserts that the gazelle runner script
+// properly locates the correct runfiles given those scenarios
+// The tests construct a simulated MANIFEST file, and a simulated runfiles tree for a gazelle binary
+// built 1) in the host workspace i.e. `gazelle = //:gazelle`
+// and 2) in an external workspace i.e. `gazelle = @bazel_gazelle//cmd/gazelle`
+// these tests perform the same actions on both windows and non-windows (with the exception of some
+// .exe suffixing) via a manually constructed runfiles tree of actual folders, not symlinks.
+
 func TestInternalGazelleNoManifest(t *testing.T) {
 	setupExe()
 	hostWorkspace := gazelleWorkspace
