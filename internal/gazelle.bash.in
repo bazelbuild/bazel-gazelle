@@ -22,6 +22,7 @@ shopt -s extglob
 RUNNER_LABEL=@@RUNNER_LABEL@@
 GAZELLE_SHORT_PATH=@@GAZELLE_SHORT_PATH@@
 GAZELLE_LABEL=@@GAZELLE_LABEL@@
+WORKSPACE_NAME=@@WORKSPACE_NAME@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
 
@@ -33,7 +34,12 @@ function find_runfile {
     readlink "$runfile" || echo "$runfile"
     return
   fi
-  runfile=${runfile/+(..\/|external\/)}
+
+  if [[ ${runfile:0:2} = ".." ]]; then
+    runfile=${runfile/..\/}
+  else
+    runfile="$WORKSPACE_NAME/$runfile"
+  fi
   if grep -q "^$runfile" MANIFEST; then
     grep "^$runfile" MANIFEST | head -n 1 | cut -d' ' -f2
     return

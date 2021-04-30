@@ -2,7 +2,7 @@ package main_test
 
 import (
 	"bytes"
-	"log"
+	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -28,7 +28,7 @@ func TestInternalGazelleNoManifest(t *testing.T) {
 	hostWorkspace := gazelleWorkspace
 	tmpDir := setupRunfiles(t, hostWorkspace)
 
-	destPath := copyGazelle(t, tmpDir, false)
+	destPath := copyGazelle(t, tmpDir, hostWorkspace, false)
 
 	// run inside the host workspace directory in the runfiles tree
 	runGazelle(t, destPath, filepath.Join(tmpDir, hostWorkspace))
@@ -39,7 +39,7 @@ func TestExternalGazelleNoManifest(t *testing.T) {
 	hostWorkspace := "foo"
 	tmpDir := setupRunfiles(t, hostWorkspace)
 
-	destPath := copyGazelle(t, tmpDir, true)
+	destPath := copyGazelle(t, tmpDir, hostWorkspace, true)
 
 	// run inside the host workspace directory in the runfiles tree
 	runGazelle(t, destPath, filepath.Join(tmpDir, hostWorkspace))
@@ -57,7 +57,7 @@ func TestExternalGazelleManifest(t *testing.T) {
 	testManifest(t, "foo", true)
 }
 
-func copyGazelle(t *testing.T, tmpDir string, transform bool) string {
+func copyGazelle(t *testing.T, tmpDir, hostWorkspace string, transform bool) string {
 	// copy the gazelle runner script in all cases because on windows we'll be executing a bash launcher exe that
 	// looks for the script in the current directory
 	fakeGazellePath := findGazelle(t)
@@ -68,6 +68,12 @@ func copyGazelle(t *testing.T, tmpDir string, transform bool) string {
 	if transform {
 		contents = []byte(strings.Replace(string(contents),
 			"GAZELLE_SHORT_PATH='internal", "GAZELLE_SHORT_PATH='../bazel_gazelle/internal",
+			1))
+		contents = []byte(strings.Replace(string(contents),
+			"GAZELLE_LABEL='//internal", "GAZELLE_LABEL='@bazel_gazelle//internal",
+			1))
+		contents = []byte(strings.Replace(string(contents),
+			"WORKSPACE_NAME='bazel_gazelle'", fmt.Sprintf("WORKSPACE_NAME='%s'", hostWorkspace),
 			1))
 	}
 
@@ -134,20 +140,15 @@ func testManifest(t *testing.T, hostWorkspace string, transform bool) {
 
 	var gazellePath string
 	if transform {
-		gazellePath = copyGazelle(t, tmpDir, transform)
+		gazellePath = copyGazelle(t, tmpDir, hostWorkspace, transform)
 	} else {
-		gazellePath = findGazelleBinary(t)
+		gazellePath = findGazelle(t) + exe
 	}
 
 	runGazelle(t, gazellePath, tmpDir)
 }
 
 func makeManifestMap(hostWorkspace string) map[string][]string {
-	//exe := ""
-	if runtime.GOOS == "windows" {
-		exe = ".exe"
-	}
-
 	base := map[string][]string{
 		// lookup in this runfiles 						--> write to simulated runfiles
 		"bin/go" + exe: {"go_sdk/bin/go" + exe, path.Join(hostWorkspace, "external/go_sdk/bin/go"+exe)},
@@ -176,14 +177,6 @@ func makeManifestMap(hostWorkspace string) map[string][]string {
 	}
 
 	return base
-}
-
-func findGazelleBinary(t *testing.T) string {
-	gazellePath := findGazelle(t)
-	if runtime.GOOS == "windows" {
-		gazellePath += ".exe"
-	}
-	return gazellePath
 }
 
 func findGazelle(t *testing.T) string {
@@ -217,10 +210,6 @@ func runGazelle(t *testing.T, fakeGazellePath, dir string) {
 	}
 
 	lines := strings.Split(rawOut, "\n")
-
-	for _, l := range lines {
-		log.Println(l)
-	}
 
 	if len(lines) != 2 {
 		t.Errorf("Unexpected output lines %d", len(lines))
