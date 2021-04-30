@@ -1,9 +1,17 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 load("//:def.bzl", "gazelle")
 
 go_binary(
     name = "fake_gazelle_binary",
+    embed = [":runnerscripttest"],
+    visibility = ["//:__subpackages__"],
+)
+
+go_library(
+    name = "runnerscripttest",
     srcs = ["fake_gazelle_binary.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/internal/runnerscripttest",
+    visibility = ["//visibility:private"],
 )
 
 gazelle(
@@ -12,14 +20,25 @@ gazelle(
 )
 
 go_test(
-    name = "runner_script_test",
-    srcs = ["runner_script_test.go"],
+    name = "runnerscripttest_test",
+    srcs = ["runnerscript_test.go"],
     data = [
         ":fake_gazelle",
         ":fake_gazelle_binary",
     ],
     rundir = ".",
     deps = [
-        "@io_bazel_rules_go//go/tools/bazel",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
     ],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "fake_gazelle_binary.go",
+        "runnerscript_test.go",
+    ],
+    visibility = ["//visibility:public"],
 )

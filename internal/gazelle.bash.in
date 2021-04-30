@@ -29,7 +29,7 @@ GOTOOL=@@GOTOOL@@
 function find_runfile {
   local runfile=$1
   if [ -f "$runfile" ]; then
-    readlink "$runfile"
+    readlink "$runfile" || echo "$runfile"
     return
   fi
   runfile=$(echo "$runfile" | sed -e 's!^\(\.\./\|external/\)!!')
