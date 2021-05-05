@@ -356,8 +356,8 @@ The following flags are accepted:
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-index true|false`                                    | :value:`true`                          |
 +--------------------------------------------------------------+----------------------------------------+
-| Determines whether Galleze should index the libraries in the current repository and whether it        |
-| should use the index to resolve dependencies. If this is switched off, Galleze would rely on          |
+| Determines whether Gazelle should index the libraries in the current repository and whether it        |
+| should use the index to resolve dependencies. If this is switched off, Gazelle would rely on          |
 | ``# gazelle:prefix`` directive or ``-go_prefix`` flag to resolve dependencies.                        |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-go_grpc_compiler`                                    | ``@io_bazel_rules_go//proto:go_grpc``  |
