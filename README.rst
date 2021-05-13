@@ -50,7 +50,7 @@ Slack: `#go on Bazel Slack`_, `#bazel on Go Slack`_
 
 *rules_go and Gazelle are getting community maintainers! If you are a regular
 user of either project and are interested in helping out with development,
-code reviews, and issue triag,e please drop by our Slack channels (linked above)
+code reviews, and issue triage, please drop by our Slack channels (linked above)
 and say hello!*
 
 .. contents:: **Contents**
