@@ -381,9 +381,9 @@ The following flags are accepted:
 | :flag:`-go_prefix example.com/repo`                          |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | A prefix of import paths for libraries in the repository that corresponds to                          |
-| the repository root. Equivalent to the ``# gazelle:prefix`` directive and the                         |
-| ``prefix`` attribute of the gazelle rule. If neither of those are set, this                           |
-| option is mandatory.                                                                                  |
+| the repository root. Equivalent to setting the ``# gazelle:prefix`` directive                         |
+| in the root BUILD.bazel file or the ``prefix`` attribute of the gazelle rule. If                      |
+| neither of those are set, this option is mandatory.                                                   |
 |                                                                                                       |
 | This prefix is used to determine whether an import path refers to a library                           |
 | in the current repository or an external dependency.                                                  |
