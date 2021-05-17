@@ -501,6 +501,7 @@ func (g *generator) maybeGenerateAlias(pkg *goPackage, libName string) *rule.Rul
 	alias.SetAttr("visibility", g.commonVisibility(pkg.importPath))
 	if gc.goNamingConvention == importAliasNamingConvention {
 		alias.SetAttr("actual", ":"+libName)
+		alias.SetAttr("deprecation", "Use new naming convention rather than go_default_library.")
 	}
 	return alias
 }
