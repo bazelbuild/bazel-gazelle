@@ -501,7 +501,7 @@ func (g *generator) maybeGenerateAlias(pkg *goPackage, libName string) *rule.Rul
 	alias.SetAttr("visibility", g.commonVisibility(pkg.importPath))
 	if gc.goNamingConvention == importAliasNamingConvention {
 		alias.SetAttr("actual", ":"+libName)
-		alias.SetAttr("deprecation", "Use "+libName+" instead of go_default_library.  Details about the new naming convention here: https://github.com/bazelbuild/bazel-gazelle/pull/863")
+		alias.SetAttr("deprecation", "Use :"+libName+" instead of :go_default_library.  Details about the new naming convention here: https://github.com/bazelbuild/bazel-gazelle/pull/863")
 	}
 	return alias
 }
