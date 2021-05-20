@@ -17,7 +17,6 @@
 @@GENERATED_MESSAGE@@
 
 set -euo pipefail
-shopt -s extglob
 
 RUNNER_LABEL=@@RUNNER_LABEL@@
 GAZELLE_SHORT_PATH=@@GAZELLE_SHORT_PATH@@
