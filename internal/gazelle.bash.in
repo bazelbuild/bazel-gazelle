@@ -35,8 +35,8 @@ function find_runfile {
     return
   fi
 
-  if [[ ${runfile:0:2} = ".." ]]; then
-    runfile=${runfile/..\/}
+  if [[ ${runfile:0:3} = "../" ]]; then
+    runfile="${runfile:3}"
   else
     runfile="$WORKSPACE_NAME/$runfile"
   fi

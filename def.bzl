@@ -63,7 +63,7 @@ def _gazelle_runner_impl(ctx):
 # DO NOT EDIT
 """.format(label = str(ctx.label)),
         "@@RUNNER_LABEL@@": shell.quote(str(ctx.label)),
-        "@@GOTOOL@@": shell.quote(go_tool.path),
+        "@@GOTOOL@@": shell.quote(go_tool.short_path),
         "@@WORKSPACE_NAME@@": shell.quote(ctx.workspace_name),
     }
     ctx.actions.expand_template(

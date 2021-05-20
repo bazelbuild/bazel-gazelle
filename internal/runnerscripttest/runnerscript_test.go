@@ -15,7 +15,7 @@ import (
 )
 
 var exe = ""
-var gazelleWorkspace = "bazel_gazelle"
+var thisWorkspace = "bazel_gazelle"
 
 func setupExe() {
 	if runtime.GOOS == "windows" {
@@ -25,8 +25,8 @@ func setupExe() {
 
 func TestInternalGazelleNoManifest(t *testing.T) {
 	setupExe()
-	hostWorkspace := gazelleWorkspace
-	tmpDir := setupRunfiles(t, hostWorkspace)
+	hostWorkspace := thisWorkspace
+	tmpDir := setupRunfiles(t, thisWorkspace)
 
 	destPath := copyGazelle(t, tmpDir, hostWorkspace, false)
 
@@ -37,18 +37,23 @@ func TestInternalGazelleNoManifest(t *testing.T) {
 func TestExternalGazelleNoManifest(t *testing.T) {
 	setupExe()
 	hostWorkspace := "foo"
-	tmpDir := setupRunfiles(t, hostWorkspace)
+	tmpDir := setupRunfiles(t, thisWorkspace)
 
 	destPath := copyGazelle(t, tmpDir, hostWorkspace, true)
 
 	// run inside the host workspace directory in the runfiles tree
-	runGazelle(t, destPath, filepath.Join(tmpDir, hostWorkspace))
+	startDir := filepath.Join(tmpDir, hostWorkspace)
+	err := os.Mkdir(startDir, 0755)
+	if err != nil {
+		t.Fatalf("failed to create starting directroy: %v", err)
+	}
+	runGazelle(t, destPath, startDir)
 }
 
 func TestInternalGazelleManifest(t *testing.T) {
 	setupExe()
 
-	testManifest(t, "bazel_gazelle", false)
+	testManifest(t, thisWorkspace, false)
 }
 
 func TestExternalGazelleManifest(t *testing.T) {
@@ -89,49 +94,46 @@ func copyGazelle(t *testing.T, tmpDir, hostWorkspace string, transform bool) str
 	return destPath
 }
 
-func setupRunfiles(t *testing.T, hostWorkspace string) string {
-	manifestMap := makeManifestMap(hostWorkspace)
+func setupRunfiles(t *testing.T, gazelleWorkspace string) string {
+	specs := getRunfileSpecs(gazelleWorkspace)
 	tmpDir, err := bazel.NewTmpDir(t.Name())
 	if err != nil {
 		t.Fatalf("failed to setup tmp dir: %v", err)
 	}
 
-	for in, extList := range manifestMap {
-		for _, ext := range extList {
-			realPath, err := bazel.Runfile(in)
-			if err != nil {
-				t.Fatalf("failed to get %s from runfiles: %v", in, err)
-			}
-			destPath := filepath.Join(tmpDir, ext)
-			if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-				t.Fatalf("failed to create %s: %v", destPath, err)
-			}
-			copyTo(t, realPath, destPath)
-
+	for _, spec := range specs {
+		realPath, err := bazel.Runfile(spec.shortPath)
+		if err != nil {
+			t.Fatalf("failed to get %s from runfiles: %v", spec.shortPath, err)
 		}
+		destPath := filepath.Join(tmpDir, spec.fullPath)
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			t.Fatalf("failed to create %s: %v", destPath, err)
+		}
+		copyTo(t, realPath, destPath)
 	}
 	return tmpDir
 }
 
 func testManifest(t *testing.T, hostWorkspace string, transform bool) {
-	manifestMap := makeManifestMap(hostWorkspace)
+	specs := getRunfileSpecs(thisWorkspace)
 	tmpDir, err := bazel.NewTmpDir(t.Name())
 	if err != nil {
 		t.Fatalf("failed to setup tmp dir: %v", err)
 	}
 
-	var manifestLines []string
-	i := 0
-	for in, extList := range manifestMap {
-		for _, ext := range extList {
-			realPath, err := bazel.Runfile(in)
-			if err != nil {
-				t.Fatalf("failed to get %s from runfiles: %v", in, err)
-			}
-			manifestLines = append(manifestLines, ext+" "+realPath)
-			i++
+	manifestLines := make([]string, len(specs))
+	for i, spec := range specs {
+		realPath, err := bazel.Runfile(spec.shortPath)
+		if err != nil {
+			t.Fatalf("failed to get %s from runfiles: %v", spec.shortPath, err)
 		}
+
+		line := spec.fullPath + " " + realPath
+		t.Logf(line)
+		manifestLines[i] = line
 	}
+
 	manifest := strings.Join(manifestLines, "\n") + "\n"
 	err = os.WriteFile(path.Join(tmpDir, "MANIFEST"), []byte(manifest), 0666)
 	if err != nil {
@@ -148,35 +150,33 @@ func testManifest(t *testing.T, hostWorkspace string, transform bool) {
 	runGazelle(t, gazellePath, tmpDir)
 }
 
-func makeManifestMap(hostWorkspace string) map[string][]string {
-	base := map[string][]string{
-		// lookup in this runfiles 						--> write to simulated runfiles
-		"bin/go" + exe: {"go_sdk/bin/go" + exe, path.Join(hostWorkspace, "external/go_sdk/bin/go"+exe)},
-	}
+type runfileSpec = struct {
+	shortPath    string
+	workspace    string
+	fullPath     string
+	absolutePath string
+}
 
-	gazelleLocations := map[string][]string{
-		"internal/runnerscripttest/fake_gazelle":                                   {""},
-		"internal/runnerscripttest/fake_gazelle_binary_/fake_gazelle_binary" + exe: {"_binary_/fake_gazelle_binary" + exe},
+func spec(workspace, shortPath, ext string) *runfileSpec {
+	return &runfileSpec{
+		shortPath: shortPath + ext,
+		workspace: workspace,
+		fullPath:  path.Join(workspace, shortPath+ext),
+	}
+}
+
+func getRunfileSpecs(hostWorkspace string) []*runfileSpec {
+	specs := []*runfileSpec{
+		spec("go_sdk", "bin/go", exe),
+		spec(hostWorkspace, "internal/runnerscripttest/fake_gazelle", ""),
+		spec(hostWorkspace, "internal/runnerscripttest/fake_gazelle_binary_/fake_gazelle_binary", exe),
 	}
 
 	if exe != "" {
 		// on windows bazel makes a bash launcher exe to launch the fake_gazelle bash script.
-		gazelleLocations["internal/runnerscripttest/fake_gazelle"+exe] = []string{exe}
+		specs = append(specs, spec(hostWorkspace, "internal/runnerscripttest/fake_gazelle", exe))
 	}
-
-	prefixes := []string{gazelleWorkspace}
-	if gazelleWorkspace != hostWorkspace {
-		prefixes = append(prefixes, path.Join(hostWorkspace, "external", gazelleWorkspace))
-	}
-	for _, prefix := range prefixes {
-		for in, extList := range gazelleLocations {
-			for _, ext := range extList {
-				base[in] = append(base[in], path.Join(prefix, "internal/runnerscripttest/fake_gazelle")+ext)
-			}
-		}
-	}
-
-	return base
+	return specs
 }
 
 func findGazelle(t *testing.T) string {
