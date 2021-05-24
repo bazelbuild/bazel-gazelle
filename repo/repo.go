@@ -71,16 +71,26 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map[string]*rule.File, err error) {
 	repoIndexMap := make(map[string]int)
 	repoFileMap = make(map[string]*rule.File)
-	for _, repo := range workspace.Rules {
+	macrosChecked := make(map[string]bool)
+
+	repos, err = listRepositoriesHelper(workspace, workspace, repos, repoIndexMap, repoFileMap, macrosChecked)
+	if err != nil {
+		return nil, nil, err
+	}
+	return repos, repoFileMap, nil
+}
+
+func listRepositoriesHelper(workspace *rule.File, f *rule.File, repos []*rule.Rule, repoIndexMap map[string]int, repoFileMap map[string]*rule.File, macrosChecked map[string]bool) ([]*rule.Rule, error) {
+	for _, repo := range f.Rules {
 		if name := repo.Name(); name != "" {
 			repos = append(repos, repo)
-			repoFileMap[name] = workspace
+			repoFileMap[name] = f
 			repoIndexMap[name] = len(repos) - 1
 		}
 	}
-	extraRepos, err := parseRepositoryDirectives(workspace.Directives)
+	extraRepos, err := parseRepositoryDirectives(f.Directives)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	for _, repo := range extraRepos {
 		if i, ok := repoIndexMap[repo.Name()]; ok {
@@ -88,43 +98,35 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 		} else {
 			repos = append(repos, repo)
 		}
-		repoFileMap[repo.Name()] = workspace
+		repoFileMap[repo.Name()] = f
 	}
 
-	for _, d := range workspace.Directives {
+	for _, d := range f.Directives {
 		switch d.Key {
 		case "repository_macro":
-			f, defName, err := parseRepositoryMacroDirective(d.Value)
+			fi, defName, err := parseRepositoryMacroDirective(d.Value)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
-			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
-			macroFile, err := rule.LoadMacroFile(f, "", defName)
+			fi = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(fi))
+			macroFile, err := rule.LoadMacroFile(fi, "", defName)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
-			for _, repo := range macroFile.Rules {
-				if name := repo.Name(); name != "" {
-					repos = append(repos, repo)
-					repoFileMap[name] = macroFile
-					repoIndexMap[name] = len(repos) - 1
+
+			// The recursive call will only be made if the user explicitly adds
+			// repositories with a repository_macro directive from within a
+			// repository_macro file. Each macro will only be read once.
+			if !macrosChecked[d.Value] {
+				macrosChecked[d.Value] = true
+				repos, err = listRepositoriesHelper(workspace, macroFile, repos, repoIndexMap, repoFileMap, macrosChecked)
+				if err != nil {
+					return nil, err
 				}
-			}
-			extraRepos, err = parseRepositoryDirectives(macroFile.Directives)
-			if err != nil {
-				return nil, nil, err
-			}
-			for _, repo := range extraRepos {
-				if i, ok := repoIndexMap[repo.Name()]; ok {
-					repos[i] = repo
-				} else {
-					repos = append(repos, repo)
-				}
-				repoFileMap[repo.Name()] = macroFile
 			}
 		}
 	}
-	return repos, repoFileMap, nil
+	return repos, nil
 }
 
 func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule, err error) {
