@@ -1196,6 +1196,7 @@ go_library(
 alias(
     name = "go_default_library",
     actual = ":foo",
+    deprecation = "Use :foo instead of :go_default_library.  Details about the new naming convention: https://github.com/bazelbuild/bazel-gazelle/pull/863",
     visibility = ["//visibility:public"],
 )
 `,
