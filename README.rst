@@ -423,11 +423,12 @@ The following flags are accepted:
 | Determines the proto option Gazelle uses to group .proto files into rules                             |
 | when in ``package`` mode. See details in `Directives`_ below.                                         |
 +--------------------------------------------------------------+----------------------------------------+
-| :flag:`-proto_import_prefix repo`                            |                                        |
+| :flag:`-proto_import_prefix path`                            |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | Sets the `import_prefix`_ attribute of generated ``proto_library`` rules.                             |
 | This adds a prefix to the string used to import ``.proto`` files listed in                            |
-| the ``srcs`` attribute of generated rules.                                                            |
+| the ``srcs`` attribute of generated rules. Equivalent to the                                          |
+| ``# gazelle:proto_import_prefix`` directive. See details in `Directives`_ below.                      |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-repo_root dir`                                       |                                        |
 +--------------------------------------------------------------+----------------------------------------+
