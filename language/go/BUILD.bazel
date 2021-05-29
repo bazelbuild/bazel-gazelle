@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load(":def.bzl", "std_package_list")
 
@@ -119,4 +120,11 @@ alias(
     name = "go_default_library",
     actual = ":go",
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "def",
+    srcs = ["def.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["@io_bazel_rules_go//go:def"],
 )

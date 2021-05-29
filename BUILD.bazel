@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_rules_go//go:def.bzl", "nogo")
 load("//:def.bzl", "gazelle", "gazelle_binary")
 
@@ -70,4 +71,29 @@ filegroup(
         "//walk:all_files",
     ],
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "def",
+    srcs = ["def.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_gazelle//internal:gazelle_binary",
+        "@bazel_gazelle//internal:go_repository",
+        "@bazel_gazelle//internal:overlay_repository",
+        "@bazel_skylib//lib:shell",
+    ],
+)
+
+bzl_library(
+    name = "deps",
+    srcs = ["deps.bzl"],
+    visibility = ["//visibility:public"],
+    # Don't list dependency on @bazel_tools//tools/build_defs/repo:git
+    deps = [
+        "@bazel_gazelle//internal:go_repository",
+        "@bazel_gazelle//internal:go_repository_cache",
+        "@bazel_gazelle//internal:go_repository_config",
+        "@bazel_gazelle//internal:go_repository_tools",
+    ],  # keep
 )

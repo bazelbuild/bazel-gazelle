@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go/private:common.bzl", "executable_extension")
+load(":common.bzl", "executable_extension")
 
 # Change to trigger cache invalidation: 1
 

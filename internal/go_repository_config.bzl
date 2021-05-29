@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go/private:common.bzl", "env_execute", "executable_extension")
+load(":common.bzl", "env_execute", "executable_extension")
 load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
 
 def _go_repository_config_impl(ctx):
@@ -42,11 +42,11 @@ def _go_repository_config_impl(ctx):
             fail("generate_repo_config: " + result.stderr)
     else:
         ctx.file(
-        "WORKSPACE",
-        "",
-        False,
-    )
-    
+            "WORKSPACE",
+            "",
+            False,
+        )
+
     # add an empty build file so Bazel recognizes the config
     ctx.file(
         "BUILD.bazel",

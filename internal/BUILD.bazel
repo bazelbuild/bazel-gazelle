@@ -1,3 +1,4 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 
 # gazelle:exclude *_test.go
@@ -46,4 +47,67 @@ filegroup(
         "//internal/wspace:all_files",
     ],
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "gazelle_binary",
+    srcs = ["gazelle_binary.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@io_bazel_rules_go//go:def"],
+)
+
+bzl_library(
+    name = "go_repository",
+    srcs = ["go_repository.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        ":common",
+        "@bazel_gazelle//internal:go_repository_cache",
+    ],
+)
+
+bzl_library(
+    name = "go_repository_cache",
+    srcs = ["go_repository_cache.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [":common"],
+)
+
+bzl_library(
+    name = "go_repository_config",
+    srcs = ["go_repository_config.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        ":common",
+        "@bazel_gazelle//internal:go_repository_cache",
+    ],
+)
+
+bzl_library(
+    name = "common",
+    srcs = ["common.bzl"],
+    visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "go_repository_tools",
+    srcs = ["go_repository_tools.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        ":common",
+        "@bazel_gazelle//internal:go_repository_cache",
+        "@bazel_gazelle//internal:go_repository_tools_srcs",
+    ],
+)
+
+bzl_library(
+    name = "go_repository_tools_srcs",
+    srcs = ["go_repository_tools_srcs.bzl"],
+    visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "overlay_repository",
+    srcs = ["overlay_repository.bzl"],
+    visibility = ["//:__subpackages__"],
 )
