@@ -375,11 +375,7 @@ func (r *RemoteCache) Mod(importPath string) (modPath, name string, err error) {
 				return "", "", err
 			}
 			value := v.(modValue)
-			if value.known {
-				return value.path, value.name, nil
-			} else {
-				break
-			}
+			return value.path, value.name, nil
 		}
 
 		prefix = path.Dir(prefix)
@@ -389,8 +385,8 @@ func (r *RemoteCache) Mod(importPath string) (modPath, name string, err error) {
 	}
 
 	// Ask "go list".
-	v, err := r.mod.ensure(importPath, func() (interface{}, error) {
-		modPath, err := r.ModInfo(importPath)
+	mvalue := func() (interface{}, error) {
+		modPath, err = r.ModInfo(importPath)
 		if err != nil {
 			return nil, err
 		}
@@ -398,11 +394,19 @@ func (r *RemoteCache) Mod(importPath string) (modPath, name string, err error) {
 			path: modPath,
 			name: label.ImportPathToBazelRepoName(modPath),
 		}, nil
-	})
+	}
+
+	v, err := r.mod.ensure(importPath, mvalue)
 	if err != nil {
 		return "", "", err
 	}
+
 	value := v.(modValue)
+	// Also cache modPath
+	_, err = r.mod.ensure(modPath, func() (interface{}, error) {
+		return value, nil
+	})
+
 	return value.path, value.name, nil
 }
 
@@ -419,7 +423,6 @@ func defaultModInfo(rc *RemoteCache, importPath string) (modPath string, err err
 
 	goTool := findGoTool()
 	env := append(os.Environ(), "GO111MODULE=on")
-
 	cmd := exec.Command(goTool, "get", "-d", "--", importPath)
 	cmd.Dir = rc.tmpDir
 	cmd.Env = env
