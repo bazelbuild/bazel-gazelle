@@ -592,6 +592,11 @@ func (l *Load) Has(sym string) bool {
 	return ok
 }
 
+// Has returns the original (from) name of a (to) Symbol from a load.
+func (l *Load) Get(sym string) string {
+	return l.symbols[sym].from.Name
+}
+
 // Add inserts a new symbol into the load statement. This has no effect if
 // the symbol is already loaded. Symbols will be sorted, so the order
 // doesn't matter.
