@@ -71,6 +71,7 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map[string]*rule.File, err error) {
 	repoIndexMap := make(map[string]int)
 	repoFileMap = make(map[string]*rule.File)
+	checked := make(map[string]bool)
 	for _, repo := range workspace.Rules {
 		if name := repo.Name(); name != "" {
 			repos = append(repos, repo)
@@ -93,48 +94,75 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 			leveled := strings.HasPrefix(f, "+")
 			f = strings.TrimPrefix(f, "+")
 			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
-			repos, err = loadRepositoriesFromMacro(leveled, workspace.Path, f, defName, repos, repoFileMap, repoIndexMap)
-			if err != nil {
+			checked[f+"%"+defName] = true
+
+			la := &loadArgs{
+				leveled: leveled,
+				workspace: workspace.Path,
+				f: f,
+				defName: defName,
+				repos: repos,
+				repoFileMap: repoFileMap,
+				repoIndexMap: repoIndexMap,
+				checked: checked,
+			}
+
+			if err := loadRepositoriesFromMacro(la); err != nil {
 				return nil, nil, err
 			}
+			repos = la.repos
 		}
 	}
 	return repos, repoFileMap, nil
 }
 
-func loadRepositoriesFromMacro(leveled bool, workspace, f, defName string, repos []*rule.Rule, repoFileMap map[string]*rule.File, repoIndexMap map[string]int) ([]*rule.Rule, error) {
-	macroFile, err := rule.LoadMacroFile(f, "", defName)
+type loadArgs struct {
+	leveled bool
+	workspace string
+	f string
+	defName string
+	repos []*rule.Rule
+	repoFileMap map[string]*rule.File
+	repoIndexMap map[string]int
+	checked map[string]bool
+}
+
+func loadRepositoriesFromMacro(la *loadArgs) error {
+	macroFile, err := rule.LoadMacroFile(la.f, "", la.defName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, repo := range macroFile.Rules {
 		if name := repo.Name(); name != "" {
-				repos = append(repos, repo)
-				repoFileMap[name] = macroFile
-				repoIndexMap[name] = len(repos) - 1
-		} else if leveled {
+				la.repos = append(la.repos, repo)
+				la.repoFileMap[name] = macroFile
+				la.repoIndexMap[name] = len(la.repos) - 1
+		} else if la.leveled {
 			// This block will only be entered if leveled==true
-			var callFile, defName string
+			var callFile string
 			kind := repo.Kind()
 			for _, l := range macroFile.Loads {
 				if l.Has(kind) {
-					callFile = filepath.Join(filepath.Dir(workspace), filepath.Clean(l.Name()))
-					defName = l.Unalias(kind)
+					callFile = filepath.Join(filepath.Dir(la.workspace), filepath.Clean(l.Name()))
+					la.defName = l.Unalias(kind)
 					break
 				}
 			}
-
 			// TODO: Also handle the case where one macro calls another macro in the same bzl file
 			if len(callFile) == 0 {
 				continue
 			}
-			repos, err = loadRepositoriesFromMacro(leveled, workspace, callFile, defName, repos, repoFileMap, repoIndexMap)
-			if err != nil {
-				return nil, err
+			if !la.checked[la.f+"%"+la.defName] {
+				la.f = callFile
+				la.checked[la.f+"%"+la.defName] = true
+				if err := loadRepositoriesFromMacro(la); err != nil {
+					return err
+				}
 			}
 		}
 	}
-	return loadExtraRepos(macroFile, repos, repoFileMap, repoIndexMap)
+	la.repos, err = loadExtraRepos(macroFile, la.repos, la.repoFileMap, la.repoIndexMap)
+	return err
 }
 
 func loadExtraRepos(f *rule.File, repos []*rule.Rule, repoFileMap map[string]*rule.File, repoIndexMap map[string]int) ([]*rule.Rule, error) {
