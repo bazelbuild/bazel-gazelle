@@ -101,59 +101,58 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 			leveled := strings.HasPrefix(f, "+")
 			f = strings.TrimPrefix(f, "+")
 			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
-			macroFile, err := rule.LoadMacroFile(f, "", defName)
+			repos, err = loadRepositoriesFromMacro(leveled, workspace.Path,  f, defName, repos, repoFileMap, repoIndexMap)
 			if err != nil {
 				return nil, nil, err
-			}
-			for _, repo := range macroFile.Rules {
-				if kind := repo.Kind(); kind == "go_repository" || !leveled {
-					if name := repo.Name(); name != "" {
-						repos = append(repos, repo)
-						repoFileMap[name] = macroFile
-						repoIndexMap[name] = len(repos) - 1
-					}
-				} else {
-					// This block will only be entered if leveled==true
-					var callFile string
-					var defName string
-					for _, l := range macroFile.Loads {
-						if l.Has(kind) {
-							callFile = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(l.Name()))
-							defName = l.Get(kind)
-							break
-						}
-					}
-					if len(callFile) == 0 {
-						continue
-					}
-					fi, err := rule.LoadMacroFile(callFile, "", defName)
-					if err != nil {
-						return nil, nil, err
-					}
-					for _, repo := range fi.Rules {
-						if name := repo.Name(); name != "" {
-							repos = append(repos, repo)
-							repoFileMap[name] = fi
-							repoIndexMap[name] = len(repos) - 1
-						}
-					}
-				}
-			}
-			extraRepos, err = parseRepositoryDirectives(macroFile.Directives)
-			if err != nil {
-				return nil, nil, err
-			}
-			for _, repo := range extraRepos {
-				if i, ok := repoIndexMap[repo.Name()]; ok {
-					repos[i] = repo
-				} else {
-					repos = append(repos, repo)
-				}
-				repoFileMap[repo.Name()] = macroFile
 			}
 		}
 	}
 	return repos, repoFileMap, nil
+}
+
+func loadRepositoriesFromMacro(leveled bool, workspace, f, defName string, repos []*rule.Rule, repoFileMap map[string]*rule.File, repoIndexMap map[string]int) ([]*rule.Rule, error) {
+	macroFile, err := rule.LoadMacroFile(f, "", defName)
+	if err != nil {
+		return nil, err
+	}
+	for _, repo := range macroFile.Rules {
+		if name := repo.Name(); name != "" {
+				repos = append(repos, repo)
+				repoFileMap[name] = macroFile
+				repoIndexMap[name] = len(repos) - 1
+		} else if leveled {
+			// This block will only be entered if leveled==true
+			var callFile, defName string
+			kind := repo.Kind()
+			for _, l := range macroFile.Loads {
+				if l.Has(kind) {
+					callFile = filepath.Join(filepath.Dir(workspace), filepath.Clean(l.Name()))
+					defName = l.Get(kind)
+					break
+				}
+			}
+			if len(callFile) == 0 {
+				continue
+			}
+			repos, err = loadRepositoriesFromMacro(leveled, workspace, callFile, defName, repos, repoFileMap, repoIndexMap)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	extraRepos, err := parseRepositoryDirectives(macroFile.Directives)
+	if err != nil {
+		return nil, err
+	}
+	for _, repo := range extraRepos {
+		if i, ok := repoIndexMap[repo.Name()]; ok {
+			repos[i] = repo
+		} else {
+			repos = append(repos, repo)
+		}
+		repoFileMap[repo.Name()] = macroFile
+	}
+	return repos, nil
 }
 
 func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule, err error) {
