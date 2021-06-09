@@ -252,7 +252,7 @@ def alias_repositories():
 	defer cleanup()
 	workspaceString := `
 # gazelle:repository_macro +repos1.bzl%go_repositories`
-	workspace, err := rule.LoadData(dir+"/WORKSPACE", "", []byte(workspaceString))
+	workspace, err := rule.LoadData(filepath.Join(dir,"WORKSPACE"), "", []byte(workspaceString))
 	if err != nil {
 		t.Fatal(err)
 	}
