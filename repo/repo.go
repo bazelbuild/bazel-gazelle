@@ -78,17 +78,9 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 			repoIndexMap[name] = len(repos) - 1
 		}
 	}
-	extraRepos, err := parseRepositoryDirectives(workspace.Directives)
+	repos, err = loadExtraRepos(workspace, repos, repoFileMap, repoIndexMap)
 	if err != nil {
 		return nil, nil, err
-	}
-	for _, repo := range extraRepos {
-		if i, ok := repoIndexMap[repo.Name()]; ok {
-			repos[i] = repo
-		} else {
-			repos = append(repos, repo)
-		}
-		repoFileMap[repo.Name()] = workspace
 	}
 
 	for _, d := range workspace.Directives {
@@ -101,7 +93,7 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 			leveled := strings.HasPrefix(f, "+")
 			f = strings.TrimPrefix(f, "+")
 			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
-			repos, err = loadRepositoriesFromMacro(leveled, workspace.Path,  f, defName, repos, repoFileMap, repoIndexMap)
+			repos, err = loadRepositoriesFromMacro(leveled, workspace.Path, f, defName, repos, repoFileMap, repoIndexMap)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -127,10 +119,12 @@ func loadRepositoriesFromMacro(leveled bool, workspace, f, defName string, repos
 			for _, l := range macroFile.Loads {
 				if l.Has(kind) {
 					callFile = filepath.Join(filepath.Dir(workspace), filepath.Clean(l.Name()))
-					defName = l.Get(kind)
+					defName = l.Unalias(kind)
 					break
 				}
 			}
+
+			// TODO: Also handle the case where one macro calls another macro in the same bzl file
 			if len(callFile) == 0 {
 				continue
 			}
@@ -140,7 +134,11 @@ func loadRepositoriesFromMacro(leveled bool, workspace, f, defName string, repos
 			}
 		}
 	}
-	extraRepos, err := parseRepositoryDirectives(macroFile.Directives)
+	return loadExtraRepos(macroFile, repos, repoFileMap, repoIndexMap)
+}
+
+func loadExtraRepos(f *rule.File, repos []*rule.Rule, repoFileMap map[string]*rule.File, repoIndexMap map[string]int) ([]*rule.Rule, error) {
+	extraRepos, err := parseRepositoryDirectives(f.Directives)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +148,7 @@ func loadRepositoriesFromMacro(leveled bool, workspace, f, defName string, repos
 		} else {
 			repos = append(repos, repo)
 		}
-		repoFileMap[repo.Name()] = macroFile
+		repoFileMap[repo.Name()] = f
 	}
 	return repos, nil
 }

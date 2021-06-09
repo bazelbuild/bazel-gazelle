@@ -592,8 +592,8 @@ func (l *Load) Has(sym string) bool {
 	return ok
 }
 
-// Get returns the original (from) name of a (to) Symbol from a load.
-func (l *Load) Get(sym string) string {
+// Unalias returns the original (from) name of a (to) Symbol from a load.
+func (l *Load) Unalias(sym string) string {
 	return l.symbols[sym].from.Name
 }
 
