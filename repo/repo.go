@@ -143,7 +143,8 @@ func loadRepositoriesFromMacro(la *loadArgs) error {
 			kind := repo.Kind()
 			for _, l := range macroFile.Loads {
 				if l.Has(kind) {
-					callFile = strings.Replace(filepath.Join(filepath.Dir(la.workspace), filepath.Clean(l.Name())), ":", "/", 1)
+					pkg := filepath.Join(filepath.Dir(la.workspace), filepath.Clean(l.Name()))
+					callFile = strings.Replace(pkg, ":", "/", 1)
 					la.defName = l.Unalias(kind)
 					break
 				}
