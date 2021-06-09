@@ -67,8 +67,16 @@ def go_repositories():
 	}
 	defer os.RemoveAll(tmp)
 
-	if err := generateRepoConfig(filepath.Join(tmp, "WORKSPACE"), filepath.Join(dir, "WORKSPACE")); err != nil {
+	macros, err := generateRepoConfig(filepath.Join(tmp, "WORKSPACE"), filepath.Join(dir, "WORKSPACE"))
+	if err != nil {
 		t.Fatal(err)
+	}
+
+	want := []string{"WORKSPACE", "repositories.bzl"}
+	for i, macro := range macros {
+		if macro != want[i] {
+			t.Errorf("got\n%s\n\nwant:\n%s", macro, want[i])
+		}
 	}
 
 	testtools.CheckFiles(t, tmp, []testtools.FileSpec{

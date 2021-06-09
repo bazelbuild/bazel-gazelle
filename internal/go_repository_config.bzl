@@ -23,8 +23,6 @@ def _go_repository_config_impl(ctx):
     config_path = None
     if ctx.attr.config:
         config_path = ctx.path(ctx.attr.config)
-        for label in _find_macro_file_labels(ctx, ctx.attr.config):
-            ctx.path(label)
 
     if config_path:
         env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
@@ -40,13 +38,21 @@ def _go_repository_config_impl(ctx):
         )
         if result.return_code:
             fail("generate_repo_config: " + result.stderr)
+        if result.stdout:
+            for f in result.stdout.split(" "):
+                if len(f.lstrip()) > 0:
+                    macro_label = Label("@" + ctx.attr.config.workspace_name + "//:" + f.lstrip())
+                    ctx.path(macro_label)
+                    print(macro_label)
+                    print(result.stderr)
+
     else:
         ctx.file(
         "WORKSPACE",
         "",
         False,
     )
-    
+
     # add an empty build file so Bazel recognizes the config
     ctx.file(
         "BUILD.bazel",
@@ -91,6 +97,8 @@ def _find_macro_file_labels(ctx, label):
         if i < 0:
             continue
         line = line[:i].lstrip()
+        if line[0] == "+":
+            line = line[1:]
         macro_label = Label("@" + label.workspace_name + "//:" + line)
         if macro_label not in seen:
             seen[macro_label] = None
