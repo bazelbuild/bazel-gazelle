@@ -134,11 +134,10 @@ func loadRepositoriesFromMacro(la *loadArgs) error {
 	}
 	for _, repo := range macroFile.Rules {
 		if name := repo.Name(); name != "" {
-				la.repos = append(la.repos, repo)
-				la.repoFileMap[name] = macroFile
-				la.repoIndexMap[name] = len(la.repos) - 1
+			la.repos = append(la.repos, repo)
+			la.repoFileMap[name] = macroFile
+			la.repoIndexMap[name] = len(la.repos) - 1
 		} else if la.leveled {
-			// This block will only be entered if leveled==true
 			var callFile string
 			kind := repo.Kind()
 			for _, l := range macroFile.Loads {
