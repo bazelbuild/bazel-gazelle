@@ -67,7 +67,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Fprintf(os.Stdout, strings.Join(macros, " "))
+	for _, m := range macros {
+		fmt.Fprintf(os.Stdout, m)
+	}
 }
 
 func generateRepoConfig(configDest, configSource string) ([]string, error) {

@@ -39,7 +39,7 @@ def _go_repository_config_impl(ctx):
         if result.return_code:
             fail("generate_repo_config: " + result.stderr)
         if result.stdout:
-            for f in result.stdout.split(" "):
+            for f in result.stdout.split("\n"):
                 if len(f.lstrip()) > 0:
                     macro_label = Label("@" + ctx.attr.config.workspace_name + "//:" + f.lstrip())
                     ctx.path(macro_label)
