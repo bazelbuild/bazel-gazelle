@@ -68,7 +68,7 @@ func main() {
 		log.Fatal(err)
 	}
 	for _, m := range macros {
-		fmt.Fprintlnf(os.Stdout, m)
+		fmt.Fprintln(os.Stdout, m)
 	}
 }
 
