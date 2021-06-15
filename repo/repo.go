@@ -138,22 +138,22 @@ func loadRepositoriesFromMacro(la *loadArgs) error {
 			la.repoFileMap[name] = macroFile
 			la.repoIndexMap[name] = len(la.repos) - 1
 		} else if la.leveled {
-			var callFile string
+			var f string
 			kind := repo.Kind()
 			for _, l := range macroFile.Loads {
 				if l.Has(kind) {
-					pkg := filepath.Join(filepath.Dir(la.workspace), filepath.Clean(l.Name()))
-					callFile = strings.Replace(pkg, ":", string(filepath.Separator), 1)
+					rel := strings.Replace(filepath.Clean(l.Name()), ":", string(filepath.Separator), 1)
+					f = filepath.Join(filepath.Dir(la.workspace), rel)
 					la.defName = l.Unalias(kind)
 					break
 				}
 			}
 			// TODO: Also handle the case where one macro calls another macro in the same bzl file
-			if len(callFile) == 0 {
+			if len(f) == 0 {
 				continue
 			}
 			if !la.checked[la.f+"%"+la.defName] {
-				la.f = callFile
+				la.f = f
 				la.checked[la.f+"%"+la.defName] = true
 				if err := loadRepositoriesFromMacro(la); err != nil {
 					return err
