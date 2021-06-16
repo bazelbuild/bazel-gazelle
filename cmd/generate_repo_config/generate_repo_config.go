@@ -30,7 +30,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -63,12 +62,12 @@ func main() {
 	if flag.NArg() != 0 {
 		log.Fatal("generate_repo_config does not accept positional arguments")
 	}
-	macros, err := generateRepoConfig(*configDest, *configSource)
+	files, err := generateRepoConfig(*configDest, *configSource)
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, m := range macros {
-		fmt.Fprintln(os.Stdout, m)
+	for _, f := range files {
+		fmt.Fprintln(os.Stdout, f)
 	}
 }
 
@@ -134,14 +133,10 @@ func generateRepoConfig(configDest, configSource string) ([]string, error) {
 		return nil, err
 	}
 
-	var macros []string
-	for _, m := range sortedFiles {
-		f, err := filepath.Rel(filepath.Dir(configSource), m.Path)
-		if err != nil {
-			return nil, err
-		}
-		macros = append(macros, f)
+	files := make([]string, 0, len(sortedFiles))
+	for _, f := range sortedFiles {
+		files = append(files, f.Path)
 	}
 
-	return macros, nil
+	return files, nil
 }

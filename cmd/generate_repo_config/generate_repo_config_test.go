@@ -73,9 +73,13 @@ def go_repositories():
 	}
 
 	want := []string{"WORKSPACE", "repositories.bzl"}
-	for i, macro := range macros {
-		if macro != want[i] {
-			t.Errorf("got\n%s\n\nwant:\n%s", macro, want[i])
+	if len(want) != len(macros) {
+		t.Errorf("wrong number of macro files found")
+	} else {
+		for i, macro := range macros {
+			if macro != filepath.Join(dir, want[i]) {
+				t.Errorf("got\n%s\n\nwant:\n%s", macro, filepath.Join(dir, want[i]))
+			}
 		}
 	}
 

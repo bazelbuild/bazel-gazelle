@@ -114,6 +114,7 @@ func TestDirectives(t *testing.T) {
 }
 
 func TestRepoConfig(t *testing.T) {
+	// This test assumes
 	if err := bazel_testing.RunBazel("build", "@bazel_gazelle_go_repository_config//:all"); err != nil {
 		t.Fatal(err)
 	}

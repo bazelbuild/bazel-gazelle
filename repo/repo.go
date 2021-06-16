@@ -87,12 +87,10 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 	for _, d := range workspace.Directives {
 		switch d.Key {
 		case "repository_macro":
-			f, defName, err := parseRepositoryMacroDirective(d.Value)
+			f, defName, leveled, err := ParseRepositoryMacroDirective(d.Value)
 			if err != nil {
 				return nil, nil, err
 			}
-			leveled := strings.HasPrefix(f, "+")
-			f = strings.TrimPrefix(f, "+")
 			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
 			checked[f+"%"+defName] = true
 
@@ -207,14 +205,14 @@ func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule,
 	return repos, nil
 }
 
-func parseRepositoryMacroDirective(directive string) (string, string, error) {
+func ParseRepositoryMacroDirective(directive string) (string, string, bool, error) {
 	vals := strings.Split(directive, "%")
 	if len(vals) != 2 {
-		return "", "", fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", directive)
+		return "", "", false, fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", directive)
 	}
 	f := vals[0]
 	if strings.HasPrefix(f, "..") {
-		return "", "", fmt.Errorf("Failure parsing repository_macro: %s, macro file path %s should not start with \"..\"", directive, f)
+		return "", "", false, fmt.Errorf("Failure parsing repository_macro: %s, macro file path %s should not start with \"..\"", directive, f)
 	}
-	return f, vals[1], nil
+	return strings.TrimPrefix(f, "+"), vals[1], strings.HasPrefix(f, "+"), nil
 }
