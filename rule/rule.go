@@ -734,7 +734,7 @@ func (r *Rule) ShouldKeep() bool {
 }
 
 // CallIdent returns the call identifier
-func (r *Rule) CallIdent() *bzl.CallIdent {
+func (r *Rule) CallIdent() *bzl.Ident {
 	return r.ident
 }
 
