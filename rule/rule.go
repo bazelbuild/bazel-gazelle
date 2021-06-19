@@ -665,6 +665,7 @@ func (l *Load) sync() {
 type Rule struct {
 	stmt
 	kind    string
+	ident   *bzl.Ident
 	args    []bzl.Expr
 	attrs   map[string]*bzl.AssignExpr
 	private map[string]interface{}
@@ -717,6 +718,7 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 			expr:     call,
 			comments: commentsFromExpr(expr),
 		},
+		ident:   x,
 		kind:    kind,
 		args:    args,
 		attrs:   attrs,
@@ -729,6 +731,11 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 // subexpressions within the rule should be kept.
 func (r *Rule) ShouldKeep() bool {
 	return ShouldKeep(r.expr)
+}
+
+// CallIdent returns the call identifier
+func (r *Rule) CallIdent() *bzl.CallIdent {
+	return r.ident
 }
 
 // Kind returns the kind of rule this is (for example, "go_library").
