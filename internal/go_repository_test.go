@@ -80,7 +80,7 @@ go_repository(
     name = "errors_go_mod",
     importpath = "github.com/pkg/errors",
     version = "v0.8.1",
-    sum ="h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=",
+    sum = "h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=",
 )
 
 go_repository(
@@ -113,16 +113,80 @@ func TestDirectives(t *testing.T) {
 	}
 }
 
-func TestRepoConfig(t *testing.T) {
-	// This test assumes
-	if err := bazel_testing.RunBazel("build", "@bazel_gazelle_go_repository_config//:all"); err != nil {
-		t.Fatal(err)
-	}
+func TestRepoConfig(t *testing.T, m *testing.M) {
 	outputBase, err := getBazelOutputBase()
 	if err != nil {
 		t.Fatal(err)
 	}
 	outDir := filepath.Join(outputBase, "external/bazel_gazelle_go_repository_config")
+	testArgs := bazel_testing.Args{
+		Main: `
+-- BUILD.bazel --
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix example.com/m
+
+gazelle(name = "gazelle")
+
+gazelle(
+    name = "gazelle-update-repos",
+    args = [
+        "-from_file=go.mod",
+        "-to_macro=deps.bzl%go_repositories",
+    ],
+    command = "update-repos",
+)
+
+-- go.mod --
+module example.com/m
+
+go 1.15
+-- hello.go --
+package main
+
+func main() {}
+`,
+		WorkspaceSuffix: `
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
+gazelle_dependencies(
+	go_env = {
+		"GOPRIVATE": "example.com/m",
+		"GOSUMDB": "off",
+	},
+	go_repository_default_config: "`+outputBase+`",
+)
+
+# gazelle:repo test
+
+go_repository(
+    name = "errors_go_git",
+    importpath = "github.com/pkg/errors",
+    commit = "30136e27e2ac8d167177e8a583aa4c3fea5be833",
+    patches = ["@bazel_gazelle//internal:repository_rules_test_errors.patch"],
+    patch_args = ["-p1"],
+    build_naming_convention = "go_default_library",
+)
+
+go_repository(
+    name = "errors_go_mod",
+    importpath = "github.com/pkg/errors",
+    version = "v0.8.1",
+    sum = "h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=",
+)
+
+go_repository(
+		name = "com_github_apex_log",
+		build_directives = ["gazelle:exclude handlers"],
+		importpath = "github.com/apex/log",
+		sum = "h1:J5rld6WVFi6NxA6m8GJ1LJqu3+GiTFIt3mYv27gdQWI=",
+		version = "v1.1.0",
+)
+`,}
+	bazel_testing.TestMain(m, testArgs)
+	if err := bazel_testing.RunBazel("build", "@bazel_gazelle_go_repository_config//:all"); err != nil {
+		t.Fatal(err)
+	}
 	testtools.CheckFiles(t, outDir, []testtools.FileSpec{
 		{
 			Path: "WORKSPACE",

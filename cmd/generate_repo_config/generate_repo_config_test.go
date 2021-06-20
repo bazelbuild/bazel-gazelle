@@ -19,6 +19,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
@@ -67,20 +68,14 @@ def go_repositories():
 	}
 	defer os.RemoveAll(tmp)
 
-	macros, err := generateRepoConfig(filepath.Join(tmp, "WORKSPACE"), filepath.Join(dir, "WORKSPACE"))
+	got, err := generateRepoConfig(filepath.Join(tmp, "WORKSPACE"), filepath.Join(dir, "WORKSPACE"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	want := []string{"WORKSPACE", "repositories.bzl"}
-	if len(want) != len(macros) {
-		t.Errorf("wrong number of macro files found")
-	} else {
-		for i, macro := range macros {
-			if macro != filepath.Join(dir, want[i]) {
-				t.Errorf("got\n%s\n\nwant:\n%s", macro, filepath.Join(dir, want[i]))
-			}
-		}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %#v; want %#v", got, want)
 	}
 
 	testtools.CheckFiles(t, tmp, []testtools.FileSpec{

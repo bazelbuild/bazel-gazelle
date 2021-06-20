@@ -71,7 +71,7 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map[string]*rule.File, err error) {
 	repoIndexMap := make(map[string]int)
 	repoFileMap = make(map[string]*rule.File)
-	checked := make(map[string]bool)
+	visited := make(map[string]bool)
 	for _, repo := range workspace.Rules {
 		if name := repo.Name(); name != "" {
 			repos = append(repos, repo)
@@ -79,8 +79,7 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 			repoIndexMap[name] = len(repos) - 1
 		}
 	}
-	repos, err = loadExtraRepos(workspace, repos, repoFileMap, repoIndexMap)
-	if err != nil {
+	if err := loadExtraRepos(workspace, &repos, repoFileMap, repoIndexMap); err != nil {
 		return nil, nil, err
 	}
 
@@ -92,20 +91,17 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 				return nil, nil, err
 			}
 			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
-			checked[f+"%"+defName] = true
+			visited[f+"%"+defName] = true
 
 			la := &loadArgs{
-				leveled: leveled,
 				workspace: workspace.Path,
-				f: f,
-				defName: defName,
 				repos: repos,
 				repoFileMap: repoFileMap,
 				repoIndexMap: repoIndexMap,
-				checked: checked,
+				visited: visited,
 			}
 
-			if err := loadRepositoriesFromMacro(la); err != nil {
+			if err := loadRepositoriesFromMacro(la, leveled, f, defName); err != nil {
 				return nil, nil, err
 			}
 			repos = la.repos
@@ -115,68 +111,77 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 }
 
 type loadArgs struct {
-	leveled bool
 	workspace string
-	f string
-	defName string
 	repos []*rule.Rule
 	repoFileMap map[string]*rule.File
 	repoIndexMap map[string]int
-	checked map[string]bool
+	visited map[string]bool
 }
 
-func loadRepositoriesFromMacro(la *loadArgs) error {
-	macroFile, err := rule.LoadMacroFile(la.f, "", la.defName)
+func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) error {
+	macroFile, err := rule.LoadMacroFile(f, "", defName)
 	if err != nil {
 		return err
 	}
 	for _, repo := range macroFile.Rules {
-		if name := repo.Name(); name != "" {
+		name := repo.Name()
+		if name != "" {
 			la.repos = append(la.repos, repo)
 			la.repoFileMap[name] = macroFile
 			la.repoIndexMap[name] = len(la.repos) - 1
-		} else if la.leveled {
-			var f string
-			kind := repo.Kind()
-			for _, l := range macroFile.Loads {
-				if l.Has(kind) {
-					rel := strings.Replace(filepath.Clean(l.Name()), ":", string(filepath.Separator), 1)
-					f = filepath.Join(filepath.Dir(la.workspace), rel)
-					la.defName = l.Unalias(kind)
-					break
-				}
+			continue
+		}
+		if !leveled {
+			continue
+		}
+		kind := repo.Kind()
+		for _, l := range macroFile.Loads {
+			if l.Has(kind) {
+				f, defName = loadToMacroDef(l, la.workspace, kind)
+				break
 			}
-			// TODO: Also handle the case where one macro calls another macro in the same bzl file
-			if len(f) == 0 {
-				continue
-			}
-			if !la.checked[la.f+"%"+la.defName] {
-				la.f = f
-				la.checked[la.f+"%"+la.defName] = true
-				if err := loadRepositoriesFromMacro(la); err != nil {
-					return err
-				}
+		}
+		// TODO: Also handle the case where one macro calls another macro in the same bzl file
+		if f == "" {
+			continue
+		}
+		if !la.visited[f+"%"+defName] {
+			la.visited[f+"%"+defName] = true
+			if err := loadRepositoriesFromMacro(la, false, f, defName); err != nil {
+				return err
 			}
 		}
 	}
-	la.repos, err = loadExtraRepos(macroFile, la.repos, la.repoFileMap, la.repoIndexMap)
-	return err
+	return loadExtraRepos(macroFile, &la.repos, la.repoFileMap, la.repoIndexMap)
 }
 
-func loadExtraRepos(f *rule.File, repos []*rule.Rule, repoFileMap map[string]*rule.File, repoIndexMap map[string]int) ([]*rule.Rule, error) {
+// loadToMacroDef takes a load
+// e.g. for if called on
+// load("package_name:package_dir/file.bzl", alias_name="original_def_name")
+// with defAlias = "alias_name", it will return:
+//     -> "/Path/to/package_name/package_dir/file.bzl"
+//     -> "original_def_name"
+func loadToMacroDef(l *rule.Load, workspace, defAlias string) (string, string) {
+	rel := strings.Replace(filepath.Clean(l.Name()), ":", string(filepath.Separator), 1)
+	f := filepath.Join(filepath.Dir(workspace), rel)
+	defName := l.Unalias(defAlias)
+	return f, defName
+}
+
+func loadExtraRepos(f *rule.File, repos *[]*rule.Rule, repoFileMap map[string]*rule.File, repoIndexMap map[string]int) error {
 	extraRepos, err := parseRepositoryDirectives(f.Directives)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	for _, repo := range extraRepos {
 		if i, ok := repoIndexMap[repo.Name()]; ok {
-			repos[i] = repo
+			(*repos)[i] = repo
 		} else {
-			repos = append(repos, repo)
+			*repos = append(*repos, repo)
 		}
 		repoFileMap[repo.Name()] = f
 	}
-	return repos, nil
+	return nil
 }
 
 func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule, err error) {

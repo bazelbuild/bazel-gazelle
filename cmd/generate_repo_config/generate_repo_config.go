@@ -30,6 +30,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -134,8 +135,17 @@ func generateRepoConfig(configDest, configSource string) ([]string, error) {
 	}
 
 	files := make([]string, 0, len(sortedFiles))
-	for _, f := range sortedFiles {
-		files = append(files, f.Path)
+	for _, m := range sortedFiles {
+		// We have to trim the configSource file path from the repo files returned.
+		// This is safe/required because repo.ListRepositories(sourceFile) is called
+		// with the sourcefile as the workspace, so the source file location is always
+		// prepended to the macro file paths.
+		// TODO: https://github.com/bazelbuild/bazel-gazelle/issues/1068
+		f, err := filepath.Rel(filepath.Dir(configSource), m.Path)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, f)
 	}
 
 	return files, nil

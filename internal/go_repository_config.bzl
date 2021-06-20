@@ -41,13 +41,6 @@ def _go_repository_config_impl(ctx):
         if result.stdout:
             for f in result.stdout.splitlines():
                 f = f.lstrip()
-                if f.startswith(str(ctx.path(""))):
-                    f = f[len(str(ctx.path(""))):]
-                # test hack - the test environment uses a temp dir for the "repo root", but when bazel build
-                # runs generate_repo_config, it gets the real repo root. Thus, we can get the repo root from the test
-                # by using the config_path, which is set at test time to be the repo root.
-                if f.startswith(str(config_path)):
-                    f = f[len(str(config_path)):]
                 if len(f) > 0:
                     print(f)
                     macro_label = Label("@" + ctx.attr.config.workspace_name + "//:" + f)
