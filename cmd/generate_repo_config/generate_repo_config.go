@@ -17,7 +17,9 @@ limitations under the License.
 // WORKSPACE and generates a stripped version of the file. The generated
 // config file should contain only the information relevant to gazelle for
 // dependency resolution, so go_repository rules with importpath
-// and name defined, plus any directives.
+// and name defined, plus any other files that load repsitories to this
+// WORKSPACE (e.g. macro files containing go_repository rules), plus any
+// directives.
 //
 // This command is used by the go_repository_config rule to generate a repo
 // config file used by all go_repository rules.

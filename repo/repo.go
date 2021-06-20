@@ -210,6 +210,9 @@ func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule,
 	return repos, nil
 }
 
+// ParseRepositoryMacroDirective checks the directive is in proper format, and splits
+// path and defName. Repository_macros prepended with a "+" (e.g. "# gazelle:repository_macro +file%def")
+// indicates a "leveled" macro, which loads other macro files.
 func ParseRepositoryMacroDirective(directive string) (string, string, bool, error) {
 	vals := strings.Split(directive, "%")
 	if len(vals) != 2 {
