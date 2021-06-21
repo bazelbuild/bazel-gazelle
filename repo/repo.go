@@ -90,11 +90,12 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 			if err != nil {
 				return nil, nil, err
 			}
-			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
+			repoRoot := filepath.Dir(workspace.Path)
+			f = filepath.Join(repoRoot, filepath.Clean(f))
 			visited[f+"%"+defName] = true
 
 			la := &loadArgs{
-				workspace: workspace.Path,
+				repoRoot: repoRoot,
 				repos: repos,
 				repoFileMap: repoFileMap,
 				repoIndexMap: repoIndexMap,
@@ -111,7 +112,7 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 }
 
 type loadArgs struct {
-	workspace string
+	repoRoot string
 	repos []*rule.Rule
 	repoFileMap map[string]*rule.File
 	repoIndexMap map[string]int
@@ -123,10 +124,10 @@ func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) er
 	if err != nil {
 		return err
 	}
-	for _, repo := range macroFile.Rules {
-		name := repo.Name()
+	for _, rule := range macroFile.Rules {
+		name := rule.Name()
 		if name != "" {
-			la.repos = append(la.repos, repo)
+			la.repos = append(la.repos, rule)
 			la.repoFileMap[name] = macroFile
 			la.repoIndexMap[name] = len(la.repos) - 1
 			continue
@@ -134,10 +135,14 @@ func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) er
 		if !leveled {
 			continue
 		}
-		kind := repo.Kind()
+		// If another repository macro is loaded that macro defName must be called.
+		// When a defName is called, the defName of the function is the rule's "kind".
+		// This then must be matched with the Load that it is imported with, so that
+		// file can be loaded
+		kind := rule.Kind()
 		for _, l := range macroFile.Loads {
 			if l.Has(kind) {
-				f, defName = loadToMacroDef(l, la.workspace, kind)
+				f, defName = loadToMacroDef(l, la.repoRoot, kind)
 				break
 			}
 		}
@@ -161,9 +166,11 @@ func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) er
 // with defAlias = "alias_name", it will return:
 //     -> "/Path/to/package_name/package_dir/file.bzl"
 //     -> "original_def_name"
-func loadToMacroDef(l *rule.Load, workspace, defAlias string) (string, string) {
+func loadToMacroDef(l *rule.Load, repoRoot, defAlias string) (string, string) {
 	rel := strings.Replace(filepath.Clean(l.Name()), ":", string(filepath.Separator), 1)
-	f := filepath.Join(filepath.Dir(workspace), rel)
+	f := filepath.Join(repoRoot, rel)
+	// A loaded macro may refer to the macro by a different name (alias) in the load,
+	// thus, the original name must be resolved to load the macro file properly.
 	defName := l.Unalias(defAlias)
 	return f, defName
 }
