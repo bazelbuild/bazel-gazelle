@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -291,8 +292,11 @@ func updateRepos(wd string, args []string) (err error) {
 			if f.DefName != "" {
 				uf.SortMacro()
 			}
-			if err := uf.Save(uf.Path); err != nil {
-				return err
+			newContent := f.Format()
+			if !bytes.Equal(f.Content, newContent) {
+				if err := uf.Save(uf.Path); err != nil {
+					return err
+				}
 			}
 			delete(updatedFiles, f.Path)
 		}
