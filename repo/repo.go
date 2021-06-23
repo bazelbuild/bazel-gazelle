@@ -71,6 +71,7 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map[string]*rule.File, err error) {
 	repoIndexMap := make(map[string]int)
 	repoFileMap = make(map[string]*rule.File)
+	visited := make(map[string]bool)
 	for _, repo := range workspace.Rules {
 		if name := repo.Name(); name != "" {
 			repos = append(repos, repo)
@@ -78,53 +79,116 @@ func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map
 			repoIndexMap[name] = len(repos) - 1
 		}
 	}
-	extraRepos, err := parseRepositoryDirectives(workspace.Directives)
-	if err != nil {
+	if err := loadExtraRepos(workspace, &repos, repoFileMap, repoIndexMap); err != nil {
 		return nil, nil, err
-	}
-	for _, repo := range extraRepos {
-		if i, ok := repoIndexMap[repo.Name()]; ok {
-			repos[i] = repo
-		} else {
-			repos = append(repos, repo)
-		}
-		repoFileMap[repo.Name()] = workspace
 	}
 
 	for _, d := range workspace.Directives {
 		switch d.Key {
 		case "repository_macro":
-			f, defName, err := parseRepositoryMacroDirective(d.Value)
+			f, defName, leveled, err := ParseRepositoryMacroDirective(d.Value)
 			if err != nil {
 				return nil, nil, err
 			}
-			f = filepath.Join(filepath.Dir(workspace.Path), filepath.Clean(f))
-			macroFile, err := rule.LoadMacroFile(f, "", defName)
-			if err != nil {
+			repoRoot := filepath.Dir(workspace.Path)
+			f = filepath.Join(repoRoot, filepath.Clean(f))
+			visited[f+"%"+defName] = true
+
+			la := &loadArgs{
+				repoRoot: repoRoot,
+				repos: repos,
+				repoFileMap: repoFileMap,
+				repoIndexMap: repoIndexMap,
+				visited: visited,
+			}
+
+			if err := loadRepositoriesFromMacro(la, leveled, f, defName); err != nil {
 				return nil, nil, err
 			}
-			for _, repo := range macroFile.Rules {
-				if name := repo.Name(); name != "" {
-					repos = append(repos, repo)
-					repoFileMap[name] = macroFile
-					repoIndexMap[name] = len(repos) - 1
-				}
-			}
-			extraRepos, err = parseRepositoryDirectives(macroFile.Directives)
-			if err != nil {
-				return nil, nil, err
-			}
-			for _, repo := range extraRepos {
-				if i, ok := repoIndexMap[repo.Name()]; ok {
-					repos[i] = repo
-				} else {
-					repos = append(repos, repo)
-				}
-				repoFileMap[repo.Name()] = macroFile
-			}
+			repos = la.repos
 		}
 	}
 	return repos, repoFileMap, nil
+}
+
+type loadArgs struct {
+	repoRoot string
+	repos []*rule.Rule
+	repoFileMap map[string]*rule.File
+	repoIndexMap map[string]int
+	visited map[string]bool
+}
+
+func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) error {
+	macroFile, err := rule.LoadMacroFile(f, "", defName)
+	if err != nil {
+		return err
+	}
+	for _, rule := range macroFile.Rules {
+		name := rule.Name()
+		if name != "" {
+			la.repos = append(la.repos, rule)
+			la.repoFileMap[name] = macroFile
+			la.repoIndexMap[name] = len(la.repos) - 1
+			continue
+		}
+		if !leveled {
+			continue
+		}
+		// If another repository macro is loaded that macro defName must be called.
+		// When a defName is called, the defName of the function is the rule's "kind".
+		// This then must be matched with the Load that it is imported with, so that
+		// file can be loaded
+		kind := rule.Kind()
+		for _, l := range macroFile.Loads {
+			if l.Has(kind) {
+				f, defName = loadToMacroDef(l, la.repoRoot, kind)
+				break
+			}
+		}
+		// TODO: Also handle the case where one macro calls another macro in the same bzl file
+		if f == "" {
+			continue
+		}
+		if !la.visited[f+"%"+defName] {
+			la.visited[f+"%"+defName] = true
+			if err := loadRepositoriesFromMacro(la, false /* leveled */, f, defName); err != nil {
+				return err
+			}
+		}
+	}
+	return loadExtraRepos(macroFile, &la.repos, la.repoFileMap, la.repoIndexMap)
+}
+
+// loadToMacroDef takes a load
+// e.g. for if called on
+// load("package_name:package_dir/file.bzl", alias_name="original_def_name")
+// with defAlias = "alias_name", it will return:
+//     -> "/Path/to/package_name/package_dir/file.bzl"
+//     -> "original_def_name"
+func loadToMacroDef(l *rule.Load, repoRoot, defAlias string) (string, string) {
+	rel := strings.Replace(filepath.Clean(l.Name()), ":", string(filepath.Separator), 1)
+	f := filepath.Join(repoRoot, rel)
+	// A loaded macro may refer to the macro by a different name (alias) in the load,
+	// thus, the original name must be resolved to load the macro file properly.
+	defName := l.Unalias(defAlias)
+	return f, defName
+}
+
+func loadExtraRepos(f *rule.File, repos *[]*rule.Rule, repoFileMap map[string]*rule.File, repoIndexMap map[string]int) error {
+	extraRepos, err := parseRepositoryDirectives(f.Directives)
+	if err != nil {
+		return err
+	}
+	for _, repo := range extraRepos {
+		if i, ok := repoIndexMap[repo.Name()]; ok {
+			(*repos)[i] = repo
+		} else {
+			*repos = append(*repos, repo)
+		}
+		repoFileMap[repo.Name()] = f
+	}
+	return nil
 }
 
 func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule, err error) {
@@ -153,14 +217,17 @@ func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule,
 	return repos, nil
 }
 
-func parseRepositoryMacroDirective(directive string) (string, string, error) {
+// ParseRepositoryMacroDirective checks the directive is in proper format, and splits
+// path and defName. Repository_macros prepended with a "+" (e.g. "# gazelle:repository_macro +file%def")
+// indicates a "leveled" macro, which loads other macro files.
+func ParseRepositoryMacroDirective(directive string) (string, string, bool, error) {
 	vals := strings.Split(directive, "%")
 	if len(vals) != 2 {
-		return "", "", fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", directive)
+		return "", "", false, fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", directive)
 	}
 	f := vals[0]
 	if strings.HasPrefix(f, "..") {
-		return "", "", fmt.Errorf("Failure parsing repository_macro: %s, macro file path %s should not start with \"..\"", directive, f)
+		return "", "", false, fmt.Errorf("Failure parsing repository_macro: %s, macro file path %s should not start with \"..\"", directive, f)
 	}
-	return f, vals[1], nil
+	return strings.TrimPrefix(f, "+"), vals[1], strings.HasPrefix(f, "+"), nil
 }
