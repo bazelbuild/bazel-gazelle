@@ -1,1 +1,0 @@
-/private/var/tmp/_bazel_tfrench/94c546ab076a5575cf3018815222abcd/bazel_testing/bazel_go_test/main /private/var/tmp/_bazel_tfrench/94c546ab076a5575cf3018815222abcd/bazel_testing/bazel_go_test/main/WORKSPACE /private/var/tmp/_bazel_tfrench/94c546ab076a5575cf3018815222abcd/bazel_testing/bazel_go_test/main/WORKSPACE
