@@ -152,7 +152,7 @@ func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) er
 		}
 		if !la.visited[f+"%"+defName] {
 			la.visited[f+"%"+defName] = true
-			if err := loadRepositoriesFromMacro(la, false, f, defName); err != nil {
+			if err := loadRepositoriesFromMacro(la, false /* leveled */, f, defName); err != nil {
 				return err
 			}
 		}
