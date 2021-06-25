@@ -52,11 +52,12 @@ def _go_repository_cache_impl(ctx):
 
     cache_env = {
         "GOROOT": go_root,
-        "GOPATH": go_path,
         "GOCACHE": go_cache,
     }
+    if go_path:
+        cache_env["GOPATH"] = go_path
     if go_mod_cache:
-        cache_env["GOMODCACHE"] =  go_mod_cache
+        cache_env["GOMODCACHE"] = go_mod_cache
 
     for key, value in ctx.attr.go_env.items():
         if key in cache_env:
