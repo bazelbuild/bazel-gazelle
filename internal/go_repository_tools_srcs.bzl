@@ -46,6 +46,7 @@ GO_REPOSITORY_TOOLS_SRCS = [
 	"@bazel_gazelle//language/go:config.go",
 	"@bazel_gazelle//language/go:constants.go",
 	"@bazel_gazelle//language/go:dep.go",
+	"@bazel_gazelle//language/go:embed.go",
 	"@bazel_gazelle//language/go:fileinfo.go",
 	"@bazel_gazelle//language/go:fix.go",
 	"@bazel_gazelle//language/go/gen_std_package_list:BUILD.bazel",

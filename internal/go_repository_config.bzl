@@ -23,8 +23,6 @@ def _go_repository_config_impl(ctx):
     config_path = None
     if ctx.attr.config:
         config_path = ctx.path(ctx.attr.config)
-        for label in _find_macro_file_labels(ctx, ctx.attr.config):
-            ctx.path(label)
 
     if config_path:
         env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
@@ -40,13 +38,20 @@ def _go_repository_config_impl(ctx):
         )
         if result.return_code:
             fail("generate_repo_config: " + result.stderr)
+        if result.stdout:
+            for f in result.stdout.splitlines():
+                f = f.lstrip()
+                if len(f) > 0:
+                    macro_label = Label("@" + ctx.attr.config.workspace_name + "//:" + f)
+                    ctx.path(macro_label)
+
     else:
         ctx.file(
         "WORKSPACE",
         "",
         False,
     )
-    
+
     # add an empty build file so Bazel recognizes the config
     ctx.file(
         "BUILD.bazel",
@@ -60,40 +65,3 @@ go_repository_config = repository_rule(
         "config": attr.label(),
     },
 )
-
-def _find_macro_file_labels(ctx, label):
-    """Returns a list of labels for configuration files that Gazelle may read.
-
-    The list is gathered by reading '# gazelle:repository_macro' directives
-    from the file named by label (which is not included in the returned list).
-    """
-    seen = {}
-    files = []
-
-    content = ctx.read(ctx.path(label))
-    lines = content.split("\n")
-    for line in lines:
-        i = line.find("#")
-        if i < 0:
-            continue
-        line = line[i + len("#"):]
-        i = line.find("gazelle:")
-        if i < 0 or not line[:i].isspace():
-            continue
-        line = line[i + len("gazelle:"):]
-        i = line.find("repository_macro")
-        if i < 0 or (i > 0 and not line[:i].isspace()):
-            continue
-        line = line[i + len("repository_macro"):]
-        if len(line) == 0 or not line[0].isspace():
-            continue
-        i = line.rfind("%")
-        if i < 0:
-            continue
-        line = line[:i].lstrip()
-        macro_label = Label("@" + label.workspace_name + "//:" + line)
-        if macro_label not in seen:
-            seen[macro_label] = None
-            files.append(macro_label)
-
-    return files

@@ -55,7 +55,7 @@ func TestDiffExisting(t *testing.T) {
  # gazelle:prefix example.com/hello
  
 +go_library(
-+    name = "go_default_library",
++    name = "hello",
 +    srcs = ["hello.go"],
 +    importpath = "example.com/hello",
 +    visibility = ["//visibility:public"],
@@ -91,7 +91,7 @@ func TestDiffNew(t *testing.T) {
 +load("@io_bazel_rules_go//go:def.bzl", "go_library")
 +
 +go_library(
-+    name = "go_default_library",
++    name = "hello",
 +    srcs = ["hello.go"],
 +    importpath = "example.com/hello",
 +    visibility = ["//visibility:public"],
@@ -100,6 +100,33 @@ func TestDiffNew(t *testing.T) {
 `,
 	})
 	testtools.CheckFiles(t, dir, want)
+}
+
+func TestDiffMissingAndNoChange(t *testing.T) {
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"-go_prefix=example.com/hello", "-mode=diff", "-patch=p"}); err != nil {
+		t.Error("Expected no diff, but got a diff.")
+	}
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{Path: "p"}})
+}
+
+func TestDiffEmptyAndNoChange(t *testing.T) {
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{Path: "BUILD.bazel"},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"-go_prefix=example.com/hello", "-mode=diff", "-patch=p"}); err != nil {
+		t.Error("Expected no diff, but got a diff.")
+	}
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{Path: "p"}})
 }
 
 func TestDiffReadWriteDir(t *testing.T) {
@@ -138,7 +165,7 @@ func TestDiffReadWriteDir(t *testing.T) {
  # gazelle:prefix example.com/hello
 +
 +go_library(
-+    name = "go_default_library",
++    name = "hello",
 +    srcs = ["hello.go"],
 +    importpath = "example.com/hello",
 +    visibility = ["//visibility:public"],

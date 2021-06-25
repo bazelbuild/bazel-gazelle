@@ -18,8 +18,9 @@ package golang
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"go/build"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -35,13 +36,7 @@ import (
 )
 
 func importReposFromModules(args language.ImportReposArgs) language.ImportReposResult {
-	// Copy go.mod to temporary directory. We may run commands that modify it,
-	// and we want to leave the original alone.
-	tempDir, err := copyGoModToTemp(args.Path)
-	if err != nil {
-		return language.ImportReposResult{Error: err}
-	}
-	defer os.RemoveAll(tempDir)
+	dir := filepath.Dir(args.Path)
 
 	// List all modules except for the main module, including implicit indirect
 	// dependencies.
@@ -54,7 +49,7 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 	}
 	// path@version can be used as a unique identifier for looking up sums
 	pathToModule := map[string]*module{}
-	data, err := goListModules(tempDir)
+	data, err := goListModules(dir)
 	if err != nil {
 		return language.ImportReposResult{Error: err}
 	}
@@ -78,6 +73,7 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 			pathToModule[mod.Path+"@"+mod.Version] = mod
 		}
 	}
+
 	// Load sums from go.sum. Ideally, they're all there.
 	goSumPath := filepath.Join(filepath.Dir(args.Path), "go.sum")
 	data, _ = ioutil.ReadFile(goSumPath)
@@ -96,15 +92,24 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 			mod.Sum = sum
 		}
 	}
-	// If sums are missing, run go mod download to get them.
+
+	// If sums are missing, run 'go mod download' to get them.
+	// This must be done in a temporary directory because 'go mod download'
+	// may modify go.mod and go.sum. It does not support -mod=readonly.
 	var missingSumArgs []string
 	for pathVer, mod := range pathToModule {
 		if mod.Sum == "" {
 			missingSumArgs = append(missingSumArgs, pathVer)
 		}
 	}
+
 	if len(missingSumArgs) > 0 {
-		data, err := goModDownload(tempDir, missingSumArgs)
+		tmpDir, err := ioutil.TempDir("", "")
+		if err != nil {
+			return language.ImportReposResult{Error: fmt.Errorf("finding module sums: %v", err)}
+		}
+		defer os.RemoveAll(tmpDir)
+		data, err := goModDownload(tmpDir, missingSumArgs)
 		if err != nil {
 			return language.ImportReposResult{Error: err}
 		}
@@ -146,55 +151,15 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 
 // goListModules invokes "go list" in a directory containing a go.mod file.
 var goListModules = func(dir string) ([]byte, error) {
-	goTool := findGoTool()
-	cmd := exec.Command(goTool, "list", "-m", "-json", "all")
-	cmd.Stderr = os.Stderr
-	cmd.Dir = dir
-	return cmd.Output()
+	return runGoCommandForOutput(dir, "list", "-mod=readonly", "-e", "-m", "-json", "all")
 }
 
 // goModDownload invokes "go mod download" in a directory containing a
 // go.mod file.
 var goModDownload = func(dir string, args []string) ([]byte, error) {
-	goTool := findGoTool()
-	cmd := exec.Command(goTool, "mod", "download", "-json")
-	cmd.Args = append(cmd.Args, args...)
-	cmd.Stderr = os.Stderr
-	cmd.Dir = dir
-	return cmd.Output()
-}
-
-// copyGoModToTemp copies to given go.mod file to a temporary directory.
-// go list tends to mutate go.mod files, but gazelle shouldn't do that.
-func copyGoModToTemp(filename string) (tempDir string, err error) {
-	goModOrig, err := os.Open(filename)
-	if err != nil {
-		return "", err
-	}
-	defer goModOrig.Close()
-
-	tempDir, err = ioutil.TempDir("", "gazelle-temp-gomod")
-	if err != nil {
-		return "", err
-	}
-
-	goModCopy, err := os.Create(filepath.Join(tempDir, "go.mod"))
-	if err != nil {
-		os.Remove(tempDir)
-		return "", err
-	}
-	defer func() {
-		if cerr := goModCopy.Close(); err == nil && cerr != nil {
-			err = cerr
-		}
-	}()
-
-	_, err = io.Copy(goModCopy, goModOrig)
-	if err != nil {
-		os.RemoveAll(tempDir)
-		return "", err
-	}
-	return tempDir, err
+	dlArgs := []string{"mod", "download", "-json"}
+	dlArgs = append(dlArgs, args...)
+	return runGoCommandForOutput(dir, dlArgs...)
 }
 
 // findGoTool attempts to locate the go executable. If GOROOT is set, we'll
@@ -211,4 +176,43 @@ func findGoTool() string {
 		path += ".exe"
 	}
 	return path
+}
+
+func runGoCommandForOutput(dir string, args ...string) ([]byte, error) {
+	goTool := findGoTool()
+	env := os.Environ()
+	env = append(env, "GO111MODULE=on")
+	if os.Getenv("GOCACHE") == "" && os.Getenv("HOME") == "" {
+		gocache, err := ioutil.TempDir("", "")
+		if err != nil {
+			return nil, err
+		}
+		env = append(env, "GOCACHE="+gocache)
+		defer os.RemoveAll(gocache)
+	}
+	if os.Getenv("GOPATH") == "" && os.Getenv("HOME") == "" {
+		gopath, err := ioutil.TempDir("", "")
+		if err != nil {
+			return nil, err
+		}
+		env = append(env, "GOPATH="+gopath)
+		defer os.RemoveAll(gopath)
+	}
+	cmd := exec.Command(goTool, args...)
+	stderr := &bytes.Buffer{}
+	cmd.Stderr = stderr
+	cmd.Dir = dir
+	cmd.Env = env
+	out, err := cmd.Output()
+	if err != nil {
+		var errStr string
+		var xerr *exec.ExitError
+		if errors.As(err, &xerr) {
+			errStr = strings.TrimSpace(stderr.String())
+		} else {
+			errStr = err.Error()
+		}
+		return nil, fmt.Errorf("running '%s %s': %s", cmd.Path, strings.Join(cmd.Args, " "), errStr)
+	}
+	return out, nil
 }

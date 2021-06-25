@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -42,30 +43,30 @@ func diffFile(c *config.Config, f *rule.File) error {
 		ToDate:   date,
 	}
 
-	if len(f.Content) == 0 {
-		diff.FromFile = "/dev/null"
-	} else {
-		diff.A = difflib.SplitLines(string(f.Content))
-		if c.ReadBuildFilesDir == "" {
-			path, err := filepath.Rel(c.RepoRoot, f.Path)
-			if err != nil {
-				return fmt.Errorf("error getting old path for file %q: %v", f.Path, err)
-			}
-			diff.FromFile = filepath.ToSlash(path)
-		} else {
-			diff.FromFile = f.Path
-		}
+	newContent := f.Format()
+	if bytes.Equal(newContent, f.Content) {
+		// No change.
+		return nil
 	}
 
-	newContent := f.Format()
+	if _, err := os.Stat(f.Path); os.IsNotExist(err) {
+		diff.FromFile = "/dev/null"
+	} else if err != nil {
+		return fmt.Errorf("error reading original file: %v", err)
+	} else if c.ReadBuildFilesDir == "" {
+		diff.FromFile = rel
+	} else {
+		diff.FromFile = f.Path
+	}
+
+	if len(f.Content) != 0 {
+    		diff.A = difflib.SplitLines(string(f.Content))
+	}
+
 	diff.B = difflib.SplitLines(string(newContent))
 	outPath := findOutputPath(c, f)
 	if c.WriteBuildFilesDir == "" {
-		path, err := filepath.Rel(c.RepoRoot, f.Path)
-		if err != nil {
-			return fmt.Errorf("error getting new path for file %q: %v", f.Path, err)
-		}
-		diff.ToFile = filepath.ToSlash(path)
+		diff.ToFile = rel
 	} else {
 		diff.ToFile = outPath
 	}

@@ -32,6 +32,123 @@ func (_ *goLang) Fix(c *config.Config, f *rule.File) {
 	squashXtest(c, f)
 	removeLegacyProto(c, f)
 	removeLegacyGazelle(c, f)
+	migrateNamingConvention(c, f)
+}
+
+// migrateNamingConvention renames rules according to go_naming_convention
+// directives.
+func migrateNamingConvention(c *config.Config, f *rule.File) {
+	// Determine old and new names for go_library and go_test.
+	nc := getGoConfig(c).goNamingConvention
+	importPath := InferImportPath(c, f.Pkg)
+	if importPath == "" {
+		return
+	}
+	var pkgName string // unknown unless there's a binary
+	if fileContainsGoBinary(c, f) {
+		pkgName = "main"
+	}
+	libName := libNameByConvention(nc, importPath, pkgName)
+	testName := testNameByConvention(nc, importPath)
+	var migrateLibName, migrateTestName string
+	switch nc {
+	case goDefaultLibraryNamingConvention:
+		migrateLibName = libNameByConvention(importNamingConvention, importPath, pkgName)
+		migrateTestName = testNameByConvention(importNamingConvention, importPath)
+	case importNamingConvention, importAliasNamingConvention:
+		migrateLibName = defaultLibName
+		migrateTestName = defaultTestName
+	default:
+		return
+	}
+
+	// Check whether the new names are in use. If there are rules with both old
+	// and new names, there will be a conflict.
+	var haveLib, haveMigrateLib, haveTest, haveMigrateTest bool
+	for _, r := range f.Rules {
+		switch {
+		case r.Name() == libName:
+			haveLib = true
+		case r.Kind() == "go_library" && r.Name() == migrateLibName && r.AttrString("importpath") == importPath:
+			haveMigrateLib = true
+		case r.Name() == testName:
+			haveTest = true
+		case r.Kind() == "go_test" && r.Name() == migrateTestName && strListAttrContains(r, "embed", ":"+migrateLibName):
+			haveMigrateTest = true
+		}
+	}
+	if haveLib && haveMigrateLib {
+		log.Printf("%[1]s: Tried to rename %[2]s to %[3]s, but %[3]s already exists.", f.Path, migrateLibName, libName)
+	}
+	if haveTest && haveMigrateTest {
+		log.Printf("%[1]s: Tried to rename %[2]s to %[3]s, but %[3]s already exists.", f.Path, migrateTestName, testName)
+	}
+	shouldMigrateLib := haveMigrateLib && !haveLib
+	shouldMigrateTest := haveMigrateTest && !haveTest
+
+	// Rename the targets and stuff in the same file that refers to them.
+	for _, r := range f.Rules {
+		// TODO(jayconrod): support map_kind directive.
+		// We'll need to move the metaresolver from resolve.RuleIndex to config.Config so we can access it from here.
+		switch r.Kind() {
+		case "go_binary":
+			if haveMigrateLib && shouldMigrateLib {
+				replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
+			}
+		case "go_library":
+			if r.Name() == migrateLibName && shouldMigrateLib {
+				r.SetName(libName)
+			}
+		case "go_test":
+			if r.Name() == migrateTestName && shouldMigrateTest {
+				r.SetName(testName)
+			}
+			if shouldMigrateLib {
+				replaceInStrListAttr(r, "embed", ":"+migrateLibName, ":"+libName)
+			}
+		}
+	}
+}
+
+// fileContainsGoBinary returns whether the file has a go_binary rule.
+func fileContainsGoBinary(c *config.Config, f *rule.File) bool {
+	if f == nil {
+		return false
+	}
+	for _, r := range f.Rules {
+		kind := r.Kind()
+		if mappedKind, ok := c.KindMap[kind]; ok {
+			kind = mappedKind.KindName
+		}
+		if kind == "go_binary" {
+			return true
+		}
+	}
+	return false
+}
+
+func replaceInStrListAttr(r *rule.Rule, attr, old, new string) {
+	items := r.AttrStrings(attr)
+	changed := false
+	for i := range items {
+		if items[i] == old {
+			changed = true
+			items[i] = new
+		}
+	}
+	if changed {
+		r.SetAttr(attr, items)
+	}
+}
+
+func strListAttrContains(r *rule.Rule, attr, s string) bool {
+	items := r.AttrStrings(attr)
+	for _, item := range items {
+		if item == s {
+			return true
+		}
+	}
+	return false
 }
 
 // migrateLibraryEmbed converts "library" attributes to "embed" attributes,

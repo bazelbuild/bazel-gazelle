@@ -64,6 +64,7 @@ func TestCommandLine(t *testing.T) {
 		t,
 		"-build_tags=foo,bar",
 		"-go_prefix=example.com/repo",
+		"-go_naming_convention=import_alias",
 		"-external=vendored",
 		"-repo_root=.")
 	gc := getGoConfig(c)
@@ -77,6 +78,9 @@ func TestCommandLine(t *testing.T) {
 	}
 	if gc.depMode != vendorMode {
 		t.Errorf("got dep mode %v; want %v", gc.depMode, vendorMode)
+	}
+	if gc.goNamingConvention != importAliasNamingConvention {
+		t.Errorf("got naming convention %v; want %v", gc.goNamingConvention, importAliasNamingConvention)
 	}
 }
 

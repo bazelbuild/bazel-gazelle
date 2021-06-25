@@ -41,18 +41,16 @@ DEFAULT_LANGUAGES = [
 ]
 
 def _gazelle_runner_impl(ctx):
-    args = [
-        ctx.attr.command,
-        "-mode",
-        ctx.attr.mode,
-    ]
+    args = [ctx.attr.command]
+    if ctx.attr.mode:
+        args.extend(["-mode", ctx.attr.mode])
     if ctx.attr.external:
         args.extend(["-external", ctx.attr.external])
     if ctx.attr.prefix:
         args.extend(["-go_prefix", ctx.attr.prefix])
     if ctx.attr.build_tags:
         args.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
-    args.extend(ctx.attr.extra_args)
+    args.extend([ctx.expand_location(arg, ctx.attr.data) for arg in ctx.attr.extra_args])
 
     out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
     go_tool = ctx.toolchains["@io_bazel_rules_go//go:toolchain"].sdk.go
@@ -76,7 +74,9 @@ def _gazelle_runner_impl(ctx):
     runfiles = ctx.runfiles(files = [
         ctx.executable.gazelle,
         go_tool,
-    ])
+    ] + ctx.files.data).merge(
+        ctx.attr.gazelle[DefaultInfo].default_runfiles,
+    )
     return [DefaultInfo(
         files = depset([out_file]),
         runfiles = runfiles,
@@ -92,12 +92,16 @@ _gazelle_runner = rule(
             cfg = "host",
         ),
         "command": attr.string(
-            values = ["update", "fix"],
+            values = [
+                "fix",
+                "update",
+                "update-repos",
+            ],
             default = "update",
         ),
         "mode": attr.string(
-            values = ["print", "fix", "diff"],
-            default = "fix",
+            values = ["", "print", "fix", "diff"],
+            default = "",
         ),
         "external": attr.string(
             values = ["", "external", "vendored"],
@@ -106,6 +110,7 @@ _gazelle_runner = rule(
         "build_tags": attr.string_list(),
         "prefix": attr.string(),
         "extra_args": attr.string_list(),
+        "data": attr.label_list(allow_files = True),
         "_template": attr.label(
             default = "@bazel_gazelle//internal:gazelle.bash.in",
             allow_single_file = True,
@@ -132,6 +137,5 @@ def gazelle(name, **kwargs):
     native.sh_binary(
         name = name,
         srcs = [runner_name],
-        args = ["-bazel_run"],
         tags = ["manual"],
     )

@@ -17,16 +17,6 @@ load(
     "GoArchive",
     "go_context",
 )
-load(
-    "@io_bazel_rules_go//go/platform:list.bzl",
-    "GOARCH",
-    "GOOS",
-)
-load(
-    "@io_bazel_rules_go//go/private:rules/transition.bzl",
-    "go_transition_rule",
-    "go_transition_wrapper",
-)
 
 def _gazelle_binary_impl(ctx):
     go = go_context(ctx)
@@ -94,8 +84,11 @@ _gazelle_binary_kwargs = {
             allow_empty = False,
         ),
         "_go_context_data": attr.label(default = "@io_bazel_rules_go//:go_context_data"),
+        # _stdlib is needed for rules_go versions before v0.23.0. After that,
+        # _go_context_data includes a dependency on stdlib.
+        "_stdlib": attr.label(default = "@io_bazel_rules_go//:stdlib"),
         "_srcs": attr.label(
-            default = "//cmd/gazelle:go_default_library",
+            default = "//cmd/gazelle:gazelle_lib",
         ),
     },
     "executable": True,
@@ -104,13 +97,11 @@ _gazelle_binary_kwargs = {
 
 gazelle_binary = rule(**_gazelle_binary_kwargs)
 
-# DEPRECATED(#803): go_transition_rule and go_transition_wrapper are internal
-# to rules_go and should not be used. The mode attributes supported by this
-# are deprecated, and support for them should be dropped after v0.22.0.
-gazelle_transition_binary = go_transition_rule(**_gazelle_binary_kwargs)
-
-def gazelle_binary_wrapper(name, **kwargs):
-    go_transition_wrapper(gazelle_binary, gazelle_transition_binary, name = name, **kwargs)
+def gazelle_binary_wrapper(**kwargs):
+    for key in ("goos", "goarch", "static", "msan", "race", "pure", "strip", "debug", "linkmode", "gotags"):
+        if key in kwargs:
+            fail("gazelle_binary attribute '%s' is no longer supported (https://github.com/bazelbuild/bazel-gazelle/issues/803)" % key)
+    gazelle_binary(**kwargs)
 
 def _format_import(importpath):
     _, _, base = importpath.rpartition("/")

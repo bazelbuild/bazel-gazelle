@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
-    name = "go_default_library",
+    name = "cgolib_with_build_tags",
     srcs = [
         "asm_linux.S",
         "asm_other.S",
@@ -41,9 +41,6 @@ go_library(
             "example.com/repo/lib/deep",
         ],
         "@io_bazel_rules_go//go/platform:linux": [
-            "example.com/repo/lib/deep",
-        ],
-        "@io_bazel_rules_go//go/platform:nacl": [
             "example.com/repo/lib/deep",
         ],
         "@io_bazel_rules_go//go/platform:netbsd": [
@@ -90,8 +87,8 @@ go_library(
 )
 
 go_test(
-    name = "go_default_test",
+    name = "cgolib_with_build_tags_test",
     srcs = ["foo_test.go"],
     _gazelle_imports = ["testing"],
-    embed = [":go_default_library"],
+    embed = [":cgolib_with_build_tags"],
 )

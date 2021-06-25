@@ -24,13 +24,464 @@ import (
 )
 
 type fixTestCase struct {
-	desc, old, want string
+	desc, old, want  string
+	namingConvention namingConvention
 }
 
 func TestFixFile(t *testing.T) {
 	for _, tc := range []fixTestCase{
-		// migrateLibraryEmbed tests
+		// migrateNamingConvention tests
 		{
+			desc:             "go_naming_convention=go_default_library -> import for lib",
+			namingConvention: importNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=go_default_library -> import for bin",
+			namingConvention: importNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_binary(
+    name = "foo",
+    embed = [":go_default_library"],
+)
+
+go_library(
+    name = "go_default_library",
+    importpath = "example.com/foo",
+    srcs = ["foo.go"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_binary(
+    name = "foo",
+    embed = [":foo_lib"],
+)
+
+go_library(
+    name = "foo_lib",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo_lib"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=go_default_library -> import conflict",
+			namingConvention: importNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load(":build_defs.bzl", "x_binary")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:private"],
+)
+
+x_binary(
+    name = "foo",
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load(":build_defs.bzl", "x_binary")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:private"],
+)
+
+x_binary(
+    name = "foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=import -> go_default_library for lib",
+			namingConvention: goDefaultLibraryNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=import -> go_default_library for bin",
+			namingConvention: goDefaultLibraryNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_binary(
+    name = "foo",
+    embed = [":foo_lib"],
+)
+
+go_library(
+    name = "foo_lib",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo_lib"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_binary(
+    name = "foo",
+    embed = [":go_default_library"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=go_default_library -> import_alias for lib",
+			namingConvention: importAliasNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=import_alias -> go_default_library for lib",
+			namingConvention: goDefaultLibraryNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=go_default_library -> import_alias for bin",
+			namingConvention: importAliasNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_binary(
+    name = "foo",
+    embed = [":go_default_library"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_binary(
+    name = "foo",
+    embed = [":foo_lib"],
+)
+
+go_library(
+    name = "foo_lib",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo_lib"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=import -> import_alias for lib",
+			namingConvention: importAliasNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention import_alias -> import for lib",
+			namingConvention: importNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=import -> import for lib",
+			namingConvention: importNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention go_default_library -> go_default_library for lib",
+			namingConvention: goDefaultLibraryNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:private"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["foo_test.go"],
+    embed = [":go_default_library"],
+)
+`,
+		}, {
+			desc:             "go_naming_convention=import_alias -> import_alias for lib",
+			namingConvention: importAliasNamingConvention,
+			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+			want: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "foo",
+    srcs = ["foo.go"],
+    importpath = "example.com/foo",
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    embed = [":foo"],
+)
+`,
+		}, {
+			// migrateLibraryEmbed tests
 			desc: "library migrated to embed",
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
@@ -408,7 +859,10 @@ go_proto_library(name = "foo_proto")
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			testFix(t, tc, func(f *rule.File) {
-				c, langs, _ := testConfig(t)
+				c, langs, _ := testConfig(t,
+					"-go_naming_convention="+tc.namingConvention.String(),
+					"-go_prefix=example.com/foo",
+				)
 				c.ShouldFix = true
 				for _, lang := range langs {
 					lang.Fix(c, f)

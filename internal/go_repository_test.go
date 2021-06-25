@@ -13,10 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package go_repository_test
+package bazel_test
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -30,11 +31,39 @@ import (
 var testArgs = bazel_testing.Args{
 	Main: `
 -- BUILD.bazel --
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix example.com/m
+
+gazelle(name = "gazelle")
+
+gazelle(
+    name = "gazelle-update-repos",
+    args = [
+        "-from_file=go.mod",
+        "-to_macro=deps.bzl%go_repositories",
+    ],
+    command = "update-repos",
+)
+
+-- go.mod --
+module example.com/m
+
+go 1.15
+-- hello.go --
+package main
+
+func main() {}
 `,
 	WorkspaceSuffix: `
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
 
-gazelle_dependencies()
+gazelle_dependencies(
+	go_env = {
+		"GOPRIVATE": "example.com/m",
+		"GOSUMDB": "off",
+	},
+)
 
 # gazelle:repo test
 
@@ -44,6 +73,7 @@ go_repository(
     commit = "30136e27e2ac8d167177e8a583aa4c3fea5be833",
     patches = ["@bazel_gazelle//internal:repository_rules_test_errors.patch"],
     patch_args = ["-p1"],
+    build_naming_convention = "go_default_library",
 )
 
 go_repository(
@@ -106,6 +136,7 @@ go_repository(
 
 go_repository(
     name = "errors_go_git",
+    build_naming_convention = "go_default_library",
     importpath = "github.com/pkg/errors",
 )
 
@@ -134,6 +165,26 @@ func TestModcacheRW(t *testing.T) {
 	}
 	if info.Mode()&0200 == 0 {
 		t.Fatal("module cache is read-only")
+	}
+}
+
+func TestRepoCacheContainsGoEnv(t *testing.T) {
+	if err := bazel_testing.RunBazel("query", "@errors_go_mod//:go_default_library"); err != nil {
+		t.Fatal(err)
+	}
+	outputBase, err := getBazelOutputBase()
+	if err != nil {
+		t.Fatal(err)
+	}
+	goEnvPath := filepath.Join(outputBase, "external/bazel_gazelle_go_repository_cache", "go.env")
+	gotBytes, err := ioutil.ReadFile(goEnvPath)
+	if err != nil {
+		t.Fatalf("could not read file %s: %v", goEnvPath, err)
+	}
+	for _, want := range []string{"GOPRIVATE='example.com/m'", "GOSUMDB='off'"} {
+		if !strings.Contains(string(gotBytes), want) {
+			t.Fatalf("go.env did not contain %s", want)
+		}
 	}
 }
 

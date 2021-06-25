@@ -41,8 +41,10 @@ type Label struct {
 	// the target. If both Repo and Pkg are omitted, the label is relative.
 	Pkg string
 
-	// Name is the name of the target the label refers to. If omitted, Name
-	// is assumed to be the same as Pkg.
+	// Name is the name of the target the label refers to. Name must not be empty.
+	// Note that the name may be omitted from a label string if it is equal to
+	// the last component of the package name ("//x" is equivalent to "//x:x"),
+	// but in either case, Name should be set here.
 	Name string
 
 	// Relative indicates whether the label refers to a target in the current
@@ -55,12 +57,12 @@ func New(repo, pkg, name string) Label {
 	return Label{Repo: repo, Pkg: pkg, Name: name}
 }
 
-// NoLabel is the zero  value of Label. It is not a valid label and may be
+// NoLabel is the zero value of Label. It is not a valid label and may be
 // returned when an error occurs.
 var NoLabel = Label{}
 
 var (
-	labelRepoRegexp = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
+	labelRepoRegexp = regexp.MustCompile(`^$|^[A-Za-z][A-Za-z0-9_]*$`)
 	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._-]*$`)
 	labelNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_/.+=,@~-]*$`)
 )
@@ -75,14 +77,16 @@ func Parse(s string) (Label, error) {
 	if strings.HasPrefix(s, "@") {
 		relative = false
 		endRepo := strings.Index(s, "//")
-		if endRepo < 0 {
-			return NoLabel, fmt.Errorf("label parse error: repository does not end with '//': %q", origStr)
+		if endRepo > 0 {
+			repo = s[len("@"):endRepo]
+			s = s[endRepo:]
+		} else {
+			repo = s[len("@"):]
+			s = "//:" + repo
 		}
-		repo = s[len("@"):endRepo]
 		if !labelRepoRegexp.MatchString(repo) {
 			return NoLabel, fmt.Errorf("label parse error: repository has invalid characters: %q", origStr)
 		}
-		s = s[endRepo:]
 	}
 
 	var pkg string

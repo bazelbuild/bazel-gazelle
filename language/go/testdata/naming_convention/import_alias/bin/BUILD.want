@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+
+go_library(
+    name = "bin_lib",
+    srcs = [
+        "lib.go",
+        "main.go",
+    ],
+    _gazelle_imports = [
+        "example.com/repo/naming_convention/import_alias/bin",
+        "fmt",
+    ],
+    importpath = "example.com/repo/naming_convention/import_alias/bin",
+    visibility = ["//visibility:private"],
+)
+
+go_binary(
+    name = "bin",
+    _gazelle_imports = [],
+    embed = [":bin_lib"],
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "bin_test",
+    srcs = ["bin_test.go"],
+    _gazelle_imports = ["testing"],
+    embed = [":bin_lib"],
+)

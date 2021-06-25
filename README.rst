@@ -5,9 +5,6 @@ Gazelle build file generator
 .. _Architecture of Gazelle: Design.rst
 .. _Repository rules: repository.rst
 .. _go_repository: repository.rst#go_repository
-.. _git_repository: repository.rst#git_repository
-.. _http_archive: repository.rst#http_archive
-.. _Gazelle in rules_go: https://github.com/bazelbuild/rules_go/tree/master/go/tools/gazelle
 .. _fix: #fix-and-update
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
@@ -20,6 +17,10 @@ Gazelle build file generator
 .. _import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.import_prefix
 .. _strip_import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.strip_import_prefix
 .. _buildozer: https://github.com/bazelbuild/buildtools/tree/master/buildozer
+.. _Go Release Policy: https://golang.org/doc/devel/release.html#policy
+.. _bazel-go-discuss: https://groups.google.com/forum/#!forum/bazel-go-discuss
+.. _#bazel on Go Slack: https://gophers.slack.com/archives/C1SCQE54N
+.. _#go on Bazel Slack: https://bazelbuild.slack.com/archives/CDBP88Z0D
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -42,6 +43,15 @@ external repositories as part of the `go_repository`_ rule.
 
 *Gazelle is under active development. Its interface and the rules it generates
 may change. Gazelle is not an official Google product.*
+
+Mailing list: `bazel-go-discuss`_
+
+Slack: `#go on Bazel Slack`_, `#bazel on Go Slack`_
+
+*rules_go and Gazelle are getting community maintainers! If you are a regular
+user of either project and are interested in helping out with development,
+code reviews, and issue triage, please drop by our Slack channels (linked above)
+and say hello!*
 
 .. contents:: **Contents**
   :depth: 2
@@ -73,34 +83,38 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "8663604808d2738dc615a2c3eb70eba54a9a982089dd09f6ffe5d0e75771bc4f",
+        sha256 = "69de5c704a05ff37862f7e0f5534d4f479418afc21806c887db544a316f3cb6b",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.23.6/rules_go-v0.23.6.tar.gz",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.23.6/rules_go-v0.23.6.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.27.0/rules_go-v0.27.0.tar.gz",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.27.0/rules_go-v0.27.0.tar.gz",
         ],
     )
 
     http_archive(
         name = "bazel_gazelle",
-        sha256 = "cdb02a887a7187ea4d5a27452311a75ed8637379a1287d8eeb952138ea485f7d",
+        sha256 = "62ca106be173579c0a167deb23358fdfe71ffa1e4cfdddf5582af26520f1c66f",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.21.1/bazel-gazelle-v0.21.1.tar.gz",
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.21.1/bazel-gazelle-v0.21.1.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz",
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.23.0/bazel-gazelle-v0.23.0.tar.gz",
         ],
     )
 
-    load("@io_bazel_rules_go//go:deps.bzl", "go_rules_dependencies", "go_register_toolchains")
+    load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
     go_rules_dependencies()
 
-    go_register_toolchains()
-
-    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+    go_register_toolchains(version = "1.16")
 
     gazelle_dependencies()
 
+``gazelle_dependencies`` supports optional argument ``go_env`` (dict-mapping)
+to set project specific go environment variables.
+
 Add the code below to the BUILD or BUILD.bazel file in the root directory
-of your repository. For Go projects, replace the string after ``prefix`` with
+of your repository.
+
+**Important:** For Go projects, replace the string after ``prefix`` with
 the portion of your import path that corresponds to your repository.
 
 .. code:: bzl
@@ -126,7 +140,10 @@ rule cannot run directly.
 
 .. code::
 
-  $ bazel run //:gazelle -- update-repos -from_file=go.mod
+  $ bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro=deps.bzl%go_dependencies
+
+After running ``update-repos``, you might want to run ``bazel run //:gazelle`` again, as the
+``update-repos`` command can affect the output of a normal run of Gazelle.
 
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -157,6 +174,16 @@ your root build files to avoid having to type ``-go_prefix`` every time.
 
   # gazelle:prefix github.com/example/project
 
+Compatibility with Go
+---------------------
+
+Gazelle is compatible with supported releases of Go, per the
+`Go Release Policy`_. The Go Team officially supports the current and previous
+minor releases. Older releases are not supported and don't receive bug fixes
+or security updates.
+
+Gazelle may use language and library features from the oldest supported release.
+
 Compatibility with rules_go
 ---------------------------
 
@@ -168,33 +195,37 @@ you're using a compatible version.
 +---------------------+------------------------------+------------------------------+
 | **Gazelle version** | **Minimum rules_go version** | **Maximum rules_go version** |
 +=====================+==============================+==============================+
-| 0.8                 | 0.8.0                        | n/a                          |
+| 0.8                 | 0.8                          | n/a                          |
 +---------------------+------------------------------+------------------------------+
-| 0.9                 | 0.9.0                        | n/a                          |
+| 0.9                 | 0.9                          | n/a                          |
 +---------------------+------------------------------+------------------------------+
-| 0.10.0              | 0.9.0                        | 0.11.0                       |
+| 0.10                | 0.9                          | 0.11                         |
 +---------------------+------------------------------+------------------------------+
-| 0.11.0              | 0.11.0                       | n/a                          |
+| 0.11                | 0.11                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.12.0              | 0.11.0                       | n/a                          |
+| 0.12                | 0.11                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.13.0              | 0.13.0                       | n/a                          |
+| 0.13                | 0.13                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.14.0              | 0.13.0                       | n/a                          |
+| 0.14                | 0.13                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.15.0              | 0.13.0                       | n/a                          |
+| 0.15                | 0.13                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.16.0              | 0.13.0                       | n/a                          |
+| 0.16                | 0.13                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.17.0              | 0.13.0                       | n/a                          |
+| 0.17                | 0.13                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.18.0              | 0.19.0                       | n/a                          |
+| 0.18                | 0.19                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.19.0              | 0.19.0                       | n/a                          |
+| 0.19                | 0.19                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.20.0              | 0.20.0                       | n/a                          |
+| 0.20                | 0.20                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.21.0              | 0.20.0                       | n/a                          |
+| 0.21                | 0.20                         | 0.24                         |
++---------------------+------------------------------+------------------------------+
+| 0.22                | 0.20                         | 0.24                         |
++---------------------+------------------------------+------------------------------+
+| 0.23                | 0.26                         | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
@@ -325,8 +356,8 @@ The following flags are accepted:
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-index true|false`                                    | :value:`true`                          |
 +--------------------------------------------------------------+----------------------------------------+
-| Determines whether Galleze should index the libraries in the current repository and whether it        |
-| should use the index to resolve dependencies. If this is switched off, Galleze would rely on          |
+| Determines whether Gazelle should index the libraries in the current repository and whether it        |
+| should use the index to resolve dependencies. If this is switched off, Gazelle would rely on          |
 | ``# gazelle:prefix`` directive or ``-go_prefix`` flag to resolve dependencies.                        |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-go_grpc_compiler`                                    | ``@io_bazel_rules_go//proto:go_grpc``  |
@@ -336,11 +367,24 @@ The following flags are accepted:
 | See `Predefined plugins`_ for available options; commonly used options include                        |
 | ``@io_bazel_rules_go//proto:gofast_grpc`` and ``@io_bazel_rules_go//proto:gogofaster_grpc``.          |
 +--------------------------------------------------------------+----------------------------------------+
+| :flag:`-go_naming_convention`                                |                                        |
++--------------------------------------------------------------+----------------------------------------+
+| Controls the names of generated Go targets. Equivalent to the                                         |
+| ``# gazelle:go_naming_convention`` directive. See details in                                          |
+| `Directives`_ below.                                                                                  |
++--------------------------------------------------------------+----------------------------------------+
+| :flag:`-go_naming_convention_external`                       |                                        |
++--------------------------------------------------------------+----------------------------------------+
+| Controls the default naming convention used when resolving libraries in                               |
+| external repositories with unknown naming conventions. Equivalent to the                              |
+| ``# gazelle:go_naming_convention_external`` directive.                                                |
++--------------------------------------------------------------+----------------------------------------+
 | :flag:`-go_prefix example.com/repo`                          |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | A prefix of import paths for libraries in the repository that corresponds to                          |
-| the repository root. Gazelle infers this from the ``go_prefix`` rule in the                           |
-| root BUILD.bazel file, if it exists. If not, this option is mandatory.                                |
+| the repository root. Equivalent to setting the ``# gazelle:prefix`` directive                         |
+| in the root BUILD.bazel file or the ``prefix`` attribute of the ``gazelle`` rule. If                  |
+| neither of those are set, this option is mandatory.                                                   |
 |                                                                                                       |
 | This prefix is used to determine whether an import path refers to a library                           |
 | in the current repository or an external dependency.                                                  |
@@ -380,11 +424,12 @@ The following flags are accepted:
 | Determines the proto option Gazelle uses to group .proto files into rules                             |
 | when in ``package`` mode. See details in `Directives`_ below.                                         |
 +--------------------------------------------------------------+----------------------------------------+
-| :flag:`-proto_import_prefix repo`                            |                                        |
+| :flag:`-proto_import_prefix path`                            |                                        |
 +--------------------------------------------------------------+----------------------------------------+
 | Sets the `import_prefix`_ attribute of generated ``proto_library`` rules.                             |
 | This adds a prefix to the string used to import ``.proto`` files listed in                            |
-| the ``srcs`` attribute of generated rules.                                                            |
+| the ``srcs`` attribute of generated rules. Equivalent to the                                          |
+| ``# gazelle:proto_import_prefix`` directive. See details in `Directives`_ below.                      |
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-repo_root dir`                                       |                                        |
 +--------------------------------------------------------------+----------------------------------------+
@@ -395,10 +440,11 @@ The following flags are accepted:
 +--------------------------------------------------------------+----------------------------------------+
 | :flag:`-lang lang1,lang2,...`                                | :value:`""`                            |
 +--------------------------------------------------------------+----------------------------------------+
-| Selects languages for which to compose rules.                                                         |
+| Selects languages for which to compose and index rules.                                               |
 |                                                                                                       |
 | By default, all languages that this Gazelle was built with are processed.                             |
 +--------------------------------------------------------------+----------------------------------------+
+
 .. _Predefined plugins: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#predefined-plugins
 
 ``update-repos``
@@ -579,6 +625,33 @@ The following directives are recognized:
 | ``@io_bazel_rules_go//proto:gofast_grpc`` and                                              |
 | ``@io_bazel_rules_go//proto:gogofaster_grpc``.                                             |
 +---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_naming_convention`           | inferred automatically                 |
++---------------------------------------------------+----------------------------------------+
+| Controls the names of generated Go targets.                                                |
+|                                                                                            |
+| Valid values are:                                                                          |
+|                                                                                            |
+| * ``go_default_library``: Library targets are named ``go_default_library``, test targets   |
+|   are named ``go_default_test``.                                                           |
+| * ``import``: Library and test targets are named after the last segment of their import    |
+|   path.                                                                                    |
+|   For example, ``example.repo/foo`` is named ``foo``, and the test target is ``foo_test``. |
+|   Major version suffixes like ``/v2`` are dropped.                                         |
+|   For a main package with a binary ``foobin``, the names are instead ``foobin_lib`` and    |
+|   ``foobin_test``.                                                                         |
+| * ``import_alias``: Same as ``import``, but an ``alias`` target is generated named         |
+|   ``go_default_library`` to ensure backwards compatibility.                                |
+|                                                                                            |
+| If no naming convention is set, Gazelle attempts to infer the convention in                |
+| use by reading the root build file and build files in immediate                            |
+| subdirectories. If no Go targets are found, Gazelle defaults to ``import``.                |
++---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_naming_convention_external`  | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Controls the default naming convention used when resolving libraries in                    |
+| external repositories with unknown naming conventions. Accepts the same values             |
+| as ``go_naming_convention``.                                                               |
++---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:go_proto_compilers`             | ``@io_bazel_rules_go//proto:go_proto`` |
 +---------------------------------------------------+----------------------------------------+
 | The protocol buffers compiler(s) to use for building go bindings.                          |
@@ -746,8 +819,8 @@ The following directives are recognized:
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:lang lang1,lang2,...`           | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
-| Sets the language selection flag for this and descendent packages, which gazelle to        |
-| process just the languages named in this directive.                                        |
+| Sets the language selection flag for this and descendent packages, which causes gazelle to |
+| index and generate rules for only the languages named in this directive.                   |
 +---------------------------------------------------+----------------------------------------+
 
 Gazelle also reads directives from the WORKSPACE file. They may be used to
@@ -758,11 +831,14 @@ them to learn about repository rules defined in alternate locations.
 +--------------------------------------------------------------------+----------------------------------------+
 | **WORKSPACE Directive**                                            | **Default value**                      |
 +====================================================================+========================================+
-| :direc:`# gazelle:repository_macro macroFile%defName`              | n/a                                    |
+| :direc:`# gazelle:repository_macro [+]macroFile%defName`           | n/a                                    |
 +--------------------------------------------------------------------+----------------------------------------+
 | Tells Gazelle to look for repository rules in a macro in a .bzl file. The directive can be                  |
 | repeated multiple times.                                                                                    |
 | The macro can be generated by calling ``update-repos`` with the ``to_macro`` flag.                          |
+|                                                                                                             |
+| The directive can be prepended with a "+", which will tell Gazelle to also look for repositories            |
+| within any macros called by the specified macro.                                                            |
 +--------------------------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:repository rule_kind attr1_name=attr1_value ...` | n/a                                    |
 +--------------------------------------------------------------------+----------------------------------------+

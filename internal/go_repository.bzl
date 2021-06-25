@@ -114,6 +114,7 @@ def _go_repository_impl(ctx):
         # attribute of go_repository, so we don't need to look it up.
         fetch_repo_env = dict(env)
         fetch_repo_env["GOSUMDB"] = "off"
+
         # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
         fetch_repo_env["GO111MODULE"] = "on"
 
@@ -162,7 +163,7 @@ def _go_repository_impl(ctx):
             "-repo_root",
             ctx.path(""),
             "-repo_config",
-            ctx.path(ctx.attr.build_config)
+            ctx.path(ctx.attr.build_config),
         ]
         if ctx.attr.version:
             cmd.append("-go_repository_module_mode")
@@ -174,6 +175,8 @@ def _go_repository_impl(ctx):
             cmd.extend(["-external", ctx.attr.build_external])
         if ctx.attr.build_file_proto_mode:
             cmd.extend(["-proto", ctx.attr.build_file_proto_mode])
+        if ctx.attr.build_naming_convention:
+            cmd.extend(["-go_naming_convention", ctx.attr.build_naming_convention])
         cmd.extend(ctx.attr.build_extra_args)
         cmd.append(ctx.path(""))
         result = env_execute(ctx, cmd, environment = env, timeout = _GO_REPOSITORY_TIMEOUT)
@@ -237,6 +240,14 @@ go_repository = repository_rule(
                 "off",
             ],
         ),
+        "build_naming_convention": attr.string(
+            values = [
+                "go_default_library",
+                "import",
+                "import_alias",
+            ],
+            default = "import_alias",
+        ),
         "build_tags": attr.string_list(),
         "build_file_proto_mode": attr.string(
             values = [
@@ -249,7 +260,7 @@ go_repository = repository_rule(
             ],
         ),
         "build_extra_args": attr.string_list(),
-        "build_config": attr.label(default= "@bazel_gazelle_go_repository_config//:WORKSPACE"),
+        "build_config": attr.label(default = "@bazel_gazelle_go_repository_config//:WORKSPACE"),
         "build_directives": attr.string_list(default = []),
 
         # Patches to apply after running gazelle.

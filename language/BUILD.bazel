@@ -1,7 +1,7 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
-    name = "go_default_library",
+    name = "language",
     srcs = [
         "lang.go",
         "update.go",
@@ -9,10 +9,10 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/language",
     visibility = ["//visibility:public"],
     deps = [
-        "//config:go_default_library",
-        "//repo:go_default_library",
-        "//resolve:go_default_library",
-        "//rule:go_default_library",
+        "//config",
+        "//repo",
+        "//resolve",
+        "//rule",
     ],
 )
 
@@ -26,5 +26,11 @@ filegroup(
         "//language/go:all_files",
         "//language/proto:all_files",
     ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":language",
     visibility = ["//visibility:public"],
 )

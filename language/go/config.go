@@ -77,6 +77,13 @@ type goConfig struct {
 	// goGenerateProto indicates whether to generate go_proto_library
 	goGenerateProto bool
 
+	// goNamingConvention controls the name of generated targets
+	goNamingConvention namingConvention
+
+	// goNamingConventionExternal controls the default naming convention for
+	// imports in external repositories with unknown naming conventions.
+	goNamingConventionExternal namingConvention
+
 	// goProtoCompilers is the protocol buffers compiler(s) to use for go code.
 	goProtoCompilers []string
 
@@ -103,6 +110,10 @@ type goConfig struct {
 	// if this is true in the root directory. External dependencies may be
 	// resolved differently (also depending on goRepositoryMode).
 	moduleMode bool
+
+	// map between external repo names and their `build_naming_convention`
+	// attribute.
+	repoNamingConvention map[string]namingConvention
 
 	// submodules is a list of modules which have the current module's path
 	// as a prefix of their own path. This affects visibility attributes
@@ -237,6 +248,74 @@ func (f tagsFlag) String() string {
 	return ""
 }
 
+type namingConventionFlag struct {
+	nc *namingConvention
+}
+
+func (f namingConventionFlag) Set(value string) error {
+	if nc, err := namingConventionFromString(value); err != nil {
+		return err
+	} else {
+		*f.nc = nc
+		return nil
+	}
+}
+
+func (f *namingConventionFlag) String() string {
+	if f == nil || f.nc == nil {
+		return "naming_convention"
+	}
+	return f.nc.String()
+}
+
+// namingConvention determines how go targets are named.
+type namingConvention int
+
+const (
+	// Try to detect the naming convention in use.
+	unknownNamingConvention namingConvention = iota
+
+	// 'go_default_library' and 'go_default_test'
+	goDefaultLibraryNamingConvention
+
+	// For an import path that ends with foo, the go_library rules target is
+	// named 'foo', the go_test is named 'foo_test'.
+	// For a main package, the go_binary takes the 'foo' name, the library
+	// is named 'foo_lib', and the go_test is named 'foo_test'.
+	importNamingConvention
+
+	// Same as importNamingConvention, but generate alias rules for libraries that have
+	// the legacy 'go_default_library' name.
+	importAliasNamingConvention
+)
+
+func (nc namingConvention) String() string {
+	switch nc {
+	case goDefaultLibraryNamingConvention:
+		return "go_default_library"
+	case importNamingConvention:
+		return "import"
+	case importAliasNamingConvention:
+		return "import_alias"
+	}
+	return ""
+}
+
+func namingConventionFromString(s string) (namingConvention, error) {
+	switch s {
+	case "":
+		return unknownNamingConvention, nil
+	case "go_default_library":
+		return goDefaultLibraryNamingConvention, nil
+	case "import":
+		return importNamingConvention, nil
+	case "import_alias":
+		return importAliasNamingConvention, nil
+	default:
+		return unknownNamingConvention, fmt.Errorf("unknown naming convention %q", s)
+	}
+}
+
 type moduleRepo struct {
 	repoName, modulePath string
 }
@@ -250,6 +329,8 @@ func (*goLang) KnownDirectives() []string {
 		"build_tags",
 		"go_generate_proto",
 		"go_grpc_compilers",
+		"go_naming_convention",
+		"go_naming_convention_external",
 		"go_proto_compilers",
 		"go_visibility",
 		"importmap_prefix",
@@ -291,6 +372,14 @@ func (*goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			"go_repository_module_mode",
 			false,
 			"set when gazelle is invoked by go_repository in module mode")
+		fs.Var(
+			&namingConventionFlag{&gc.goNamingConvention},
+			"go_naming_convention",
+			"controls generated library names. One of (go_default_library, import, import_alias)")
+		fs.Var(
+			&namingConventionFlag{&gc.goNamingConventionExternal},
+			"go_naming_convention_external",
+			"controls naming convention used when resolving libraries in external repositories with unknown conventions")
 
 	case "update-repos":
 		fs.StringVar(&gc.buildDirectivesAttr,
@@ -364,7 +453,7 @@ func (*goLang) Configure(c *config.Config, rel string, f *rule.File) {
 		const message = `Gazelle may not be compatible with this version of rules_go.
 Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 		var err error
-		gc.rulesGoVersion, err = findRulesGoVersion(c.RepoRoot)
+		gc.rulesGoVersion, err = findRulesGoVersion(c)
 		if c.ShouldFix {
 			// Only check the version when "fix" is run. Generated build files
 			// frequently work with older version of rules_go, and we don't want to
@@ -377,6 +466,24 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				log.Printf("Found RULES_GO_VERSION %s. Minimum compatible version is %s.\n%s", gc.rulesGoVersion, minimumRulesGoVersion, message)
 			}
 		}
+		repoNamingConvention := map[string]namingConvention{}
+		for _, repo := range c.Repos {
+			if repo.Kind() == "go_repository" {
+				if attr := repo.AttrString("build_naming_convention"); attr == "" {
+					// No naming convention specified.
+					// go_repsitory uses importAliasNamingConvention by default, so we
+					// could use whichever name.
+					// resolveExternal should take that as a signal to follow the current
+					// naming convention to avoid churn.
+					repoNamingConvention[repo.Name()] = importAliasNamingConvention
+				} else if nc, err := namingConventionFromString(attr); err != nil {
+					log.Printf("in go_repository named %q: %v", repo.Name(), err)
+				} else {
+					repoNamingConvention[repo.Name()] = nc
+				}
+			}
+		}
+		gc.repoNamingConvention = repoNamingConvention
 	}
 
 	if !gc.moduleMode {
@@ -412,13 +519,28 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				}
 				gc.preprocessTags()
 				gc.setBuildTags(d.Value)
-			case "go_generate_proto":
 
+			case "go_generate_proto":
 				if goGenerateProto, err := strconv.ParseBool(d.Value); err == nil {
 					gc.goGenerateProto = goGenerateProto
 				} else {
 					log.Printf("parsing go_generate_proto: %v", err)
 				}
+
+			case "go_naming_convention":
+				if nc, err := namingConventionFromString(d.Value); err == nil {
+					gc.goNamingConvention = nc
+				} else {
+					log.Print(err)
+				}
+
+			case "go_naming_convention_external":
+				if nc, err := namingConventionFromString(d.Value); err == nil {
+					gc.goNamingConventionExternal = nc
+				} else {
+					log.Print(err)
+				}
+
 			case "go_grpc_compilers":
 				// Special syntax (empty value) to reset directive.
 				if d.Value == "" {
@@ -450,6 +572,7 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				setPrefix(d.Value)
 			}
 		}
+
 		if !gc.prefixSet {
 			for _, r := range f.Rules {
 				switch r.Kind() {
@@ -471,6 +594,10 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 				}
 			}
 		}
+	}
+
+	if gc.goNamingConvention == unknownNamingConvention {
+		gc.goNamingConvention = detectNamingConvention(c, f)
 	}
 }
 
@@ -495,30 +622,134 @@ func splitValue(value string) []string {
 	return values
 }
 
-// findRulesGoVersion reads the version of io_bazel_rules_go being used from
-// the bazel external workspace directory.
-func findRulesGoVersion(repoRoot string) (version.Version, error) {
+// findRulesGoVersion attempts to infer the version of io_bazel_rules_go.
+// It can read the external directory (if bazel has fetched it), or it can
+// read WORKSPACE. Neither method is completely reliable.
+func findRulesGoVersion(c *config.Config) (version.Version, error) {
 	const message = `Gazelle may not be compatible with this version of rules_go.
 Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 
-	rulesGoPath, err := repo.FindExternalRepo(repoRoot, config.RulesGoRepoName)
-	if err != nil {
-		// This is likely because io_bazel_rules_go hasn't been fetched yet.
-		// This error should generally not be reported.
-		return version.Version{}, errRulesGoRepoNotFound
+	var vstr string
+	if rulesGoPath, err := repo.FindExternalRepo(c.RepoRoot, config.RulesGoRepoName); err == nil {
+		// Bazel has already fetched io_bazel_rules_go. We can read its version
+		// from //go:def.bzl.
+		defBzlPath := filepath.Join(rulesGoPath, "go", "def.bzl")
+		defBzlContent, err := ioutil.ReadFile(defBzlPath)
+		if err != nil {
+			return nil, err
+		}
+		versionRe := regexp.MustCompile(`(?m)^RULES_GO_VERSION = ['"]([0-9.]*)['"]`)
+		match := versionRe.FindSubmatch(defBzlContent)
+		if match == nil {
+			return nil, fmt.Errorf("RULES_GO_VERSION not found in @%s//go:def.bzl.\n%s", config.RulesGoRepoName, message)
+		}
+		vstr = string(match[1])
+	} else {
+		// Bazel has not fetched io_bazel_rules_go. Maybe we can find it in the
+		// WORKSPACE file.
+		re := regexp.MustCompile(`github\.com/bazelbuild/rules_go/releases/download/v([0-9.]+)/`)
+	RepoLoop:
+		for _, r := range c.Repos {
+			if r.Kind() == "http_archive" && r.Name() == "io_bazel_rules_go" {
+				for _, u := range r.AttrStrings("urls") {
+					if m := re.FindStringSubmatch(u); m != nil {
+						vstr = m[1]
+						break RepoLoop
+					}
+				}
+			}
+		}
 	}
-	defBzlPath := filepath.Join(rulesGoPath, "go", "def.bzl")
-	defBzlContent, err := ioutil.ReadFile(defBzlPath)
-	if err != nil {
-		return version.Version{}, err
+
+	if vstr == "" {
+		// Couldn't find a version. We return a specific value since this is not
+		// usually a useful error to report.
+		return nil, errRulesGoRepoNotFound
 	}
-	versionRe := regexp.MustCompile(`(?m)^RULES_GO_VERSION = ['"]([0-9.]*)['"]`)
-	match := versionRe.FindSubmatch(defBzlContent)
-	if match == nil {
-		return version.Version{}, fmt.Errorf("RULES_GO_VERSION not found in @%s//go:def.bzl.\n%s", config.RulesGoRepoName, message)
-	}
-	vstr := string(match[1])
+
 	return version.ParseVersion(vstr)
 }
 
 var errRulesGoRepoNotFound = errors.New(config.RulesGoRepoName + " external repository not found")
+
+// detectNamingConvention attempts to detect the naming convention in use by
+// reading build files in subdirectories of the repository root directory.
+//
+// If detectNamingConvention can't detect the naming convention (for example,
+// because no build files are found or multiple naming conventions are found),
+// importNamingConvention is returned.
+func detectNamingConvention(c *config.Config, rootFile *rule.File) namingConvention {
+	if !c.IndexLibraries {
+		// Indexing is disabled, which usually means speed is important and I/O
+		// should be minimized. Let's not open extra files or directories.
+		return importNamingConvention
+	}
+
+	detectInFile := func(f *rule.File) namingConvention {
+		for _, r := range f.Rules {
+			// NOTE: map_kind is not supported. c.KindMap will not be accurate in
+			// subdirectories.
+			kind := r.Kind()
+			name := r.Name()
+			if kind != "alias" && name == defaultLibName {
+				// Assume any kind of rule with the name "go_default_library" is some
+				// kind of go library. The old version of go_proto_library used this
+				// name, and it's possible with map_kind as well.
+				return goDefaultLibraryNamingConvention
+			} else if isGoLibrary(kind) && name == path.Base(r.AttrString("importpath")) {
+				return importNamingConvention
+			}
+		}
+		return unknownNamingConvention
+	}
+
+	detectInDir := func(dir, rel string) namingConvention {
+		var f *rule.File
+		for _, name := range c.ValidBuildFileNames {
+			fpath := filepath.Join(dir, name)
+			data, err := ioutil.ReadFile(fpath)
+			if err != nil {
+				continue
+			}
+			f, err = rule.LoadData(fpath, rel, data)
+			if err != nil {
+				continue
+			}
+		}
+		if f == nil {
+			return unknownNamingConvention
+		}
+		return detectInFile(f)
+	}
+
+	nc := unknownNamingConvention
+	if rootFile != nil {
+		if rootNC := detectInFile(rootFile); rootNC != unknownNamingConvention {
+			return rootNC
+		}
+	}
+
+	infos, err := ioutil.ReadDir(c.RepoRoot)
+	if err != nil {
+		return importNamingConvention
+	}
+	for _, info := range infos {
+		if !info.IsDir() {
+			continue
+		}
+		dirName := info.Name()
+		dirNC := detectInDir(filepath.Join(c.RepoRoot, dirName), dirName)
+		if dirNC == unknownNamingConvention {
+			continue
+		}
+		if nc != unknownNamingConvention && dirNC != nc {
+			// Subdirectories use different conventions. Return the default.
+			return importNamingConvention
+		}
+		nc = dirNC
+	}
+	if nc == unknownNamingConvention {
+		return importNamingConvention
+	}
+	return nc
+}

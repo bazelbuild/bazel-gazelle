@@ -1,0 +1,16 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "embedsrcs",
+    srcs = ["embedsrcs.go"],
+    _gazelle_imports = ["embed"],
+    embedsrcs = [
+        "_m_hidden.txt",
+        "m_dir/static.txt",
+        "m_gen.txt",
+        "m_static.txt",
+        "n_/static.txt",
+    ],
+    importpath = "example.com/repo/embedsrcs",
+    visibility = ["//visibility:public"],
+)
