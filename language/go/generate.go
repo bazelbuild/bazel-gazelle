@@ -588,6 +588,7 @@ func isToolLibImportPath(imp string) bool {
 		"golang.org/x/tools/go/types/objectpath",
 		"golang.org/x/tools/go/types/typeutil",
 		"golang.org/x/tools/internal/analysisinternal",
+		"golang.org/x/tools/internal/typeparams",
 		"golang.org/x/tools/internal/lsp/fuzzy":
 		// Indirect dependency of nogo.
 		return true
