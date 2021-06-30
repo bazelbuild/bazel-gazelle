@@ -149,7 +149,7 @@ returned by ``go env GOPATH``.
 | repository. If unset, the convention from the external workspace is used.                                                 |
 | Legal values are ``go_default_library``, ``import``, and ``import_alias``.                                                |
 |                                                                                                                           |
-| See ``-go_naming_convention`` for more information.                                                                       |
+| See the ``gazelle:go_naming_convention`` directive in Directives_ for more information.                                   |
 +------------------------------------+----------------------+---------------------------------------------------------------+
 | :param:`replace`                   | :type:`string`       | :value:`""`                                                   |
 +------------------------------------+----------------------+---------------------------------------------------------------+

@@ -38,27 +38,27 @@ def _go_repository_cache_impl(ctx):
     go_root = str(ctx.path(go_sdk_label).dirname)
     go_path = str(ctx.path("."))
     go_cache = str(ctx.path("gocache"))
+    go_mod_cache = ""
     if ctx.os.environ.get("GO_REPOSITORY_USE_HOST_CACHE", "") == "1":
         extension = executable_extension(ctx)
         go_tool = go_root + "/bin/go" + extension
-        res = ctx.execute([go_tool, "env", "GOPATH"])
-        if res.return_code:
-            fail("failed to read go environment: " + res.stderr)
-        if not res.stdout:
-            fail("GOPATH must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.")
-        go_path = res.stdout.strip()
-        res = ctx.execute([go_tool, "env", "GOCACHE"])
-        if res.return_code:
-            fail("failed to read go environment: " + res.stderr)
-        if not res.stdout:
+        go_mod_cache = read_go_env(ctx, go_tool, "GOMODCACHE")
+        go_path = read_go_env(ctx, go_tool, "GOPATH")
+        if not go_mod_cache and not go_path:
+            fail("GOPATH or GOMODCACHE must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.")
+        go_cache = read_go_env(ctx, go_tool, "GOCACHE")
+        if not go_cache:
             fail("GOCACHE must be set when GO_REPOSITORY_USE_HOST_CACHE is enabled.")
-        go_cache = res.stdout.strip()
 
     cache_env = {
         "GOROOT": go_root,
-        "GOPATH": go_path,
         "GOCACHE": go_cache,
     }
+    if go_path:
+        cache_env["GOPATH"] = go_path
+    if go_mod_cache:
+        cache_env["GOMODCACHE"] = go_mod_cache
+
     for key, value in ctx.attr.go_env.items():
         if key in cache_env:
             fail("{} cannot be set in go_env".format(key))
@@ -78,6 +78,12 @@ go_repository_cache = repository_rule(
     # Don't put anything in environ. If we switch between the host cache
     # and Bazel's cache, it shouldn't actually invalidate Bazel's cache.
 )
+
+def read_go_env(ctx, go_tool, var):
+    res = ctx.execute([go_tool, "env", var])
+    if res.return_code:
+        fail("failed to read go environment: " + res.stderr)
+    return res.stdout.strip()
 
 def read_cache_env(ctx, path):
     contents = ctx.read(path)

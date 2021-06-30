@@ -212,6 +212,63 @@ extra_repo example.com/extra`
 	}
 }
 
+func TestListRepositoriesWithPlusRepositoryMacroDirective(t *testing.T) {
+	files := []testtools.FileSpec{{
+		Path: "repos1.bzl",
+		Content: `
+load("repos2.bzl", "bar_repositories", alias = "alias_repositories")
+def go_repositories():
+
+    bar_repositories()
+    alias()
+
+    go_repository(
+        name = "go_repo",
+        commit = "123456",
+        remote = "https://example.com/go",
+        importpath = "example.com/go",
+    )
+
+`}, {
+		Path: "repos2.bzl",
+		Content: `
+def bar_repositories():
+    go_repository(
+        name = "bar_repo",
+        commit = "123456",
+        remote = "https://example.com/bar",
+        importpath = "example.com/bar",
+    )
+
+def alias_repositories():
+    go_repository(
+        name = "alias_repo",
+        commit = "123456",
+        remote = "https://example.com/alias",
+        importpath = "example.com/alias",
+    )
+`}}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+	workspaceString := `
+# gazelle:repository_macro +repos1.bzl%go_repositories`
+	workspace, err := rule.LoadData(filepath.Join(dir,"WORKSPACE"), "", []byte(workspaceString))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repos, _, err := repo.ListRepositories(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := reposToString(repos)
+	want := `bar_repo example.com/bar
+alias_repo example.com/alias
+go_repo example.com/go`
+	if got != want {
+		t.Errorf("got\n%s\n\nwant:\n%s", got, want)
+	}
+}
+
 func reposToString(repos []*rule.Rule) string {
 	buf := &strings.Builder{}
 	sep := ""

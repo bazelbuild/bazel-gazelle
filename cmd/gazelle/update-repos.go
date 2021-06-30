@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -291,8 +292,11 @@ func updateRepos(wd string, args []string) (err error) {
 			if f.DefName != "" {
 				uf.SortMacro()
 			}
-			if err := uf.Save(uf.Path); err != nil {
-				return err
+			newContent := f.Format()
+			if !bytes.Equal(f.Content, newContent) {
+				if err := uf.Save(uf.Path); err != nil {
+					return err
+				}
 			}
 			delete(updatedFiles, f.Path)
 		}
@@ -481,8 +485,10 @@ func ensureMacroInWorkspace(uc *updateReposConfig, insertIndex int) (updated boo
 	// be called somewhere else.
 	macroValue := uc.macroFileName + "%" + uc.macroDefName
 	for _, d := range uc.workspace.Directives {
-		if d.Key == "repository_macro" && d.Value == macroValue {
-			return false
+		if d.Key == "repository_macro" {
+			if m, defName, _, _ := repo.ParseRepositoryMacroDirective(d.Value); m == uc.macroFileName && defName == uc.macroDefName {
+				return false
+			}
 		}
 	}
 
