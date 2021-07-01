@@ -119,15 +119,16 @@ func buildPackages(pc *ProtoConfig, dir, rel string, protoFiles, genFiles []stri
 	for _, name := range protoFiles {
 		info := protoFileInfo(dir, name)
 		key := info.PackageName
-		if pc.groupOption != "" {
+
+		if pc.Mode == FileMode {
+			key = strings.TrimSuffix(name, ".proto")
+		} else if pc.groupOption != "" { // implicitly PackageMode
 			for _, opt := range info.Options {
 				if opt.Key == pc.groupOption {
 					key = opt.Value
 					break
 				}
 			}
-		} else if pc.Mode == FileMode {
-			key = strings.TrimSuffix(name, ".proto")
 		}
 
 		if packageMap[key] == nil {
