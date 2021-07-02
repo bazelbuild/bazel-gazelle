@@ -275,7 +275,6 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 
 	// Resolve dependencies.
 	rc, cleanupRc := repo.NewRemoteCache(uc.repos)
-
 	defer func() {
 		if cerr := cleanupRc(); err == nil && cerr != nil {
 			err = cerr
