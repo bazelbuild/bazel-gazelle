@@ -148,13 +148,14 @@ func ExprFromValue(val interface{}) bzl.Expr {
 			globArgs := []bzl.Expr{patternsValue}
 			if len(val.Excludes) > 0 {
 				excludesValue := ExprFromValue(val.Excludes)
-				globArgs = append(globArgs, &bzl.KeyValueExpr{
-					Key:   &bzl.StringExpr{Value: "excludes"},
-					Value: excludesValue,
+				globArgs = append(globArgs, &bzl.AssignExpr{
+					LHS: &bzl.Ident{Name: "exclude"},
+					RHS: excludesValue,
+					Op:  "=",
 				})
 			}
 			return &bzl.CallExpr{
-				X:    &bzl.LiteralExpr{Token: "glob"},
+				X:    &bzl.Ident{Name: "glob"},
 				List: globArgs,
 			}
 		}

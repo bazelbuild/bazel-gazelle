@@ -173,6 +173,41 @@ func isScalar(e bzl.Expr) bool {
 	}
 }
 
+func isGlob(e bzl.Expr) bool {
+	callExpr, ok := e.(*bzl.CallExpr)
+	if !ok {
+		return false
+	}
+	if identExpr, ok := callExpr.X.(*bzl.Ident); !ok || identExpr.Name != "glob" {
+		return false
+	}
+	return true
+}
+
+func parseGlob(e bzl.Expr) (include, exclude *bzl.ListExpr, otherArgs []bzl.Expr) {
+	for i, arg := range e.(*bzl.CallExpr).List {
+		if e, ok := arg.(*bzl.ListExpr); ok {
+			if i == 0 {
+				include = e
+			} else if i == 1 {
+				exclude = e
+			}
+		} else if e, ok := arg.(*bzl.AssignExpr); ok {
+			name := e.LHS.(*bzl.Ident).Name
+			if name == "include" {
+				include = e.RHS.(*bzl.ListExpr)
+			} else if name == "exclude" {
+				exclude = e.RHS.(*bzl.ListExpr)
+			} else {
+				otherArgs = append(otherArgs, e)
+			}
+		} else {
+			otherArgs = append(otherArgs, e)
+		}
+	}
+	return
+}
+
 func dictEntryKeyValue(e bzl.Expr) (string, *bzl.ListExpr, error) {
 	kv, ok := e.(*bzl.KeyValueExpr)
 	if !ok {
