@@ -59,6 +59,10 @@ y_library(name = "bar")
 	bar := f.Rules[1]
 	bar.SetAttr("srcs", []string{"bar.y"})
 	baz := NewRule("z_library", "baz")
+	baz.SetAttr("srcs", GlobValue{
+		Patterns: []string{"**"},
+		Excludes: []string{"*.pem"},
+	})
 	baz.Insert(f)
 
 	got := strings.TrimSpace(string(f.Format()))
@@ -71,7 +75,13 @@ y_library(
     srcs = ["bar.y"],
 )
 
-z_library(name = "baz")
+z_library(
+    name = "baz",
+    srcs = glob(
+        ["**"],
+        exclude = ["*.pem"],
+    ),
+)
 `)
 	if got != want {
 		t.Errorf("got:\n%s\nwant:\n%s", got, want)
