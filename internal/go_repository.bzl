@@ -130,6 +130,9 @@ def _go_repository_impl(ctx):
         if result.stderr:
             print("fetch_repo: " + result.stderr)
 
+    # Apply patches if necessary.
+    patch(ctx)
+
     # Repositories are fetched. Determine if build file generation is needed.
     build_file_names = ctx.attr.build_file_name.split(",")
     existing_build_file = ""
@@ -187,9 +190,6 @@ def _go_repository_impl(ctx):
             ))
         if result.stderr:
             print("%s: %s" % (ctx.name, result.stderr))
-
-    # Apply patches if necessary.
-    patch(ctx)
 
 go_repository = repository_rule(
     implementation = _go_repository_impl,
