@@ -97,6 +97,9 @@ const (
 	// PackageMode generates a proto_library for each set of .proto files with
 	// the same package name in each directory.
 	PackageMode
+
+	// FileMode generates a proto_library for each .proto file.
+	FileMode
 )
 
 func ModeFromString(s string) (Mode, error) {
@@ -111,6 +114,8 @@ func ModeFromString(s string) (Mode, error) {
 		return LegacyMode, nil
 	case "package":
 		return PackageMode, nil
+	case "file":
+		return FileMode, nil
 	default:
 		return 0, fmt.Errorf("unrecognized proto mode: %q", s)
 	}
@@ -128,6 +133,8 @@ func (m Mode) String() string {
 		return "legacy"
 	case PackageMode:
 		return "package"
+	case FileMode:
+		return "file"
 	default:
 		log.Panicf("unknown mode %d", m)
 		return ""
