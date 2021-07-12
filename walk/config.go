@@ -19,6 +19,7 @@ import (
 	"flag"
 	"log"
 	"path"
+	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -49,19 +50,29 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 	}
 	f := path.Join(rel, base)
 	for _, x := range wc.excludes {
-		matched, err := doublestar.Match(x, f)
-		if err != nil {
-			// doublestar.Match returns only one possible error, and only if the
-			// pattern is not valid. During the configuration of the walker (see
-			// Configure below), we discard any invalid pattern and thus an error
-			// here should not be possible.
-			log.Panicf("error during doublestar.Match. This should not happen, please file an issue https://github.com/bazelbuild/bazel-gazelle/issues/new: %s", err)
-		}
-		if matched {
+		if match(x, f) {
 			return true
 		}
 	}
 	return false
+}
+
+func match(excludePattern, filename string) bool {
+	var fn = path.Match
+	var fnName = "path.Match"
+	if useDoublestar(excludePattern) {
+		fn = doublestar.Match
+		fnName = "doublestar.Match"
+	}
+	matched, err := fn(excludePattern, filename)
+	if err != nil {
+		// doublestar.Match / path.Match returns only one possible error, and only if the
+		// pattern is not valid. During the configuration of the walker (see
+		// Configure below), we discard any invalid pattern and thus an error
+		// here should not be possible.
+		log.Panicf("error during %s. This should not happen, please file an issue https://github.com/bazelbuild/bazel-gazelle/issues/new: %s", fnName, err)
+	}
+	return matched
 }
 
 type Configurer struct{}
@@ -105,6 +116,15 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 }
 
 func checkPathMatchPattern(pattern string) error {
-	_, err := doublestar.Match(pattern, "x")
+	var err error
+	if useDoublestar(pattern) {
+		_, err = doublestar.Match(pattern, "x")
+	} else {
+		_, err = path.Match(pattern, "x")
+	}
 	return err
+}
+
+func useDoublestar(excludePattern string) bool {
+	return strings.Contains(excludePattern, "**")
 }
