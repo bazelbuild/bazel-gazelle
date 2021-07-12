@@ -42,6 +42,7 @@ filegroup(
         "repository_rules_test_errors.patch",
         "//internal/gazellebinarytest:all_files",
         "//internal/language:all_files",
+        "//internal/runnerscripttest:all_files",
         "//internal/version:all_files",
         "//internal/wspace:all_files",
     ],

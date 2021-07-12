@@ -21,6 +21,7 @@ set -euo pipefail
 RUNNER_LABEL=@@RUNNER_LABEL@@
 GAZELLE_SHORT_PATH=@@GAZELLE_SHORT_PATH@@
 GAZELLE_LABEL=@@GAZELLE_LABEL@@
+WORKSPACE_NAME=@@WORKSPACE_NAME@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
 
@@ -29,10 +30,15 @@ GOTOOL=@@GOTOOL@@
 function find_runfile {
   local runfile=$1
   if [ -f "$runfile" ]; then
-    readlink "$runfile"
+    readlink "$runfile" || echo "$runfile"
     return
   fi
-  runfile=$(echo "$runfile" | sed -e 's!^\(\.\./\|external/\)!!')
+
+  if [[ ${runfile:0:3} = "../" ]]; then
+    runfile="${runfile:3}"
+  else
+    runfile="$WORKSPACE_NAME/$runfile"
+  fi
   if grep -q "^$runfile" MANIFEST; then
     grep "^$runfile" MANIFEST | head -n 1 | cut -d' ' -f2
     return
