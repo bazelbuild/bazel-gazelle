@@ -156,6 +156,10 @@ returned by ``go env GOPATH``.
 | A replacement for the module named by ``importpath``. The module named by                                                 |
 | ``replace`` will be downloaded at ``version`` and verified with ``sum``.                                                  |
 |                                                                                                                           |
+| NOTE: `replace` only affects things in module mode and cannot be used with `commit`,                                      |
+| `tag`, or other VCS attributes. When you want to use VCS attributes you can use the `remote` attribute                    |
+| instead. See the "Download from git fork" example above.                                                                  |
+|                                                                                                                           |
 | NOTE: There is no ``go_repository`` equivalent to file path ``replace``                                                   |
 | directives. Use ``local_repository`` instead.                                                                             |
 +------------------------------------+----------------------+---------------------------------------------------------------+
