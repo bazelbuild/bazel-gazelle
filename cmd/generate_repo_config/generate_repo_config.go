@@ -104,8 +104,9 @@ func generateRepoConfig(configDest, configSource string) ([]string, error) {
 	for _, r := range sortedFiles {
 		for _, d := range r.Directives {
 			// skip repository_macro directives, because for the repo config we flatten
-			// macros into one file
-			if d.Key != "repository_macro" {
+			// macros into one file. skip repository directives because they are merged
+			// into repos already.
+			if d.Key != "repository_macro" && d.Key != "repository" {
 				buf.WriteString("# gazelle:" + d.Key + " " + d.Value + "\n")
 			}
 		}
