@@ -37,6 +37,9 @@ go_library(
         "@io_bazel_rules_go//go/platform:solaris": [
             "@com_github_fsnotify_fsnotify//:fsnotify",
         ],
+        "@io_bazel_rules_go//go/platform:windows": [
+            "@com_github_fsnotify_fsnotify//:fsnotify",
+        ],
         "//conditions:default": [],
     }),
 )
