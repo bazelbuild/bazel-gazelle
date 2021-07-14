@@ -137,15 +137,16 @@ files or options.
 You can write other ``gazelle`` rules to run alternate commands like ``update-repos``.
 
 .. code:: bzl
-gazelle(
-    name = "gazelle-update-repos",
-    args = [
-        "-from_file=go.mod",
-        "-to_macro=deps.bzl%go_repositories",
-        "-prune",
-    ],
-    command = "update-repos",
-)
+
+  gazelle(
+      name = "gazelle-update-repos",
+      args = [
+          "-from_file=go.mod",
+          "-to_macro=deps.bzl%go_dependencies",
+          "-prune",
+      ],
+      command = "update-repos",
+  )
 
 You can also pass additional arguments to Gazelle after a ``--`` argument.
 .. code::
