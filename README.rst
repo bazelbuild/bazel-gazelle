@@ -149,6 +149,7 @@ You can write other ``gazelle`` rules to run alternate commands like ``update-re
   )
 
 You can also pass additional arguments to Gazelle after a ``--`` argument.
+
 .. code::
 
   $ bazel run //:gazelle -- update-repos -from_file=go.mod -to_macro=deps.bzl%go_dependencies
