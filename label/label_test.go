@@ -43,6 +43,9 @@ func TestLabelString(t *testing.T) {
 		}, {
 			l:    Label{Relative: true, Name: "foo"},
 			want: ":foo",
+		}, {
+			l:    Label{Repo: "@", Pkg: "foo/bar", Name: "baz"},
+			want: "@//foo/bar:baz",
 		},
 	} {
 		if got, want := spec.l.String(), spec.want; got != want {
@@ -61,8 +64,8 @@ func TestParse(t *testing.T) {
 		{str: "@//:", wantErr: true},
 		{str: "@a:b", wantErr: true},
 		{str: "@a//", wantErr: true},
-		{str: "@//:a", want: Label{Name: "a", Relative: false}},
-		{str: "@//a:b", want: Label{Repo: "", Pkg: "a", Name: "b"}},
+		{str: "@//:a", want: Label{Repo: "@", Name: "a", Relative: false}},
+		{str: "@//a:b", want: Label{Repo: "@", Pkg: "a", Name: "b"}},
 		{str: ":a", want: Label{Name: "a", Relative: true}},
 		{str: "a", want: Label{Name: "a", Relative: true}},
 		{str: "//:a", want: Label{Name: "a", Relative: false}},

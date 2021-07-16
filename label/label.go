@@ -62,7 +62,7 @@ func New(repo, pkg, name string) Label {
 var NoLabel = Label{}
 
 var (
-	labelRepoRegexp = regexp.MustCompile(`^$|^[A-Za-z][A-Za-z0-9_]*$`)
+	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z][A-Za-z0-9_]*$`)
 	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._-]*$`)
 	labelNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_/.+=,@~-]*$`)
 )
@@ -77,9 +77,14 @@ func Parse(s string) (Label, error) {
 	if strings.HasPrefix(s, "@") {
 		relative = false
 		endRepo := strings.Index(s, "//")
-		if endRepo > 0 {
+		if endRepo > len("@") {
 			repo = s[len("@"):endRepo]
 			s = s[endRepo:]
+		// If the label begins with "@//...", set repo = "@"
+		// to remain distinct from "//...", where repo = ""
+		} else if endRepo == len("@") {
+			repo = s[:len("@")]
+			s = s[len("@"):]
 		} else {
 			repo = s[len("@"):]
 			s = "//:" + repo
@@ -134,8 +139,12 @@ func (l Label) String() string {
 	}
 
 	var repo string
-	if l.Repo != "" {
+	if l.Repo != "" && l.Repo != "@" {
 		repo = fmt.Sprintf("@%s", l.Repo)
+	} else {
+		// if l.Repo == "", the label string will begin with "//"
+		// if l.Repo == "@", the label string will begin with "@//"
+		repo = l.Repo
 	}
 
 	if path.Base(l.Pkg) == l.Name {
