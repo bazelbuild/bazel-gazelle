@@ -14,9 +14,11 @@ Extending Gazelle
 .. _proto.Package: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#Package
 .. _rules_r: https://github.com/grailbio/rules_r
 .. _rules_sass: https://github.com/bazelbuild/rules_sass
+.. _rules_haskell: https://github.com/tweag/rules_haskell
 .. _bazel_rules_nodejs_contrib: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
 .. _bazel-skylib: https://github.com/bazelbuild/bazel-skylib
 .. _@bazel_skylib//gazelle/bzl: https://github.com/bazelbuild/bazel-skylib/tree/master/gazelle/bzl
+.. _gazelle_cabal: https://github.com/tweag/gazelle_cabal
 .. _#75: https://github.com/bazelbuild/rules_sass/pull/75
 .. _#803: https://github.com/bazelbuild/bazel-gazelle/issues/803
 
@@ -58,6 +60,7 @@ Some extensions have been published by the community.
   tests.
 * Ecosia's `bazel_rules_nodejs_contrib`_ has an extension for generating
   ``js_library``, ``jest_node_test``, ``js_import``, and ``ts_library`` rules.
+* Tweag's `rules_haskell`_ has an extension, `gazelle_cabal`_, for generating rules from Cabal files
 
 If you have an extension you'd like linked here, please open a PR!
 
