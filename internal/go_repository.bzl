@@ -19,21 +19,21 @@ load("@bazel_tools//tools/build_defs/repo:utils.bzl", "read_netrc", "use_netrc")
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
 
-
-# Copied from @bazel_tools//tools/build_defs/repo:http.bzl
+# Inspired by @bazel_tools//tools/build_defs/repo:http.bzl
 def _get_auth(ctx, urls):
     """Given the list of URLs obtain the correct auth dict."""
-    if "HOME" in ctx.os.environ and not ctx.os.name.startswith("windows"):
+    netrcfile = ""
+    if "NETRC" in ctx.os.environ:
+        netrcfile = ctx.os.environ["NETRC"]
+    elif ctx.os.name.startswith("windows"):
+        if "USERPROFILE" in ctx.os.environ:
+            netrcfile = "%s/_netrc" % (ctx.os.environ["USERPROFILE"])
+    elif "HOME" in ctx.os.environ:
         netrcfile = "%s/.netrc" % (ctx.os.environ["HOME"])
-        if ctx.execute(["test", "-f", netrcfile]).return_code == 0:
-            netrc = read_netrc(ctx, netrcfile)
-            return use_netrc(netrc, urls, {})
 
-    if "USERPROFILE" in ctx.os.environ and ctx.os.name.startswith("windows"):
-        netrcfile = "%s/.netrc" % (ctx.os.environ["USERPROFILE"])
-        if ctx.path(netrcfile).exists:
-            netrc = read_netrc(ctx, netrcfile)
-            return use_netrc(netrc, urls, {})
+    if netrcfile and ctx.path(netrcfile).exists:
+        netrc = read_netrc(ctx, netrcfile)
+        return use_netrc(netrc, urls, {})
 
     return {}
 
@@ -52,7 +52,7 @@ def _go_repository_impl(ctx):
             sha256 = ctx.attr.sha256,
             stripPrefix = ctx.attr.strip_prefix,
             type = ctx.attr.type,
-            auth = _get_auth(ctx, ctx.attr.urls)
+            auth = _get_auth(ctx, ctx.attr.urls),
         )
     elif ctx.attr.commit or ctx.attr.tag:
         # repository mode
