@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "nogo")
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//:def.bzl", "gazelle", "gazelle_binary")
 
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle
@@ -69,5 +70,12 @@ filegroup(
         "//testtools:all_files",
         "//walk:all_files",
     ],
+    visibility = ["//visibility:public"],
+)
+
+# needed for stardoc
+bzl_library(
+    name = "lib",
+    srcs = glob(["*.bzl"]),
     visibility = ["//visibility:public"],
 )

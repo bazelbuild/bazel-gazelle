@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 # gazelle:exclude *_test.go
 go_bazel_test(
@@ -45,5 +46,12 @@ filegroup(
         "//internal/version:all_files",
         "//internal/wspace:all_files",
     ],
+    visibility = ["//visibility:public"],
+)
+
+# needed for stardoc
+bzl_library(
+    name = "internal",
+    srcs = glob(["*.bzl"]),
     visibility = ["//visibility:public"],
 )
