@@ -13,6 +13,10 @@
 # limitations under the License.
 
 load(
+    "@bazel_tools//tools/build_defs/repo:git.bzl",
+    "git_repository",
+)
+load(
     "@bazel_gazelle//internal:go_repository.bzl",
     _go_repository = "go_repository",
 )
@@ -28,10 +32,6 @@ load(
     "@bazel_gazelle//internal:go_repository_config.bzl",
     "go_repository_config",
 )
-load(
-    "@bazel_tools//tools/build_defs/repo:git.bzl",
-    _tools_git_repository = "git_repository",
-)
 
 # Re-export go_repository . Users should get it from this file.
 go_repository = _go_repository
@@ -40,6 +40,14 @@ def gazelle_dependencies(
         go_sdk = "",
         go_repository_default_config = "@//:WORKSPACE",
         go_env = {}):
+    
+    _maybe(
+	git_repository,
+        name = "bazel_skylib",
+        commit = "df3c9e2735f02a7fe8cd80db4db00fec8e13d25f",  # `master` as of 2021-08-19
+        remote = "https://github.com/bazelbuild/bazel-skylib",
+    )
+    
     if go_sdk:
         go_repository_cache(
             name = "bazel_gazelle_go_repository_cache",
@@ -73,13 +81,6 @@ def gazelle_dependencies(
     go_repository_config(
         name = "bazel_gazelle_go_repository_config",
         config = go_repository_default_config,
-    )
-
-    _maybe(
-        _tools_git_repository,
-        name = "bazel_skylib",
-        remote = "https://github.com/bazelbuild/bazel-skylib",
-        commit = "3fea8cb680f4a53a129f7ebace1a5a4d1e035914",  # 0.5.0 as of 2018-11-01
     )
 
     _maybe(

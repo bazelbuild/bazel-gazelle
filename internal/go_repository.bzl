@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@io_bazel_rules_go//go/private:common.bzl", "env_execute", "executable_extension")
+load("//internal:common.bzl", "env_execute", "executable_extension")
 load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "read_netrc", "use_netrc")
 
