@@ -79,7 +79,7 @@ def gazelle_dependencies(
         _tools_git_repository,
         name = "bazel_skylib",
         remote = "https://github.com/bazelbuild/bazel-skylib",
-        commit = "3fea8cb680f4a53a129f7ebace1a5a4d1e035914",  # 0.5.0 as of 2018-11-01
+        tag = "1.0.3"
     )
 
     _maybe(
