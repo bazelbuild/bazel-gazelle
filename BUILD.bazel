@@ -22,7 +22,7 @@ gazelle_binary(
         "//language/proto",
         "//language/go",
         "//internal/language/test_filegroup",
-        "@bazel_skylib//gazelle/bzl"
+        "@bazel_skylib//gazelle/bzl",
     ],
 )
 
@@ -74,9 +74,27 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-# needed for stardoc
 bzl_library(
-    name = "lib",
-    srcs = glob(["*.bzl"]),
+    name = "def",
+    srcs = ["def.bzl"],
     visibility = ["//visibility:public"],
+    deps = [
+        "//internal:gazelle_binary",
+        "//internal:go_repository",
+        "//internal:overlay_repository",
+        "@bazel_skylib//lib:shell",
+    ],
+)
+
+bzl_library(
+    name = "deps",
+    srcs = ["deps.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_gazelle//internal:go_repository",
+        "@bazel_gazelle//internal:go_repository_cache",
+        "@bazel_gazelle//internal:go_repository_config",
+        "@bazel_gazelle//internal:go_repository_tools",
+        "@bazel_tools//tools/build_defs/repo:git.bzl",
+    ],
 )

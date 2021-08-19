@@ -49,9 +49,60 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-# needed for stardoc
 bzl_library(
-    name = "internal",
-    srcs = glob(["*.bzl"]),
-    visibility = ["//visibility:public"],
+    name = "gazelle_binary",
+    srcs = ["gazelle_binary.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@io_bazel_rules_go//go:def"],
+)
+
+bzl_library(
+    name = "go_repository",
+    srcs = ["go_repository.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@bazel_gazelle//internal:go_repository_cache",
+        "@bazel_tools//tools/build_defs/repo:utils.bzl",
+        "@io_bazel_rules_go//go/private:common",
+    ],
+)
+
+bzl_library(
+    name = "go_repository_cache",
+    srcs = ["go_repository_cache.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@io_bazel_rules_go//go/private:common"],
+)
+
+bzl_library(
+    name = "go_repository_config",
+    srcs = ["go_repository_config.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@bazel_gazelle//internal:go_repository_cache",
+        "@io_bazel_rules_go//go/private:common",
+    ],
+)
+
+bzl_library(
+    name = "go_repository_tools",
+    srcs = ["go_repository_tools.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@bazel_gazelle//internal:go_repository_cache",
+        "@bazel_gazelle//internal:go_repository_tools_srcs",
+        "@io_bazel_rules_go//go/private:common",
+    ],
+)
+
+bzl_library(
+    name = "go_repository_tools_srcs",
+    srcs = ["go_repository_tools_srcs.bzl"],
+    visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "overlay_repository",
+    srcs = ["overlay_repository.bzl"],
+    visibility = ["//:__subpackages__"],
 )

@@ -76,13 +76,6 @@ def gazelle_dependencies(
     )
 
     _maybe(
-        _tools_git_repository,
-        name = "bazel_skylib",
-        remote = "https://github.com/bazelbuild/bazel-skylib",
-        tag = "1.0.3"
-    )
-
-    _maybe(
         go_repository,
         name = "com_github_bazelbuild_buildtools",
         importpath = "github.com/bazelbuild/buildtools",
