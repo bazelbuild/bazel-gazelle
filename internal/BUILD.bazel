@@ -63,7 +63,6 @@ bzl_library(
     deps = [
         "@bazel_gazelle//internal:go_repository_cache",
         "@bazel_tools//tools/build_defs/repo:utils.bzl",
-        "@io_bazel_rules_go//go/private:common",
     ],
 )
 
@@ -71,7 +70,7 @@ bzl_library(
     name = "go_repository_cache",
     srcs = ["go_repository_cache.bzl"],
     visibility = ["//:__subpackages__"],
-    deps = ["@io_bazel_rules_go//go/private:common"],
+    deps = [],
 )
 
 bzl_library(
@@ -80,7 +79,6 @@ bzl_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "@bazel_gazelle//internal:go_repository_cache",
-        "@io_bazel_rules_go//go/private:common",
     ],
 )
 
@@ -91,7 +89,6 @@ bzl_library(
     deps = [
         "@bazel_gazelle//internal:go_repository_cache",
         "@bazel_gazelle//internal:go_repository_tools_srcs",
-        "@io_bazel_rules_go//go/private:common",
     ],
 )
 
