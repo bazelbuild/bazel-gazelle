@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "nogo")
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("//:def.bzl", "gazelle", "gazelle_binary")
 
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle
@@ -21,6 +22,7 @@ gazelle_binary(
         "//language/proto",
         "//language/go",
         "//internal/language/test_filegroup",
+        "@bazel_skylib//gazelle/bzl",
     ],
 )
 
@@ -70,4 +72,29 @@ filegroup(
         "//walk:all_files",
     ],
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "def",
+    srcs = ["def.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal:gazelle_binary",
+        "//internal:go_repository",
+        "//internal:overlay_repository",
+        "@bazel_skylib//lib:shell",
+    ],
+)
+
+bzl_library(
+    name = "deps",
+    srcs = ["deps.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@bazel_gazelle//internal:go_repository",
+        "@bazel_gazelle//internal:go_repository_cache",
+        "@bazel_gazelle//internal:go_repository_config",
+        "@bazel_gazelle//internal:go_repository_tools",
+        "@bazel_tools//tools/build_defs/repo:git.bzl",
+    ],
 )
