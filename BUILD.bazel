@@ -41,7 +41,6 @@ filegroup(
     srcs = glob(["vendor/**"]) + [
         ".bazelrc",
         ".gitignore",
-        ".travis.yml",
         "AUTHORS",
         "BUILD.bazel",
         "CODEOWNERS",
