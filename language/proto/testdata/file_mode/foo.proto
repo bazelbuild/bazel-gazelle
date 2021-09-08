@@ -1,3 +1,5 @@
 syntax = "proto3";
 
 package file_mode;
+
+import "file_mode/bar.proto";
