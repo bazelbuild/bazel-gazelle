@@ -354,7 +354,7 @@ proto_library(
 		}, {
 			desc: "test single file resolution in file mode",
 			index: []buildFile{{
-				rel: "foo",
+				rel: "somedir",
 				content: `
 # gazelle:proto file
 
@@ -377,13 +377,13 @@ proto_library(
 			old: `
 proto_library(
     name = "other_proto",
-    _imports = ["foo/bar.proto"],
+    _imports = ["somedir/bar.proto"],
 )
 `,
 			want: `
 proto_library(
     name = "other_proto",
-    deps = ["//foo:bar_proto"],
+    deps = ["//somedir:bar_proto"],
 )
 `,
 		},
