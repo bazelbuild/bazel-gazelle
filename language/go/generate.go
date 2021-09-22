@@ -825,5 +825,7 @@ func escapeOption(opt string) string {
 		"\t", "\\\t",
 		"\n", "\\\n",
 		"\r", "\\\r",
+		"$(", "$(",
+		"$", "$$",
 	).Replace(opt)
 }

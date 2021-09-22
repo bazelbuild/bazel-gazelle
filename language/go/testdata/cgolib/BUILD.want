@@ -15,7 +15,7 @@ go_library(
         "fmt",
     ],
     cgo = True,
-    clinkopts = ["-lweird"],
+    clinkopts = ["-lweird,-rpath,$$ORIGIN"],
     copts = [
         "-I cgolib/sub -iquote cgolib/sub",
         "-Icgolib/sub -Icgolib/othersub",
