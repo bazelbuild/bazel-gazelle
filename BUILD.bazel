@@ -97,3 +97,9 @@ bzl_library(
         "@bazel_tools//tools/build_defs/repo:git.bzl",
     ],
 )
+
+bzl_library(
+    name = "tmp",
+    visibility = ["//visibility:public"],
+    deps = ["@bazel_gazelle//:deps"],
+)

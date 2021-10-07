@@ -32,6 +32,7 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -40,6 +41,20 @@ import (
 
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/bazelbuild/rules_go/go/tools/internal/txtar"
+)
+
+const (
+	// Standard Bazel exit codes.
+	// A subset of codes in https://cs.opensource.google/bazel/bazel/+/master:src/main/java/com/google/devtools/build/lib/util/ExitCode.java.
+	SUCCESS                    = 0
+	BUILD_FAILURE              = 1
+	COMMAND_LINE_ERROR         = 2
+	TESTS_FAILED               = 3
+	NO_TESTS_FOUND             = 4
+	RUN_FAILURE                = 6
+	ANALYSIS_FAILURE           = 7
+	INTERRUPTED                = 8
+	LOCK_HELD_NOBLOCK_FOR_LOCK = 9
 )
 
 // Args is a list of arguments to TestMain. It's defined as a struct so
@@ -59,11 +74,23 @@ type Args struct {
 	// WorkspaceSuffix is a string that should be appended to the end
 	// of the default generated WORKSPACE file.
 	WorkspaceSuffix string
+
+	// SetUp is a function that is executed inside the context of the testing
+	// workspace. It is executed once and only once before the beginning of
+	// all tests. If SetUp returns a non-nil error, execution is halted and
+	// tests cases are not executed.
+	SetUp func() error
 }
 
 // debug may be set to make the test print the test workspace path and stop
 // instead of running tests.
 const debug = false
+
+// outputUserRoot is set to the directory where Bazel should put its internal files.
+// Since Bazel 2.0.0, this needs to be set explicitly to avoid it defaulting to a
+// deeply nested directory within the test, which runs into Windows path length limits.
+// We try to detect the original value in setupWorkspace and set it to that.
+var outputUserRoot string
 
 // TestMain should be called by tests using this framework from a function named
 // "TestMain". For example:
@@ -86,10 +113,23 @@ func TestMain(m *testing.M, args Args) {
 		os.Exit(code)
 	}()
 
+	files, err := bazel.SpliceDelimitedOSArgs("-begin_files", "-end_files")
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+		return
+	}
+
 	flag.Parse()
 
-	workspaceDir, cleanup, err := setupWorkspace(args)
-	defer cleanup()
+	workspaceDir, cleanup, err := setupWorkspace(args, files)
+	defer func() {
+		if err := cleanup(); err != nil {
+			fmt.Fprintf(os.Stderr, "cleanup error: %v\n", err)
+			// Don't fail the test on a cleanup error.
+			// Some operating systems (windows, maybe also darwin) can't reliably
+			// delete executable files after they're run.
+		}
+	}()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return
@@ -109,15 +149,25 @@ func TestMain(m *testing.M, args Args) {
 	}
 	defer exec.Command("bazel", "shutdown").Run()
 
+	if args.SetUp != nil {
+		if err := args.SetUp(); err != nil {
+			fmt.Fprintf(os.Stderr, "test provided SetUp method returned error: %v\n", err)
+			return
+		}
+	}
+
 	code = m.Run()
 }
 
-// RunBazel invokes a bazel command with a list of arguments.
-//
-// If the command starts but exits with a non-zero status, a *StderrExitError
-// will be returned which wraps the original *exec.ExitError.
-func RunBazel(args ...string) error {
-	cmd := exec.Command("bazel", args...)
+// BazelCmd prepares a bazel command for execution. It chooses the correct
+// bazel binary based on the environment and sanitizes the environment to
+// hide that this code is executing inside a bazel test.
+func BazelCmd(args ...string) *exec.Cmd {
+	cmd := exec.Command("bazel")
+	if outputUserRoot != "" {
+		cmd.Args = append(cmd.Args, "--output_user_root="+outputUserRoot)
+	}
+	cmd.Args = append(cmd.Args, args...)
 	for _, e := range os.Environ() {
 		// Filter environment variables set by the bazel test wrapper script.
 		// These confuse recursive invocations of Bazel.
@@ -126,6 +176,15 @@ func RunBazel(args ...string) error {
 		}
 		cmd.Env = append(cmd.Env, e)
 	}
+	return cmd
+}
+
+// RunBazel invokes a bazel command with a list of arguments.
+//
+// If the command starts but exits with a non-zero status, a *StderrExitError
+// will be returned which wraps the original *exec.ExitError.
+func RunBazel(args ...string) error {
+	cmd := BazelCmd(args...)
 
 	buf := &bytes.Buffer{}
 	cmd.Stderr = buf
@@ -135,6 +194,25 @@ func RunBazel(args ...string) error {
 		err = &StderrExitError{Err: eErr}
 	}
 	return err
+}
+
+// BazelOutput invokes a bazel command with a list of arguments and returns
+// the content of stdout.
+//
+// If the command starts but exits with a non-zero status, a *StderrExitError
+// will be returned which wraps the original *exec.ExitError.
+func BazelOutput(args ...string) ([]byte, error) {
+	cmd := BazelCmd(args...)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+	err := cmd.Run()
+	if eErr, ok := err.(*exec.ExitError); ok {
+		eErr.Stderr = stderr.Bytes()
+		err = &StderrExitError{Err: eErr}
+	}
+	return stdout.Bytes(), err
 }
 
 // StderrExitError wraps *exec.ExitError and prints the complete stderr output
@@ -150,17 +228,25 @@ func (e *StderrExitError) Error() string {
 	return sb.String()
 }
 
-func setupWorkspace(args Args) (dir string, cleanup func(), err error) {
-	var cleanups []func()
-	cleanup = func() {
+func (e *StderrExitError) Unwrap() error {
+	return e.Err
+}
+
+func setupWorkspace(args Args, files []string) (dir string, cleanup func() error, err error) {
+	var cleanups []func() error
+	cleanup = func() error {
+		var firstErr error
 		for i := len(cleanups) - 1; i >= 0; i-- {
-			cleanups[i]()
+			if err := cleanups[i](); err != nil && firstErr == nil {
+				firstErr = err
+			}
 		}
+		return firstErr
 	}
 	defer func() {
 		if err != nil {
 			cleanup()
-			cleanup = nil
+			cleanup = func() error { return nil }
 		}
 	}()
 
@@ -177,6 +263,7 @@ func setupWorkspace(args Args) (dir string, cleanup func(), err error) {
 		tmpDir = filepath.Clean(tmpDir)
 		if i := strings.Index(tmpDir, string(os.PathSeparator)+"execroot"+string(os.PathSeparator)); i >= 0 {
 			outBaseDir = tmpDir[:i]
+			outputUserRoot = filepath.Dir(outBaseDir)
 			cacheDir = filepath.Join(outBaseDir, "bazel_testing")
 		} else {
 			cacheDir = filepath.Join(tmpDir, "bazel_testing")
@@ -195,47 +282,83 @@ func setupWorkspace(args Args) (dir string, cleanup func(), err error) {
 	if err := os.RemoveAll(execDir); err != nil {
 		return "", cleanup, err
 	}
-	cleanups = append(cleanups, func() { os.RemoveAll(execDir) })
+	cleanups = append(cleanups, func() error { return os.RemoveAll(execDir) })
 
-	// Extract test files for the main workspace.
+	// Create the workspace directory.
 	mainDir := filepath.Join(execDir, "main")
 	if err := os.MkdirAll(mainDir, 0777); err != nil {
 		return "", cleanup, err
 	}
+
+	// Create a .bazelrc file if GO_BAZEL_TEST_BAZELFLAGS is set.
+	// The test can override this with its own .bazelrc or with flags in commands.
+	if flags := os.Getenv("GO_BAZEL_TEST_BAZELFLAGS"); flags != "" {
+		bazelrcPath := filepath.Join(mainDir, ".bazelrc")
+		content := "build " + flags
+		if err := ioutil.WriteFile(bazelrcPath, []byte(content), 0666); err != nil {
+			return "", cleanup, err
+		}
+	}
+
+	// Extract test files for the main workspace.
 	if err := extractTxtar(mainDir, args.Main); err != nil {
 		return "", cleanup, fmt.Errorf("building main workspace: %v", err)
 	}
 
-	// Copy or data files for rules_go, or whatever was passed in.
+	// If some of the path arguments are missing an explicit workspace,
+	// read the workspace name from WORKSPACE. We need this to map arguments
+	// to runfiles in specific workspaces.
+	haveDefaultWorkspace := false
+	var defaultWorkspaceName string
+	for _, argPath := range files {
+		workspace, _, err := parseLocationArg(argPath)
+		if err == nil && workspace == "" {
+			haveDefaultWorkspace = true
+			cleanPath := path.Clean(argPath)
+			if cleanPath == "WORKSPACE" {
+				defaultWorkspaceName, err = loadWorkspaceName(cleanPath)
+				if err != nil {
+					return "", cleanup, fmt.Errorf("could not load default workspace name: %v", err)
+				}
+				break
+			}
+		}
+	}
+	if haveDefaultWorkspace && defaultWorkspaceName == "" {
+		return "", cleanup, fmt.Errorf("found files from default workspace, but not WORKSPACE")
+	}
+
+	// Index runfiles by workspace and short path. We need this to determine
+	// destination paths when we copy or link files.
 	runfiles, err := bazel.ListRunfiles()
 	if err != nil {
 		return "", cleanup, err
 	}
+
 	type runfileKey struct{ workspace, short string }
 	runfileMap := make(map[runfileKey]string)
 	for _, rf := range runfiles {
 		runfileMap[runfileKey{rf.Workspace, rf.ShortPath}] = rf.Path
 	}
+
+	// Copy or link file arguments from runfiles into fake workspace dirctories.
+	// Keep track of the workspace names we see, since we'll generate a WORKSPACE
+	// with local_repository rules later.
 	workspaceNames := make(map[string]bool)
-	for _, argPath := range flag.Args() {
-		shortPath := path.Clean(argPath)
-		if !strings.HasPrefix(shortPath, "external/") {
-			return "", cleanup, fmt.Errorf("unexpected file: %s", argPath)
+	for _, argPath := range files {
+		workspace, shortPath, err := parseLocationArg(argPath)
+		if err != nil {
+			return "", cleanup, err
 		}
-		shortPath = shortPath[len("external/"):]
-		var workspace string
-		if i := strings.IndexByte(shortPath, '/'); i < 0 {
-			return "", cleanup, fmt.Errorf("unexpected file: %s", argPath)
-		} else {
-			workspace = shortPath[:i]
-			shortPath = shortPath[i+1:]
+		if workspace == "" {
+			workspace = defaultWorkspaceName
 		}
 		workspaceNames[workspace] = true
+
 		srcPath, ok := runfileMap[runfileKey{workspace, shortPath}]
 		if !ok {
 			return "", cleanup, fmt.Errorf("unknown runfile: %s", argPath)
 		}
-
 		dstPath := filepath.Join(execDir, workspace, shortPath)
 		if err := copyOrLink(dstPath, srcPath); err != nil {
 			return "", cleanup, err
@@ -282,11 +405,52 @@ func setupWorkspace(args Args) (dir string, cleanup func(), err error) {
 func extractTxtar(dir, txt string) error {
 	ar := txtar.Parse([]byte(txt))
 	for _, f := range ar.Files {
+		if parentDir := filepath.Dir(f.Name); parentDir != "." {
+			if err := os.MkdirAll(filepath.Join(dir, parentDir), 0777); err != nil {
+				return err
+			}
+		}
 		if err := ioutil.WriteFile(filepath.Join(dir, f.Name), f.Data, 0666); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func parseLocationArg(arg string) (workspace, shortPath string, err error) {
+	cleanPath := path.Clean(arg)
+	if !strings.HasPrefix(cleanPath, "external/") {
+		return "", cleanPath, nil
+	}
+	i := strings.IndexByte(arg[len("external/"):], '/')
+	if i < 0 {
+		return "", "", fmt.Errorf("unexpected file (missing / after external/): %s", arg)
+	}
+	i += len("external/")
+	workspace = cleanPath[len("external/"):i]
+	shortPath = cleanPath[i+1:]
+	return workspace, shortPath, nil
+}
+
+func loadWorkspaceName(workspacePath string) (string, error) {
+	runfilePath, err := bazel.Runfile(workspacePath)
+	if err == nil {
+		workspacePath = runfilePath
+	}
+	workspaceData, err := ioutil.ReadFile(workspacePath)
+	if err != nil {
+		return "", err
+	}
+	nameRe := regexp.MustCompile(`(?m)^workspace\(\s*name\s*=\s*("[^"]*"|'[^']*')\s*,?\s*\)$`)
+	match := nameRe.FindSubmatchIndex(workspaceData)
+	if match == nil {
+		return "", fmt.Errorf("%s: workspace name not set", workspacePath)
+	}
+	name := string(workspaceData[match[2]+1 : match[3]-1])
+	if name == "" {
+		return "", fmt.Errorf("%s: workspace name is empty", workspacePath)
+	}
+	return name, nil
 }
 
 type workspaceTemplateInfo struct {
