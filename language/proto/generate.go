@@ -53,7 +53,7 @@ func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateR
 		}
 	}
 
-	// genProtoFilesNotConsumed represents only not consumed generetad files.
+	// genProtoFilesNotConsumed represents only not consumed generated files.
 	// genProtoFiles represents all generated files.
 	// This is required for not generating empty rules for consumed generated
 	// files.
