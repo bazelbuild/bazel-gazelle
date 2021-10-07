@@ -20,7 +20,7 @@ package cgolib
 #cgo CPPFLAGS: -I/weird/include/path
 #cgo CXXFLAGS: -std=c++14
 #cgo CFLAGS: -I sub/../sub -iquote sub/../sub
-#cgo LDFLAGS: -lweird
+#cgo LDFLAGS: -lweird,-rpath,$ORIGIN
 **/
 import "C"
 import "fmt"
