@@ -38,7 +38,7 @@ import (
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
-var minimumRulesGoVersion = version.Version{0, 20, 0}
+var minimumRulesGoVersion = version.Version{0, 29, 0}
 
 // goConfig contains configuration values related to Go rules.
 type goConfig struct {

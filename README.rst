@@ -83,10 +83,10 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "8e968b5fcea1d2d64071872b12737bbb5514524ee5f0a4f54f5920266c261acb",
+        sha256 = "2b1641428dff9018f9e85c0384f03ec6c10660d935b750e3fa1492a281a53b0f",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.28.0/rules_go-v0.28.0.zip",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.28.0/rules_go-v0.28.0.zip",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.29.0/rules_go-v0.29.0.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.29.0/rules_go-v0.29.0.zip",
         ],
     )
 
@@ -237,7 +237,9 @@ you're using a compatible version.
 +---------------------+------------------------------+------------------------------+
 | 0.22                | 0.20                         | 0.24                         |
 +---------------------+------------------------------+------------------------------+
-| 0.23                | 0.26                         | n/a                          |
+| 0.23                | 0.26                         | 0.28                         |
++---------------------+------------------------------+------------------------------+
+| 0.24                | 0.29                         | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
