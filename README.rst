@@ -134,9 +134,21 @@ This will generate new BUILD.bazel files for your project. You can run the same
 command in the future to update existing BUILD.bazel files to include new source
 files or options.
 
-You can pass additional arguments to Gazelle after a ``--`` argument. This
-can be used to run alternate commands like ``update-repos`` that the ``gazelle``
-rule cannot run directly.
+You can write other ``gazelle`` rules to run alternate commands like ``update-repos``.
+
+.. code:: bzl
+
+  gazelle(
+      name = "gazelle-update-repos",
+      args = [
+          "-from_file=go.mod",
+          "-to_macro=deps.bzl%go_dependencies",
+          "-prune",
+      ],
+      command = "update-repos",
+  )
+
+You can also pass additional arguments to Gazelle after a ``--`` argument.
 
 .. code::
 
@@ -292,9 +304,8 @@ The following attributes are available on the ``gazelle`` rule.
 +----------------------+---------------------+--------------------------------------+
 | :param:`command`     | :type:`string`      | :value:`update`                      |
 +----------------------+---------------------+--------------------------------------+
-| The Gazelle command to use. May be :value:`fix` or :value:`update`. To run        |
-| a different command, e.g., :value:`update-repos`, you'll need to copy the         |
-| invoke the generated wrapper script directly with explicit arguments.             |
+| The Gazelle command to use. May be :value:`fix`, :value:`update` or               |
+| :value:`update-repos`.                                                            |
 +----------------------+---------------------+--------------------------------------+
 
 ``fix`` and ``update``
@@ -469,14 +480,6 @@ version. It can also import repository rules from a ``go.mod`` file or a
 
   # Import repositories from go.mod and update macro
   $ gazelle update-repos -from_file=go.mod -to_macro=repositories.bzl%go_repositories
-
-:Note: ``update-repos`` is not directly supported by the ``gazelle`` rule.
-  You can run it through the ``gazelle`` rule by passing extra arguments after
-  ``--``. For example:
-
-  .. code::
-
-    $ bazel run //:gazelle -- update-repos example.com/new/repo
 
 The following flags are accepted:
 
