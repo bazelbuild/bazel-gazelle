@@ -1,3 +1,19 @@
+/*
+Copyright 2020 Google LLC
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 // BUILD file parser.
 
 // This is a yacc grammar. Its lexer is in lex.go.
@@ -31,6 +47,7 @@ package build
 	ifstmt    *IfStmt
 	loadarg   *struct{from Ident; to Ident}
 	loadargs  []*struct{from Ident; to Ident}
+	def_header *DefStmt  // partially filled in def statement, without the body
 
 	// supporting information
 	comma     Position   // position of trailing comma in list, if present
@@ -95,6 +112,7 @@ package build
 %token	<pos>	_INT_DIV // operator //
 %token	<pos>	_BIT_LSH // bitwise operator <<
 %token	<pos>	_BIT_RSH // bitwise operator >>
+%token	<pos>	_ARROW   // functions type annotation ->
 %token	<pos>	_NOT     // keyword not
 %token	<pos>	_OR      // keyword or
 %token	<pos>	_STRING  // quoted string
@@ -107,12 +125,17 @@ package build
 %token	<pos>	_UNINDENT // unindentation
 
 %type	<pos>		comma_opt
+%type	<pos>		commas
+%type	<pos>		commas_opt
 %type	<expr>		argument
 %type	<exprs>		arguments
 %type	<exprs>		arguments_opt
 %type	<expr>		parameter
 %type	<exprs>		parameters
 %type	<exprs>		parameters_opt
+%type	<expr>		parameter_type
+%type	<exprs>		parameters_type
+%type	<exprs>		parameters_type_opt
 %type	<expr>		test
 %type	<expr>		test_opt
 %type	<exprs>		tests_opt
@@ -143,6 +166,8 @@ package build
 %type	<exprs>		comments
 %type	<loadarg>	load_argument
 %type	<loadargs>	load_arguments
+%type <def_header>	def_header
+%type <def_header>	def_header_type_opt
 
 // Operator precedence.
 // Operators listed lower in the table bind tighter.
@@ -321,21 +346,35 @@ stmt:
 		}
 	}
 
-block_stmt:
-	_DEF _IDENT '(' parameters_opt ')' ':' suite
+def_header:
+	_DEF _IDENT '(' parameters_type_opt ')'
 	{
 		$$ = &DefStmt{
 			Function: Function{
 				StartPos: $1,
 				Params: $4,
-				Body: $7,
 			},
 			Name: $<tok>2,
-			ColonPos: $6,
 			ForceCompact: forceCompact($3, $4, $5),
 			ForceMultiLine: forceMultiLine($3, $4, $5),
 		}
-		$<lastStmt>$ = $<lastStmt>7
+	}
+
+def_header_type_opt:
+	def_header
+| def_header _ARROW test
+	{
+		$1.Type = $3
+		$$ = $1
+	}
+
+block_stmt:
+	def_header_type_opt ':' suite
+	{
+		$1.Function.Body = $3
+		$1.ColonPos = $2
+		$$ = $1
+		$<lastStmt>$ = $<lastStmt>3
 	}
 |	_FOR loop_vars _IN expr ':' suite
 	{
@@ -475,15 +514,15 @@ primary_expr:
 			Name: $<tok>3,
 		}
 	}
-|	_LOAD '(' string ',' load_arguments comma_opt ')'
+|	_LOAD '(' commas_opt string commas load_arguments commas_opt ')'
 	{
 		load := &LoadStmt{
 			Load: $1,
-			Module: $3,
-			Rparen: End{Pos: $7},
-			ForceCompact: $1.Line == $7.Line,
+			Module: $4,
+			Rparen: End{Pos: $8},
+			ForceCompact: $2.Line == $8.Line,
 		}
-		for _, arg := range $5 {
+		for _, arg := range $6 {
 			load.From = append(load.From, &arg.from)
 			load.To = append(load.To, &arg.to)
 		}
@@ -611,17 +650,17 @@ arguments_opt:
 	{
 		$$ = nil
 	}
-|	arguments comma_opt
+|	arguments commas_opt
 	{
 		$$ = $1
 	}
 
 arguments:
-	argument
+	commas_opt argument
 	{
-		$$ = []Expr{$1}
+		$$ = []Expr{$2}
 	}
-|	arguments ',' argument
+|	arguments commas argument
 	{
 		$$ = append($1, $3)
 	}
@@ -692,12 +731,32 @@ parameters_opt:
 		$$ = $1
 	}
 
+parameters_type_opt:
+	{
+		$$ = nil
+	}
+|	parameters_type comma_opt
+	{
+		$$ = $1
+	}
+
 parameters:
 	parameter
 	{
 		$$ = []Expr{$1}
 	}
 |	parameters ',' parameter
+	{
+		$$ = append($1, $3)
+	}
+
+// Parameters with optional type annotations
+parameters_type:
+	parameter_type
+	{
+		$$ = []Expr{$1}
+	}
+|	parameters_type ',' parameter_type
 	{
 		$$ = append($1, $3)
 	}
@@ -719,6 +778,27 @@ parameter:
 |	_STAR_STAR ident
 	{
 		$$ = unary($1, $<tok>1, $2)
+	}
+
+// Parameter with optional type annotation
+parameter_type:
+	parameter
+|
+	ident ':' test
+	{
+		$$ = typed($1, $3)
+	}
+|	ident ':' test '=' test
+	{
+		$$ = binary(typed($1, $3), $4, $<tok>4, $5)
+	}
+|	'*' ident ':' test
+	{
+		$$ = unary($1, $<tok>1, typed($2, $4))
+	}
+|	_STAR_STAR ident ':' test
+	{
+		$$ = unary($1, $<tok>1, typed($2, $4))
 	}
 
 expr:
@@ -805,7 +885,7 @@ tests:
 	{
 		$$ = []Expr{$1}
 	}
-|	tests ',' test
+|	tests commas test
 	{
 		$$ = append($1, $3)
 	}
@@ -820,10 +900,11 @@ tests_opt:
 	{
 		$$, $<comma>$ = nil, Position{}
 	}
-|	tests comma_opt
+|	tests commas_opt
 	{
 		$$, $<comma>$ = $1, $2
 	}
+
 
 // comma_opt is an optional comma. If the comma is present,
 // the rule's value is the position of the comma. Otherwise
@@ -834,6 +915,26 @@ comma_opt:
 		$$ = Position{}
 	}
 |	','
+
+// commas allows us to treat multiple consecutive commas as if they are a single
+// comma token. This is a syntax error in bazel, but a common user error, so it
+// is convenient to automatically fix it.
+commas:
+  ','
+| commas ','
+  {
+    $$ = $1
+  }
+
+// commas_opt is the one-or-more comma equivalent of comma_opt, and is used
+// where trailing commas have some significance. Like commas they squash down
+// to a single comma if present to fix a common user error.
+commas_opt:
+	{
+		$$ = Position{}
+	}
+|	commas
+
 
 keyvalue:
 	test ':' test  {
@@ -849,7 +950,7 @@ keyvalues_no_comma:
 	{
 		$$ = []*KeyValueExpr{$1}
 	}
-|	keyvalues_no_comma ',' keyvalue
+|	keyvalues_no_comma commas keyvalue
 	{
 		$$ = append($1, $3)
 	}
@@ -862,7 +963,7 @@ keyvalues:
 	{
 		$$ = $1
 	}
-|	keyvalues_no_comma ','
+|	keyvalues_no_comma commas
 	{
 		$$ = $1
 	}
@@ -991,6 +1092,14 @@ func binary(x Expr, pos Position, op string, y Expr) Expr {
 		Op:        op,
 		LineBreak: xend.Line < ystart.Line,
 		Y:         y,
+	}
+}
+
+// typed returns a TypedIdent expression
+func typed(x, y Expr) *TypedIdent {
+	return &TypedIdent{
+		Ident: x.(*Ident),
+		Type:  y,
 	}
 }
 

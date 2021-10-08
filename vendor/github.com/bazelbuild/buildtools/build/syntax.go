@@ -1,17 +1,17 @@
 /*
-Copyright 2016 Google Inc. All Rights Reserved.
+Copyright 2016 Google LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 // Package build implements parsing and printing of BUILD files.
@@ -189,6 +189,26 @@ func (x *Ident) asString() *StringExpr {
 		Value:    x.Name,
 		End:      end,
 	}
+}
+
+// An TypedIdent represents an identifier with type annotation: "foo: int".
+type TypedIdent struct {
+	Comments
+	Ident   *Ident
+	Type    Expr
+}
+
+// Span returns the start and end positions of the node
+func (x *TypedIdent) Span() (start, end Position) {
+	start, _ = x.Ident.Span()
+	_, end = x.Type.Span()
+	return start, end
+}
+
+//Copy creates and returns a non-deep copy of TypedIdent
+func (x *TypedIdent) Copy() Expr {
+	n := *x
+	return &n
 }
 
 // BranchStmt represents a `pass`, `break`, or `continue` statement.
@@ -719,6 +739,7 @@ type DefStmt struct {
 	ColonPos       Position // position of the ":"
 	ForceCompact   bool     // force compact (non-multiline) form when printing the arguments
 	ForceMultiLine bool     // force multiline form when printing the arguments
+	Type           Expr     // type annotation
 }
 
 // Span returns the start and end positions of the node

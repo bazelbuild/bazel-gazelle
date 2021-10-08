@@ -1,18 +1,19 @@
 /*
-Copyright 2016 Google Inc. All Rights Reserved.
+Copyright 2016 Google LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
+
 // Printing of syntax trees.
 
 package build
@@ -195,13 +196,7 @@ func (p *printer) statements(rawStmts []Expr) {
 	}
 
 	for i, stmt := range stmts {
-		switch stmt := stmt.(type) {
-		case *CommentBlock:
-			// comments already handled
-
-		default:
-			p.expr(stmt, precLow)
-		}
+		p.expr(stmt, precLow)
 
 		// A CommentBlock is an empty statement without a body,
 		// it doesn't need an line break after the body
@@ -406,11 +401,19 @@ func (p *printer) expr(v Expr, outerPrec int) {
 	default:
 		panic(fmt.Errorf("printer: unexpected type %T", v))
 
+	case *CommentBlock:
+		// CommentBlock has no body
+
 	case *LiteralExpr:
 		p.printf("%s", v.Token)
 
 	case *Ident:
 		p.printf("%s", v.Name)
+
+	case *TypedIdent:
+		p.expr(v.Ident, precLow)
+		p.printf(": ")
+		p.expr(v.Type, precLow)
 
 	case *BranchStmt:
 		p.printf("%s", v.Token)
@@ -645,6 +648,10 @@ func (p *printer) expr(v Expr, outerPrec int) {
 		p.printf("def ")
 		p.printf(v.Name)
 		p.seq("()", &v.StartPos, &v.Params, nil, modeDef, v.ForceCompact, v.ForceMultiLine)
+		if v.Type != nil {
+			p.printf(" -> ")
+			p.expr(v.Type, precLow)
+		}
 		p.printf(":")
 		p.nestedStatements(v.Body)
 

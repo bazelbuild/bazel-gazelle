@@ -1,17 +1,17 @@
 /*
-Copyright 2017 Google Inc. All Rights Reserved.
+Copyright 2017 Google LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 
 package tables
@@ -23,11 +23,11 @@ import (
 
 type Definitions struct {
 	IsLabelArg                      map[string]bool
-	LabelBlacklist                  map[string]bool
+	LabelDenylist                   map[string]bool
 	IsListArg                       map[string]bool
 	IsSortableListArg               map[string]bool
-	SortableBlacklist               map[string]bool
-	SortableWhitelist               map[string]bool
+	SortableDenylist                map[string]bool
+	SortableAllowlist               map[string]bool
 	NamePriority                    map[string]int
 	StripLabelLeadingSlashes        bool
 	ShortenAbsoluteLabelsToRelative bool
@@ -55,9 +55,9 @@ func ParseAndUpdateJSONDefinitions(file string, merge bool) error {
 	}
 
 	if merge {
-		MergeTables(definitions.IsLabelArg, definitions.LabelBlacklist, definitions.IsListArg, definitions.IsSortableListArg, definitions.SortableBlacklist, definitions.SortableWhitelist, definitions.NamePriority, definitions.StripLabelLeadingSlashes, definitions.ShortenAbsoluteLabelsToRelative)
+		MergeTables(definitions.IsLabelArg, definitions.LabelDenylist, definitions.IsListArg, definitions.IsSortableListArg, definitions.SortableDenylist, definitions.SortableAllowlist, definitions.NamePriority, definitions.StripLabelLeadingSlashes, definitions.ShortenAbsoluteLabelsToRelative)
 	} else {
-		OverrideTables(definitions.IsLabelArg, definitions.LabelBlacklist, definitions.IsListArg, definitions.IsSortableListArg, definitions.SortableBlacklist, definitions.SortableWhitelist, definitions.NamePriority, definitions.StripLabelLeadingSlashes, definitions.ShortenAbsoluteLabelsToRelative)
+		OverrideTables(definitions.IsLabelArg, definitions.LabelDenylist, definitions.IsListArg, definitions.IsSortableListArg, definitions.SortableDenylist, definitions.SortableAllowlist, definitions.NamePriority, definitions.StripLabelLeadingSlashes, definitions.ShortenAbsoluteLabelsToRelative)
 	}
 	return nil
 }

@@ -1,29 +1,31 @@
 /*
-Copyright 2016 Google Inc. All Rights Reserved.
+Copyright 2016 Google LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+    https://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
+
 // Rewriting of high-level (not purely syntactic) BUILD constructs.
 
 package build
 
 import (
-	"github.com/bazelbuild/buildtools/tables"
 	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/bazelbuild/buildtools/tables"
 )
 
 // For debugging: flag to disable certain rewrites.
@@ -79,6 +81,7 @@ var rewrites = []struct {
 	fn    func(*File)
 	scope FileType
 }{
+	{"removeParens", removeParens, scopeBuild},
 	{"callsort", sortCallArgs, scopeBuild},
 	{"label", fixLabels, scopeBuild},
 	{"listsort", sortStringLists, scopeBoth},
@@ -231,7 +234,7 @@ func fixLabels(f *File) {
 					continue
 				}
 				key, ok := as.LHS.(*Ident)
-				if !ok || !tables.IsLabelArg[key.Name] || tables.LabelBlacklist[callName(v)+"."+key.Name] {
+				if !ok || !tables.IsLabelArg[key.Name] || tables.LabelDenylist[callName(v)+"."+key.Name] {
 					continue
 				}
 				if leaveAlone1(as.RHS) {
@@ -264,13 +267,10 @@ func fixLabels(f *File) {
 }
 
 // callName returns the name of the rule being called by call.
-// If the call is not to a literal rule name, callName returns "".
+// If the call is not to a literal rule name or a dot expression, callName
+// returns "".
 func callName(call *CallExpr) string {
-	rule, ok := call.X.(*Ident)
-	if !ok {
-		return ""
-	}
-	return rule.Name
+	return (&Rule{call, ""}).Kind()
 }
 
 // sortCallArgs sorts lists of named arguments to a call.
@@ -285,7 +285,7 @@ func sortCallArgs(f *File) {
 		}
 		rule := callName(call)
 		if rule == "" {
-			return
+			rule = "<complex rule kind>"
 		}
 
 		// Find the tail of the argument list with named arguments.
@@ -391,7 +391,7 @@ func sortStringLists(f *File) {
 					continue
 				}
 				as, ok := arg.(*AssignExpr)
-				if !ok || leaveAlone1(as) || doNotSort(as) {
+				if !ok || leaveAlone1(as) {
 					continue
 				}
 				key, ok := as.LHS.(*Ident)
@@ -399,13 +399,17 @@ func sortStringLists(f *File) {
 					continue
 				}
 				context := rule + "." + key.Name
-				if tables.SortableBlacklist[context] {
+				if tables.SortableDenylist[context] {
 					continue
 				}
 				if tables.IsSortableListArg[key.Name] ||
-					tables.SortableWhitelist[context] ||
+					tables.SortableAllowlist[context] ||
 					(!disabled("unsafesort") && allowedSort(context)) {
-					sortStringList(as.RHS, context)
+					if doNotSort(as) {
+						deduplicateStringList(as.RHS)
+					} else {
+						SortStringList(as.RHS)
+					}
 				}
 			}
 		case *AssignExpr:
@@ -414,7 +418,7 @@ func sortStringLists(f *File) {
 			}
 			// "keep sorted" comment on x = list forces sorting of list.
 			if keepSorted(v) {
-				sortStringList(v.RHS, "?")
+				SortStringList(v.RHS)
 			}
 		case *KeyValueExpr:
 			if disabled("unsafesort") {
@@ -422,7 +426,7 @@ func sortStringLists(f *File) {
 			}
 			// "keep sorted" before key: list also forces sorting of list.
 			if keepSorted(v) {
-				sortStringList(v.Value, "?")
+				SortStringList(v.Value)
 			}
 		case *ListExpr:
 			if disabled("unsafesort") {
@@ -430,23 +434,59 @@ func sortStringLists(f *File) {
 			}
 			// "keep sorted" comment above first list element also forces sorting of list.
 			if len(v.List) > 0 && (keepSorted(v) || keepSorted(v.List[0])) {
-				sortStringList(v, "?")
+				SortStringList(v)
 			}
 		}
 	})
 }
 
-// SortStringList sorts x, a list of strings.
-func SortStringList(x Expr) {
-	sortStringList(x, "")
+// deduplicateStingList removes duplicates from a list with string expressions
+// without reordering its elements.
+// Any suffix-comments are lost, any before- and after-comments are preserved.
+func deduplicateStringList(x Expr) {
+	list, ok := x.(*ListExpr)
+	if !ok {
+		return
+	}
+
+	var comments []Comment
+	alreadySeen := make(map[string]bool)
+	var deduplicated []Expr
+	for _, value := range list.List {
+		str, ok := value.(*StringExpr)
+		if !ok {
+			deduplicated = append(deduplicated, value)
+			continue
+		}
+		strVal := str.Value
+		if _, ok := alreadySeen[strVal]; ok {
+			// This is a duplicate of a string above.
+			// Collect comments so that they're not lost.
+			comments = append(comments, str.Comment().Before...)
+			comments = append(comments, str.Comment().After...)
+			continue
+		}
+		alreadySeen[strVal] = true
+		if len(comments) > 0 {
+			comments = append(comments, value.Comment().Before...)
+			value.Comment().Before = comments
+			comments = nil
+		}
+		deduplicated = append(deduplicated, value)
+	}
+	list.List = deduplicated
 }
 
-// sortStringList sorts x, a list of strings.
+// SortStringList sorts x, a list of strings.
 // The list is broken by non-strings and by blank lines and comments into chunks.
 // Each chunk is sorted in place.
-func sortStringList(x Expr, context string) {
+func SortStringList(x Expr) {
 	list, ok := x.(*ListExpr)
-	if !ok || len(list.List) < 2 || doNotSort(list.List[0]) {
+	if !ok || len(list.List) < 2 {
+		return
+	}
+	if doNotSort(list.List[0]) {
+		deduplicateStringList(list)
 		return
 	}
 
@@ -459,6 +499,7 @@ func sortStringList(x Expr, context string) {
 	// certain order in their deps attributes.
 	if !forceSort {
 		if line, _ := hasComments(list); line {
+			deduplicateStringList(list)
 			return
 		}
 	}
@@ -933,4 +974,35 @@ func editOctals(f *File) {
 			l.Token = "0o" + l.Token[1:]
 		}
 	})
+}
+
+// removeParens removes trivial parens
+func removeParens(f *File) {
+	var simplify func(expr Expr, stack []Expr) Expr
+	simplify = func(expr Expr, stack []Expr) Expr {
+		// Look for parenthesized expressions, ignoring those with
+		// comments and those that are intentionally multiline.
+		pa, ok := expr.(*ParenExpr)
+		if !ok || pa.ForceMultiLine {
+			return expr
+		}
+		if len(pa.Comment().Before) > 0 || len(pa.Comment().After) > 0 || len(pa.Comment().Suffix) > 0 {
+			return expr
+		}
+
+		switch x := pa.X.(type) {
+		case *Comprehension, *DictExpr, *Ident, *ListExpr, *LiteralExpr, *ParenExpr, *SetExpr, *StringExpr:
+			// These expressions don't need parens, remove them (recursively).
+			return Edit(x, simplify)
+		case *CallExpr:
+			// Parens might be needed if the callable is multiline.
+			start, end := x.X.Span()
+			if start.Line == end.Line {
+				return Edit(x, simplify)
+			}
+		}
+		return expr
+	}
+
+	Edit(f, simplify)
 }
