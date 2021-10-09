@@ -302,7 +302,10 @@ The following attributes are available on the ``gazelle`` rule.
 +----------------------+---------------------+--------------------------------------+
 | :param:`extra_args`  | :type:`string_list` | :value:`[]`                          |
 +----------------------+---------------------+--------------------------------------+
-| A list of extra command line arguments passed to Gazelle.                         |
+| A list of extra command line arguments passed to Gazelle.  Note that              |
+| ``extra_args`` are suppressed by extra command line args (e.g.                    |
+| ``bazel run //:gazelle -- subdir``.                                               |  
+| See https://github.com/bazelbuild/bazel-gazelle/issues/536 for explanation.       |
 +----------------------+---------------------+--------------------------------------+
 | :param:`command`     | :type:`string`      | :value:`update`                      |
 +----------------------+---------------------+--------------------------------------+
