@@ -50,6 +50,7 @@ def _go_repository_impl(ctx):
         ctx.download_and_extract(
             url = ctx.attr.urls,
             sha256 = ctx.attr.sha256,
+            canonical_id = ctx.attr.canonical_id,
             stripPrefix = ctx.attr.strip_prefix,
             type = ctx.attr.type,
             auth = _get_auth(ctx, ctx.attr.urls),
@@ -62,7 +63,7 @@ def _go_repository_impl(ctx):
         elif ctx.attr.tag:
             rev = ctx.attr.tag
             rev_key = "tag"
-        for key in ("urls", "strip_prefix", "type", "sha256", "version", "sum", "replace"):
+        for key in ("urls", "strip_prefix", "type", "sha256", "version", "sum", "replace", "canonical_id"):
             if getattr(ctx.attr, key):
                 fail("cannot specify both %s and %s" % (rev_key, key), key)
 
@@ -237,6 +238,7 @@ go_repository = repository_rule(
         "strip_prefix": attr.string(),
         "type": attr.string(),
         "sha256": attr.string(),
+        "canonical_id": attr.string(),
 
         # Attributes for a module that should be downloaded with the Go toolchain.
         "version": attr.string(),
