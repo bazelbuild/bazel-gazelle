@@ -214,6 +214,11 @@ returned by ``go env GOPATH``.
 | can cause differences in file order, alignment, and compression that break                                                |
 | SHA-256 sums.                                                                                                             |
 +------------------------------------+----------------------+---------------------------------------------------------------+
+| :param:`canonical_id`              | :type:`string`       | :value:`""`                                                   |
++------------------------------------+----------------------+---------------------------------------------------------------+
+| If the repository is downloaded via HTTP (``urls`` is set) and this is set, restrict cache hits to those cases where the  |
+| repository was added to the cache with the same canonical id.                                                             |
++------------------------------------+----------------------+---------------------------------------------------------------+
 | :param:`build_file_generation`     | :type:`string`       | :value:`"auto"`                                               |
 +------------------------------------+----------------------+---------------------------------------------------------------+
 | One of ``"auto"``, ``"on"``, ``"off"``.                                                                                   |
