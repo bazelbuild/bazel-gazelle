@@ -25,12 +25,67 @@ def _http_archive_impl(ctx):
 
 http_archive = repository_rule(
     implementation = _http_archive_impl,
+    doc = """
+**NOTE:** `http_archive` is deprecated in favor of the rule of the same name
+in [@bazel_tools//tools/build_defs/repo:http.bzl].
+
+`http_archive` downloads a project over HTTP(S). It has the same features as
+the [native http_archive rule], but it also allows you to copy a set of files
+into the repository after download. This is particularly useful for placing
+pre-generated build files.
+
+**Example**
+
+```starlark
+load("@bazel_gazelle//:deps.bzl", "http_archive")
+
+http_archive(
+    name = "com_github_pkg_errors",
+    urls = ["https://codeload.github.com/pkg/errors/zip/816c9085562cd7ee03e7f8188a1cfd942858cded"],
+    strip_prefix = "errors-816c9085562cd7ee03e7f8188a1cfd942858cded",
+    type = "zip",
+    overlay = {
+        "@my_repo//third_party:com_github_pkg_errors/BUILD.bazel.in" : "BUILD.bazel",
+    },
+)
+```
+""",
     attrs = {
-        "urls": attr.string_list(),
-        "sha256": attr.string(),
-        "strip_prefix": attr.string(),
-        "type": attr.string(),
-        "overlay": attr.label_keyed_string_dict(allow_files = True),
+        "urls": attr.string_list(
+            doc = """A list of HTTP(S) URLs where the project can be downloaded. Bazel will
+            attempt to download the first URL; the others are mirrors.""",
+        ),
+        "sha256": attr.string(
+            doc = """The SHA-256 sum of the downloaded archive. When set, Bazel will verify the
+            archive against this sum before extracting it.
+
+            **CAUTION:** Do not use this with services that prepare source archives on
+            demand, such as codeload.github.com. Any minor change in the server software
+            can cause differences in file order, alignment, and compression that break
+            SHA-256 sums.""",
+        ),
+        "strip_prefix": attr.string(
+            doc = "A directory prefix to strip. See [http_archive.strip_prefix].",
+        ),
+        "type": attr.string(
+            doc = """One of `"zip"`, `"tar.gz"`, `"tgz"`, `"tar.bz2"`, `"tar.xz"`.
+
+            The file format of the repository archive. This is normally inferred from
+            the downloaded file name.""",
+
+        ),
+        "overlay": attr.label_keyed_string_dict(
+            allow_files = True,
+            doc = """A set of files to copy into the downloaded repository. The keys in this
+            dictionary are Bazel labels that point to the files to copy. These must be
+            fully qualified labels (i.e., `@repo//pkg:name`) because relative labels
+            are interpreted in the checked out repository, not the repository containing
+            the WORKSPACE file. The values in this dictionary are root-relative paths
+            where the overlay files should be written.
+
+            It's convenient to store the overlay dictionaries for all repositories in
+            a separate .bzl file. See Gazelle's `manifest.bzl`_ for an example."""
+        ),
     },
 )
 # TODO(jayconrod): add strip_count to remove a number of unnamed
@@ -56,11 +111,53 @@ def _git_repository_impl(ctx):
 
 git_repository = repository_rule(
     implementation = _git_repository_impl,
+    doc = """
+**NOTE:** `git_repository` is deprecated in favor of the rule of the same name
+in [@bazel_tools//tools/build_defs/repo:git.bzl].
+
+`git_repository` downloads a project with git. It has the same features as the
+[native git_repository rule], but it also allows you to copy a set of files
+into the repository after download. This is particularly useful for placing
+pre-generated build files.
+
+**Example**
+
+```starlark
+load("@bazel_gazelle//:deps.bzl", "git_repository")
+
+git_repository(
+    name = "com_github_pkg_errors",
+    remote = "https://github.com/pkg/errors",
+    commit = "816c9085562cd7ee03e7f8188a1cfd942858cded",
+    overlay = {
+        "@my_repo//third_party:com_github_pkg_errors/BUILD.bazel.in" : "BUILD.bazel",
+    },
+)
+```
+""",
     attrs = {
-        "commit": attr.string(),
-        "remote": attr.string(mandatory = True),
-        "tag": attr.string(),
-        "overlay": attr.label_keyed_string_dict(allow_files = True),
+        "commit": attr.string(
+            doc = "The git commit to check out. Either `commit` or `tag` may be specified.",
+        ),
+        "remote": attr.string(
+            doc = "The remote repository to download.",
+            mandatory = True,
+        ),
+        "tag": attr.string(
+            doc = "The git tag to check out. Either `commit` or `tag` may be specified.",
+        ),
+        "overlay": attr.label_keyed_string_dict(
+            allow_files = True,
+            doc = """A set of files to copy into the downloaded repository. The keys in this
+dictionary are Bazel labels that point to the files to copy. These must be
+fully qualified labels (i.e., `@repo//pkg:name`) because relative labels
+are interpreted in the checked out repository, not the repository containing
+the WORKSPACE file. The values in this dictionary are root-relative paths
+where the overlay files should be written.
+
+It's convenient to store the overlay dictionaries for all repositories in
+a separate .bzl file. See Gazelle's `manifest.bzl`_ for an example.""",
+        ),
     },
 )
 
