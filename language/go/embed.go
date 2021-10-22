@@ -170,11 +170,12 @@ func (er *embedResolver) resolve(embed fileEmbed) (list []string, err error) {
 	// would not include "a/.e".
 	var visit func(*embeddableNode, bool)
 	visit = func(f *embeddableNode, add bool) {
-		match, _ := path.Match(embed.path, f.path)
+		convertedPath := filepath.ToSlash(f.path)
+		match, _ := path.Match(embed.path, convertedPath)
 		add = match || (add && !f.isHidden())
 		if !f.isDir() {
 			if add {
-				list = append(list, f.path)
+				list = append(list, convertedPath)
 			}
 			return
 		}
