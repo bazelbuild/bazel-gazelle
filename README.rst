@@ -329,9 +329,9 @@ Subdirectories will be processed recursively.
 
 The following flags are accepted:
 
-+===================================================================+========================================+
-| **Name**                                                          | **Default value**                      |
 +-------------------------------------------------------------------+----------------------------------------+
+| **Name**                                                          | **Default value**                      |
++===================================================================+========================================+
 | :flag:`-build_file_name file1,file2,...`                          | :value:`BUILD.bazel,BUILD`             |
 +-------------------------------------------------------------------+----------------------------------------+
 | Comma-separated list of file names. Gazelle recognizes these files as Bazel                                |
@@ -456,7 +456,7 @@ The following flags are accepted:
 | Selects languages for which to compose and index rules.                                                    |
 |                                                                                                            |
 | By default, all languages that this Gazelle was built with are processed.                                  |
-+===================================================================+========================================+
++-------------------------------------------------------------------+----------------------------------------+
 
 .. _Predefined plugins: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#predefined-plugins
 
