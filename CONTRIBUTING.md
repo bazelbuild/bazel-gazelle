@@ -29,7 +29,7 @@ the one above, the
    add [tests](https://github.com/bazelbuild/bazel-gazelle/tree/master/tests). 
    Run the existing tests with `bazel test //...`. Update
    [README.rst](https://github.com/bazelbuild/bazel-gazelle/blob/master/README.rst)
-   if appropriate. 
+   if appropriate.
 1. [Create a pull request](https://help.github.com/articles/creating-a-pull-request/).
    This will start the code review process. **All submissions, including
    submissions by project members, require review.**
