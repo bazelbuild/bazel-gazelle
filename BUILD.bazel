@@ -32,7 +32,7 @@ nogo(
     visibility = ["//visibility:public"],
 )
 
-exports_files(["WORKSPACE"])
+exports_files(["WORKSPACE", "repository.md"])
 
 filegroup(
     name = "all_files",
