@@ -3,17 +3,17 @@ Gazelle build file generator
 
 .. All external links are here
 .. _Architecture of Gazelle: Design.rst
-.. _Repository rules: repository.rst
-.. _go_repository: repository.rst#go_repository
+.. _Repository rules: repository.md
+.. _go_repository: repository.md#go_repository
 .. _fix: #fix-and-update
 .. _update: #fix-and-update
 .. _Avoiding conflicts with proto rules: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#avoiding-conflicts
 .. _gazelle rule: #bazel-rule
 .. _doublestar.Match: https://github.com/bmatcuk/doublestar#match
-.. _Extending Gazelle: extend.rst
-.. _Supported languages: extend.rst#supported-languages
+.. _Extending Gazelle: extend.md
+.. _Supported languages: extend.md#supported-languages
 .. _extended: `Extending Gazelle`_
-.. _gazelle_binary: extend.rst#gazelle_binary
+.. _gazelle_binary: extend.md#gazelle_binary
 .. _import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.import_prefix
 .. _strip_import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.strip_import_prefix
 .. _buildozer: https://github.com/bazelbuild/buildtools/tree/master/buildozer
