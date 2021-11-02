@@ -20,6 +20,7 @@ go_bazel_test(
 exports_files(
     [
         "gazelle.bash.in",
+        "extend_docs.bzl",
         "repository_docs.bzl",
         "list_repository_tools_srcs.go",
         "repository_rules_test_errors.patch",
@@ -122,5 +123,12 @@ bzl_library(
         ":go_repository",
         ":overlay_repository",
     ],
+    visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "extend_docs",
+    srcs = ["extend_docs.bzl"],
+    deps = [":gazelle_binary"],
     visibility = ["//:__subpackages__"],
 )

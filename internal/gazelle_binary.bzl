@@ -76,9 +76,25 @@ var languages = []language.Language{{
 
 _gazelle_binary_kwargs = {
     "implementation": _gazelle_binary_impl,
+    "doc": """The `gazelle_binary` rule builds a Go binary that incorporates a list of
+language extensions. This requires generating a small amount of code that
+must be compiled into Gazelle's main package, so the normal [go_binary]
+rule is not used.
+
+When the binary runs, each language extension is run sequentially. This affects
+the order that rules appear in generated build files. Metadata may be produced
+by an earlier extension and consumed by a later extension. For example, the
+proto extension stores metadata in hidden attributes of generated
+`proto_library` rules. The Go extension uses this metadata to generate
+`go_proto_library` rules.
+""",
     "attrs": {
         "languages": attr.label_list(
-            doc = "A list of language extensions the Gazelle binary will use",
+            doc = """A list of language extensions the Gazelle binary will use.
+
+            Each extension must be a [go_library] or something compatible. Each extension
+            must export a function named `NewLanguage` with no parameters that returns
+            a value assignable to [Language].""",
             providers = [GoArchive],
             mandatory = True,
             allow_empty = False,

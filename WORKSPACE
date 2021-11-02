@@ -15,10 +15,13 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "2b1641428dff9018f9e85c0384f03ec6c10660d935b750e3fa1492a281a53b0f",
+    sha256 = "e0c127187c63f96158a7fd609300e216f70b44912806f62f0d17c7d3a3872bc1",
+    strip_prefix = "rules_go-027d78bed3952d73c6fb7099b3247f903aa7318d",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.29.0/rules_go-v0.29.0.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.29.0/rules_go-v0.29.0.zip",
+        # Need a prerelease version of rules_go to pick up bzl_library fixes
+        # https://github.com/bazelbuild/rules_go/pull/2942
+        # Can go back to release artifact after 0.30 release
+        "https://github.com/bazelbuild/rules_go/archive/027d78bed3952d73c6fb7099b3247f903aa7318d.zip",
     ],
 )
 
