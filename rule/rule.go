@@ -608,6 +608,19 @@ func (l *Load) Add(sym string) {
 	}
 }
 
+// AddAlias inserts a new aliased symbol into the load statement. This has
+// no effect if the symbol is already loaded. Symbols will be sorted, so the order
+// doesn't matter.
+func (l *Load) AddAlias(sym, to string) {
+	if _, ok := l.symbols[sym]; !ok {
+		l.symbols[sym] = identPair{
+			to:   &bzl.Ident{Name: to},
+			from: &bzl.Ident{Name: sym},
+		}
+		l.updated = true
+	}
+}
+
 // Remove deletes a symbol from the load statement. This has no effect if
 // the symbol is not loaded.
 func (l *Load) Remove(sym string) {
