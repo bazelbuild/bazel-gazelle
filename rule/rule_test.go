@@ -50,7 +50,7 @@ y_library(name = "bar")
 	loadB.Add("x_library")
 	loadB.Remove("y_library")
 	loadC := NewLoad("c.bzl")
-	loadC.Add("z_library")
+	loadC.AddAlias("z_library", "z")
 	loadC.Add("y_library")
 	loadC.Insert(f, 3)
 
@@ -58,7 +58,7 @@ y_library(name = "bar")
 	foo.Delete()
 	bar := f.Rules[1]
 	bar.SetAttr("srcs", []string{"bar.y"})
-	baz := NewRule("z_library", "baz")
+	baz := NewRule("z", "baz")
 	baz.SetAttr("srcs", GlobValue{
 		Patterns: []string{"**"},
 		Excludes: []string{"*.pem"},
@@ -68,14 +68,18 @@ y_library(name = "bar")
 	got := strings.TrimSpace(string(f.Format()))
 	want := strings.TrimSpace(`
 load("b.bzl", "x_library")
-load("c.bzl", "y_library", "z_library")
+load(
+    "c.bzl",
+    "y_library",
+    z = "z_library",
+)
 
 y_library(
     name = "bar",
     srcs = ["bar.y"],
 )
 
-z_library(
+z(
     name = "baz",
     srcs = glob(
         ["**"],
@@ -434,7 +438,7 @@ func TestCheckFile(t *testing.T) {
 		t.Errorf("muliple rules with the same name should not be tolerated")
 	}
 
-	f = File{Rules: []*Rule {
+	f = File{Rules: []*Rule{
 		NewRule("go_rules_dependencies", ""),
 		NewRule("go_register_toolchains", ""),
 	}}
