@@ -79,6 +79,8 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 			}
 		}
 	}
+
+	dst.private = src.private
 }
 
 // mergeExprs combines information from src and dst and returns a merged
