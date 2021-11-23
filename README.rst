@@ -109,7 +109,12 @@ should look like this:
     gazelle_dependencies()
 
 ``gazelle_dependencies`` supports optional argument ``go_env`` (dict-mapping)
-to set project specific go environment variables.
+to set project specific go environment variables. If you are using a
+`WORKSPACE.bazel` file, you will need to specify that using:
+
+.. code:: bzl
+
+    gazelle_dependencies(go_repository_default_config = "//:WORKSPACE.bazel")
 
 Add the code below to the BUILD or BUILD.bazel file in the root directory
 of your repository.
