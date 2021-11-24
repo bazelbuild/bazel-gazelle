@@ -62,7 +62,7 @@ func New(repo, pkg, name string) Label {
 var NoLabel = Label{}
 
 var (
-	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z][A-Za-z0-9_]*$`)
+	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z.-][A-Za-z0-9_.-]*$`)
 	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._-]*$`)
 	labelNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_/.+=,@~-]*$`)
 )
