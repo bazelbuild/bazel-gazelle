@@ -100,7 +100,13 @@ should look like this:
     )
 
     load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
+    ############################################################
+    # Define your own dependencies here using go_repository.
+    # Else, dependencies declared by rules_go/gazelle will be used.
+    # The first declaration of an external repository "wins".
+    ############################################################
 
     go_rules_dependencies()
 
@@ -309,7 +315,7 @@ The following attributes are available on the ``gazelle`` rule.
 +----------------------+---------------------+--------------------------------------+
 | A list of extra command line arguments passed to Gazelle.  Note that              |
 | ``extra_args`` are suppressed by extra command line args (e.g.                    |
-| ``bazel run //:gazelle -- subdir``).                                              |  
+| ``bazel run //:gazelle -- subdir``).                                              |
 | See https://github.com/bazelbuild/bazel-gazelle/issues/536 for explanation.       |
 +----------------------+---------------------+--------------------------------------+
 | :param:`command`     | :type:`string`      | :value:`update`                      |
