@@ -486,7 +486,7 @@ func ensureMacroInWorkspace(uc *updateReposConfig, insertIndex int) (updated boo
 	macroValue := uc.macroFileName + "%" + uc.macroDefName
 	for _, d := range uc.workspace.Directives {
 		if d.Key == "repository_macro" {
-			if m, defName, _, _ := repo.ParseRepositoryMacroDirective(d.Value); m == uc.macroFileName && defName == uc.macroDefName {
+			if parsed, _ := repo.ParseRepositoryMacroDirective(d.Value); parsed != nil && parsed.Path == uc.macroFileName && parsed.DefName == uc.macroDefName {
 				return false
 			}
 		}
