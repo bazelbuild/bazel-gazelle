@@ -1,3 +1,4 @@
+//go:build darwin || dragonfly || freebsd || linux || nacl || netbsd || openbsd || solaris || windows
 // +build darwin dragonfly freebsd linux nacl netbsd openbsd solaris windows
 
 /* Copyright 2018 The Bazel Authors. All rights reserved.
@@ -18,6 +19,13 @@ limitations under the License.
 package main
 
 import (
+	"flag"
+	config "github.com/bazelbuild/bazel-gazelle/config"
+	golang "github.com/bazelbuild/bazel-gazelle/language/go"
+	"github.com/bazelbuild/bazel-gazelle/language/proto"
+	"github.com/bazelbuild/bazel-gazelle/resolve"
+	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/bazelbuild/bazel-gazelle/walk"
 	"io"
 	"log"
 	"net"
@@ -64,7 +72,7 @@ func startServer() error {
 //
 // The server stops after being idle for a while. It can also be stopped
 // with SIGINT or SIGTERM.
-func runServer() error {
+func runServer(workspaceDir string) error {
 	// Begin logging to the log file.
 	logFile, err := os.OpenFile(*logPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -93,7 +101,11 @@ func runServer() error {
 	restoreBuildFilesInRepo()
 
 	// Listen for file writes within the repository.
-	cancelWatch, err := watchDir(".", recordWrite)
+	c, err := newServerConfig(workspaceDir)
+	if err != nil {
+		return err
+	}
+	cancelWatch, err := watchDir(c, ".", recordWrite)
 	isWatching := err == nil
 	if err != nil {
 		log.Print(err)
@@ -136,17 +148,47 @@ func runServer() error {
 	}
 }
 
+func newServerConfig(workspaceDir string) (*serverCfg, error) {
+	var c serverCfg
+	c.config = config.New()
+	c.config.WorkDir = workspaceDir
+	c.cexts = []config.Configurer{
+		proto.NewLanguage(),
+		golang.NewLanguage(),
+		&config.CommonConfigurer{},
+		&walk.Configurer{},
+		&resolve.Configurer{},
+	}
+	fs := flag.NewFlagSet("unused", flag.ContinueOnError)
+	for _, cext := range c.cexts {
+		cext.RegisterFlags(fs, "autogazelle", c.config)
+	}
+	fs.Parse(nil)
+	for _, cext := range c.cexts {
+		if err := cext.CheckFlags(fs, c.config); err != nil {
+			return nil, err
+		}
+	}
+	return &c, nil
+}
+
+// serverCfg configures how the server walks directories.
+type serverCfg struct {
+	config *config.Config
+	cexts  []config.Configurer
+}
+
 // watchDir listens for file system changes in root and its
 // subdirectories. The record function is called with directories whose
 // contents have changed. New directories are watched recursively.
 // The returned cancel function may be called to stop watching.
-func watchDir(root string, record func(string)) (cancel func(), err error) {
+func watchDir(c *serverCfg, root string, record func(string)) (cancel func(), err error) {
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, err
 	}
 
-	dirs, errs := listDirs(root)
+	dirs, errs := listDirs(c, root)
 	for _, err := range errs {
 		log.Print(err)
 	}
@@ -172,7 +214,7 @@ func watchDir(root string, record func(string)) (cancel func(), err error) {
 					if st, err := os.Lstat(ev.Name); err != nil {
 						log.Print(err)
 					} else if st.IsDir() {
-						dirs, errs := listDirs(ev.Name)
+						dirs, errs := listDirs(c, ev.Name)
 						for _, err := range errs {
 							log.Print(err)
 						}
@@ -201,22 +243,14 @@ func watchDir(root string, record func(string)) (cancel func(), err error) {
 
 // listDirs returns a slice containing all the subdirectories under dir,
 // including dir itself.
-func listDirs(dir string) ([]string, []error) {
+func listDirs(c *serverCfg, dir string) ([]string, []error) {
 	var dirs []string
 	var errs []error
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			errs = append(errs, err)
-			return nil
-		}
-		if info.IsDir() {
-			dirs = append(dirs, path)
-		}
-		return nil
+	walk.Walk(c.config, c.cexts, []string{dir}, walk.VisitAllUpdateSubdirsMode, func(
+		dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string,
+	) {
+		dirs = append(dirs, dir)
 	})
-	if err != nil {
-		errs = append(errs, err)
-	}
 	return dirs, errs
 }
 

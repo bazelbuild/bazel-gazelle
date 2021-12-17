@@ -55,7 +55,7 @@ var (
 
 func main() {
 	log.SetPrefix(programName + ": ")
-	log.SetFlags(log.Ldate | log.Ltime)
+	log.SetFlags(log.Ldate | log.Ltime| log.Lshortfile)
 	flag.Parse()
 	if err := run(); err != nil {
 		log.Fatal(err)
@@ -80,7 +80,7 @@ func run() error {
 	}
 
 	if *isServer {
-		return runServer()
+		return runServer(workspaceDir)
 	} else {
 		return runClient()
 	}
