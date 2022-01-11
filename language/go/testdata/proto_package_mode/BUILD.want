@@ -17,10 +17,7 @@ proto_library(
         "foo1.proto",
         "foo2.proto",
     ],
-    _gazelle_imports = [
-        "google/protobuf/any.proto",
-        "proto_package_mode/bar1.proto",
-    ],
+    _gazelle_imports = ["google/protobuf/any.proto"],
     visibility = ["//visibility:public"],
 )
 
@@ -34,10 +31,7 @@ go_proto_library(
 
 go_proto_library(
     name = "foo_go_proto",
-    _gazelle_imports = [
-        "google/protobuf/any.proto",
-        "proto_package_mode/bar1.proto",
-    ],
+    _gazelle_imports = ["google/protobuf/any.proto"],
     importpath = "example.com/repo/proto_package_mode",
     proto = ":foo_proto",
     visibility = ["//visibility:public"],
