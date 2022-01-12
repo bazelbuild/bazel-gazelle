@@ -41,7 +41,7 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 	// List all modules except for the main module, including implicit indirect
 	// dependencies.
 	type module struct {
-		Path, Version, Sum string
+		Path, Version, Sum, Error string
 		Main               bool
 		Replace            *struct {
 			Path, Version string
@@ -110,10 +110,22 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 		}
 		defer os.RemoveAll(tmpDir)
 		data, err := goModDownload(tmpDir, missingSumArgs)
+		dec = json.NewDecoder(bytes.NewReader(data))
 		if err != nil {
+			// Best-effort try to adorn specific error details from the JSON output.
+			for dec.More() {
+				var dl module
+				if err := dec.Decode(&dl); err != nil {
+					// If we couldn't parse a possible error description, just ignore this part of the output.
+					continue
+				}
+				if dl.Error != "" {
+					err = fmt.Errorf("%v\nError downloading %v: %v", err, dl.Path, dl.Error)
+				}
+			}
+
 			return language.ImportReposResult{Error: err}
 		}
-		dec = json.NewDecoder(bytes.NewReader(data))
 		for dec.More() {
 			var dl module
 			if err := dec.Decode(&dl); err != nil {
@@ -212,7 +224,7 @@ func runGoCommandForOutput(dir string, args ...string) ([]byte, error) {
 		} else {
 			errStr = err.Error()
 		}
-		return nil, fmt.Errorf("running '%s %s': %s", cmd.Path, strings.Join(cmd.Args, " "), errStr)
+		return out, fmt.Errorf("running '%s %s': %s", cmd.Path, strings.Join(cmd.Args, " "), errStr)
 	}
 	return out, nil
 }
