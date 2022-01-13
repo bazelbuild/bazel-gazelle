@@ -176,7 +176,7 @@ command below:
 
 .. code::
 
-  go get github.com/bazelbuild/bazel-gazelle/cmd/gazelle
+  go install github.com/bazelbuild/bazel-gazelle/cmd/gazelle@latest
 
 Make sure to re-run this command to upgrade Gazelle whenever you upgrade
 rules_go in your repository.
