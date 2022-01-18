@@ -188,6 +188,82 @@ func TestGeneratePackage(t *testing.T) {
 	}
 }
 
+func TestFileModeImports(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		// TODO(jayconrod): set up testdata directory on windows before running test
+		if _, err := os.Stat("testdata"); os.IsNotExist(err) {
+			t.Skip("testdata missing on windows due to lack of symbolic links")
+		} else if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	lang := NewLanguage()
+	c, _, _ := testConfig(t, "testdata")
+	c.Exts[protoName] = &ProtoConfig{
+		Mode: FileMode,
+	}
+
+	dir := filepath.FromSlash("testdata/file_mode")
+	res := lang.GenerateRules(language.GenerateArgs{
+		Config:       c,
+		Dir:          dir,
+		Rel:          "file_mode",
+		RegularFiles: []string{"foo.proto", "bar.proto"}})
+
+	if len(res.Gen) != 2 {
+		t.Error("expected 2 generated packages")
+	}
+
+	bar := res.Gen[0].PrivateAttr(PackageKey).(Package)
+	foo := res.Gen[1].PrivateAttr(PackageKey).(Package)
+
+	// I believe the packages are sorted by name, but just in case..
+	if bar.RuleName == "foo" {
+		bar, foo = foo, bar
+	}
+
+	expectedFoo := Package{
+		Name:     "file_mode",
+		RuleName: "foo",
+		Files: map[string]FileInfo{
+			"foo.proto": {
+				Path:        filepath.Join(dir, "foo.proto"),
+				Name:        "foo.proto",
+				PackageName: "file_mode",
+			},
+		},
+		Imports: map[string]bool{},
+		Options: map[string]string{},
+	}
+
+	expectedBar := Package{
+		Name:     "file_mode",
+		RuleName: "bar",
+		Files: map[string]FileInfo{
+			"bar.proto": {
+				Path:        filepath.Join(dir, "bar.proto"),
+				Name:        "bar.proto",
+				PackageName: "file_mode",
+				Imports: []string{
+					"file_mode/foo.proto",
+				},
+			},
+		},
+		Imports: map[string]bool{
+			"file_mode/foo.proto": true,
+		},
+		Options: map[string]string{},
+	}
+
+	if !reflect.DeepEqual(foo, expectedFoo) {
+		t.Errorf("got %#v; want %#v", foo, expectedFoo)
+	}
+	if !reflect.DeepEqual(bar, expectedBar) {
+		t.Errorf("got %#v; want %#v", bar, expectedBar)
+	}
+}
+
 // TestConsumedGenFiles checks that generated files that have been consumed by
 // other rules should not be added to the rule
 func TestConsumedGenFiles(t *testing.T) {
