@@ -250,6 +250,9 @@ func TestFileModeImports(t *testing.T) {
 				},
 			},
 		},
+		// Imports should contain foo.proto. This is specific to file mode.
+		// In package mode, this import would be omitted as both foo.proto
+		// and bar.proto exist within the same package.
 		Imports: map[string]bool{
 			"file_mode/foo.proto": true,
 		},
