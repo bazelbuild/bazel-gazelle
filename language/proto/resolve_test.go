@@ -386,6 +386,30 @@ proto_library(
     deps = ["//somedir:bar_proto"],
 )
 `,
+		}, {
+			desc: "test single file resolution in same package",
+			old: `
+proto_library(
+    name = "qwerty_proto",
+    srcs = ["qwerty.proto"],
+)
+
+proto_library(
+    name = "other_proto",
+    _imports = ["test/qwerty.proto"],
+)
+`,
+			want: `
+proto_library(
+    name = "qwerty_proto",
+    srcs = ["qwerty.proto"],
+)
+
+proto_library(
+    name = "other_proto",
+    deps = [":qwerty_proto"],
+)
+`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
