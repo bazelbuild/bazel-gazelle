@@ -234,7 +234,7 @@ func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
 var genericLoads = []rule.LoadInfo{
 	{
 		Name:    "@bazel_gazelle//:def.bzl",
-		Symbols: []string{"gazelle"},
+		Symbols: []string{"gazelle", "gazelle_binary"},
 	},
 }
 
