@@ -20,12 +20,10 @@ Gazelle build file generator
 .. _bazel-go-discuss: https://groups.google.com/forum/#!forum/bazel-go-discuss
 .. _#bazel on Go Slack: https://gophers.slack.com/archives/C1SCQE54N
 .. _#go on Bazel Slack: https://bazelbuild.slack.com/archives/CDBP88Z0D
-.. _#75: https://github.com/bazelbuild/rules_sass/pull/75
 .. _#514: https://github.com/bazelbuild/rules_python/pull/514
 .. _#1030: https://github.com/bazelbuild/bazel-gazelle/issues/1030
 .. _rules_python: https://github.com/bazelbuild/rules_python
 .. _rules_r: https://github.com/grailbio/rules_r
-.. _rules_sass: https://github.com/bazelbuild/rules_sass
 .. _rules_haskell: https://github.com/tweag/rules_haskell
 .. _bazel_rules_nodejs_contrib: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
 .. _bazel-skylib: https://github.com/bazelbuild/bazel-skylib
@@ -110,11 +108,6 @@ Gazelle can generate Bazel BUILD files for many languages:
 * R
 
   `rules_r`_ has an extension for generating rules for R package builds and tests.
-
-* Sass
-
-  There is a proposed extension for `rules_sass`_ for generating ``sass_library`` and
-  ``sass_binary`` rules which is currently pending in PR `#75`_.
 
 * Starlark
 
