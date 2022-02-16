@@ -33,8 +33,9 @@ import (
 
 type walkConfig struct {
 	excludes []string
-	ignore   bool
 	follow   []string
+	ignore   bool
+	includes []string
 }
 
 const walkName = "_walk"
@@ -48,15 +49,23 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 		return true
 	}
 	f := path.Join(rel, base)
-	for _, x := range wc.excludes {
-		matched, err := doublestar.Match(x, f)
-		if err != nil {
-			// doublestar.Match returns only one possible error, and only if the
-			// pattern is not valid. During the configuration of the walker (see
-			// Configure below), we discard any invalid pattern and thus an error
-			// here should not be possible.
-			log.Panicf("error during doublestar.Match. This should not happen, please file an issue https://github.com/bazelbuild/bazel-gazelle/issues/new: %s", err)
+	isIncluded := false
+	if len(wc.includes) == 0 {
+		isIncluded = true
+	} else {
+		for _, x := range wc.includes {
+			matched := must(doublestar.Match(x, f))
+			if matched {
+				isIncluded = true
+				break
+			}
 		}
+	}
+	if !isIncluded {
+		return true
+	}
+	for _, x := range wc.excludes {
+		matched := must(doublestar.Match(x, f))
 		if matched {
 			return true
 		}
@@ -64,18 +73,30 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 	return false
 }
 
+func must(matched bool, err error) bool {
+	if err != nil {
+		// doublestar.Match returns only one possible error, and only if the
+		// pattern is not valid. During the configuration of the walker (see
+		// Configure below), we discard any invalid pattern and thus an error
+		// here should not be possible. Same below.
+		log.Panicf("error during doublestar.Match. This should not happen, please file an issue https://github.com/bazelbuild/bazel-gazelle/issues/new: %s", err)
+	}
+	return matched
+}
+
 type Configurer struct{}
 
 func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	wc := &walkConfig{}
 	c.Exts[walkName] = wc
-	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "pattern that should be ignored (may be repeated)")
+	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "pattern that should be excluded (may be repeated)")
+	fs.Var(&gzflag.MultiFlag{Values: &wc.includes}, "include", "pattern that should be included (may be repeated) - takes precedence over exclude")
 }
 
 func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
 
 func (_ *Configurer) KnownDirectives() []string {
-	return []string{"exclude", "follow", "ignore"}
+	return []string{"exclude", "follow", "ignore", "include"}
 }
 
 func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
@@ -97,6 +118,12 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				wcCopy.follow = append(wcCopy.follow, path.Join(rel, d.Value))
 			case "ignore":
 				wcCopy.ignore = true
+			case "include":
+				if err := checkPathMatchPattern(path.Join(rel, d.Value)); err != nil {
+					log.Printf("the inclusion pattern is not valid %q: %s", path.Join(rel, d.Value), err)
+					continue
+				}
+				wcCopy.includes = append(wcCopy.includes, path.Join(rel, d.Value))
 			}
 		}
 	}
