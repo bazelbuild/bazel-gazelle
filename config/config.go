@@ -193,6 +193,7 @@ type Configurer interface {
 // i.e., those that apply to Config itself and not to Config.Exts.
 type CommonConfigurer struct {
 	repoRoot, buildFileNames, readBuildFilesDir, writeBuildFilesDir string
+	readIndexFile, writeIndexFile                                   string
 	indexLibraries, strict                                          bool
 	langCsv                                                         string
 	bzlmod                                                          bool
