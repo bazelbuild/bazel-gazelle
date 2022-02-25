@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Copyright 2014 The Bazel Authors. All rights reserved.
@@ -61,7 +62,7 @@ func main() {
 			return err
 		}
 		base := filepath.Base(path)
-		if base == "docs" || base == "vendor" || base == "third_party" || base == "testdata" {
+		if base == "docs" || base == "vendor" || base == "third_party" || strings.HasPrefix(base, "testdata") {
 			return filepath.SkipDir
 		}
 		if !info.IsDir() &&

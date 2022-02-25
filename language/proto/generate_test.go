@@ -16,6 +16,7 @@ limitations under the License.
 package proto
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -31,6 +32,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/testtools"
 	"github.com/bazelbuild/bazel-gazelle/walk"
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
 
 	bzl "github.com/bazelbuild/buildtools/build"
 )
@@ -359,4 +361,42 @@ func testConfig(t *testing.T, repoRoot string) (*config.Config, language.Languag
 	})
 	cexts = append(cexts, lang)
 	return c, lang, cexts
+}
+
+// TestFullGeneration runs the gazelle binary on a few example
+// workspaces and confirms that the generated BUILD files match expectation.
+func TestFullGeneration(t *testing.T) {
+	tests := map[string][]bazel.RunfileEntry{}
+	runfiles, err := bazel.ListRunfiles()
+	if err != nil {
+		t.Fatalf("bazel.ListRunfiles() error: %v", err)
+	}
+	testDataDirectory := "testdata_full_gen_test"
+	testDataPath := filepath.Join("language", "proto", testDataDirectory)
+	for _, f := range runfiles {
+		if strings.HasPrefix(f.ShortPath, testDataPath) {
+			relativePath := strings.TrimPrefix(f.ShortPath, testDataPath)
+			parts := strings.SplitN(relativePath, "/", 3)
+			fmt.Printf("parts: %v\n", parts)
+			if len(parts) < 3 {
+				// This file is not a part of a testcase since it must be in a dir that
+				// is the test case and then have a path inside of that.
+				continue
+			}
+
+			tests[parts[1]] = append(tests[parts[1]], f)
+		}
+	}
+	if len(tests) == 0 {
+		t.Fatal("no tests found")
+	}
+
+	testArgs := testtools.NewTestGazelleGenerationArgs()
+	for testName, files := range tests {
+		testArgs.Name = testName
+		testArgs.TestDataPath = testDataDirectory
+		testArgs.GazelleBinaryDir = ""
+		testArgs.GazelleBinaryName = "gazelle_local"
+		testtools.TestGazelleGenerationOnPath(t, testArgs, files)
+	}
 }
