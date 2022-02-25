@@ -126,10 +126,16 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp str
 		}
 	}
 
-	if l, err := resolveWithIndex(c, ix, imp, from); err == nil || err == skipImportError {
-		return l, err
-	} else if err != notFoundError {
-		return label.NoLabel, err
+	lookups := []string{imp}
+	for _, includePath := range pc.IncludePaths {
+		lookups = append(lookups, path.Join(includePath, imp))
+	}
+	for _, lookup := range lookups {
+		if l, err := resolveWithIndex(c, ix, lookup, from); err == nil || err == skipImportError {
+			return l, err
+		} else if err != notFoundError {
+			return label.NoLabel, err
+		}
 	}
 
 	rel := path.Dir(imp)

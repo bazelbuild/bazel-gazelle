@@ -1,0 +1,15 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+proto_library(
+    name = "app_proto",
+    srcs = ["api.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//path/to/root_2/libB:libB_proto"],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = ["api.proto"],
+    visibility = ["//visibility:public"],
+)

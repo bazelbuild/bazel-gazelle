@@ -1,8 +1,0 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
-
-proto_library(
-    name = "app_proto",
-    srcs = ["api.proto"],
-    visibility = ["//visibility:public"],
-    deps = ["//path/to/libB:libB_proto"],
-)

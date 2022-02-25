@@ -5,3 +5,10 @@ proto_library(
     srcs = ["a.proto"],
     visibility = ["//visibility:public"],
 )
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = ["a.proto"],
+    visibility = ["//visibility:public"],
+)

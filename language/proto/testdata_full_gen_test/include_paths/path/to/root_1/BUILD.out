@@ -1,0 +1,6 @@
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = ["//path/to/root_1/libA:all_files"],
+    visibility = ["//visibility:public"],
+)

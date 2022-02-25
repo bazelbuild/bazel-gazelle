@@ -58,6 +58,11 @@ type ProtoConfig struct {
 	// If set, Gazelle will apply this value to the import_prefix attribute
 	// within the proto_library_rule.
 	ImportPrefix string
+
+	// IncludePaths A list of paths to prepend to imports to check if they
+	// in the index.
+	// IncludePaths are checked in order.
+	IncludePaths []string
 }
 
 // GetProtoConfig returns the proto language configuration. If the proto
@@ -194,6 +199,7 @@ func (_ *protoLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config
 	fs.Var(&modeFlag{&pc.Mode}, "proto", "default: generates a proto_library rule for one package\n\tpackage: generates a proto_library rule for for each package\n\tdisable: does not touch proto rules\n\tdisable_global: does not touch proto rules and does not use special cases for protos in dependency resolution")
 	fs.StringVar(&pc.groupOption, "proto_group", "", "option name used to group .proto files into proto_library rules")
 	fs.StringVar(&pc.ImportPrefix, "proto_import_prefix", "", "When set, .proto source files in the srcs attribute of the rule are accessible at their path with this prefix appended on.")
+
 }
 
 func (_ *protoLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -201,7 +207,7 @@ func (_ *protoLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
 }
 
 func (_ *protoLang) KnownDirectives() []string {
-	return []string{"proto", "proto_group", "proto_strip_import_prefix", "proto_import_prefix"}
+	return []string{"proto", "proto_group", "proto_strip_import_prefix", "proto_import_prefix", "proto_include_paths"}
 }
 
 func (_ *protoLang) Configure(c *config.Config, rel string, f *rule.File) {
@@ -228,6 +234,8 @@ func (_ *protoLang) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 			case "proto_import_prefix":
 				pc.ImportPrefix = d.Value
+			case "proto_include_paths":
+				pc.IncludePaths = append(pc.IncludePaths, strings.Split(strings.TrimSpace(d.Value), ",")...)
 			}
 		}
 	}

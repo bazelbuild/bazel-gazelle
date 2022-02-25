@@ -1,8 +1,0 @@
-load("@rules_proto//proto:defs.bzl", "proto_library")
-
-proto_library(
-    name = "libB_proto",
-    srcs = ["b.proto"],
-    visibility = ["//visibility:public"],
-    deps = ["//path/to/libA:libB_proto"],
-)

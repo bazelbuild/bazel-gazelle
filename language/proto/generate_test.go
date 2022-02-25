@@ -16,7 +16,6 @@ limitations under the License.
 package proto
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -372,12 +371,11 @@ func TestFullGeneration(t *testing.T) {
 		t.Fatalf("bazel.ListRunfiles() error: %v", err)
 	}
 	testDataDirectory := "testdata_full_gen_test"
-	testDataPath := filepath.Join("language", "proto", testDataDirectory)
+	testDataPath := filepath.Join("language", "proto", testDataDirectory, "")
 	for _, f := range runfiles {
 		if strings.HasPrefix(f.ShortPath, testDataPath) {
 			relativePath := strings.TrimPrefix(f.ShortPath, testDataPath)
 			parts := strings.SplitN(relativePath, "/", 3)
-			fmt.Printf("parts: %v\n", parts)
 			if len(parts) < 3 {
 				// This file is not a part of a testcase since it must be in a dir that
 				// is the test case and then have a path inside of that.
@@ -394,7 +392,7 @@ func TestFullGeneration(t *testing.T) {
 	testArgs := testtools.NewTestGazelleGenerationArgs()
 	for testName, files := range tests {
 		testArgs.Name = testName
-		testArgs.TestDataPath = testDataDirectory
+		testArgs.TestDataPath = testDataPath
 		testArgs.GazelleBinaryDir = ""
 		testArgs.GazelleBinaryName = "gazelle_local"
 		testtools.TestGazelleGenerationOnPath(t, testArgs, files)
