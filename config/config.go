@@ -321,7 +321,7 @@ func (cc *CommonConfigurer) removeSubDirs(dirs []string) []string {
 	for dir := range dirSet {
 		parent := filepath.Dir(dir)
 		var isSubDir = false
-		for parent != "." && parent != "/" {
+		for parent != "." && parent != string(filepath.Separator) {
 			if _, ok := dirSet[parent]; ok {
 				isSubDir = true
 				break

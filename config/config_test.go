@@ -66,6 +66,11 @@ func TestCommonConfigurerFlags(t *testing.T) {
 	if !reflect.DeepEqual(c.Langs, wantLangs) {
 		t.Errorf("for Langs, got %#v, want %#v", c.Langs, wantLangs)
 	}
+
+	wantUniverse := []string{""}
+	if !reflect.DeepEqual(c.Universe, wantUniverse) {
+		t.Errorf("for universe, got %#v, want %#v", c.Universe, wantUniverse)
+	}
 }
 
 func TestCommonConfigurerDirectives(t *testing.T) {
