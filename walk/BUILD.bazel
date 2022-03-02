@@ -13,7 +13,7 @@ go_library(
         "//flag",
         "//pathtools",
         "//rule",
-        "@com_github_bmatcuk_doublestar//:doublestar",
+        "@com_github_bmatcuk_doublestar_v4//:doublestar",
     ],
 )
 
@@ -28,7 +28,7 @@ go_test(
         "//config",
         "//rule",
         "//testtools",
-        "@com_github_bmatcuk_doublestar//:doublestar",
+        "@com_github_bmatcuk_doublestar_v4//:doublestar",
         "@com_github_google_go_cmp//cmp",
     ],
 )

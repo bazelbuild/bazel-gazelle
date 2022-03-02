@@ -106,10 +106,10 @@ def gazelle_dependencies(
     )
     _maybe(
         go_repository,
-        name = "com_github_bmatcuk_doublestar",
-        importpath = "github.com/bmatcuk/doublestar",
-        sum = "h1:gPypJ5xD31uhX6Tf54sDPUOBXTqKH4c9aPY66CyQrS0=",
-        version = "v1.3.4",
+        name = "com_github_bmatcuk_doublestar_v4",
+        importpath = "github.com/bmatcuk/doublestar/v4",
+        sum = "h1:X0krlUVAVmtr2cRoTqR8aDMrDqnB36ht8wpWTiQ3jsA=",
+        version = "v4.0.2",
     )
     _maybe(
         go_repository,

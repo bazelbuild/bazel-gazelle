@@ -3,7 +3,7 @@ package walk
 import (
 	"testing"
 
-	"github.com/bmatcuk/doublestar"
+	"github.com/bmatcuk/doublestar/v4"
 )
 
 func TestCheckPathMatchPattern(t *testing.T) {
@@ -16,7 +16,6 @@ func TestCheckPathMatchPattern(t *testing.T) {
 		{pattern: "**/*.pb.go", err: nil},
 		{pattern: "**/*.pb.go", err: nil},
 		{pattern: "[]a]", err: doublestar.ErrBadPattern},
-		{pattern: "[a-]", err: doublestar.ErrBadPattern},
 		{pattern: "[c-", err: doublestar.ErrBadPattern},
 	}
 
