@@ -90,6 +90,7 @@ func TestCommonConfigurerDirectives(t *testing.T) {
 }
 
 func TestRemoveSubDirs(t *testing.T) {
+	repoRoot := filepath.Join(os.TempDir(), "root")
 	tests := []struct {
 		desc          string
 		given, expect []string
@@ -101,12 +102,12 @@ func TestRemoveSubDirs(t *testing.T) {
 		},
 		{
 			desc:   "ignore absolute paths outside root",
-			given:  []string{"/tmp/dir1", "dir2"},
+			given:  []string{filepath.Join(os.TempDir(), "dir1"), "dir2"},
 			expect: []string{"dir2"},
 		},
 		{
 			desc:   "convert absolute paths under root",
-			given:  []string{"/root/dir1"},
+			given:  []string{filepath.Join(repoRoot, "dir1")},
 			expect: []string{"dir1"},
 		},
 		{
@@ -121,7 +122,7 @@ func TestRemoveSubDirs(t *testing.T) {
 		},
 	}
 	cc := &CommonConfigurer{
-		repoRoot: "/root",
+		repoRoot: repoRoot,
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {

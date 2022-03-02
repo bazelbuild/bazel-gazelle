@@ -443,6 +443,12 @@ The following flags are accepted:
 | should use the index to resolve dependencies. If this is switched off, Gazelle would rely on               |
 | ``# gazelle:prefix`` directive or ``-go_prefix`` flag to resolve dependencies.                             |
 +-------------------------------------------------------------------+----------------------------------------+
+| :flag:`-universe dir1,dir2`                                       |                                        |
++-------------------------------------------------------------------+----------------------------------------+
+| List of directories that Gazelle should visit recursively. They are relative paths to `-repo_root`, so the |
+| default empty string means `-repo_root`. Gazelle will not read/index or write any Bazel rules outside the  |
+| universe.                                                                                                  |
++-------------------------------------------------------------------+----------------------------------------+
 | :flag:`-go_grpc_compiler`                                         | ``@io_bazel_rules_go//proto:go_grpc``  |
 +-------------------------------------------------------------------+----------------------------------------+
 | The protocol buffers compiler to use for building go bindings for gRPC. May be repeated.                   |
