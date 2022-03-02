@@ -174,7 +174,10 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 			wf(dir, rel, c, update, f, subdirs, regularFiles, genFiles)
 		}
 	}
-	visit(c, c.RepoRoot, "", false)
+
+	for _, rootRel := range c.Universe {
+		visit(c, c.RepoRoot, rootRel, false)
+	}
 }
 
 // buildUpdateRelMap builds a table of prefixes, used to determine which

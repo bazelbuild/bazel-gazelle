@@ -100,6 +100,12 @@ type Config struct {
 	// extensions as well. Values in here may be populated by command line
 	// arguments, directives in build files, or other mechanisms.
 	Exts map[string]interface{}
+
+	// Universe is a list of directories that Gazelle will visit recursively.
+	// They are relative paths to RepoRoot, so empty string means RepoRoot.
+	// Directories outside Universe will not be visible to Gazelle or its
+	// extensions.
+	Universe []string
 }
 
 // MappedKind describes a replacement to use for a built-in kind.
@@ -187,7 +193,7 @@ type Configurer interface {
 type CommonConfigurer struct {
 	repoRoot, buildFileNames, readBuildFilesDir, writeBuildFilesDir string
 	indexLibraries                                                  bool
-	langCsv                                                         string
+	langCsv, universeCsv                                            string
 }
 
 func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Config) {
@@ -197,6 +203,7 @@ func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Confi
 	fs.StringVar(&cc.readBuildFilesDir, "experimental_read_build_files_dir", "", "path to a directory where build files should be read from (instead of -repo_root)")
 	fs.StringVar(&cc.writeBuildFilesDir, "experimental_write_build_files_dir", "", "path to a directory where build files should be written to (instead of -repo_root)")
 	fs.StringVar(&cc.langCsv, "lang", "", "if non-empty, process only these languages (e.g. \"go,proto\")")
+	fs.StringVar(&cc.universeCsv, "universe", "", "the comma separated list of relative paths Gazelle should visit recursively (instead of -repo_root).")
 }
 
 func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
@@ -238,6 +245,18 @@ func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 	if len(cc.langCsv) > 0 {
 		c.Langs = strings.Split(cc.langCsv, ",")
 	}
+
+	if len(cc.universeCsv) == 0 {
+		c.Universe = []string{""}
+		return nil
+	}
+
+	// Because Gazelle will visit each directory recursively, passing both foo and foo/bar will make foo/bar visited
+	// twice. Trying to remove subdirectories
+	c.Universe = cc.removeSubDirs(strings.Split(cc.universeCsv, ","))
+	if len(c.Universe) == 0 {
+		c.Universe = []string{""}
+	}
 	return nil
 }
 
@@ -277,4 +296,41 @@ func (cc *CommonConfigurer) Configure(c *Config, rel string, f *rule.File) {
 			}
 		}
 	}
+}
+
+// removeSubDirs removes the directories that are subdirectories of other directories in the list.
+func (cc *CommonConfigurer) removeSubDirs(dirs []string) []string {
+	dirSet := make(map[string]bool, len(dirs))
+	repoRoot := cc.repoRoot + string(filepath.Separator)
+	for _, dir := range dirs {
+		dir = strings.TrimSpace(dir)
+		if dir == "" {
+			return []string{""}
+		}
+		if filepath.IsAbs(dir) {
+			if strings.HasPrefix(dir, repoRoot) {
+				dir = strings.TrimPrefix(dir, repoRoot)
+			} else {
+				log.Printf("expected relative paths, got %q", dir)
+				continue
+			}
+		}
+		dirSet[dir] = true
+	}
+	var finalDirs []string
+	for dir := range dirSet {
+		parent := filepath.Dir(dir)
+		var isSubDir = false
+		for parent != "." && parent != "" {
+			if _, ok := dirSet[parent]; ok {
+				isSubDir = true
+				break
+			}
+			parent = filepath.Dir(parent)
+		}
+		if !isSubDir {
+			finalDirs = append(finalDirs, dir)
+		}
+	}
+	return finalDirs
 }

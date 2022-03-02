@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -85,5 +86,50 @@ func TestCommonConfigurerDirectives(t *testing.T) {
 	wantLangs := []string{"go"}
 	if !reflect.DeepEqual(c.Langs, wantLangs) {
 		t.Errorf("for Langs, got %#v, want %#v", c.Langs, wantLangs)
+	}
+}
+
+func TestRemoveSubDirs(t *testing.T) {
+	tests := []struct {
+		desc          string
+		given, expect []string
+	}{
+		{
+			desc:   "ignore spaces",
+			given:  []string{" dir1", "dir1/dir2/dir3 ", "dir3"},
+			expect: []string{"dir1", "dir3"},
+		},
+		{
+			desc:   "ignore absolute paths outside root",
+			given:  []string{"/tmp/dir1", "dir2"},
+			expect: []string{"dir2"},
+		},
+		{
+			desc:   "convert absolute paths under root",
+			given:  []string{"/root/dir1"},
+			expect: []string{"dir1"},
+		},
+		{
+			desc:   "keeping root only",
+			given:  []string{"", "dir1", "dir1/dir2"},
+			expect: []string{""},
+		},
+		{
+			desc:   "remove duplicates",
+			given:  []string{"dir1", "dir2", "dir1"},
+			expect: []string{"dir1", "dir2"},
+		},
+	}
+	cc := &CommonConfigurer{
+		repoRoot: "/root",
+	}
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			actual := cc.removeSubDirs(tt.given)
+			sort.Strings(actual)
+			if !reflect.DeepEqual(tt.expect, actual) {
+				t.Errorf("got: %#v, want %#v", actual, tt.expect)
+			}
+		})
 	}
 }
