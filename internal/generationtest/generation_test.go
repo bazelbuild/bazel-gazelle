@@ -31,6 +31,7 @@ func TestFullGeneration(t *testing.T) {
 			if err := yaml.Unmarshal(content, manifest); err != nil {
 				t.Fatal(err)
 			}
+			break
 		}
 	}
 	testDataDir := manifest.TestDataDir
