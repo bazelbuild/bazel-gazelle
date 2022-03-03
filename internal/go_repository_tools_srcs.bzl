@@ -31,6 +31,7 @@ GO_REPOSITORY_TOOLS_SRCS = [
 	"@bazel_gazelle//internal:BUILD.bazel",
 	"@bazel_gazelle//internal/gazellebinarytest:BUILD.bazel",
 	"@bazel_gazelle//internal/gazellebinarytest:xlang.go",
+	"@bazel_gazelle//internal/generationtest:BUILD.bazel",
 	"@bazel_gazelle//internal/language:BUILD.bazel",
 	"@bazel_gazelle//internal/language/test_filegroup:BUILD.bazel",
 	"@bazel_gazelle//internal/language/test_filegroup:lang.go",

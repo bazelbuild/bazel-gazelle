@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+exports_files([
+    "generation_test.go",
+    "generation_test_manifest.yaml.tpl",
+])
+
+go_test(
+    name = "generationtest_test",
+    srcs = ["generation_test.go"],
+    tags = ["manual"],
+    deps = [
+        "//testtools",
+        "@in_gopkg_yaml_v2//:yaml_v2",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "generation_test.bzl",
+        "generation_test.go",
+        "generation_test_manifest.yaml.tpl",
+    ],
+    visibility = ["//visibility:public"],
+)
