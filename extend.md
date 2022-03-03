@@ -20,6 +20,46 @@ To extend Gazelle, you must do three things:
   `bazel run //:gazelle`, your binary will be built and executed instead of
   the default binary.
 
+Tests
+-----
+
+To write tests for your gazelle extension, you can use `gazelle_generation_test`,
+which will run a gazelle binary of your choosing on a set of test workspaces.
+
+```starlark
+    load("@bazel_gazelle//:def.bzl", "gazelle_generation_test")
+
+    gazelle_generation_test(
+        name = "my_generation_test",
+        # The name of the gazelle binary target in your repo.
+        gazelle_binary_name = "gazelle_local",
+        # Optional, the workspace relative path to the gazelle binary.
+        # Defaults to the root of the workspace.
+        gazelle_binary_dir = "",
+        test_data = glob([
+            "testdata_full_gen_test/**",
+        ]),
+        test_data_dir = "path/to/testdata_full_gen_test",
+    )
+```
+
+The generation test expects a file structure like the following.
+```
+|-- <testDataPath>
+    |-- some_test
+        |-- WORKSPACE
+        |-- README.md --> README describing what the test does.
+        |-- test.yaml --> YAML file for test configuration.
+        |-- app
+            |-- sourceFile.foo
+            |-- BUILD.in --> BUILD file prior to running gazelle.
+            |-- BUILD.out --> BUILD file expected after running gazelle.
+```
+
+To run update your desired BUILD.out files, you can run:
+
+`UPDATE_SNAPSHOTS=true bazel run //path/to:my_generation_test`.
+
 Supported languages
 -------------------
 
