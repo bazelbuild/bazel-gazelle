@@ -1,6 +1,6 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 load("//language/proto/gen:def.bzl", "known_imports")
-
+load("//internal/generationtest:generation_test.bzl", "gazelle_generation_test")
 # gazelle:exclude testdata*
 
 known_imports(
@@ -88,7 +88,6 @@ go_test(
         "//testtools",
         "//walk",
         "@com_github_bazelbuild_buildtools//build:go_default_library",
-        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
     ],
 )
 
@@ -125,4 +124,17 @@ alias(
     name = "go_default_library",
     actual = ":proto",
     visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "generation_test_data",
+    srcs = glob([
+        "testdata_full_gen_test/**",
+    ]),
+)
+
+gazelle_generation_test(
+    name = "generation_test",
+    gazelle_binary = "//:gazelle_local",
+    test_data = ":generation_test_data",
 )
