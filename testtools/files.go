@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -30,7 +31,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/google/go-cmp/cmp"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -141,30 +141,25 @@ func CheckFiles(t *testing.T, dir string, files []FileSpec) {
 }
 
 type TestGazelleGenerationArgs struct {
-	// name is the name of the test.
+	// Name is the name of the test.
 	Name string
-	// testDataPath is the workspace relative path to the test data directory.
-	TestDataPath string
-	// gazelleBinaryDir is the workspace relative path to the location of the gazelle binary
+	// TestDataPathAbsolute is the absolute path to the test data directory.
+	// For example, /home/user/workspace/path/to/test_data/my_testcase.
+	TestDataPathAbsolute string
+	// TestDataPathRealtive is the workspace relative path to the test data directory.
+	// For example, path/to/test_data/my_testcase.
+	TestDataPathRelative string
+	// GazelleBinaryPath is the workspace relative path to the location of the gazelle binary
 	// we want to test.
-	GazelleBinaryDir string
-	// gazelleBinaryName is the name of the gazelle binary target that we want to test.
-	GazelleBinaryName string
+	GazelleBinaryPath string
 
-	// The suffix for all test input build files. Includes the ".".
+	// BuildInSuffix is the suffix for all test input build files. Includes the ".".
 	// Default: ".in", so input BUILD files should be named BUILD.in.
 	BuildInSuffix string
 
-	// The suffix for all test output build files. Includes the ".".
+	// BuildOutSuffix is the suffix for all test output build files. Includes the ".".
 	// Default: ".out", so out BUILD files should be named BUILD.out.
 	BuildOutSuffix string
-}
-
-func NewTestGazelleGenerationArgs() *TestGazelleGenerationArgs {
-	return &TestGazelleGenerationArgs{
-		BuildInSuffix:  ".in",
-		BuildOutSuffix: ".out",
-	}
 }
 
 // TestGazelleGenerationOnPath runs a full gazelle binary on a testdata directory.
@@ -173,29 +168,33 @@ func NewTestGazelleGenerationArgs() *TestGazelleGenerationArgs {
 //    └── some_test
 //        ├── WORKSPACE
 //        ├── README.md --> README describing what the test does.
-//        ├── test.yaml --> YAML file for test configuration.
 //        └── app
 //            └── sourceFile.foo
 //            └── BUILD.in --> BUILD file prior to running gazelle.
 //            └── BUILD.out --> BUILD file expected after running gazelle.
-func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs, files []bazel.RunfileEntry) {
+func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) {
 	t.Run(args.Name, func(t *testing.T) {
+		t.Helper() // Make the stack trace a little bit more clear.
+		if args.BuildInSuffix == "" {
+			args.BuildInSuffix = ".in"
+		}
+		if args.BuildOutSuffix == "" {
+			args.BuildOutSuffix = ".out"
+		}
 		var inputs []FileSpec
 		var goldens []FileSpec
 
 		var config *testYAML
-		for _, f := range files {
-			path := f.Path
-			trim := filepath.Join(args.TestDataPath, args.Name) + "/"
-			shortPath := strings.TrimPrefix(f.ShortPath, trim)
+		filepath.WalkDir(args.TestDataPathAbsolute, func(path string, d fs.DirEntry, err error) error {
+			shortPath := strings.TrimPrefix(path, args.TestDataPathAbsolute)
 
-			info, err := os.Stat(path)
+			info, err := d.Info()
 			if err != nil {
-				t.Fatalf("os.Stat(%q) error: %v", path, err)
+				t.Fatalf("File info error on path %q. Error: %v", path, err)
 			}
 
 			if info.IsDir() {
-				continue
+				return nil
 			}
 
 			content, err := ioutil.ReadFile(path)
@@ -233,7 +232,8 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs, 
 					Content: string(content),
 				})
 			}
-		}
+			return nil
+		})
 
 		testdataDir, cleanup := CreateFiles(t, inputs)
 		defer cleanup()
@@ -241,26 +241,19 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs, 
 			if t.Failed() {
 				shouldUpdate := os.Getenv("UPDATE_SNAPSHOTS") != ""
 				buildWorkspaceDirectory := os.Getenv("BUILD_WORKSPACE_DIRECTORY")
-				if buildWorkspaceDirectory == "" {
-					// Default to ~/<workspace>.
-					homeDir, err := os.UserHomeDir()
-					if err != nil {
-						t.Fatalf("Could not get user's home directory. Error: %v\n", err)
-					}
-					testWorkspace, err := bazel.TestWorkspace()
-					if err != nil {
-						t.Fatalf("Could not get the test workspace. Error; %v\n", err)
-					}
-					buildWorkspaceDirectory = path.Join(homeDir, testWorkspace)
-				}
+				updateCommand := fmt.Sprintf("UPDATE_SNAPSHOTS=true bazel run %s", os.Getenv("TEST_TARGET"))
 				filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
 					if err != nil {
 						return err
 					}
 					relativePath := strings.TrimPrefix(walkedPath, testdataDir)
 					if shouldUpdate {
+						if buildWorkspaceDirectory == "" {
+							t.Fatalf("Tried to update snapshots but no BUILD_WORKSPACE_DIRECTORY specified.\n Try %s.", updateCommand)
+						}
+
 						if path.Base(walkedPath) == "BUILD.bazel" {
-							destFile := strings.TrimSuffix(path.Join(buildWorkspaceDirectory, args.TestDataPath+relativePath), ".bazel") + ".out"
+							destFile := strings.TrimSuffix(path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative)+relativePath), ".bazel") + ".out"
 
 							err := copyFile(walkedPath, destFile)
 							if err != nil {
@@ -274,11 +267,9 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs, 
 				if !shouldUpdate {
 					t.Logf(`
 =====================================================================================
-
-Run UPDATE_SNAPSHOTS=true bazel run //path/to/this/test to update BUILD.out files.
-
+Run %s to update BUILD.out files.
 =====================================================================================
-`)
+`, updateCommand)
 				}
 			}
 		}()
@@ -286,8 +277,7 @@ Run UPDATE_SNAPSHOTS=true bazel run //path/to/this/test to update BUILD.out file
 		workspaceRoot := filepath.Join(testdataDir, args.Name)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		gazellePath := mustFindGazelle(args.GazelleBinaryDir, args.GazelleBinaryName)
-		cmd := exec.CommandContext(ctx, gazellePath)
+		cmd := exec.CommandContext(ctx, args.GazelleBinaryPath)
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
@@ -327,14 +317,6 @@ Run UPDATE_SNAPSHOTS=true bazel run //path/to/this/test to update BUILD.out file
 
 		CheckFiles(t, testdataDir, goldens)
 	})
-}
-
-func mustFindGazelle(gazelleBinaryDir, gazelleBinaryName string) string {
-	gazellePath, ok := bazel.FindBinary(gazelleBinaryDir, gazelleBinaryName)
-	if !ok {
-		panic(fmt.Sprintf("Could not find gazelle binary at %v", gazellePath))
-	}
-	return gazellePath
 }
 
 func copyFile(src string, dest string) error {

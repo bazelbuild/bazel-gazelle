@@ -23,7 +23,6 @@ filegroup(
         "BUILD.bazel",
         "generation_test.bzl",
         "generation_test.go",
-        "generation_test_manifest.yaml.tpl",
     ],
     visibility = ["//visibility:public"],
 )

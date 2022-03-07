@@ -1,77 +1,64 @@
 package generationtest
 
 import (
-	"io/ioutil"
+	"flag"
 	"path"
-	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
-	yaml "gopkg.in/yaml.v2"
+)
+
+var (
+	gazelleBinaryPath = flag.String("gazelle_binary_path", "", "Path to the gazelle binary to test.")
+	buildInSuffix     = flag.String("build_in_suffix", ".in", "The suffix on the test input BUILD.bazel files. Defaults to .in. "+
+		" By default, will use files named BUILD.in as the BUILD files before running gazelle.")
+	buildOutSuffix = flag.String("build_out_suffix", ".out", "The suffix on the expected BUILD.bazel files after running gazelle. Defaults to .out. "+
+		" By default, will use files named BUILD.out as the expected results of the gazelle run.")
 )
 
 // TestFullGeneration runs the gazelle binary on a few example
 // workspaces and confirms that the generated BUILD files match expectation.
 func TestFullGeneration(t *testing.T) {
-	tests := map[string][]bazel.RunfileEntry{}
+	tests := []*testtools.TestGazelleGenerationArgs{}
 	runfiles, err := bazel.ListRunfiles()
 	if err != nil {
 		t.Fatalf("bazel.ListRunfiles() error: %v", err)
 	}
-	var manifest *manifestYAML
-	for _, f := range runfiles {
-		if path.Base(f.ShortPath) == "generation_test_manifest.yaml" {
-			manifest = new(manifestYAML)
-			content, err := ioutil.ReadFile(f.Path)
-			if err != nil {
-				t.Errorf("ioutil.ReadFile(%q) error: %v", f.Path, err)
-			}
-
-			if err := yaml.Unmarshal(content, manifest); err != nil {
-				t.Fatal(err)
-			}
-			break
-		}
+	// Convert workspace relative path for gazelle binary into an absolute path.
+	// E.g. path/to/gazelle_binary -> /absolute/path/to/workspace/path/to/gazelle/binary.
+	absoluteGazelleBinary, err := bazel.Runfile(*gazelleBinaryPath)
+	if err != nil {
+		t.Fatalf("Could not convert gazelle binary path %s to absolute path. Error: %v", *gazelleBinaryPath, err)
 	}
-	testDataDir := manifest.TestDataDir
 	for _, f := range runfiles {
-		if strings.HasPrefix(f.ShortPath, testDataDir) {
-			relativePath := strings.TrimPrefix(f.ShortPath, testDataDir)
-			// Given a path like /my_test_case/my_file_being_tested,
-			// split it into "", "my_test_case", "my_file_beign_tested".
-			// If this split is less than 3, that means we don't have a test case folder.
-			// For example, if we received /README.md for the test case folder, this would just create
-			// "", "README.md", so the number of parts is only 2.
-			parts := strings.SplitN(relativePath, "/", 3)
-			if len(parts) < 3 {
-				// This file is not a part of a testcase since it must be in a dir that
-				// is the test case and then have a path inside of that.
-				continue
-			}
+		// Look through runfiles for WORKSPACE files. Each WORKSPACE is a test case.
+		if path.Base(f.Path) == "WORKSPACE" {
+			// absolutePathToTestDirectory is the absolute
+			// path to the test case directory. For example, /home/<user>/wksp/path/to/test_data/my_test_case
+			absolutePathToTestDirectory := path.Dir(f.Path)
+			// relativePathToTestDirectory is the workspace relative path
+			// to this test case directory. For example, path/to/test_data/my_test_case
+			relativePathToTestDirectory := path.Dir(f.ShortPath)
+			// name is the name of the test directory. For example, my_test_case.
+			// The name of the directory doubles as the name of the test.
+			name := path.Base(absolutePathToTestDirectory)
 
-			tests[parts[1]] = append(tests[parts[1]], f)
+			tests = append(tests, &testtools.TestGazelleGenerationArgs{
+				Name:                 name,
+				TestDataPathAbsolute: absolutePathToTestDirectory,
+				TestDataPathRelative: relativePathToTestDirectory,
+				GazelleBinaryPath:    absoluteGazelleBinary,
+				BuildInSuffix:        *buildInSuffix,
+				BuildOutSuffix:       *buildOutSuffix,
+			})
 		}
 	}
 	if len(tests) == 0 {
 		t.Fatal("no tests found")
 	}
 
-	testArgs := testtools.NewTestGazelleGenerationArgs()
-	gazelleBinaryDir := manifest.GazelleBinaryDir
-	gazelleBinaryName := manifest.GazelleBinaryName
-
-	for testName, files := range tests {
-		testArgs.Name = testName
-		testArgs.TestDataPath = testDataDir
-		testArgs.GazelleBinaryDir = gazelleBinaryDir
-		testArgs.GazelleBinaryName = gazelleBinaryName
-		testtools.TestGazelleGenerationOnPath(t, testArgs, files)
+	for _, args := range tests {
+		testtools.TestGazelleGenerationOnPath(t, args)
 	}
-}
-
-type manifestYAML struct {
-	GazelleBinaryName string `yaml:"gazelle_binary_name"`
-	GazelleBinaryDir  string `yaml:"gazelle_binary_dir"`
-	TestDataDir       string `yaml:"test_data_dir"`
 }
