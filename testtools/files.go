@@ -27,12 +27,12 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // FileSpec specifies the content of a test file.
@@ -162,12 +162,21 @@ type TestGazelleGenerationArgs struct {
 	BuildOutSuffix string
 }
 
+var (
+	expectedStdoutFilename   = "expectedStdout.txt"
+	expectedStderrFilename   = "expectedStderr.txt"
+	expectedExitCodeFilename = "expectedExitCode.txt"
+)
+
 // TestGazelleGenerationOnPath runs a full gazelle binary on a testdata directory.
 // With a test data directory of the form:
 //└── <testDataPath>
 //    └── some_test
 //        ├── WORKSPACE
 //        ├── README.md --> README describing what the test does.
+//        ├── expectedStdout.txt --> Expected stdout for this test.
+//        ├── expectedStderr.txt --> Expected stderr for this test.
+//        ├── expectedExitCode.txt --> Expected exit code for this test.
 //        └── app
 //            └── sourceFile.foo
 //            └── BUILD.in --> BUILD file prior to running gazelle.
@@ -184,7 +193,7 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 		var inputs []FileSpec
 		var goldens []FileSpec
 
-		var config *testYAML
+		config := &testConfig{}
 		filepath.WalkDir(args.TestDataPathAbsolute, func(path string, d fs.DirEntry, err error) error {
 			shortPath := strings.TrimPrefix(path, args.TestDataPathAbsolute)
 
@@ -202,13 +211,17 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 				t.Errorf("ioutil.ReadFile(%q) error: %v", path, err)
 			}
 
-			if filepath.Base(shortPath) == "test.yaml" {
-				if config != nil {
-					t.Fatal("only 1 test.yaml is supported")
-				}
-				config = new(testYAML)
-				if err := yaml.Unmarshal(content, config); err != nil {
-					t.Fatal(err)
+			// Read in expected stdout, stderr, and exit code files.
+			if d.Name() == expectedStdoutFilename {
+				config.Stdout = string(content)
+			}
+			if d.Name() == expectedStderrFilename {
+				config.Stderr = string(content)
+			}
+			if d.Name() == expectedExitCodeFilename {
+				config.ExitCode, err = strconv.Atoi(string(content))
+				if err != nil {
+					t.Errorf("Failed to parse expected exit code (%q) error: %v", path, err)
 				}
 			}
 
@@ -236,38 +249,51 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 		})
 
 		testdataDir, cleanup := CreateFiles(t, inputs)
+
+		var stdout, stderr bytes.Buffer
+		var actualExitCode int
 		defer cleanup()
 		defer func() {
 			if t.Failed() {
 				shouldUpdate := os.Getenv("UPDATE_SNAPSHOTS") != ""
 				buildWorkspaceDirectory := os.Getenv("BUILD_WORKSPACE_DIRECTORY")
 				updateCommand := fmt.Sprintf("UPDATE_SNAPSHOTS=true bazel run %s", os.Getenv("TEST_TARGET"))
-				filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
-					if err != nil {
-						return err
-					}
-					relativePath := strings.TrimPrefix(walkedPath, testdataDir)
-					if shouldUpdate {
-						if buildWorkspaceDirectory == "" {
-							t.Fatalf("Tried to update snapshots but no BUILD_WORKSPACE_DIRECTORY specified.\n Try %s.", updateCommand)
+				// srcTestDirectory is the directory of the source code of the test case.
+				srcTestDirectory := path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative), args.Name)
+				if shouldUpdate {
+					// Update stdout, stderr, exit code.
+					updateExpectedConfig(t, config.Stdout, stdout.String(), srcTestDirectory, expectedStdoutFilename)
+					updateExpectedConfig(t, config.Stderr, stdout.String(), srcTestDirectory, expectedStderrFilename)
+					updateExpectedConfig(t, fmt.Sprintf("%d", config.ExitCode), fmt.Sprintf("%d", actualExitCode), srcTestDirectory, expectedExitCodeFilename)
+
+					filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
+						if err != nil {
+							return err
 						}
-
-						if path.Base(walkedPath) == "BUILD.bazel" {
-							destFile := strings.TrimSuffix(path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative)+relativePath), ".bazel") + ".out"
-
-							err := copyFile(walkedPath, destFile)
-							if err != nil {
-								t.Fatalf("Failed to copy file %v to %v. Error: %v\n", walkedPath, destFile, err)
+						relativePath := strings.TrimPrefix(walkedPath, testdataDir)
+						if shouldUpdate {
+							if buildWorkspaceDirectory == "" {
+								t.Fatalf("Tried to update snapshots but no BUILD_WORKSPACE_DIRECTORY specified.\n Try %s.", updateCommand)
 							}
+
+							if info.Name() == "BUILD.bazel" {
+								destFile := strings.TrimSuffix(path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative)+relativePath), ".bazel") + ".out"
+
+								err := copyFile(walkedPath, destFile)
+								if err != nil {
+									t.Fatalf("Failed to copy file %v to %v. Error: %v\n", walkedPath, destFile, err)
+								}
+							}
+
 						}
-					}
-					t.Logf("%q exists in %v", relativePath, testdataDir)
-					return nil
-				})
-				if !shouldUpdate {
+						t.Logf("%q exists in %v", relativePath, testdataDir)
+						return nil
+					})
+
+				} else {
 					t.Logf(`
 =====================================================================================
-Run %s to update BUILD.out files.
+Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
 =====================================================================================
 `, updateCommand)
 				}
@@ -278,7 +304,6 @@ Run %s to update BUILD.out files.
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, args.GazelleBinaryPath)
-		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 		cmd.Dir = workspaceRoot
@@ -290,22 +315,22 @@ Run %s to update BUILD.out files.
 			}
 		}
 		errs := make([]error, 0)
-		actualExitCode := cmd.ProcessState.ExitCode()
-		if config.Expect.ExitCode != actualExitCode {
+		actualExitCode = cmd.ProcessState.ExitCode()
+		if config.ExitCode != actualExitCode {
 			errs = append(errs, fmt.Errorf("expected gazelle exit code: %d\ngot: %d",
-				config.Expect.ExitCode, actualExitCode,
+				config.ExitCode, actualExitCode,
 			))
 		}
 		actualStdout := stdout.String()
-		if strings.TrimSpace(config.Expect.Stdout) != strings.TrimSpace(actualStdout) {
+		if strings.TrimSpace(config.Stdout) != strings.TrimSpace(actualStdout) {
 			errs = append(errs, fmt.Errorf("expected gazelle stdout: %s\ngot: %s",
-				config.Expect.Stdout, actualStdout,
+				config.Stdout, actualStdout,
 			))
 		}
 		actualStderr := stderr.String()
-		if strings.TrimSpace(config.Expect.Stderr) != strings.TrimSpace(actualStderr) {
+		if strings.TrimSpace(config.Stderr) != strings.TrimSpace(actualStderr) {
 			errs = append(errs, fmt.Errorf("expected gazelle stderr: %s\ngot: %s",
-				config.Expect.Stderr, actualStderr,
+				config.Stderr, actualStderr,
 			))
 		}
 		if len(errs) > 0 {
@@ -343,10 +368,21 @@ func copyFile(src string, dest string) error {
 	return nil
 }
 
-type testYAML struct {
-	Expect struct {
-		ExitCode int    `json:"exit_code"`
-		Stdout   string `json:"stdout"`
-		Stderr   string `json:"stderr"`
-	} `json:"expect"`
+type testConfig struct {
+	ExitCode int
+	Stdout   string
+	Stderr   string
+}
+
+// updateExpectedConfig writes to an expected stdout, stderr, or exit code file
+// with the latest results of a test.
+func updateExpectedConfig(t *testing.T, expected string, actual string, srcTestDirectory string, expectedFilename string) {
+	if expected != actual {
+		destFile := path.Join(srcTestDirectory, expectedFilename)
+
+		err := os.WriteFile(destFile, []byte(actual), 0644)
+		if err != nil {
+			t.Fatalf("Failed to write file %v. Error: %v\n", destFile, err)
+		}
+	}
 }

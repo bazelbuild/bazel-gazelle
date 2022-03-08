@@ -49,7 +49,9 @@ The generation test expects a file structure like the following.
     |-- some_test
         |-- WORKSPACE
         |-- README.md --> README describing what the test does.
-        |-- test.yaml --> YAML file for test configuration.
+        |-- expectedStdout.txt --> Expected stdout for this test.
+        |-- expectedStderr.txt --> Expected stderr for this test.
+        |-- expectedExitCode.txt --> Expected exit code for this test.
         |-- app
             |-- sourceFile.foo
             |-- BUILD.in --> BUILD file prior to running gazelle.
