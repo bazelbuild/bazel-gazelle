@@ -252,6 +252,7 @@ def _go_repository_impl(ctx):
             cmd.extend(["-go_naming_convention", ctx.attr.build_naming_convention])
         cmd.extend(ctx.attr.build_extra_args)
         cmd.append(ctx.path(""))
+        ctx.report_progress("Running gazelle to generate BUILD files. Too slow? See https://github.com/bazelbuild/bazel-gazelle/issues/1190")
         result = env_execute(ctx, cmd, environment = env, timeout = _GO_REPOSITORY_TIMEOUT)
         if result.return_code:
             fail("failed to generate BUILD files for %s: %s" % (
