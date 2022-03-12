@@ -1,4 +1,5 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_test")
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 exports_files([
     "generation_test.go",
@@ -24,4 +25,10 @@ filegroup(
         "generation_test.go",
     ],
     visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "generation_test_bzl",
+    srcs = ["generation_test.bzl"],
+    visibility = ["//:__subpackages__"],
 )

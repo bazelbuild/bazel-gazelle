@@ -23,44 +23,9 @@ To extend Gazelle, you must do three things:
 Tests
 -----
 
-To write tests for your gazelle extension, you can use `gazelle_generation_test`,
+To write tests for your gazelle extension, you can use [gazelle_generation_test](#gazelle_generation_test),
 which will run a gazelle binary of your choosing on a set of test workspaces.
 
-```starlark
-    load("@bazel_gazelle//:def.bzl", "gazelle_generation_test")
-
-    gazelle_generation_test(
-        name = "my_generation_test",
-        # The name of the gazelle binary target in your repo.
-        gazelle_binary_name = "gazelle_local",
-        # Optional, the workspace relative path to the gazelle binary.
-        # Defaults to the root of the workspace.
-        gazelle_binary_dir = "",
-        test_data = glob([
-            "testdata_full_gen_test/**",
-        ]),
-        test_data_dir = "path/to/testdata_full_gen_test",
-    )
-```
-
-The generation test expects a file structure like the following.
-```
-|-- <testDataPath>
-    |-- some_test
-        |-- WORKSPACE
-        |-- README.md --> README describing what the test does.
-        |-- expectedStdout.txt --> Expected stdout for this test.
-        |-- expectedStderr.txt --> Expected stderr for this test.
-        |-- expectedExitCode.txt --> Expected exit code for this test.
-        |-- app
-            |-- sourceFile.foo
-            |-- BUILD.in --> BUILD file prior to running gazelle.
-            |-- BUILD.out --> BUILD file expected after running gazelle.
-```
-
-To run update your desired BUILD.out files, you can run:
-
-`UPDATE_SNAPSHOTS=true bazel run //path/to:my_generation_test`.
 
 Supported languages
 -------------------
@@ -168,5 +133,46 @@ proto extension stores metadata in hidden attributes of generated
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="gazelle_binary-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
 | <a id="gazelle_binary-languages"></a>languages |  A list of language extensions the Gazelle binary will use.<br><br>            Each extension must be a [go_library] or something compatible. Each extension             must export a function named <code>NewLanguage</code> with no parameters that returns             a value assignable to [Language].   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
+
+
+<a id="#gazelle_generation_test"></a>
+
+## gazelle_generation_test
+
+<pre>
+gazelle_generation_test(<a href="#gazelle_generation_test-name">name</a>, <a href="#gazelle_generation_test-gazelle_binary">gazelle_binary</a>, <a href="#gazelle_generation_test-test_data">test_data</a>, <a href="#gazelle_generation_test-build_in_suffix">build_in_suffix</a>, <a href="#gazelle_generation_test-build_out_suffix">build_out_suffix</a>)
+</pre>
+
+    gazelle_generation_test is a macro for testing gazelle against workspaces.
+
+The generation test expects a file structure like the following:
+
+```
+|-- <testDataPath>
+    |-- some_test
+        |-- WORKSPACE
+        |-- README.md --> README describing what the test does.
+        |-- expectedStdout.txt --> Expected stdout for this test.
+        |-- expectedStderr.txt --> Expected stderr for this test.
+        |-- expectedExitCode.txt --> Expected exit code for this test.
+        |-- app
+            |-- sourceFile.foo
+            |-- BUILD.in --> BUILD file prior to running gazelle.
+            |-- BUILD.out --> BUILD file expected after running gazelle.
+```
+
+To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the_test_target`.
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="gazelle_generation_test-name"></a>name |  The name of the test.   |  none |
+| <a id="gazelle_generation_test-gazelle_binary"></a>gazelle_binary |  The name of the gazelle binary target. For example, //path/to:my_gazelle.   |  none |
+| <a id="gazelle_generation_test-test_data"></a>test_data |  A target of the test data files you will pass to the test. This can be a https://bazel.build/reference/be/general#filegroup.   |  none |
+| <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  <code>".in"</code> |
+| <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  <code>".out"</code> |
 
 

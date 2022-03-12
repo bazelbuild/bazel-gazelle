@@ -8,14 +8,32 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
     """
     gazelle_generation_test is a macro for testing gazelle against workspaces.
 
+    The generation test expects a file structure like the following:
+
+    ```
+    |-- <testDataPath>
+        |-- some_test
+            |-- WORKSPACE
+            |-- README.md --> README describing what the test does.
+            |-- expectedStdout.txt --> Expected stdout for this test.
+            |-- expectedStderr.txt --> Expected stderr for this test.
+            |-- expectedExitCode.txt --> Expected exit code for this test.
+            |-- app
+                |-- sourceFile.foo
+                |-- BUILD.in --> BUILD file prior to running gazelle.
+                |-- BUILD.out --> BUILD file expected after running gazelle.
+    ```
+
+    To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the_test_target`.
+
     Args:
-        name: the name of the test.
-        gazelle_binary: the name of the gazelle binary target. For example, //path/to:my_gazelle.
-        test_data: a target of the test data files you will pass to the test.
+        name: The name of the test.
+        gazelle_binary: The name of the gazelle binary target. For example, //path/to:my_gazelle.
+        test_data: A target of the test data files you will pass to the test.
             This can be a https://bazel.build/reference/be/general#filegroup.
-        build_in_suffix: the suffix for the input BUILD.bazel files. Defaults to .in.
+        build_in_suffix: The suffix for the input BUILD.bazel files. Defaults to .in.
             By default, will use files named BUILD.in as the BUILD files before running gazelle.
-        build_out_suffix: the suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out.
+        build_out_suffix: The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out.
             By default, will use files named check the results of the gazelle run against files named BUILD.out.
     """
     go_test(
