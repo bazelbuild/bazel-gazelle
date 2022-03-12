@@ -214,15 +214,18 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 			// Read in expected stdout, stderr, and exit code files.
 			if d.Name() == expectedStdoutFilename {
 				config.Stdout = string(content)
+				return nil
 			}
 			if d.Name() == expectedStderrFilename {
 				config.Stderr = string(content)
+				return nil
 			}
 			if d.Name() == expectedExitCodeFilename {
 				config.ExitCode, err = strconv.Atoi(string(content))
 				if err != nil {
 					t.Errorf("Failed to parse expected exit code (%q) error: %v", path, err)
 				}
+				return nil
 			}
 
 			if strings.HasSuffix(shortPath, args.BuildInSuffix) {
