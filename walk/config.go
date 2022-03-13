@@ -66,15 +66,15 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 
 type Configurer struct{}
 
-func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
+func (*Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	wc := &walkConfig{}
 	c.Exts[walkName] = wc
 	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "pattern that should be ignored (may be repeated)")
 }
 
-func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
+func (*Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
 
-func (_ *Configurer) KnownDirectives() []string {
+func (*Configurer) KnownDirectives() []string {
 	return []string{"exclude", "follow", "ignore"}
 }
 

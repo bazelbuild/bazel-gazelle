@@ -32,7 +32,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (_ *goLang) Imports(_ *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+func (*goLang) Imports(_ *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	if !isGoLibrary(r.Kind()) || isExtraLibrary(r) {
 		return nil
 	}
@@ -46,7 +46,7 @@ func (_ *goLang) Imports(_ *config.Config, r *rule.Rule, f *rule.File) []resolve
 	}
 }
 
-func (_ *goLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
+func (*goLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
 	if isGoProtoLibrary(r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))

@@ -31,7 +31,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (_ *protoLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+func (*protoLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	rel := f.Pkg
 	srcs := r.AttrStrings("srcs")
 	imports := make([]resolve.ImportSpec, len(srcs))
@@ -70,11 +70,11 @@ func (_ *protoLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []reso
 	return imports
 }
 
-func (_ *protoLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
+func (*protoLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	return nil
 }
 
-func (_ *protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, importsRaw interface{}, from label.Label) {
+func (*protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, importsRaw interface{}, from label.Label) {
 	if importsRaw == nil {
 		// may not be set in tests.
 		return
@@ -155,7 +155,7 @@ func resolveWithIndex(c *config.Config, ix *resolve.RuleIndex, imp string, from 
 }
 
 // CrossResolve provides dependency resolution logic for the go language extension.
-func (_ *protoLang) CrossResolve(c *config.Config, ix *resolve.RuleIndex, imp resolve.ImportSpec, lang string) []resolve.FindResult {
+func (*protoLang) CrossResolve(c *config.Config, ix *resolve.RuleIndex, imp resolve.ImportSpec, lang string) []resolve.FindResult {
 	if lang != "go" {
 		return nil
 	}
