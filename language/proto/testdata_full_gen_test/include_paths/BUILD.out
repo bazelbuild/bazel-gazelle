@@ -8,7 +8,6 @@ filegroup(
         "BUILD.bazel",
         "README.md",
         "WORKSPACE",
-        "test.yaml",
         "//path:all_files",
     ],
     visibility = ["//visibility:public"],

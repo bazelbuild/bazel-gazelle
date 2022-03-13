@@ -60,7 +60,9 @@ type ProtoConfig struct {
 	ImportPrefix string
 
 	// IncludePaths A list of paths to prepend to imports to check if they
-	// in the index.
+	// are in the index. For example, if IncludePaths contains "path/to/root_1",
+	// and the import in the .proto file is "actual/path/to/myProto.proto",
+	// gazelle will find the dependency at path/to/root1/actual/path/to/myProto.proto.
 	// IncludePaths are checked in order.
 	IncludePaths []string
 }
