@@ -20,6 +20,13 @@ To extend Gazelle, you must do three things:
   `bazel run //:gazelle`, your binary will be built and executed instead of
   the default binary.
 
+Tests
+-----
+
+To write tests for your gazelle extension, you can use [gazelle_generation_test](#gazelle_generation_test),
+which will run a gazelle binary of your choosing on a set of test workspaces.
+
+
 Supported languages
 -------------------
 
@@ -99,5 +106,11 @@ includes the proto package name, as well as source names, imports, and options.
 """
 
 load("gazelle_binary.bzl", _gazelle_binary = "gazelle_binary")
+load(
+    "//internal/generationtest:generation_test.bzl",
+    _gazelle_generation_test = "gazelle_generation_test",
+)
 
 gazelle_binary = _gazelle_binary
+
+gazelle_generation_test = _gazelle_generation_test
