@@ -213,8 +213,8 @@ def _go_repository_impl(ctx):
             break
 
     generate = (ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"))
-
-    if generate:
+    generate_patch = ctx.attr.build_file_generation == "write_patch"
+    if generate or generate_patch:
         # Build file generation is needed. Populate Gazelle directive at root build file
         build_file_name = existing_build_file or build_file_names[0]
         if len(ctx.attr.build_directives) > 0:
@@ -232,7 +232,7 @@ def _go_repository_impl(ctx):
             "-go_prefix",
             ctx.attr.importpath,
             "-mode",
-            "fix",
+            "diff" if generate_patch else "fix",
             "-repo_root",
             ctx.path(""),
             "-repo_config",
@@ -252,8 +252,11 @@ def _go_repository_impl(ctx):
             cmd.extend(["-go_naming_convention", ctx.attr.build_naming_convention])
         cmd.extend(ctx.attr.build_extra_args)
         cmd.append(ctx.path(""))
+        ctx.report_progress("Running gazelle to generate BUILD files. Too slow? See https://github.com/bazelbuild/bazel-gazelle/issues/1190")
         result = env_execute(ctx, cmd, environment = env, timeout = _GO_REPOSITORY_TIMEOUT)
-        if result.return_code:
+        if generate_patch:
+            ctx.file("BUILD.patch", result.stdout)
+        elif result.return_code:
             fail("failed to generate BUILD files for %s: %s" % (
                 ctx.attr.importpath,
                 result.stderr,
@@ -401,6 +404,7 @@ go_repository = repository_rule(
                 "on",
                 "auto",
                 "off",
+                "write_patch",
             ],
         ),
         "build_naming_convention": attr.string(
