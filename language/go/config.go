@@ -531,7 +531,9 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 					continue
 				}
 				gc.preprocessTags()
-				gc.setBuildTags(d.Value)
+				if err := gc.setBuildTags(d.Value); err != nil {
+					log.Print(err)
+				}
 
 			case "go_generate_proto":
 				if goGenerateProto, err := strconv.ParseBool(d.Value); err == nil {

@@ -196,7 +196,7 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 		var goldens []FileSpec
 
 		config := &testConfig{}
-		filepath.WalkDir(args.TestDataPathAbsolute, func(path string, d fs.DirEntry, err error) error {
+		f := func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				t.Fatalf("File walk error on path %q. Error: %v", path, err)
 			}
@@ -261,7 +261,10 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 				})
 			}
 			return nil
-		})
+		}
+		if err := filepath.WalkDir(args.TestDataPathAbsolute, f); err != nil {
+			t.Fatal(err)
+		}
 
 		testdataDir, cleanup := CreateFiles(t, inputs)
 		workspaceRoot := filepath.Join(testdataDir, args.Name)
@@ -282,7 +285,7 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 					updateExpectedConfig(t, config.Stderr, redactWorkspacePath(stderr.String(), workspaceRoot), srcTestDirectory, expectedStderrFilename)
 					updateExpectedConfig(t, fmt.Sprintf("%d", config.ExitCode), fmt.Sprintf("%d", actualExitCode), srcTestDirectory, expectedExitCodeFilename)
 
-					filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
+					err := filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
 						if err != nil {
 							return err
 						}
@@ -305,6 +308,9 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 						t.Logf("%q exists in %v", relativePath, testdataDir)
 						return nil
 					})
+					if err != nil {
+						t.Fatalf("Failed to walk file: %v", err)
+					}
 
 				} else {
 					t.Logf(`
