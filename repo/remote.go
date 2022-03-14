@@ -200,7 +200,7 @@ func (r *RemoteCache) cleanup() error {
 	return os.RemoveAll(r.tmpDir)
 }
 
-var gopkginPattern = regexp.MustCompile("^(gopkg.in/(?:[^/]+/)?[^/]+\\.v\\d+)(?:/|$)")
+var gopkginPattern = regexp.MustCompile(`^(gopkg.in/(?:[^/]+/)?[^/]+\.v\d+)(?:/|$)`)
 
 var knownPrefixes = []struct {
 	prefix  string

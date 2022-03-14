@@ -204,8 +204,6 @@ func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, fro
 				break
 			}
 		}
-		if isVendored {
-		}
 		if isVendored && !label.New(m.Label.Repo, vendorRoot, "").Contains(from) {
 			// vendor directory not visible
 			continue

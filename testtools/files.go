@@ -197,6 +197,10 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 
 		config := &testConfig{}
 		filepath.WalkDir(args.TestDataPathAbsolute, func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				t.Fatalf("File walk error on path %q. Error: %v", path, err)
+			}
+
 			shortPath := strings.TrimPrefix(path, args.TestDataPathAbsolute)
 
 			info, err := d.Info()

@@ -626,9 +626,7 @@ func isOSArchSpecific(info fileInfo, cgoTags tagLine) (osSpecific, archSpecific 
 	for _, line := range lines {
 		for _, group := range line {
 			for _, tag := range group {
-				if strings.HasPrefix(tag, "!") {
-					tag = tag[1:]
-				}
+				tag = strings.TrimPrefix(tag, "!")
 				_, osOk := rule.KnownOSSet[tag]
 				if osOk {
 					osSpecific = true
