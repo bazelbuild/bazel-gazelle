@@ -108,7 +108,7 @@ type modValue struct {
 }
 
 type modVersionValue struct {
-	path, name, version, sum string
+	path, version, sum string
 }
 
 // Repo describes details of a Go repository known in advance. It is used to

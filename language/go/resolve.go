@@ -21,7 +21,6 @@ import (
 	"go/build"
 	"log"
 	"path"
-	"regexp"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -236,8 +235,6 @@ func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, fro
 	}
 	return bestMatch.Label, nil
 }
-
-var modMajorRex = regexp.MustCompile(`/v\d+(?:/|$)`)
 
 func resolveToExternalLabel(c *config.Config, resolveFn func(string) (string, string, error), imp string) (label.Label, error) {
 	prefix, repo, err := resolveFn(imp)

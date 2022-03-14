@@ -227,12 +227,6 @@ type visitRecord struct {
 	mappedKindInfo map[string]rule.KindInfo
 }
 
-type byPkgRel []visitRecord
-
-func (vs byPkgRel) Len() int           { return len(vs) }
-func (vs byPkgRel) Less(i, j int) bool { return vs[i].pkgRel < vs[j].pkgRel }
-func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
-
 var genericLoads = []rule.LoadInfo{
 	{
 		Name:    "@bazel_gazelle//:def.bzl",

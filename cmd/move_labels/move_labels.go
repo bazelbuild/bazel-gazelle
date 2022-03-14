@@ -166,10 +166,6 @@ func moveLocations(from, to, str string) string {
 	return buf.String()
 }
 
-func isBuiltinLabel(label string) bool {
-	return strings.HasPrefix(label, "//visibility:") || strings.HasPrefix(label, "//conditions:")
-}
-
 type configuration struct {
 	// repoRoot is the repository root directory, formatted as an absolute
 	// file system path.
