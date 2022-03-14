@@ -40,8 +40,6 @@ import (
 )
 
 const (
-	repositoryMacroKey  = "repository_macro"
-	repositoryKey       = "repository"
 	goRepoRuleKind      = "go_repository"
 	httpArchiveRuleKind = "http_archive"
 )
