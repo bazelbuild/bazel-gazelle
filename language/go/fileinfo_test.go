@@ -46,7 +46,7 @@ func TestOtherFileInfo(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			if err := ioutil.WriteFile(tc.name, []byte(tc.source), 0600); err != nil {
+			if err := ioutil.WriteFile(tc.name, []byte(tc.source), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			defer os.Remove(tc.name)
@@ -240,7 +240,8 @@ func TestFileNameInfo(t *testing.T) {
 			fileInfo{
 				ext: unknownExt,
 			},
-		}, {
+		},
+		{
 			"hidden file",
 			".foo.go",
 			fileInfo{
@@ -324,7 +325,7 @@ package main`,
 		if err = f.Close(); err != nil {
 			t.Fatal(err)
 		}
-		if err = ioutil.WriteFile(path, []byte(tc.source), 0600); err != nil {
+		if err = ioutil.WriteFile(path, []byte(tc.source), 0o600); err != nil {
 			t.Fatal(err)
 		}
 
@@ -519,7 +520,7 @@ import "C"
 			}
 
 			path := filepath.Join(dir, filename)
-			if err := ioutil.WriteFile(path, []byte(content), 0666); err != nil {
+			if err := ioutil.WriteFile(path, []byte(content), 0o666); err != nil {
 				t.Fatal(err)
 			}
 

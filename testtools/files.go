@@ -76,13 +76,13 @@ func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 		}
 		path := filepath.Join(dir, filepath.FromSlash(f.Path))
 		if strings.HasSuffix(f.Path, "/") {
-			if err := os.MkdirAll(path, 0700); err != nil {
+			if err := os.MkdirAll(path, 0o700); err != nil {
 				os.RemoveAll(dir)
 				t.Fatal(err)
 			}
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			os.RemoveAll(dir)
 			t.Fatal(err)
 		}
@@ -92,7 +92,7 @@ func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 			}
 			continue
 		}
-		if err := ioutil.WriteFile(path, []byte(f.Content), 0600); err != nil {
+		if err := ioutil.WriteFile(path, []byte(f.Content), 0o600); err != nil {
 			os.RemoveAll(dir)
 			t.Fatal(err)
 		}
@@ -392,7 +392,7 @@ func updateExpectedConfig(t *testing.T, expected string, actual string, srcTestD
 	if expected != actual {
 		destFile := path.Join(srcTestDirectory, expectedFilename)
 
-		err := os.WriteFile(destFile, []byte(actual), 0644)
+		err := os.WriteFile(destFile, []byte(actual), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to write file %v. Error: %v\n", destFile, err)
 		}

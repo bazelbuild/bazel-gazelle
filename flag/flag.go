@@ -70,18 +70,18 @@ func (f *ExplicitFlag) String() string {
 var _ stdflag.Value = (*AllowedStringFlag)(nil)
 
 type AllowedStringFlag struct {
-  Allowed []string
-  Value *string
+	Allowed []string
+	Value   *string
 }
 
 func (f *AllowedStringFlag) Set(v string) error {
-  for _, a := range f.Allowed {
-    if v == a {
-      *f.Value = v
-      return nil
-    }
-  }
-  return fmt.Errorf("Invalid argument %q. Possible values are: %s", v, strings.Join(f.Allowed, ", "))
+	for _, a := range f.Allowed {
+		if v == a {
+			*f.Value = v
+			return nil
+		}
+	}
+	return fmt.Errorf("Invalid argument %q. Possible values are: %s", v, strings.Join(f.Allowed, ", "))
 }
 
 func (f *AllowedStringFlag) String() string {

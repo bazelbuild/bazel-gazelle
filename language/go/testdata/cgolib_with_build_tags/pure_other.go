@@ -1,3 +1,4 @@
+//go:build !linux
 // +build !linux
 
 /* Copyright 2016 The Bazel Authors. All rights reserved.

@@ -17,6 +17,7 @@ package main
 
 import (
 	"fmt"
+
 	"example.com/repo/naming_convention/import/bin"
 )
 

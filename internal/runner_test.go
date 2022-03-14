@@ -29,7 +29,7 @@ func TestRunner(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := ioutil.WriteFile("BUILD.bazel", origBuildData, 0666); err != nil {
+		if err := ioutil.WriteFile("BUILD.bazel", origBuildData, 0o666); err != nil {
 			t.Fatalf("restoring build file: %v", err)
 		}
 	}()
@@ -59,7 +59,7 @@ func TestRunnerUpdateReposFromGoMod(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := ioutil.WriteFile("WORKSPACE", origWorkspaceData, 0666); err != nil {
+		if err := ioutil.WriteFile("WORKSPACE", origWorkspaceData, 0o666); err != nil {
 			t.Fatalf("restoring WORKSPACE: %v", err)
 		}
 	}()
@@ -75,7 +75,7 @@ func TestRunnerUpdateReposCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := ioutil.WriteFile("WORKSPACE", origWorkspaceData, 0666); err != nil {
+		if err := ioutil.WriteFile("WORKSPACE", origWorkspaceData, 0o666); err != nil {
 			t.Fatalf("restoring WORKSPACE: %v", err)
 		}
 	}()

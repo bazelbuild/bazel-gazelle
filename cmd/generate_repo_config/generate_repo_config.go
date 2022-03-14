@@ -129,7 +129,7 @@ func generateRepoConfig(configDest, configSource string) ([]string, error) {
 
 	buf.WriteString("\n")
 	buf.Write(destFile.Format())
-	if err := ioutil.WriteFile(configDest, buf.Bytes(), 0666); err != nil {
+	if err := ioutil.WriteFile(configDest, buf.Bytes(), 0o666); err != nil {
 		return nil, err
 	}
 

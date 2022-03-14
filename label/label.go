@@ -83,8 +83,8 @@ func Parse(s string) (Label, error) {
 		if endRepo > len("@") {
 			repo = s[len("@"):endRepo]
 			s = s[endRepo:]
-		// If the label begins with "@//...", set repo = "@"
-		// to remain distinct from "//...", where repo = ""
+			// If the label begins with "@//...", set repo = "@"
+			// to remain distinct from "//...", where repo = ""
 		} else if endRepo == len("@") {
 			repo = s[:len("@")]
 			s = s[len("@"):]

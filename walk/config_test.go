@@ -11,7 +11,6 @@ func TestCheckPathMatchPattern(t *testing.T) {
 		pattern string
 		err     error
 	}{
-
 		{pattern: "*.pb.go", err: nil},
 		{pattern: "**/*.pb.go", err: nil},
 		{pattern: "**/*.pb.go", err: nil},

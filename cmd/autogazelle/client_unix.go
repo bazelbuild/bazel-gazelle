@@ -1,3 +1,4 @@
+//go:build darwin || dragonfly || freebsd || linux || nacl || netbsd || openbsd || solaris || windows
 // +build darwin dragonfly freebsd linux nacl netbsd openbsd solaris windows
 
 /* Copyright 2018 The Bazel Authors. All rights reserved.

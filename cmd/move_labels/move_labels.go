@@ -64,7 +64,7 @@ func run(args []string) error {
 	var errs errorList
 	for _, file := range files {
 		content := build.Format(file)
-		if err := ioutil.WriteFile(file.Path, content, 0666); err != nil {
+		if err := ioutil.WriteFile(file.Path, content, 0o666); err != nil {
 			errs = append(errs, err)
 		}
 	}

@@ -13,9 +13,8 @@ limitations under the License.
 package relativeimporter
 
 import (
-	"log"
-
 	"../internal/deep"
+	"log"
 )
 
 func think() {

@@ -54,8 +54,8 @@ func TestMain(m *testing.M) {
 			if err != nil {
 				return err
 			}
-			if mode := info.Mode(); mode&0200 == 0 {
-				err = os.Chmod(path, mode|0200)
+			if mode := info.Mode(); mode&0o200 == 0 {
+				err = os.Chmod(path, mode|0o200)
 			}
 			return err
 		})
@@ -112,7 +112,7 @@ func TestCreateFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0600); err != nil {
+	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
@@ -135,12 +135,12 @@ func TestUpdateFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0600); err != nil {
+	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
 	buildFile := filepath.Join(dir, "BUILD")
-	if err = ioutil.WriteFile(buildFile, nil, 0600); err != nil {
+	if err = ioutil.WriteFile(buildFile, nil, 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", buildFile, err)
 	}
 
@@ -167,7 +167,7 @@ func TestNoChanges(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0600); err != nil {
+	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
@@ -186,7 +186,7 @@ go_binary(
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )
-`), 0600); err != nil {
+`), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", buildFile, err)
 	}
 	st, err := os.Stat(buildFile)
@@ -228,7 +228,8 @@ package main
 
 func main() {}
 `,
-		}, {
+		},
+		{
 			Path:    "out/BUILD",
 			Content: `this should get replaced`,
 		},

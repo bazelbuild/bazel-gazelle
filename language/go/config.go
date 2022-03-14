@@ -331,9 +331,11 @@ type moduleRepo struct {
 	repoName, modulePath string
 }
 
-var validBuildExternalAttr = []string{"external", "vendored"}
-var validBuildFileGenerationAttr = []string{"auto", "on", "off"}
-var validBuildFileProtoModeAttr = []string{"default", "legacy", "disable", "disable_global", "package"}
+var (
+	validBuildExternalAttr       = []string{"external", "vendored"}
+	validBuildFileGenerationAttr = []string{"auto", "on", "off"}
+	validBuildFileProtoModeAttr  = []string{"default", "legacy", "disable", "disable_global", "package"}
+)
 
 func (*goLang) KnownDirectives() []string {
 	return []string{

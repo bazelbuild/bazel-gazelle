@@ -199,7 +199,8 @@ go_library(
 )
 `,
 			}},
-			old: buildFile{content: `
+			old: buildFile{
+				content: `
 go_binary(
     name = "bin",
     _imports = ["example.com/foo"],
@@ -354,7 +355,8 @@ go_binary(
 `,
 		}, {
 			desc: "skip_self_embed",
-			old: buildFile{content: `
+			old: buildFile{
+				content: `
 go_library(
     name = "go_default_library",
     srcs = ["lib.go"],
@@ -1222,14 +1224,14 @@ func TestResolveExternal(t *testing.T) {
 				Name:     "custom_repo",
 				GoPrefix: "example.com/repo",
 			}},
-			depMode:    staticMode,
-			want:       "@custom_repo//v2/foo:go_default_library",
+			depMode: staticMode,
+			want:    "@custom_repo//v2/foo:go_default_library",
 		}, {
 			desc:       "static_mode_unknown",
 			importpath: "example.com/repo/v2/foo",
 			depMode:    staticMode,
 			want:       "",
-		}, 
+		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			gc.depMode = tc.depMode

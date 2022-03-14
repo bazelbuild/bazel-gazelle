@@ -66,7 +66,8 @@ func TestGenerateRules(t *testing.T) {
 				File:         oldFile,
 				Subdirs:      subdirs,
 				RegularFiles: regularFiles,
-				GenFiles:     genFiles})
+				GenFiles:     genFiles,
+			})
 			if len(res.Empty) > 0 {
 				t.Errorf("got %d empty rules; want 0", len(res.Empty))
 			}
@@ -123,7 +124,8 @@ proto_library(
 		Config:   c,
 		Rel:      "foo",
 		File:     old,
-		GenFiles: genFiles})
+		GenFiles: genFiles,
+	})
 	if len(res.Gen) > 0 {
 		t.Errorf("got %d generated rules; want 0", len(res.Gen))
 	}
@@ -156,7 +158,8 @@ func TestGeneratePackage(t *testing.T) {
 		Config:       c,
 		Dir:          dir,
 		Rel:          "protos",
-		RegularFiles: []string{"foo.proto"}})
+		RegularFiles: []string{"foo.proto"},
+	})
 	r := res.Gen[0]
 	got := r.PrivateAttr(PackageKey).(Package)
 	want := Package{
@@ -209,7 +212,8 @@ func TestFileModeImports(t *testing.T) {
 		Config:       c,
 		Dir:          dir,
 		Rel:          "file_mode",
-		RegularFiles: []string{"foo.proto", "bar.proto"}})
+		RegularFiles: []string{"foo.proto", "bar.proto"},
+	})
 
 	if len(res.Gen) != 2 {
 		t.Error("expected 2 generated packages")

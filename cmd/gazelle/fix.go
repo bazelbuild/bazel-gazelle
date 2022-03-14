@@ -32,10 +32,10 @@ func fixFile(c *config.Config, f *rule.File) error {
 		return nil
 	}
 	outPath := findOutputPath(c, f)
-	if err := os.MkdirAll(filepath.Dir(outPath), 0777); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o777); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(outPath, newContent, 0666); err != nil {
+	if err := ioutil.WriteFile(outPath, newContent, 0o666); err != nil {
 		return err
 	}
 	f.Content = newContent

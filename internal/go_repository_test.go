@@ -174,7 +174,7 @@ func TestModcacheRW(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode()&0200 == 0 {
+	if info.Mode()&0o200 == 0 {
 		t.Fatal("module cache is read-only")
 	}
 }

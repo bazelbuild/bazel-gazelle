@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Copyright 2014 The Bazel Authors. All rights reserved.
@@ -97,7 +98,7 @@ func main() {
 	fmt.Fprintln(buf, "]")
 
 	if *generate != "" {
-		if err := ioutil.WriteFile(*generate, buf.Bytes(), 0666); err != nil {
+		if err := ioutil.WriteFile(*generate, buf.Bytes(), 0o666); err != nil {
 			log.Fatal(err)
 		}
 	} else {

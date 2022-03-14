@@ -167,7 +167,7 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 	if gc.depMode == vendorMode {
 		return resolveVendored(gc, imp)
 	}
-	var resolveFn func (string) (string, string, error)
+	var resolveFn func(string) (string, string, error)
 	if gc.depMode == staticMode {
 		resolveFn = rc.RootStatic
 	} else if gc.moduleMode || pathWithoutSemver(imp) != "" {

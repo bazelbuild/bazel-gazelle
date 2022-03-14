@@ -60,7 +60,7 @@ func diffFile(c *config.Config, f *rule.File) error {
 	}
 
 	if len(f.Content) != 0 {
-    		diff.A = difflib.SplitLines(string(f.Content))
+		diff.A = difflib.SplitLines(string(f.Content))
 	}
 
 	diff.B = difflib.SplitLines(string(newContent))

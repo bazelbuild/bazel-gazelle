@@ -42,8 +42,8 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 	// dependencies.
 	type module struct {
 		Path, Version, Sum, Error string
-		Main               bool
-		Replace            *struct {
+		Main                      bool
+		Replace                   *struct {
 			Path, Version string
 		}
 	}
