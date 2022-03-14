@@ -84,7 +84,7 @@ func (*protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Remo
 	depSet := make(map[string]bool)
 	for _, imp := range imports {
 		l, err := resolveProto(c, ix, r, imp, from)
-		if err == skipImportError {
+		if err == errSkipImport {
 			continue
 		} else if err != nil {
 			log.Print(err)
@@ -104,8 +104,8 @@ func (*protoLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Remo
 }
 
 var (
-	skipImportError = errors.New("std import")
-	notFoundError   = errors.New("not found")
+	errSkipImport = errors.New("std import")
+	errNotFound   = errors.New("not found")
 )
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp string, from label.Label) (label.Label, error) {
@@ -120,15 +120,15 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp str
 
 	if l, ok := knownImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
 		if l.Equal(from) {
-			return label.NoLabel, skipImportError
+			return label.NoLabel, errSkipImport
 		} else {
 			return l, nil
 		}
 	}
 
-	if l, err := resolveWithIndex(c, ix, imp, from); err == nil || err == skipImportError {
+	if l, err := resolveWithIndex(c, ix, imp, from); err == nil || err == errSkipImport {
 		return l, err
-	} else if err != notFoundError {
+	} else if err != errNotFound {
 		return label.NoLabel, err
 	}
 
@@ -143,13 +143,13 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp str
 func resolveWithIndex(c *config.Config, ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
 	matches := ix.FindRulesByImportWithConfig(c, resolve.ImportSpec{Lang: "proto", Imp: imp}, "proto")
 	if len(matches) == 0 {
-		return label.NoLabel, notFoundError
+		return label.NoLabel, errNotFound
 	}
 	if len(matches) > 1 {
 		return label.NoLabel, fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", matches[0].Label, matches[1].Label, imp, from)
 	}
 	if matches[0].IsSelfImport(from) {
-		return label.NoLabel, skipImportError
+		return label.NoLabel, errSkipImport
 	}
 	return matches[0].Label, nil
 }

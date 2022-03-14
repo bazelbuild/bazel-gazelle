@@ -387,7 +387,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	for _, v := range visits {
 		merger.FixLoads(v.file, applyKindMappings(v.mappedKinds, loads))
 		if err := uc.emit(v.c, v.file); err != nil {
-			if err == exitError {
+			if err == errExit {
 				exit = err
 			} else {
 				log.Print(err)
