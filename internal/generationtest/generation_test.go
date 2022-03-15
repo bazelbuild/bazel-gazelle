@@ -2,7 +2,7 @@ package generationtest
 
 import (
 	"flag"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
@@ -33,16 +33,16 @@ func TestFullGeneration(t *testing.T) {
 	}
 	for _, f := range runfiles {
 		// Look through runfiles for WORKSPACE files. Each WORKSPACE is a test case.
-		if path.Base(f.Path) == "WORKSPACE" {
+		if filepath.Base(f.Path) == "WORKSPACE" {
 			// absolutePathToTestDirectory is the absolute
 			// path to the test case directory. For example, /home/<user>/wksp/path/to/test_data/my_test_case
-			absolutePathToTestDirectory := path.Dir(f.Path)
+			absolutePathToTestDirectory := filepath.Dir(f.Path)
 			// relativePathToTestDirectory is the workspace relative path
 			// to this test case directory. For example, path/to/test_data/my_test_case
-			relativePathToTestDirectory := path.Dir(f.ShortPath)
+			relativePathToTestDirectory := filepath.Dir(f.ShortPath)
 			// name is the name of the test directory. For example, my_test_case.
 			// The name of the directory doubles as the name of the test.
-			name := path.Base(absolutePathToTestDirectory)
+			name := filepath.Base(absolutePathToTestDirectory)
 
 			tests = append(tests, &testtools.TestGazelleGenerationArgs{
 				Name:                 name,
