@@ -164,11 +164,18 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 		}
 	}
 
-	if gc.depMode == externalMode {
-		return resolveExternal(c, rc, imp)
-	} else {
+	if gc.depMode == vendorMode {
 		return resolveVendored(gc, imp)
 	}
+	var resolveFn func (string) (string, string, error)
+	if gc.depMode == staticMode {
+		resolveFn = rc.RootStatic
+	} else if gc.moduleMode || pathWithoutSemver(imp) != "" {
+		resolveFn = rc.Mod
+	} else {
+		resolveFn = rc.Root
+	}
+	return resolveToExternalLabel(c, resolveFn, imp)
 }
 
 // IsStandard returns whether a package is in the standard library.
@@ -232,30 +239,12 @@ func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, fro
 
 var modMajorRex = regexp.MustCompile(`/v\d+(?:/|$)`)
 
-func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.Label, error) {
-	// If we're in module mode, use "go list" to find the module path and
-	// repository name. Otherwise, use special cases (for github.com, golang.org)
-	// or send a GET with ?go-get=1 to find the root. If the path contains
-	// a major version suffix (e.g., /v2), treat it as a module anyway though.
-	//
-	// Eventually module mode will be the only mode. But for now, it's expensive
-	// and not the common case, especially when known repositories aren't
-	// listed in WORKSPACE (which is currently the case within go_repository).
-	gc := getGoConfig(c)
-	moduleMode := gc.moduleMode
-	if !moduleMode {
-		moduleMode = pathWithoutSemver(imp) != ""
-	}
-
-	var prefix, repo string
-	var err error
-	if moduleMode {
-		prefix, repo, err = rc.Mod(imp)
-	} else {
-		prefix, repo, err = rc.Root(imp)
-	}
+func resolveToExternalLabel(c *config.Config, resolveFn func(string) (string, string, error), imp string) (label.Label, error) {
+	prefix, repo, err := resolveFn(imp)
 	if err != nil {
 		return label.NoLabel, err
+	} else if prefix == "" && repo == "" {
+		return label.NoLabel, skipImportError
 	}
 
 	var pkg string
@@ -274,6 +263,7 @@ func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.
 	// If the repository uses the import_alias convention (default for
 	// go_repository), use the convention from the current directory unless the
 	// user has told us otherwise.
+	gc := getGoConfig(c)
 	nc := gc.repoNamingConvention[repo]
 	if nc == unknownNamingConvention {
 		if gc.goNamingConventionExternal != unknownNamingConvention {

@@ -353,7 +353,8 @@ The following attributes are available on the ``gazelle`` rule.
 | :param:`external`    | :type:`string`      | :value:`external`                    |
 +----------------------+---------------------+--------------------------------------+
 | The method for resolving unknown imports to Bazel dependencies. May be            |
-| :value:`external` or :value:`vendored`. See `Dependency resolution`_.             |
+| :value:`external`, :value:`static` or :value:`vendored`.                          |
+| See `Dependency resolution`_.                                                     |
 +----------------------+---------------------+--------------------------------------+
 | :param:`build_tags`  | :type:`string_list` | :value:`[]`                          |
 +----------------------+---------------------+--------------------------------------+
@@ -431,10 +432,10 @@ The following flags are accepted:
 | repository root. This is equivalent to the ``# gazelle:exclude pattern``                                   |
 | directive.                                                                                                 |
 +-------------------------------------------------------------------+----------------------------------------+
-| :flag:`-external external|vendored`                               | :value:`external`                      |
+| :flag:`-external external|static|vendored`                        | :value:`external`                      |
 +-------------------------------------------------------------------+----------------------------------------+
 | Determines how Gazelle resolves import paths that cannot be resolve in the                                 |
-| current repository. May be :value:`external` or :value:`vendored`. See                                     |
+| current repository. May be :value:`external`, :value:`static` or :value:`vendored`. See                    |
 | `Dependency resolution`_.                                                                                  |
 +-------------------------------------------------------------------+----------------------------------------+
 | :flag:`-index true|false`                                         | :value:`true`                          |
@@ -1019,7 +1020,11 @@ below to resolve dependencies:
       ``importpath``, Gazelle will use its name. Gazelle does not index
       rules in external repositories, so it's possible the resolved dependency
       does not exist.
-   b) In ``vendored`` mode, Gazelle will transform the import string into
+   b) In ``static`` mode, Gazelle has the same behavior as ``external`` mode,
+      except that it will not call out to the network for resolution when no
+      matching import is found within WORKSPACE. Instead, it will skip the
+      unknown import. This is the default mode for ``go_repository`` rules.
+   c) In ``vendored`` mode, Gazelle will transform the import string into
       a label in the vendor directory. For example, ``"golang.org/x/sys/unix"``
       would be resolved to
       ``"//vendor/golang.org/x/sys/unix:go_default_library"``. This mode is
