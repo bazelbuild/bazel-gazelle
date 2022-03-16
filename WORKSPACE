@@ -41,7 +41,7 @@ gazelle_dependencies()
 # gazelle:repository go_repository name=co_honnef_go_tools importpath=honnef.co/go/tools
 # gazelle:repository go_repository name=com_github_bazelbuild_buildtools importpath=github.com/bazelbuild/buildtools build_naming_convention=go_default_library
 # gazelle:repository go_repository name=com_github_bazelbuild_rules_go importpath=github.com/bazelbuild/rules_go
-# gazelle:repository go_repository name=com_github_bmatcuk_doublestar importpath=github.com/bmatcuk/doublestar
+# gazelle:repository go_repository name=com_github_bmatcuk_doublestar_v4 importpath=github.com/bmatcuk/doublestar/v4
 # gazelle:repository go_repository name=com_github_burntsushi_toml importpath=github.com/BurntSushi/toml
 # gazelle:repository go_repository name=com_github_census_instrumentation_opencensus_proto importpath=github.com/census-instrumentation/opencensus-proto
 # gazelle:repository go_repository name=com_github_chzyer_logex importpath=github.com/chzyer/logex

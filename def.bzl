@@ -30,7 +30,7 @@ load(
     _gazelle_binary = "gazelle_binary_wrapper",
 )
 load(
-    "//internal/generationtest:generation_test.bzl",
+    "//internal/generationtest:generationtest.bzl",
     _gazelle_generation_test = "gazelle_generation_test",
 )
 

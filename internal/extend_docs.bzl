@@ -107,7 +107,7 @@ includes the proto package name, as well as source names, imports, and options.
 
 load("gazelle_binary.bzl", _gazelle_binary = "gazelle_binary")
 load(
-    "//internal/generationtest:generation_test.bzl",
+    "//internal/generationtest:generationtest.bzl",
     _gazelle_generation_test = "gazelle_generation_test",
 )
 
