@@ -27,6 +27,7 @@ platforms:
     - "..."
     - "-//cmd/autogazelle/..."
     run_targets:
+    - "--"
     - "//:gazelle_ci"
     test_targets:
     - "--"
