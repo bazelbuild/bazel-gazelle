@@ -1,21 +1,29 @@
 ---
 platforms:
   ubuntu1804:
+    run_targets:
+    - "//:gazelle -- --mode=diff"
     build_targets:
     - "..."
     test_targets:
     - "..."
   ubuntu1604:
+    run_targets:
+    - "//:gazelle -- --mode=diff"
     build_targets:
     - "..."
     test_targets:
     - "..."
   macos:
+    run_targets:
+    - "//:gazelle -- --mode=diff"
     build_targets:
     - "..."
     test_targets:
     - "..."
   windows:
+    run_targets:
+    - "//:gazelle -- --mode=diff"
     build_targets:
     - "--"
     - "..."
