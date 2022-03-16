@@ -16,6 +16,13 @@ gazelle(
     gazelle = ":gazelle_local",
 )
 
+gazelle(
+    name = "gazelle_ci",
+    command = "fix",
+    extra_args = ["--mode=diff"],
+    gazelle = ":gazelle_local",
+)
+
 gazelle_binary(
     name = "gazelle_local",
     languages = [
