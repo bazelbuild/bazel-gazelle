@@ -1,33 +1,33 @@
 ---
 platforms:
   ubuntu1804:
-    run_targets:
-    - "//:gazelle_ci"
     build_targets:
     - "..."
+    run_targets:
+    - "//:gazelle_ci"
     test_targets:
     - "..."
   ubuntu1604:
-    run_targets:
-    - "//:gazelle_ci"
     build_targets:
     - "..."
+    run_targets:
+    - "//:gazelle_ci"
     test_targets:
     - "..."
   macos:
-    run_targets:
-    - "//:gazelle_ci"
     build_targets:
     - "..."
+    run_targets:
+    - "//:gazelle_ci"
     test_targets:
     - "..."
   windows:
-    run_targets:
-    - "//:gazelle_ci"
     build_targets:
     - "--"
     - "..."
     - "-//cmd/autogazelle/..."
+    run_targets:
+    - "//:gazelle_ci"
     test_targets:
     - "--"
     - "..."
