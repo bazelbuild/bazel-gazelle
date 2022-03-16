@@ -34,6 +34,7 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "common.bzl",
+        "extend_docs.bzl",
         "gazelle.bash.in",
         "gazelle_binary.bzl",
         "go_repository.bzl",
@@ -43,6 +44,7 @@ filegroup(
         "go_repository_tools_srcs.bzl",
         "list_repository_tools_srcs.go",
         "overlay_repository.bzl",
+        "repository_docs.bzl",
         "repository_rules_test_errors.patch",
         "//internal/gazellebinarytest:all_files",
         "//internal/generationtest:all_files",
@@ -100,9 +102,29 @@ bzl_library(
 )
 
 bzl_library(
+    name = "repository_docs",
+    srcs = ["repository_docs.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        ":go_repository",
+        ":overlay_repository",
+    ],
+)
+
+bzl_library(
     name = "common",
     srcs = ["common.bzl"],
     visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "extend_docs",
+    srcs = ["extend_docs.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "gazelle_binary",
+        "//internal/generationtest",
+    ],
 )
 
 bzl_library(
@@ -115,24 +137,4 @@ bzl_library(
     name = "overlay_repository",
     srcs = ["overlay_repository.bzl"],
     visibility = ["//:__subpackages__"],
-)
-
-bzl_library(
-    name = "repository_docs",
-    srcs = ["repository_docs.bzl"],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        ":go_repository",
-        ":overlay_repository",
-    ],
-)
-
-bzl_library(
-    name = "extend_docs",
-    srcs = ["extend_docs.bzl"],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        ":gazelle_binary",
-        "//internal/generationtest:generation_test_bzl",
-    ],
 )
