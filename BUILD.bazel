@@ -17,6 +17,7 @@ gazelle(
 )
 
 # gazelle_ci is called from CI to verify the repo is up-to-date, see: .bazelci/presubmit.yml
+gazelle(
     name = "gazelle_ci",
     command = "fix",
     extra_args = ["--mode=diff"],
