@@ -3,6 +3,10 @@ platforms:
   ubuntu1804:
     build_targets:
     - "..."
+    run_targets:
+    # Run Gazelle on repo to verify BUILD files are up-to-date. The output shouldn't differ
+    # between platforms, so we only run it from one.
+    - "//:gazelle_ci"
     test_targets:
     - "..."
   ubuntu1604:
