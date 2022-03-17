@@ -370,9 +370,11 @@ go_repository = repository_rule(
 
         # Attributes for a repository that needs automatic build file generation
         "build_external": attr.string(
-            doc = """One of `"external"`, `"vendored"`.
+            default = "static",
+            doc = """One of `"external"`, `"static"` or `"vendored"`.
 
-            This sets Gazelle's `-external` command line flag.
+            This sets Gazelle's `-external` command line flag. In `"static"` mode,
+            Gazelle will not call out to the network to resolve imports.
 
             **NOTE:** This cannot be used to ignore the `vendor` directory in a
             repository. The `-external` flag only controls how Gazelle resolves
@@ -381,6 +383,7 @@ go_repository = repository_rule(
             values = [
                 "",
                 "external",
+                "static",
                 "vendored",
             ],
         ),

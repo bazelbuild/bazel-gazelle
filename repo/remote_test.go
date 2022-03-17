@@ -86,6 +86,52 @@ func TestRootSpecialCases(t *testing.T) {
 	}
 }
 
+func TestRootStatic(t *testing.T) {
+	for _, tc := range []struct {
+		in, wantRoot, wantName string
+		repos                  []Repo
+	}{
+		{
+			in: "private.com/my/repo/package/path",
+			repos: []Repo{
+				{
+					Name:     "com_other_host_repo",
+					GoPrefix: "other-host.com/repo",
+				}, {
+					Name:     "com_private_my_repo",
+					GoPrefix: "private.com/my/repo",
+				},
+			},
+			wantRoot: "private.com/my/repo",
+			wantName: "com_private_my_repo",
+		},
+		{
+			in: "unsupported.org/x/net/context",
+			repos: []Repo{
+				{
+					Name:     "com_private_my_repo",
+					GoPrefix: "private.com/my/repo",
+				},
+			},
+			wantRoot: "",
+			wantName: "",
+		},
+	} {
+		t.Run(tc.in, func(t *testing.T) {
+			rc := NewStubRemoteCache(tc.repos)
+			if gotRoot, gotName, err := rc.RootStatic(tc.in); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			} else if gotRoot != tc.wantRoot {
+				t.Errorf("root for %q: got %q; want %q", tc.in, gotRoot, tc.wantRoot)
+			} else if gotName != tc.wantName {
+				t.Errorf("name for %q: got %q; want %q", tc.in, gotName, tc.wantName)
+			}
+		})
+	}
+}
+
+
+
 func TestRemote(t *testing.T) {
 	for _, tc := range []struct {
 		desc, root          string

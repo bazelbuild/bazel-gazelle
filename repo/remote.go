@@ -212,6 +212,23 @@ var knownPrefixes = []struct {
 	{prefix: "github.com", missing: 2},
 }
 
+// RootStatic checks the cache to see if the provided importpath matches any known roots.
+// If no matches are found, rather than going out to the network to determine the root,
+// nothing is returned.
+func (r *RemoteCache) RootStatic(importPath string) (root, name string, err error) {
+	for prefix := importPath; prefix != "." && prefix != "/"; prefix = path.Dir(prefix){
+		v, ok, err := r.root.get(prefix)
+		if ok {
+			if err != nil {
+				return "", "", err
+			}
+			value := v.(rootValue)
+			return value.root, value.name, nil
+		}
+	}
+	return "", "", nil
+}
+
 // Root returns the portion of an import path that corresponds to the root
 // directory of the repository containing the given import path. For example,
 // given "golang.org/x/tools/go/loader", this will return "golang.org/x/tools".
@@ -266,6 +283,7 @@ func (r *RemoteCache) Root(importPath string) (root, name string, err error) {
 		name = label.ImportPathToBazelRepoName(root)
 		return root, name, nil
 	}
+
 
 	// Find the prefix using vcs and cache the result.
 	v, err := r.root.ensure(importPath, func() (interface{}, error) {

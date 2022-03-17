@@ -199,8 +199,13 @@ type dependencyMode int
 
 const (
 	// externalMode indicates imports should be resolved to external dependencies
-	// (declared in WORKSPACE).
+	// (declared in WORKSPACE). Calls out to the network if an import can't be resolved
+	// locally.
 	externalMode dependencyMode = iota
+
+	// staticMode indicates imports should be resolved only to dependencies known by
+	// Gazelle (declared in WORKSPACE). Unknown imports are ignored.
+	staticMode
 
 	// vendorMode indicates imports should be resolved to libraries in the
 	// vendor directory.
@@ -208,11 +213,15 @@ const (
 )
 
 func (m dependencyMode) String() string {
-	if m == externalMode {
+	switch m {
+	case externalMode:
 		return "external"
-	} else {
-		return "vendored"
+	case staticMode:
+		return "static"
+	case vendorMode:
+		return "vendor"
 	}
+	return ""
 }
 
 type externalFlag struct {
@@ -223,6 +232,8 @@ func (f *externalFlag) Set(value string) error {
 	switch value {
 	case "external":
 		*f.depMode = externalMode
+	case "static":
+		*f.depMode = staticMode
 	case "vendored":
 		*f.depMode = vendorMode
 	default:
