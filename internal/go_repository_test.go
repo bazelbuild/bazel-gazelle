@@ -84,6 +84,13 @@ go_repository(
 )
 
 go_repository(
+    name = "org_golang_x_xerrors",    
+		importpath = "golang.org/x/xerrors",
+    sum = "h1:go1bK/D/BFZV2I8cIQd1NKEZ+0owSTG1fDTci4IqFcE=",
+    version = "v0.0.0-20200804184101-5ec99f83aff1",
+)
+
+go_repository(
 		name = "com_github_apex_log",
 		build_directives = ["gazelle:exclude handlers"],
 		importpath = "github.com/apex/log",
@@ -142,6 +149,11 @@ go_repository(
 go_repository(
     name = "errors_go_mod",
     importpath = "github.com/pkg/errors",
+)
+
+go_repository(
+    name = "org_golang_x_xerrors",
+    importpath = "golang.org/x/xerrors",
 )
 `,
 		},

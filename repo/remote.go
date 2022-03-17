@@ -216,8 +216,7 @@ var knownPrefixes = []struct {
 // If no matches are found, rather than going out to the network to determine the root,
 // nothing is returned.
 func (r *RemoteCache) RootStatic(importPath string) (root, name string, err error) {
-	prefix := importPath
-	for {
+	for prefix := importPath; prefix != "." && prefix != "/"; prefix = path.Dir(prefix){
 		v, ok, err := r.root.get(prefix)
 		if ok {
 			if err != nil {
@@ -225,11 +224,6 @@ func (r *RemoteCache) RootStatic(importPath string) (root, name string, err erro
 			}
 			value := v.(rootValue)
 			return value.root, value.name, nil
-		}
-
-		prefix = path.Dir(prefix)
-		if prefix == "." || prefix == "/" {
-			break
 		}
 	}
 	return "", "", nil
