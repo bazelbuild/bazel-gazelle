@@ -200,7 +200,7 @@ def _go_repository_impl(ctx):
         )
         if result.return_code:
             fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
-        if result.stderr:
+        if ctx.attr.debug_mode and result.stderr:
             print("fetch_repo: " + result.stderr)
 
     # Repositories are fetched. Determine if build file generation is needed.
@@ -252,14 +252,14 @@ def _go_repository_impl(ctx):
             cmd.extend(["-go_naming_convention", ctx.attr.build_naming_convention])
         cmd.extend(ctx.attr.build_extra_args)
         cmd.append(ctx.path(""))
-        ctx.report_progress("Running gazelle to generate BUILD files. Too slow? See https://github.com/bazelbuild/bazel-gazelle/issues/1190")
+        ctx.report_progress("running Gazelle")
         result = env_execute(ctx, cmd, environment = env, timeout = _GO_REPOSITORY_TIMEOUT)
         if result.return_code:
             fail("failed to generate BUILD files for %s: %s" % (
                 ctx.attr.importpath,
                 result.stderr,
             ))
-        if result.stderr:
+        if ctx.attr.debug_mode and result.stderr:
             print("%s: %s" % (ctx.name, result.stderr))
 
     # Apply patches if necessary.
@@ -480,6 +480,15 @@ go_repository = repository_rule(
             default = [],
             doc = "Commands to run in the repository after patches are applied.",
         ),
+
+        # Attributes that affect the verbosity of logging:
+        "debug_mode": attr.bool(
+            default = False,
+            doc = """Enables logging of fetch_repo and Gazelle output during succcesful runs. Gazelle can be noisy
+            so this defaults to `False`. However, setting to `True` can be useful for debugging build failures and
+            unexpected behavior for the given rule.
+            """,
+        )
     },
 )
 """See repository.md#go-repository for full documentation."""
