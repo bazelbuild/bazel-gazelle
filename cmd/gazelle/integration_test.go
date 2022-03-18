@@ -2935,6 +2935,107 @@ go_library(
 	})
 }
 
+// TestMapKindEmbeddedResolve tests the gazelle:map_kind properly resolves
+// dependencies for embedded rules (see #1162).
+func TestMapKindEmbeddedResolve(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		}, {
+			Path: "BUILD.bazel",
+			Content: `
+# gazelle:prefix example.com/mapkind
+# gazelle:map_kind go_library my_go_library //:my.bzl
+`,
+		}, {
+			Path: "a/a.proto",
+			Content: `
+syntax = "proto3";
+
+package test;
+option go_package = "example.com/mapkind/a";
+`,
+		}, {
+			Path: "b/b.proto",
+			Content: `
+syntax = "proto3";
+
+package test;
+option go_package = "example.com/mapkind/b";
+
+import "a/a.proto";
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"-external=vendored"}); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "a/BUILD.bazel",
+			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("//:my.bzl", "my_go_library")
+
+proto_library(
+    name = "a_proto",
+    srcs = ["a.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "a_go_proto",
+    importpath = "example.com/mapkind/a",
+    proto = ":a_proto",
+    visibility = ["//visibility:public"],
+)
+
+my_go_library(
+    name = "a",
+    embed = [":a_go_proto"],
+    importpath = "example.com/mapkind/a",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "b/BUILD.bazel",
+			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("//:my.bzl", "my_go_library")
+
+proto_library(
+    name = "b_proto",
+    srcs = ["b.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//a:a_proto"],
+)
+
+go_proto_library(
+    name = "b_go_proto",
+    importpath = "example.com/mapkind/b",
+    proto = ":b_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//a"],
+)
+
+my_go_library(
+    name = "b",
+    embed = [":b_go_proto"],
+    importpath = "example.com/mapkind/b",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+	})
+}
+
 // TestMinimalModuleCompatibilityAliases checks that importpath_aliases
 // are emitted for go_libraries when needed. This can't easily be checked
 // in language/go because the generator tests don't support running at
