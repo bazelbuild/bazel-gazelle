@@ -98,6 +98,8 @@ def _go_repository_impl(ctx):
     # Declare Label dependencies at the top of function to avoid unnecessary fetching:
     # https://docs.bazel.build/versions/main/skylark/repository_rules.html#when-is-the-implementation-function-executed
     go_env_cache = str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env")))
+    if not ctx.attr.urls:
+        fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
     generate = ctx.attr.build_file_generation == "on"
     _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
     if generate:
@@ -200,7 +202,6 @@ def _go_repository_impl(ctx):
         # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
         fetch_repo_env["GO111MODULE"] = "on"
 
-        fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
         result = env_execute(
             ctx,
             [fetch_repo] + fetch_repo_args,
