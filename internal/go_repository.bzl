@@ -93,6 +93,17 @@ def _go_repository_impl(ctx):
     # TODO(#549): vcs repositories are not cached and still need to be fetched.
     # Download the repository or module.
     fetch_repo_args = None
+    gazelle_path = None
+
+    # Declare Label dependencies at the top of function to avoid unnecessary fetching:
+    # https://docs.bazel.build/versions/main/skylark/repository_rules.html#when-is-the-implementation-function-executed
+    go_env_cache = str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env")))
+    if not ctx.attr.urls:
+        fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
+    generate = ctx.attr.build_file_generation == "on"
+    _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
+    if generate:
+        gazelle_path = ctx.path(Label(_gazelle))
 
     if ctx.attr.urls:
         # HTTP mode
@@ -147,7 +158,7 @@ def _go_repository_impl(ctx):
     else:
         fail("one of urls, commit, tag, or importpath must be specified")
 
-    env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
+    env = read_cache_env(ctx, go_env_cache)
     env_keys = [
         # Respect user proxy and sumdb settings for privacy.
         # TODO(jayconrod): gazelle in go_repository mode should probably
@@ -191,7 +202,6 @@ def _go_repository_impl(ctx):
         # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
         fetch_repo_env["GO111MODULE"] = "on"
 
-        fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
         result = env_execute(
             ctx,
             [fetch_repo] + fetch_repo_args,
@@ -212,7 +222,7 @@ def _go_repository_impl(ctx):
             existing_build_file = name
             break
 
-    generate = (ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"))
+    generate = generate or (not existing_build_file and ctx.attr.build_file_generation == "auto")
 
     if generate:
         # Build file generation is needed. Populate Gazelle directive at root build file
@@ -224,10 +234,10 @@ def _go_repository_impl(ctx):
             )
 
         # Run Gazelle
-        _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
-        gazelle = ctx.path(Label(_gazelle))
+        if gazelle_path == None:
+            gazelle_path = ctx.path(Label(_gazelle))
         cmd = [
-            gazelle,
+            gazelle_path,
             "-go_repository_mode",
             "-go_prefix",
             ctx.attr.importpath,
