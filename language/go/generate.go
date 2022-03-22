@@ -110,7 +110,8 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	var hasTestdata bool
 	for _, sub := range args.Subdirs {
 		if sub == "testdata" {
-			hasTestdata = !gl.goPkgRels[path.Join(args.Rel, "testdata")]
+			_, ok := gl.goPkgRels[path.Join(args.Rel, "testdata")]
+			hasTestdata = !ok
 			break
 		}
 	}
@@ -300,7 +301,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	} else {
 		for _, sub := range args.Subdirs {
 			if gl.goPkgRels[path.Join(args.Rel, sub)] {
-				gl.goPkgRels[args.Rel] = true
+				gl.goPkgRels[args.Rel] = false
 				break
 			}
 		}
