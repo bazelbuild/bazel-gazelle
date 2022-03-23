@@ -38,9 +38,9 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
     """
     go_test(
         name = name,
-        srcs = ["//internal/generationtest:generation_test.go"],
+        srcs = [Label("//internal/generationtest:generation_test.go")],
         deps = [
-            "//testtools",
+            Label("//testtools"),
             "@io_bazel_rules_go//go/tools/bazel:go_default_library",
             "@in_gopkg_yaml_v2//:yaml_v2",
         ],
