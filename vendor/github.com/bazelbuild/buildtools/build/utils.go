@@ -18,22 +18,31 @@ package build
 
 // GetParamName extracts the param name from an item of function params.
 func GetParamName(param Expr) (name, op string) {
+	ident, op := GetParamIdent(param)
+	if ident == nil {
+		return "", ""
+	}
+	return ident.Name, op
+}
+
+// GetParamIdent extracts the param identifier from an item of function params.
+func GetParamIdent(param Expr) (ident *Ident, op string) {
 	switch param := param.(type) {
 	case *Ident:
-		return param.Name, ""
+		return param, ""
 	case *TypedIdent:
-		return param.Ident.Name, ""
+		return param.Ident, ""
 	case *AssignExpr:
 		// keyword parameter
-		return GetParamName(param.LHS)
+		return GetParamIdent(param.LHS)
 	case *UnaryExpr:
 		// *args, **kwargs, or *
 		if param.X == nil {
 			// An asterisk separating position and keyword-only arguments
 			break
 		}
-		name, _ := GetParamName(param.X)
-		return name, param.Op
+		ident, _ := GetParamIdent(param.X)
+		return ident, param.Op
 	}
-	return "", ""
+	return nil, ""
 }
