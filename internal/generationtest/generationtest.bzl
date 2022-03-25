@@ -29,7 +29,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
     Args:
         name: The name of the test.
         gazelle_binary: The name of the gazelle binary target. For example, //path/to:my_gazelle.
-        test_data: A target of the test data files you will pass to the test.
+        test_data: A list of target of the test data files you will pass to the test.
             This can be a https://bazel.build/reference/be/general#filegroup.
         build_in_suffix: The suffix for the input BUILD.bazel files. Defaults to .in.
             By default, will use files named BUILD.in as the BUILD files before running gazelle.
@@ -49,8 +49,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
             "-build_in_suffix=%s" % build_in_suffix,
             "-build_out_suffix=%s" % build_out_suffix,
         ],
-        data = [
-            test_data,
+        data = test_data + [
             gazelle_binary,
         ],
     )
