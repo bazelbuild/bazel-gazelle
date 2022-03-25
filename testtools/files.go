@@ -163,6 +163,7 @@ type TestGazelleGenerationArgs struct {
 }
 
 var (
+	argumentsFilename        = "arguments.txt"
 	expectedStdoutFilename   = "expectedStdout.txt"
 	expectedStderrFilename   = "expectedStderr.txt"
 	expectedExitCodeFilename = "expectedExitCode.txt"
@@ -174,6 +175,7 @@ var (
 //    └── some_test
 //        ├── WORKSPACE
 //        ├── README.md --> README describing what the test does.
+//        ├── arguments.txt --> newline delimited list of arguments to pass in (ignored if empty).
 //        ├── expectedStdout.txt --> Expected stdout for this test.
 //        ├── expectedStderr.txt --> Expected stderr for this test.
 //        ├── expectedExitCode.txt --> Expected exit code for this test.
@@ -212,6 +214,10 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 			}
 
 			// Read in expected stdout, stderr, and exit code files.
+			if d.Name() == argumentsFilename {
+				config.Args = strings.Split(string(content), "\n")
+				return nil
+			}
 			if d.Name() == expectedStdoutFilename {
 				config.Stdout = string(content)
 				return nil
@@ -308,7 +314,7 @@ Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
 		workspaceRoot := filepath.Join(testdataDir, args.Name)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		cmd := exec.CommandContext(ctx, args.GazelleBinaryPath)
+		cmd := exec.CommandContext(ctx, args.GazelleBinaryPath, config.Args...)
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 		cmd.Dir = workspaceRoot
@@ -374,6 +380,7 @@ func copyFile(src string, dest string) error {
 }
 
 type testConfig struct {
+	Args     []string
 	ExitCode int
 	Stdout   string
 	Stderr   string
