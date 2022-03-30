@@ -266,7 +266,7 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 				if shouldUpdate {
 					// Update stdout, stderr, exit code.
 					updateExpectedConfig(t, config.Stdout, stdout.String(), srcTestDirectory, expectedStdoutFilename)
-					updateExpectedConfig(t, config.Stderr, stdout.String(), srcTestDirectory, expectedStderrFilename)
+					updateExpectedConfig(t, config.Stderr, stderr.String(), srcTestDirectory, expectedStderrFilename)
 					updateExpectedConfig(t, fmt.Sprintf("%d", config.ExitCode), fmt.Sprintf("%d", actualExitCode), srcTestDirectory, expectedExitCodeFilename)
 
 					filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
