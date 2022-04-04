@@ -35,8 +35,6 @@ Moved to [/README.rst](/README.rst#supported-languages)
 Example
 -------
 
-**TODO:** Add a self-contained, concise, realistic example.
-
 Gazelle itself is built using the model described above, so it may serve as
 an example.
 
@@ -54,7 +52,13 @@ load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle_binary")
 
 gazelle_binary(
     name = "gazelle",
-    languages = DEFAULT_LANGUAGES,
+    languages = [
+        "@rules_python//gazelle",  # Use gazelle from rules_python.
+        "@bazel_gazelle//language/go",  # Built-in rule from gazelle for Golang.
+        "@bazel_gazelle//language/proto",  # Built-in rule from gazelle for Protos.
+         # Any languages that depend on Gazelle's proto plugin must come after it.
+        "@external_repository//language/gazelle",  # External languages can be added here.
+    ],
     visibility = ["//visibility:public"],
 )
 ```
