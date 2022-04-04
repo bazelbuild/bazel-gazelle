@@ -119,10 +119,11 @@ def gazelle_binary_wrapper(**kwargs):
             fail("gazelle_binary attribute '%s' is no longer supported (https://github.com/bazelbuild/bazel-gazelle/issues/803)" % key)
     gazelle_binary(**kwargs)
 
+def _import_alias(importpath):
+    return importpath.replace("/", "_").replace(".", "_").replace("-", "_") + "_"
+
 def _format_import(importpath):
-    _, _, base = importpath.rpartition("/")
-    return '{} "{}"'.format(base + "_", importpath)
+    return '{} "{}"'.format(_import_alias(importpath), importpath)
 
 def _format_call(importpath):
-    _, _, base = importpath.rpartition("/")
-    return "{}.NewLanguage()".format(base + "_")
+    return _import_alias(importpath)+".NewLanguage()"
