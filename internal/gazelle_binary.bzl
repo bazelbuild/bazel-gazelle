@@ -37,8 +37,8 @@ var languages = []language.Language{{
 	{lang_calls},
 }}
 """
-    lang_imports = [_format_import(d[GoArchive].data.importpath) for d in ctx.attr.languages]
-    lang_calls = [_format_call(d[GoArchive].data.importpath) for d in ctx.attr.languages]
+    lang_imports = [format_import(d[GoArchive].data.importpath) for d in ctx.attr.languages]
+    lang_calls = [format_call(d[GoArchive].data.importpath) for d in ctx.attr.languages]
     langs_content = langs_content_tpl.format(
         lang_imports = "\n\t".join(lang_imports),
         lang_calls = ",\n\t".join(lang_calls),
@@ -122,8 +122,8 @@ def gazelle_binary_wrapper(**kwargs):
 def _import_alias(importpath):
     return importpath.replace("/", "_").replace(".", "_").replace("-", "_") + "_"
 
-def _format_import(importpath):
+def format_import(importpath):
     return '{} "{}"'.format(_import_alias(importpath), importpath)
 
-def _format_call(importpath):
+def format_call(importpath):
     return _import_alias(importpath)+".NewLanguage()"
