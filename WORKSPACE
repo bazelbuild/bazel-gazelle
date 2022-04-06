@@ -88,3 +88,7 @@ http_archive(
         "https://github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
     ],
 )
+
+load("@bazel_skylib//lib:unittest.bzl", "register_unittest_toolchains")
+
+register_unittest_toolchains()

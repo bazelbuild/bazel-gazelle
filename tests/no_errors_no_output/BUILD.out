@@ -1,0 +1,9 @@
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "README.md",
+        "WORKSPACE",
+    ],
+    visibility = ["//visibility:public"],
+)

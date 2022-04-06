@@ -35,8 +35,6 @@ Moved to [/README.rst](/README.rst#supported-languages)
 Example
 -------
 
-**TODO:** Add a self-contained, concise, realistic example.
-
 Gazelle itself is built using the model described above, so it may serve as
 an example.
 
@@ -54,7 +52,13 @@ load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle_binary")
 
 gazelle_binary(
     name = "gazelle",
-    languages = DEFAULT_LANGUAGES,
+    languages = [
+        "@rules_python//gazelle",  # Use gazelle from rules_python.
+        "@bazel_gazelle//language/go",  # Built-in rule from gazelle for Golang.
+        "@bazel_gazelle//language/proto",  # Built-in rule from gazelle for Protos.
+         # Any languages that depend on Gazelle's proto plugin must come after it.
+        "@external_repository//language/gazelle",  # External languages can be added here.
+    ],
     visibility = ["//visibility:public"],
 )
 ```
@@ -171,7 +175,7 @@ To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the
 | :------------- | :------------- | :------------- |
 | <a id="gazelle_generation_test-name"></a>name |  The name of the test.   |  none |
 | <a id="gazelle_generation_test-gazelle_binary"></a>gazelle_binary |  The name of the gazelle binary target. For example, //path/to:my_gazelle.   |  none |
-| <a id="gazelle_generation_test-test_data"></a>test_data |  A target of the test data files you will pass to the test. This can be a https://bazel.build/reference/be/general#filegroup.   |  none |
+| <a id="gazelle_generation_test-test_data"></a>test_data |  A list of target of the test data files you will pass to the test. This can be a https://bazel.build/reference/be/general#filegroup.   |  none |
 | <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  <code>".in"</code> |
 | <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  <code>".out"</code> |
 
