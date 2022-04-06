@@ -260,6 +260,7 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 		})
 
 		testdataDir, cleanup := CreateFiles(t, inputs)
+		workspaceRoot := filepath.Join(testdataDir, args.Name)
 
 		var stdout, stderr bytes.Buffer
 		var actualExitCode int
@@ -273,8 +274,8 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 				srcTestDirectory := path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative), args.Name)
 				if shouldUpdate {
 					// Update stdout, stderr, exit code.
-					updateExpectedConfig(t, config.Stdout, stdout.String(), srcTestDirectory, expectedStdoutFilename)
-					updateExpectedConfig(t, config.Stderr, stderr.String(), srcTestDirectory, expectedStderrFilename)
+					updateExpectedConfig(t, config.Stdout, redactWorkspacePath(stdout.String(), workspaceRoot), srcTestDirectory, expectedStdoutFilename)
+					updateExpectedConfig(t, config.Stderr, redactWorkspacePath(stderr.String(), workspaceRoot), srcTestDirectory, expectedStderrFilename)
 					updateExpectedConfig(t, fmt.Sprintf("%d", config.ExitCode), fmt.Sprintf("%d", actualExitCode), srcTestDirectory, expectedExitCodeFilename)
 
 					filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
@@ -311,7 +312,6 @@ Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
 			}
 		}()
 
-		workspaceRoot := filepath.Join(testdataDir, args.Name)
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, args.GazelleBinaryPath, config.Args...)
@@ -332,13 +332,13 @@ Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
 				config.ExitCode, actualExitCode,
 			))
 		}
-		actualStdout := stdout.String()
+		actualStdout := redactWorkspacePath(stdout.String(), workspaceRoot)
 		if strings.TrimSpace(config.Stdout) != strings.TrimSpace(actualStdout) {
 			errs = append(errs, fmt.Errorf("expected gazelle stdout: %s\ngot: %s",
 				config.Stdout, actualStdout,
 			))
 		}
-		actualStderr := stderr.String()
+		actualStderr := redactWorkspacePath(stderr.String(), workspaceRoot)
 		if strings.TrimSpace(config.Stderr) != strings.TrimSpace(actualStderr) {
 			errs = append(errs, fmt.Errorf("expected gazelle stderr: %s\ngot: %s",
 				config.Stderr, actualStderr,
@@ -397,4 +397,8 @@ func updateExpectedConfig(t *testing.T, expected string, actual string, srcTestD
 			t.Fatalf("Failed to write file %v. Error: %v\n", destFile, err)
 		}
 	}
+}
+
+func redactWorkspacePath(s, wsPath string) string {
+	return strings.ReplaceAll(s, wsPath, "<WORKSPACE>")
 }
