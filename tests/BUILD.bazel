@@ -1,0 +1,27 @@
+load("//:def.bzl", "gazelle_binary")
+load("//:def.bzl", "gazelle_generation_test")
+
+# Exclude this entire directly from having anything gnerated by Gazelle. That
+# way the test cases won't be fixed by `bazel run //:gazelle` when run in this
+# repository.
+# gazelle:exclude **
+
+# This test Gazelle binary only has the "test_filegroup" plugin installed.
+gazelle_binary(
+    name = "gazelle",
+    visibility = ["//visibility:private"],
+    languages = [
+        "//internal/language/test_filegroup",
+    ],
+)
+
+[gazelle_generation_test(
+    # Name the test the path to the directory containing the WORKSPACE file.
+    name = file[0:-len("/WORKSPACE")],
+    gazelle_binary = ":gazelle",
+    test_data = glob(
+    	include = [file[0:-len("/WORKSPACE")] + "/**"],
+    ),
+) for file in glob(
+    include = ["**/WORKSPACE"],
+) if file != "BUILD.bazel"]
