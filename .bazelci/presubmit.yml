@@ -35,3 +35,6 @@ platforms:
     - "-//docs:all"
     # Fails to execute, apparently due to command-line length limit.
     - "-//internal:bazel_test"
+    # gazelle prints file paths with backward slashes on windows,
+    # which doesn't match the golden files generated on *nix.
+    - "-//tests:fix_mode_print0"
