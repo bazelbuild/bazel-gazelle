@@ -78,6 +78,8 @@ func TestParse(t *testing.T) {
 		{str: "@..//b:c", want: Label{Repo: "..", Pkg: "b", Name: "c"}},
 		{str: "@--//b:c", want: Label{Repo: "--", Pkg: "b", Name: "c"}},
 		{str: "//api_proto:api.gen.pb.go_checkshtest", want: Label{Pkg: "api_proto", Name: "api.gen.pb.go_checkshtest"}},
+		{str: "@go_sdk//:src/cmd/go/testdata/mod/rsc.io_!q!u!o!t!e_v1.5.2.txt", want: Label{Repo: "go_sdk", Name: "src/cmd/go/testdata/mod/rsc.io_!q!u!o!t!e_v1.5.2.txt"}},
+		{str: "//:a][b", want: Label{Name: "a][b"}},
 	} {
 		got, err := Parse(tc.str)
 		if err != nil && !tc.wantErr {

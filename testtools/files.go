@@ -399,6 +399,8 @@ func updateExpectedConfig(t *testing.T, expected string, actual string, srcTestD
 	}
 }
 
+// redactWorkspacePath replaces workspace path with a constant to make the test
+// output reproducible.
 func redactWorkspacePath(s, wsPath string) string {
-	return strings.ReplaceAll(s, wsPath, "<WORKSPACE>")
+	return strings.ReplaceAll(s, wsPath, "%WORKSPACEPATH%")
 }
