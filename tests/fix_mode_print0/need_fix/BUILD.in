@@ -1,0 +1,10 @@
+rule( name= "really_bad_formatting",
+
+visibility=[
+
+
+
+
+  "test"
+]
+)
