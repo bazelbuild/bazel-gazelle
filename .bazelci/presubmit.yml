@@ -37,4 +37,5 @@ platforms:
     - "-//internal:bazel_test"
     # gazelle prints file paths with backward slashes on windows,
     # which doesn't match the golden files generated on *nix.
+    - "-//tests:fix_mode_print0"
     - "-//tests:fix_mode_strict"

@@ -17,6 +17,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -38,5 +39,8 @@ func fixFile(c *config.Config, f *rule.File) error {
 		return err
 	}
 	f.Content = newContent
+	if getUpdateConfig(c).print0 {
+		fmt.Printf("%s\x00", outPath)
+	}
 	return nil
 }
