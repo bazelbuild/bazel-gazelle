@@ -1,0 +1,2 @@
+# gazelle:go_generate_proto false
+# gazelle:proto_include_paths path/to/root_1,path/to/root_2,path/to/app

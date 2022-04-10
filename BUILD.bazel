@@ -32,6 +32,7 @@ gazelle_binary(
         "//internal/language/test_filegroup",
         "@bazel_skylib//gazelle/bzl",
     ],
+    visibility = ["//visibility:public"],
 )
 
 nogo(
