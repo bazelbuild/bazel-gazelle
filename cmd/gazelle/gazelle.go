@@ -70,7 +70,7 @@ func main() {
 	}
 
 	if err := run(wd, os.Args[1:]); err != nil && err != flag.ErrHelp {
-		if err == exitError {
+		if err == errExit {
 			os.Exit(1)
 		} else {
 			log.Fatal(err)

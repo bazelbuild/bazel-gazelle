@@ -97,8 +97,8 @@ var KnownPlatforms = []Platform{
 }
 
 var OSAliases = map[string][]string{
-	"android": []string{"linux"},
-	"ios":     []string{"darwin"},
+	"android": {"linux"},
+	"ios":     {"darwin"},
 }
 
 var (

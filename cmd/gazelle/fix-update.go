@@ -227,12 +227,6 @@ type visitRecord struct {
 	mappedKindInfo map[string]rule.KindInfo
 }
 
-type byPkgRel []visitRecord
-
-func (vs byPkgRel) Len() int           { return len(vs) }
-func (vs byPkgRel) Less(i, j int) bool { return vs[i].pkgRel < vs[j].pkgRel }
-func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
-
 var genericLoads = []rule.LoadInfo{
 	{
 		Name:    "@bazel_gazelle//:def.bzl",
@@ -306,7 +300,8 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 				RegularFiles: regularFiles,
 				GenFiles:     genFiles,
 				OtherEmpty:   empty,
-				OtherGen:     gen})
+				OtherGen:     gen,
+			})
 			if len(res.Gen) != len(res.Imports) {
 				log.Panicf("%s: language %s generated %d rules but returned %d imports", rel, l.Name(), len(res.Gen), len(res.Imports))
 			}
@@ -387,7 +382,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	for _, v := range visits {
 		merger.FixLoads(v.file, applyKindMappings(v.mappedKinds, loads))
 		if err := uc.emit(v.c, v.file); err != nil {
-			if err == exitError {
+			if err == errExit {
 				exit = err
 			} else {
 				log.Print(err)
@@ -395,7 +390,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 	}
 	if uc.patchPath != "" {
-		if err := ioutil.WriteFile(uc.patchPath, uc.patchBuffer.Bytes(), 0666); err != nil {
+		if err := ioutil.WriteFile(uc.patchPath, uc.patchBuffer.Bytes(), 0o666); err != nil {
 			return err
 		}
 	}

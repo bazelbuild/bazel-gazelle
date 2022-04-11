@@ -34,7 +34,6 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/version"
-	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -51,12 +50,6 @@ type fileInfo struct {
 	// packageName is the Go package name of a .go file, without the
 	// "_test" suffix if it was present. It is empty for non-Go files.
 	packageName string
-
-	// importPath is the canonical import path for this file's package.
-	// This may be read from a package comment (in Go) or a go_package
-	// option (in proto). This field is empty for files that don't specify
-	// an import path.
-	importPath string
 
 	// isTest is true if the file stem (the part before the extension)
 	// ends with "_test.go". This is never true for non-Go files.
@@ -542,8 +535,10 @@ func expandSrcDir(str string, srcdir string) (string, bool) {
 // See golang.org/issue/6038.
 // The @ is for OS X. See golang.org/issue/13720.
 // The % is for Jenkins. See golang.org/issue/16959.
-const safeString = "+-.,/0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz:$@%"
-const safeSpaces = " "
+const (
+	safeString = "+-.,/0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz:$@%"
+	safeSpaces = " "
+)
 
 var safeBytes = []byte(safeSpaces + safeString)
 
@@ -631,9 +626,7 @@ func isOSArchSpecific(info fileInfo, cgoTags tagLine) (osSpecific, archSpecific 
 	for _, line := range lines {
 		for _, group := range line {
 			for _, tag := range group {
-				if strings.HasPrefix(tag, "!") {
-					tag = tag[1:]
-				}
+				tag = strings.TrimPrefix(tag, "!")
 				_, osOk := rule.KnownOSSet[tag]
 				if osOk {
 					osSpecific = true
@@ -758,42 +751,6 @@ func isIgnoredTag(tag string) bool {
 		}
 	}
 	return true
-}
-
-// protoFileInfo extracts metadata from a proto file. The proto extension
-// already "parses" these and stores metadata in proto.FileInfo, so this is
-// just processing relevant options.
-func protoFileInfo(path_ string, protoInfo proto.FileInfo) fileInfo {
-	info := fileNameInfo(path_)
-
-	// Look for "option go_package".  If there's no / in the package option, then
-	// it's just a simple package name, not a full import path.
-	for _, opt := range protoInfo.Options {
-		if opt.Key != "go_package" {
-			continue
-		}
-		if strings.LastIndexByte(opt.Value, '/') == -1 {
-			info.packageName = opt.Value
-		} else {
-			if i := strings.LastIndexByte(opt.Value, ';'); i != -1 {
-				info.importPath = opt.Value[:i]
-				info.packageName = opt.Value[i+1:]
-			} else {
-				info.importPath = opt.Value
-				info.packageName = path.Base(opt.Value)
-			}
-		}
-	}
-
-	// Set the Go package name from the proto package name if there was no
-	// option go_package.
-	if info.packageName == "" && protoInfo.PackageName != "" {
-		info.packageName = strings.Replace(protoInfo.PackageName, ".", "_", -1)
-	}
-
-	info.imports = protoInfo.Imports
-	info.hasServices = protoInfo.HasServices
-	return info
 }
 
 // parseGoEmbed parses the text following "//go:embed" to extract the glob patterns.

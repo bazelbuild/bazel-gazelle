@@ -331,9 +331,11 @@ type moduleRepo struct {
 	repoName, modulePath string
 }
 
-var validBuildExternalAttr = []string{"external", "vendored"}
-var validBuildFileGenerationAttr = []string{"auto", "on", "off"}
-var validBuildFileProtoModeAttr = []string{"default", "legacy", "disable", "disable_global", "package"}
+var (
+	validBuildExternalAttr       = []string{"external", "vendored"}
+	validBuildFileGenerationAttr = []string{"auto", "on", "off"}
+	validBuildFileProtoModeAttr  = []string{"default", "legacy", "disable", "disable_global", "package"}
+)
 
 func (*goLang) KnownDirectives() []string {
 	return []string{
@@ -529,7 +531,9 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 					continue
 				}
 				gc.preprocessTags()
-				gc.setBuildTags(d.Value)
+				if err := gc.setBuildTags(d.Value); err != nil {
+					log.Print(err)
+				}
 
 			case "go_generate_proto":
 				if goGenerateProto, err := strconv.ParseBool(d.Value); err == nil {

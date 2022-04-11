@@ -60,7 +60,7 @@ func fetchModule(dest, importpath, version, sum string) error {
 	// Download the module. In Go 1.11, this command must be run in a module,
 	// so we create a dummy module in the current directory (which should be
 	// empty).
-	w, err := os.OpenFile("go.mod", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	w, err := os.OpenFile("go.mod", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
 	if err != nil {
 		return fmt.Errorf("error creating temporary go.mod: %v", err)
 	}
@@ -132,7 +132,7 @@ func copyTree(destRoot, srcRoot string) error {
 		dest := filepath.Join(destRoot, rel)
 
 		if info.IsDir() {
-			return os.Mkdir(dest, 0777)
+			return os.Mkdir(dest, 0o777)
 		} else {
 			r, err := os.Open(src)
 			if err != nil {

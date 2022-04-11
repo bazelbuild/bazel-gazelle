@@ -46,17 +46,17 @@ func TestFindExternalRepo(t *testing.T) {
 
 	name := "foo"
 	externalPath := filepath.Join(dir, "bazel", "output-base", "external", name)
-	if err := os.MkdirAll(externalPath, 0777); err != nil {
+	if err := os.MkdirAll(externalPath, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
 	bazelOutPath := filepath.Join(dir, "bazel", "output-base", "execroot", "test", "bazel-out")
-	if err := os.MkdirAll(bazelOutPath, 0777); err != nil {
+	if err := os.MkdirAll(bazelOutPath, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
 	workspacePath := filepath.Join(dir, "workspace")
-	if err := os.MkdirAll(workspacePath, 0777); err != nil {
+	if err := os.MkdirAll(workspacePath, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(bazelOutPath, filepath.Join(workspacePath, "bazel-out")); err != nil {
@@ -175,7 +175,8 @@ def foo_repositories():
         remote = "https://example.com/foo",
         importpath = "example.com/foo",
     )
-`}, {
+`,
+	}, {
 		Path: "repos2.bzl",
 		Content: `
 def bar_repositories():
@@ -195,7 +196,8 @@ def baz_repositories():
         remote = "https://example.com/ignored",
         importpath = "example.com/ignored",
     )
-`}}
+`,
+	}}
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 	workspaceString := `
@@ -238,7 +240,8 @@ def go_repositories():
         importpath = "example.com/go",
     )
 
-`}, {
+`,
+	}, {
 		Path: "repos2.bzl",
 		Content: `
 def bar_repositories():
@@ -256,7 +259,8 @@ def alias_repositories():
         remote = "https://example.com/alias",
         importpath = "example.com/alias",
     )
-`}}
+`,
+	}}
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 	workspaceString := `

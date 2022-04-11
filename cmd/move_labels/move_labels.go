@@ -64,7 +64,7 @@ func run(args []string) error {
 	var errs errorList
 	for _, file := range files {
 		content := build.Format(file)
-		if err := ioutil.WriteFile(file.Path, content, 0666); err != nil {
+		if err := ioutil.WriteFile(file.Path, content, 0o666); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -164,10 +164,6 @@ func moveLocations(from, to, str string) string {
 	}
 	buf.WriteString(str[pos:])
 	return buf.String()
-}
-
-func isBuiltinLabel(label string) bool {
-	return strings.HasPrefix(label, "//visibility:") || strings.HasPrefix(label, "//conditions:")
 }
 
 type configuration struct {

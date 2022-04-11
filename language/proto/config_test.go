@@ -18,17 +18,17 @@ package proto
 import "testing"
 
 func TestCheckStripImportPrefix(t *testing.T) {
-	testCases := []struct{
+	testCases := []struct {
 		name, prefix, rel, wantErr string
 	}{
 		{
-			name: "not in directory",
-			prefix: "/example.com/idl",
-			rel: "example.com",
+			name:    "not in directory",
+			prefix:  "/example.com/idl",
+			rel:     "example.com",
 			wantErr: `proto_strip_import_prefix "/example.com/idl" not in directory example.com`,
 		},
 		{
-			name: "strip prefix at root",
+			name:   "strip prefix at root",
 			prefix: "/include",
 		},
 	}

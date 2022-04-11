@@ -20,5 +20,5 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (_ *protoLang) Fix(c *config.Config, f *rule.File) {
+func (*protoLang) Fix(c *config.Config, f *rule.File) {
 }

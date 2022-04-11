@@ -80,9 +80,7 @@ var kinds = map[string]rule.KindInfo{
 func (*testFilegroupLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	r := rule.NewRule("filegroup", "all_files")
 	srcs := make([]string, 0, len(args.Subdirs)+len(args.RegularFiles))
-	for _, f := range args.RegularFiles {
-		srcs = append(srcs, f)
-	}
+	srcs = append(srcs, args.RegularFiles...)
 	for _, f := range args.Subdirs {
 		pkg := path.Join(args.Rel, f)
 		srcs = append(srcs, "//"+pkg+":all_files")

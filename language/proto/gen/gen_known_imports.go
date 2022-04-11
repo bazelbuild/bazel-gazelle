@@ -80,7 +80,9 @@ func run(args []string) (err error) {
 	fs.StringVar(&var_, "var", "", "var name in generated file")
 	fs.IntVar(&keyColumn, "key", 0, "key column number")
 	fs.IntVar(&valueColumn, "value", 1, "value column number")
-	fs.Parse(args)
+	if err = fs.Parse(args); err != nil {
+		return fmt.Errorf("invalid flag: %v", err)
+	}
 	if protoCsvPath == "" {
 		return fmt.Errorf("-proto_csv not set")
 	}
@@ -136,7 +138,7 @@ func run(args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(knownImportsPath, knownImportsData, 0666); err != nil {
+	if err := ioutil.WriteFile(knownImportsPath, knownImportsData, 0o666); err != nil {
 		return err
 	}
 

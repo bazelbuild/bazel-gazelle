@@ -64,17 +64,17 @@ func getResolveConfig(c *config.Config) *resolveConfig {
 
 type Configurer struct{}
 
-func (_ *Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
+func (*Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 	c.Exts[resolveName] = &resolveConfig{}
 }
 
-func (_ *Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
+func (*Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
 
-func (_ *Configurer) KnownDirectives() []string {
+func (*Configurer) KnownDirectives() []string {
 	return []string{"resolve"}
 }
 
-func (_ *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
+func (*Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	rc := getResolveConfig(c)
 	rcCopy := &resolveConfig{
 		overrides: rc.overrides[:len(rc.overrides):len(rc.overrides)],

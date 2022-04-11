@@ -62,7 +62,8 @@ go_test(
     embed = [":foo"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=go_default_library -> import for bin",
 			namingConvention: importNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -103,7 +104,8 @@ go_test(
     embed = [":foo_lib"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=go_default_library -> import conflict",
 			namingConvention: importNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -146,7 +148,8 @@ go_test(
     embed = [":go_default_library"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=import -> go_default_library for lib",
 			namingConvention: goDefaultLibraryNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -177,7 +180,8 @@ go_test(
     embed = [":go_default_library"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=import -> go_default_library for bin",
 			namingConvention: goDefaultLibraryNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -218,7 +222,8 @@ go_test(
     embed = [":go_default_library"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=go_default_library -> import_alias for lib",
 			namingConvention: importAliasNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -251,7 +256,8 @@ go_test(
     embed = [":foo"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=import_alias -> go_default_library for lib",
 			namingConvention: goDefaultLibraryNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -282,7 +288,8 @@ go_test(
     embed = [":go_default_library"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=go_default_library -> import_alias for bin",
 			namingConvention: importAliasNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -323,7 +330,8 @@ go_test(
     embed = [":foo_lib"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=import -> import_alias for lib",
 			namingConvention: importAliasNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -354,7 +362,8 @@ go_test(
     embed = [":foo"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention import_alias -> import for lib",
 			namingConvention: importNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -385,7 +394,8 @@ go_test(
     embed = [":foo"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=import -> import for lib",
 			namingConvention: importNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -416,7 +426,8 @@ go_test(
     embed = [":foo"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention go_default_library -> go_default_library for lib",
 			namingConvention: goDefaultLibraryNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -449,7 +460,8 @@ go_test(
     embed = [":go_default_library"],
 )
 `,
-		}, {
+		},
+		{
 			desc:             "go_naming_convention=import_alias -> import_alias for lib",
 			namingConvention: importAliasNamingConvention,
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -480,7 +492,8 @@ go_test(
     embed = [":foo"],
 )
 `,
-		}, {
+		},
+		{
 			// migrateLibraryEmbed tests
 			desc: "library migrated to embed",
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
@@ -509,7 +522,8 @@ go_test(
     embed = [":go_default_library"],
 )
 `,
-		}, {
+		},
+		{
 			// verifies #211
 			desc: "other library not migrated",
 			old: `
@@ -699,7 +713,8 @@ go_library(
 )
 # after comment
 `,
-		}, {
+		},
+		{
 			desc: "cgo_library merged with go_library",
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -773,7 +788,8 @@ go_test(
     srcs = ["x_test.go"],
 )
 `,
-		}, {
+		},
+		{
 			desc: "squash xtest",
 			old: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
 

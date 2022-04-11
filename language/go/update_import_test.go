@@ -30,10 +30,10 @@ import (
 
 func TestImports(t *testing.T) {
 	for _, tc := range []struct {
-		desc, want string
-		wantErr string
+		desc, want        string
+		wantErr           string
 		stubGoModDownload func(string, []string) ([]byte, error)
-		files      []testtools.FileSpec
+		files             []testtools.FileSpec
 	}{
 		{
 			desc: "dep",
@@ -103,7 +103,7 @@ go_repository(
     importpath = "golang.org/x/net",
 )
 `,
-			wantErr: "",
+			wantErr:           "",
 			stubGoModDownload: nil,
 		}, {
 			desc: "modules",
@@ -225,7 +225,7 @@ go_repository(
     version = "v0.0.0-20190122202912-9c309ee22fab",
 )
 `,
-			wantErr: "",
+			wantErr:           "",
 			stubGoModDownload: nil,
 		}, {
 			desc: "modules-with-error",
@@ -246,7 +246,7 @@ require (
 					`,
 				},
 			},
-			want: "",
+			want:    "",
 			wantErr: "failed to download\nError downloading definitely.doesnotexist/ever: Did not exist",
 			stubGoModDownload: func(dir string, args []string) ([]byte, error) {
 				return []byte(`{
@@ -339,7 +339,7 @@ go_repository(
     importpath = "github.com/golang/protobuf",
 )
 `,
-			wantErr: "",
+			wantErr:           "",
 			stubGoModDownload: nil,
 		},
 	} {

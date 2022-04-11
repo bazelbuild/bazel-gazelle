@@ -48,11 +48,11 @@ func TestFind(t *testing.T) {
 
 			if tc.file != "" {
 				// Create a WORKSPACE file
-				if err := os.MkdirAll(filepath.Dir(tc.file), 0755); err != nil {
+				if err := os.MkdirAll(filepath.Dir(tc.file), 0o755); err != nil {
 					t.Fatal(err)
 				}
 
-				if err := ioutil.WriteFile(tc.file, nil, 0755); err != nil {
+				if err := ioutil.WriteFile(tc.file, nil, 0o755); err != nil {
 					t.Fatal(err)
 				}
 			}

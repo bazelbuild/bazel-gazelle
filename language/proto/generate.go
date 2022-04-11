@@ -28,7 +28,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (_ *protoLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
+func (*protoLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	c := args.Config
 	pc := GetProtoConfig(c)
 	if !pc.Mode.ShouldGenerateRules() {

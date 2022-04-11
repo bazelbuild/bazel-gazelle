@@ -108,7 +108,7 @@ type modValue struct {
 }
 
 type modVersionValue struct {
-	path, name, version, sum string
+	path, version, sum string
 }
 
 // Repo describes details of a Go repository known in advance. It is used to
@@ -200,7 +200,7 @@ func (r *RemoteCache) cleanup() error {
 	return os.RemoveAll(r.tmpDir)
 }
 
-var gopkginPattern = regexp.MustCompile("^(gopkg.in/(?:[^/]+/)?[^/]+\\.v\\d+)(?:/|$)")
+var gopkginPattern = regexp.MustCompile(`^(gopkg.in/(?:[^/]+/)?[^/]+\.v\d+)(?:/|$)`)
 
 var knownPrefixes = []struct {
 	prefix  string
@@ -563,7 +563,7 @@ func (rc *RemoteCache) initTmp() {
 		if rc.tmpErr != nil {
 			return
 		}
-		rc.tmpErr = ioutil.WriteFile(filepath.Join(rc.tmpDir, "go.mod"), []byte("module gazelle_remote_cache\ngo 1.15\n"), 0666)
+		rc.tmpErr = ioutil.WriteFile(filepath.Join(rc.tmpDir, "go.mod"), []byte("module gazelle_remote_cache\ngo 1.15\n"), 0o666)
 	})
 }
 

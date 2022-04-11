@@ -76,13 +76,13 @@ func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 		}
 		path := filepath.Join(dir, filepath.FromSlash(f.Path))
 		if strings.HasSuffix(f.Path, "/") {
-			if err := os.MkdirAll(path, 0700); err != nil {
+			if err := os.MkdirAll(path, 0o700); err != nil {
 				os.RemoveAll(dir)
 				t.Fatal(err)
 			}
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			os.RemoveAll(dir)
 			t.Fatal(err)
 		}
@@ -92,7 +92,7 @@ func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 			}
 			continue
 		}
-		if err := ioutil.WriteFile(path, []byte(f.Content), 0600); err != nil {
+		if err := ioutil.WriteFile(path, []byte(f.Content), 0o600); err != nil {
 			os.RemoveAll(dir)
 			t.Fatal(err)
 		}
@@ -196,7 +196,11 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 		var goldens []FileSpec
 
 		config := &testConfig{}
-		filepath.WalkDir(args.TestDataPathAbsolute, func(path string, d fs.DirEntry, err error) error {
+		f := func(path string, d fs.DirEntry, err error) error {
+			if err != nil {
+				t.Fatalf("File walk error on path %q. Error: %v", path, err)
+			}
+
 			shortPath := strings.TrimPrefix(path, args.TestDataPathAbsolute)
 
 			info, err := d.Info()
@@ -257,7 +261,10 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 				})
 			}
 			return nil
-		})
+		}
+		if err := filepath.WalkDir(args.TestDataPathAbsolute, f); err != nil {
+			t.Fatal(err)
+		}
 
 		testdataDir, cleanup := CreateFiles(t, inputs)
 		workspaceRoot := filepath.Join(testdataDir, args.Name)
@@ -278,7 +285,7 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 					updateExpectedConfig(t, config.Stderr, redactWorkspacePath(stderr.String(), workspaceRoot), srcTestDirectory, expectedStderrFilename)
 					updateExpectedConfig(t, fmt.Sprintf("%d", config.ExitCode), fmt.Sprintf("%d", actualExitCode), srcTestDirectory, expectedExitCodeFilename)
 
-					filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
+					err := filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
 						if err != nil {
 							return err
 						}
@@ -301,6 +308,9 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 						t.Logf("%q exists in %v", relativePath, testdataDir)
 						return nil
 					})
+					if err != nil {
+						t.Fatalf("Failed to walk file: %v", err)
+					}
 
 				} else {
 					t.Logf(`
@@ -392,7 +402,7 @@ func updateExpectedConfig(t *testing.T, expected string, actual string, srcTestD
 	if expected != actual {
 		destFile := path.Join(srcTestDirectory, expectedFilename)
 
-		err := os.WriteFile(destFile, []byte(actual), 0644)
+		err := os.WriteFile(destFile, []byte(actual), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to write file %v. Error: %v\n", destFile, err)
 		}

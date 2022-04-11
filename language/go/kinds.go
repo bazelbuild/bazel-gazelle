@@ -190,5 +190,5 @@ var goLoads = []rule.LoadInfo{
 	},
 }
 
-func (_ *goLang) Kinds() map[string]rule.KindInfo { return goKinds }
-func (_ *goLang) Loads() []rule.LoadInfo          { return goLoads }
+func (*goLang) Kinds() map[string]rule.KindInfo { return goKinds }
+func (*goLang) Loads() []rule.LoadInfo          { return goLoads }

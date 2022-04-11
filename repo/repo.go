@@ -35,12 +35,6 @@ import (
 
 const gazelleFromDirectiveKey = "_gazelle_from_directive"
 
-type byRuleName []*rule.Rule
-
-func (s byRuleName) Len() int           { return len(s) }
-func (s byRuleName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
-func (s byRuleName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-
 // FindExternalRepo attempts to locate the directory where Bazel has fetched
 // the external repository with the given name. An error is returned if the
 // repository directory cannot be located.

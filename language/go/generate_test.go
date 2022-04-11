@@ -65,7 +65,8 @@ func TestGenerateRules(t *testing.T) {
 					RegularFiles: regularFiles,
 					GenFiles:     genFiles,
 					OtherEmpty:   empty,
-					OtherGen:     gen})
+					OtherGen:     gen,
+				})
 				empty = append(empty, res.Empty...)
 				gen = append(gen, res.Gen...)
 			}
@@ -110,7 +111,8 @@ func TestGenerateRulesEmpty(t *testing.T) {
 	res := goLang.GenerateRules(language.GenerateArgs{
 		Config: c,
 		Dir:    "./foo",
-		Rel:    "foo"})
+		Rel:    "foo",
+	})
 	if len(res.Gen) > 0 {
 		t.Errorf("got %d generated rules; want 0", len(res.Gen))
 	}
@@ -142,7 +144,8 @@ func TestGenerateRulesEmptyLegacyProto(t *testing.T) {
 	res := goLang.GenerateRules(language.GenerateArgs{
 		Config: c,
 		Dir:    "./foo",
-		Rel:    "foo"})
+		Rel:    "foo",
+	})
 	for _, e := range res.Empty {
 		if kind := e.Kind(); kind == "proto_library" || kind == "go_proto_library" || kind == "go_grpc_library" {
 			t.Errorf("deleted rule %s ; should not delete in legacy proto mode", kind)
@@ -169,7 +172,8 @@ proto_library(
 			Dir:        "./foo",
 			Rel:        "foo",
 			File:       old,
-			OtherEmpty: empty})
+			OtherEmpty: empty,
+		})
 		empty = append(empty, res.Empty...)
 	}
 	f := rule.EmptyFile("test", "")

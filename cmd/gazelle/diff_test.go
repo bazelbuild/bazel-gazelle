@@ -31,7 +31,8 @@ func TestDiffExisting(t *testing.T) {
 			Content: `
 # gazelle:prefix example.com/hello
 `,
-		}, {
+		},
+		{
 			Path:    "hello.go",
 			Content: `package hello`,
 		},
