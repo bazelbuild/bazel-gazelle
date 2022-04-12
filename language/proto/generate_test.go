@@ -75,6 +75,7 @@ func TestGenerateRules(t *testing.T) {
 			for _, r := range res.Gen {
 				r.Insert(f)
 			}
+			convertImportsAttrs(f)
 			merger.FixLoads(f, lang.Loads())
 			f.Sync()
 			got := string(bzl.Format(f.File))
@@ -363,4 +364,16 @@ func testConfig(t *testing.T, repoRoot string) (*config.Config, language.Languag
 	})
 	cexts = append(cexts, lang)
 	return c, lang, cexts
+}
+
+// convertImportsAttrs copies private attributes to regular attributes, which
+// will later be written out to build files. This allows tests to check the
+// values of private attributes with simple string comparison.
+func convertImportsAttrs(f *rule.File) {
+	for _, r := range f.Rules {
+		v := r.PrivateAttr(config.GazelleImportsKey)
+		if v != nil {
+			r.SetAttr(config.GazelleImportsKey, v)
+		}
+	}
 }
