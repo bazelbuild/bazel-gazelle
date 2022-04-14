@@ -141,7 +141,7 @@ func NewRemoteCache(knownRepos []Repo) (r *RemoteCache, cleanup func() error) {
 		modVersion:            remoteCacheMap{cache: make(map[string]*remoteCacheEntry)},
 	}
 	r.ModInfo = func(importPath string) (string, error) {
-		return defaultModInfo(r, importPath)
+		return "", nil
 	}
 	r.ModVersionInfo = func(modPath, query string) (string, string, error) {
 		return defaultModVersionInfo(r, modPath, query)
@@ -422,37 +422,6 @@ func (r *RemoteCache) Mod(importPath string) (modPath, name string, err error) {
 	}
 	value := v.(modValue)
 	return value.path, value.name, nil
-}
-
-func defaultModInfo(rc *RemoteCache, importPath string) (modPath string, err error) {
-	rc.initTmp()
-	if rc.tmpErr != nil {
-		return "", rc.tmpErr
-	}
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("finding module path for import %s: %v", importPath, cleanCmdError(err))
-		}
-	}()
-
-	goTool := findGoTool()
-	env := append(os.Environ(), "GO111MODULE=on")
-
-	cmd := exec.Command(goTool, "get", "-d", "--", importPath)
-	cmd.Dir = rc.tmpDir
-	cmd.Env = env
-	if _, err := cmd.Output(); err != nil {
-		return "", err
-	}
-
-	cmd = exec.Command(goTool, "list", "-find", "-f", "{{.Module.Path}}", "--", importPath)
-	cmd.Dir = rc.tmpDir
-	cmd.Env = env
-	out, err := cmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("finding module path for import %s: %v", importPath, cleanCmdError(err))
-	}
-	return strings.TrimSpace(string(out)), nil
 }
 
 // ModVersion looks up information about a module at a given version.
