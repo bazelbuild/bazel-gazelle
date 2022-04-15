@@ -137,6 +137,8 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		if err != nil {
 			log.Print(err)
 			if c.Strict {
+				// TODO(https://github.com/bazelbuild/bazel-gazelle/issues/1029):
+				// Refactor to accumulate and propagate errors to main.
 				log.Fatal("Exit as strict mode is on")
 			}
 			haveError = true
@@ -279,6 +281,8 @@ func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *co
 			if !knownDirectives[d.Key] {
 				log.Printf("%s: unknown directive: gazelle:%s", f.Path, d.Key)
 				if c.Strict {
+					// TODO(https://github.com/bazelbuild/bazel-gazelle/issues/1029):
+					// Refactor to accumulate and propagate errors to main.
 					log.Fatal("Exit as strict mode is on")
 				}
 			}
