@@ -77,6 +77,10 @@ type Config struct {
 	// usage of deprecated rules.
 	ShouldFix bool
 
+	// Strict determines how Gazelle handles build file and directive errors. When
+	// set, Gazelle will exit with non-zero value after logging such errors.
+	Strict bool
+
 	// IndexLibraries determines whether Gazelle should build an index of
 	// libraries in the workspace for dependency resolution
 	IndexLibraries bool
@@ -186,7 +190,7 @@ type Configurer interface {
 // i.e., those that apply to Config itself and not to Config.Exts.
 type CommonConfigurer struct {
 	repoRoot, buildFileNames, readBuildFilesDir, writeBuildFilesDir string
-	indexLibraries                                                  bool
+	indexLibraries, strict                                          bool
 	langCsv                                                         string
 }
 
@@ -194,6 +198,7 @@ func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Confi
 	fs.StringVar(&cc.repoRoot, "repo_root", "", "path to a directory which corresponds to go_prefix, otherwise gazelle searches for it.")
 	fs.StringVar(&cc.buildFileNames, "build_file_name", strings.Join(DefaultValidBuildFileNames, ","), "comma-separated list of valid build file names.\nThe first element of the list is the name of output build files to generate.")
 	fs.BoolVar(&cc.indexLibraries, "index", true, "when true, gazelle will build an index of libraries in the workspace for dependency resolution")
+	fs.BoolVar(&cc.strict, "strict", false, "when true, gazelle will exit with none-zero value for build file syntax errors or unknown directives")
 	fs.StringVar(&cc.readBuildFilesDir, "experimental_read_build_files_dir", "", "path to a directory where build files should be read from (instead of -repo_root)")
 	fs.StringVar(&cc.writeBuildFilesDir, "experimental_write_build_files_dir", "", "path to a directory where build files should be written to (instead of -repo_root)")
 	fs.StringVar(&cc.langCsv, "lang", "", "if non-empty, process only these languages (e.g. \"go,proto\")")
@@ -235,6 +240,7 @@ func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 		}
 	}
 	c.IndexLibraries = cc.indexLibraries
+	c.Strict = cc.strict
 	if len(cc.langCsv) > 0 {
 		c.Langs = strings.Split(cc.langCsv, ",")
 	}
