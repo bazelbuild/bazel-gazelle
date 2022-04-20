@@ -6,5 +6,9 @@ proto_library(
         "foo.proto",
         "foo_generated.proto",
     ],
+    _gazelle_imports = [
+        "google/protobuf/any.proto",
+        "protos/sub/sub.proto",
+    ],
     visibility = ["//visibility:public"],
 )

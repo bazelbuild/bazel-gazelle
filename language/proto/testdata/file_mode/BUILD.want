@@ -3,11 +3,13 @@ load("@rules_proto//proto:defs.bzl", "proto_library")
 proto_library(
     name = "bar_proto",
     srcs = ["bar.proto"],
+    _gazelle_imports = ["file_mode/foo.proto"],
     visibility = ["//visibility:public"],
 )
 
 proto_library(
     name = "foo_proto",
     srcs = ["foo.proto"],
+    _gazelle_imports = [],
     visibility = ["//visibility:public"],
 )
