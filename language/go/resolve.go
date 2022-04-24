@@ -21,7 +21,6 @@ import (
 	"go/build"
 	"log"
 	"path"
-	"regexp"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -32,7 +31,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func (_ *goLang) Imports(_ *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
+func (*goLang) Imports(_ *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
 	if !isGoLibrary(r.Kind()) || isExtraLibrary(r) {
 		return nil
 	}
@@ -46,7 +45,7 @@ func (_ *goLang) Imports(_ *config.Config, r *rule.Rule, f *rule.File) []resolve
 	}
 }
 
-func (_ *goLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
+func (*goLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
 	if isGoProtoLibrary(r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
@@ -79,7 +78,7 @@ func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Remo
 	}
 	deps, errs := imports.Map(func(imp string) (string, error) {
 		l, err := resolve(c, ix, rc, imp, from)
-		if err == skipImportError {
+		if err == errSkipImport {
 			return "", nil
 		} else if err != nil {
 			return "", err
@@ -108,8 +107,8 @@ func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Remo
 }
 
 var (
-	skipImportError = errors.New("std or self import")
-	notFoundError   = errors.New("rule not found")
+	errSkipImport = errors.New("std or self import")
+	errNotFound   = errors.New("rule not found")
 )
 
 // ResolveGo resolves a Go import path to a Bazel label, possibly using the
@@ -129,16 +128,16 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 	}
 
 	if IsStandard(imp) {
-		return label.NoLabel, skipImportError
+		return label.NoLabel, errSkipImport
 	}
 
 	if l, ok := resolve.FindRuleWithOverride(c, resolve.ImportSpec{Lang: "go", Imp: imp}, "go"); ok {
 		return l, nil
 	}
 
-	if l, err := resolveWithIndexGo(c, ix, imp, from); err == nil || err == skipImportError {
+	if l, err := resolveWithIndexGo(c, ix, imp, from); err == nil || err == errSkipImport {
 		return l, err
-	} else if err != notFoundError {
+	} else if err != errNotFound {
 		return label.NoLabel, err
 	}
 
@@ -164,11 +163,18 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 		}
 	}
 
-	if gc.depMode == externalMode {
-		return resolveExternal(c, rc, imp)
-	} else {
+	if gc.depMode == vendorMode {
 		return resolveVendored(gc, imp)
 	}
+	var resolveFn func(string) (string, string, error)
+	if gc.depMode == staticMode {
+		resolveFn = rc.RootStatic
+	} else if gc.moduleMode || pathWithoutSemver(imp) != "" {
+		resolveFn = rc.Mod
+	} else {
+		resolveFn = rc.Root
+	}
+	return resolveToExternalLabel(c, resolveFn, imp)
 }
 
 // IsStandard returns whether a package is in the standard library.
@@ -198,8 +204,6 @@ func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, fro
 				break
 			}
 		}
-		if isVendored {
-		}
 		if isVendored && !label.New(m.Label.Repo, vendorRoot, "").Contains(from) {
 			// vendor directory not visible
 			continue
@@ -222,40 +226,20 @@ func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, fro
 		return label.NoLabel, matchError
 	}
 	if bestMatch.Label.Equal(label.NoLabel) {
-		return label.NoLabel, notFoundError
+		return label.NoLabel, errNotFound
 	}
 	if bestMatch.IsSelfImport(from) {
-		return label.NoLabel, skipImportError
+		return label.NoLabel, errSkipImport
 	}
 	return bestMatch.Label, nil
 }
 
-var modMajorRex = regexp.MustCompile(`/v\d+(?:/|$)`)
-
-func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.Label, error) {
-	// If we're in module mode, use "go list" to find the module path and
-	// repository name. Otherwise, use special cases (for github.com, golang.org)
-	// or send a GET with ?go-get=1 to find the root. If the path contains
-	// a major version suffix (e.g., /v2), treat it as a module anyway though.
-	//
-	// Eventually module mode will be the only mode. But for now, it's expensive
-	// and not the common case, especially when known repositories aren't
-	// listed in WORKSPACE (which is currently the case within go_repository).
-	gc := getGoConfig(c)
-	moduleMode := gc.moduleMode
-	if !moduleMode {
-		moduleMode = pathWithoutSemver(imp) != ""
-	}
-
-	var prefix, repo string
-	var err error
-	if moduleMode {
-		prefix, repo, err = rc.Mod(imp)
-	} else {
-		prefix, repo, err = rc.Root(imp)
-	}
+func resolveToExternalLabel(c *config.Config, resolveFn func(string) (string, string, error), imp string) (label.Label, error) {
+	prefix, repo, err := resolveFn(imp)
 	if err != nil {
 		return label.NoLabel, err
+	} else if prefix == "" && repo == "" {
+		return label.NoLabel, errSkipImport
 	}
 
 	var pkg string
@@ -274,6 +258,7 @@ func resolveExternal(c *config.Config, rc *repo.RemoteCache, imp string) (label.
 	// If the repository uses the import_alias convention (default for
 	// go_repository), use the convention from the current directory unless the
 	// user has told us otherwise.
+	gc := getGoConfig(c)
 	nc := gc.repoNamingConvention[repo]
 	if nc == unknownNamingConvention {
 		if gc.goNamingConventionExternal != unknownNamingConvention {
@@ -300,16 +285,16 @@ func resolveVendored(gc *goConfig, imp string) (label.Label, error) {
 
 func resolveProto(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, imp string, from label.Label) (label.Label, error) {
 	if wellKnownProtos[imp] {
-		return label.NoLabel, skipImportError
+		return label.NoLabel, errSkipImport
 	}
 
 	if l, ok := resolve.FindRuleWithOverride(c, resolve.ImportSpec{Lang: "proto", Imp: imp}, "go"); ok {
 		return l, nil
 	}
 
-	if l, err := resolveWithIndexProto(c, ix, imp, from); err == nil || err == skipImportError {
+	if l, err := resolveWithIndexProto(c, ix, imp, from); err == nil || err == errSkipImport {
 		return l, err
-	} else if err != notFoundError {
+	} else if err != errNotFound {
 		return label.NoLabel, err
 	}
 
@@ -350,13 +335,13 @@ var wellKnownProtos = map[string]bool{
 func resolveWithIndexProto(c *config.Config, ix *resolve.RuleIndex, imp string, from label.Label) (label.Label, error) {
 	matches := ix.FindRulesByImportWithConfig(c, resolve.ImportSpec{Lang: "proto", Imp: imp}, "go")
 	if len(matches) == 0 {
-		return label.NoLabel, notFoundError
+		return label.NoLabel, errNotFound
 	}
 	if len(matches) > 1 {
 		return label.NoLabel, fmt.Errorf("multiple rules (%s and %s) may be imported with %q from %s", matches[0].Label, matches[1].Label, imp, from)
 	}
 	if matches[0].IsSelfImport(from) {
-		return label.NoLabel, skipImportError
+		return label.NoLabel, errSkipImport
 	}
 	return matches[0].Label, nil
 }

@@ -1,0 +1,25 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+# gazelle:exclude generation_test.go
+
+exports_files([
+    "generation_test.go",
+    "generation_test_manifest.yaml.tpl",
+])
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "generationtest.bzl",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "generationtest",
+    srcs = ["generationtest.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = ["@io_bazel_rules_go//go:def"],
+)

@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 // FixLoads removes loads of unused go rules and adds loads of newly used rules.
@@ -29,11 +30,11 @@ import (
 // This function calls File.Sync before processing loads.
 func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 	knownFiles := make(map[string]bool)
-	knownKinds := make(map[string]string)
+	knownSymbols := make(map[string]string)
 	for _, l := range knownLoads {
 		knownFiles[l.Name] = true
 		for _, k := range l.Symbols {
-			knownKinds[k] = l.Name
+			knownSymbols[k] = l.Name
 		}
 	}
 
@@ -57,16 +58,28 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 	}
 
 	// Make a map of all the symbols from known files used in this file.
-	usedKinds := make(map[string]map[string]bool)
-	for _, r := range f.Rules {
-		kind := r.Kind()
-		if file, ok := knownKinds[kind]; ok && !otherLoadedKinds[kind] {
-			if usedKinds[file] == nil {
-				usedKinds[file] = make(map[string]bool)
-			}
-			usedKinds[file][kind] = true
+	usedSymbols := make(map[string]map[string]bool)
+	bzl.Walk(f.File, func(x bzl.Expr, stk []bzl.Expr) {
+		ce, ok := x.(*bzl.CallExpr)
+		if !ok {
+			return
 		}
-	}
+
+		id, ok := ce.X.(*bzl.Ident)
+		if !ok {
+			return
+		}
+
+		file, ok := knownSymbols[id.Name]
+		if !ok || otherLoadedKinds[id.Name] {
+			return
+		}
+
+		if usedSymbols[file] == nil {
+			usedSymbols[file] = make(map[string]bool)
+		}
+		usedSymbols[file][id.Name] = true
+	})
 
 	// Fix the load statements. The order is important, so we iterate over
 	// knownLoads instead of knownFiles.
@@ -78,17 +91,17 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 				continue
 			}
 			if first {
-				fixLoad(l, file, usedKinds[file], knownKinds)
+				fixLoad(l, file, usedSymbols[file], knownSymbols)
 				first = false
 			} else {
-				fixLoad(l, file, nil, knownKinds)
+				fixLoad(l, file, nil, knownSymbols)
 			}
 			if l.IsEmpty() {
 				l.Delete()
 			}
 		}
 		if first {
-			load := fixLoad(nil, file, usedKinds[file], knownKinds)
+			load := fixLoad(nil, file, usedSymbols[file], knownSymbols)
 			if load != nil {
 				index := newLoadIndex(f, known.After)
 				load.Insert(f, index)
@@ -98,26 +111,27 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 }
 
 // fixLoad updates a load statement with the given symbols. If load is nil,
-// a new load may be created and returned. Symbols in kinds will be added
-// to the load if they're not already present. Known symbols not in kinds
+// a new load may be created and returned. Symbols in symbols will be added
+// to the load if they're not already present. Known symbols not in symbols
 // will be removed if present. Other symbols will be preserved. If load is
 // empty, nil is returned.
-func fixLoad(load *rule.Load, file string, kinds map[string]bool, knownKinds map[string]string) *rule.Load {
+func fixLoad(load *rule.Load, file string, symbols map[string]bool, knownSymbols map[string]string) *rule.Load {
 	if load == nil {
-		if len(kinds) == 0 {
+		if len(symbols) == 0 {
 			return nil
 		}
 		load = rule.NewLoad(file)
 	}
 
-	for k := range kinds {
+	for k := range symbols {
 		load.Add(k)
 	}
 	for _, k := range load.Symbols() {
-		if knownKinds[k] != "" && !kinds[k] {
+		if knownSymbols[k] != "" && !symbols[k] {
 			load.Remove(k)
 		}
 	}
+
 	return load
 }
 

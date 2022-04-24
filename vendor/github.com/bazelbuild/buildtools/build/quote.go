@@ -27,9 +27,13 @@ import (
 
 // unesc maps single-letter chars following \ to their actual values.
 var unesc = [256]byte{
+	'a':  '\a',
+	'b':  '\b',
+	'f':  '\f',
 	'n':  '\n',
 	'r':  '\r',
 	't':  '\t',
+	'v':  '\v',
 	'\\': '\\',
 	'\'': '\'',
 	'"':  '"',
@@ -37,9 +41,13 @@ var unesc = [256]byte{
 
 // esc maps escape-worthy bytes to the char that should follow \.
 var esc = [256]byte{
+	'\a': 'a',
+	'\b': 'b',
+	'\f': 'f',
 	'\n': 'n',
 	'\r': 'r',
 	'\t': 't',
+	'\v': 'v',
 	'\\': '\\',
 	'\'': '\'',
 	'"':  '"',
@@ -49,9 +57,13 @@ var esc = [256]byte{
 // in a string literal
 var escapable = [256]bool{
 	'\n': true,
+	'a':  true,
+	'b':  true,
+	'f':  true,
 	'n':  true,
 	'r':  true,
 	't':  true,
+	'v':  true,
 	'x':  true,
 	'\'': true,
 	'\\': true,
@@ -138,7 +150,7 @@ func Unquote(quoted string) (s string, triple bool, err error) {
 			// Ignore the escape and the line break.
 			quoted = quoted[2:]
 
-		case 'n', 'r', 't', '\\', '\'', '"':
+		case 'a', 'b', 'f', 'n', 'r', 't', 'v', '\\', '\'', '"':
 			// One-char escape
 			buf.WriteByte(unesc[quoted[1]])
 			quoted = quoted[2:]

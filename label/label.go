@@ -62,9 +62,12 @@ func New(repo, pkg, name string) Label {
 var NoLabel = Label{}
 
 var (
-	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z][A-Za-z0-9_]*$`)
+	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z.-][A-Za-z0-9_.-]*$`)
 	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._-]*$`)
-	labelNameRegexp = regexp.MustCompile(`^[A-Za-z0-9_/.+=,@~-]*$`)
+	// This was taken from https://docs.bazel.build/versions/main/build-ref.html#name
+	// Note: We've manually removed space from the regex, because though these technically parse
+	// with Bazel (and can appear in query results), they cannot actually be used in practice.
+	labelNameRegexp = regexp.MustCompile("^[A-Za-z0-9!%-@^_`\"#$&'()*-+,;<=>?\\[\\]{|}~/.]*$")
 )
 
 // Parse reads a label from a string.
@@ -80,8 +83,8 @@ func Parse(s string) (Label, error) {
 		if endRepo > len("@") {
 			repo = s[len("@"):endRepo]
 			s = s[endRepo:]
-		// If the label begins with "@//...", set repo = "@"
-		// to remain distinct from "//...", where repo = ""
+			// If the label begins with "@//...", set repo = "@"
+			// to remain distinct from "//...", where repo = ""
 		} else if endRepo == len("@") {
 			repo = s[:len("@")]
 			s = s[len("@"):]

@@ -337,7 +337,8 @@ go_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}, {
+		},
+		{
 			Path:    "pure.go",
 			Content: "package foo",
 		},
@@ -381,10 +382,12 @@ go_library(
     importpath = "example.com/foo/x",
 )
 `,
-		}, {
+		},
+		{
 			Path:    "a/a.go",
 			Content: "package a",
-		}, {
+		},
+		{
 			Path: "b/b.go",
 			Content: `
 package b
@@ -462,7 +465,8 @@ func TestBuildFileNameIgnoresBuild(t *testing.T) {
 		{
 			Path:    "a/BUILD",
 			Content: "!!! parse error",
-		}, {
+		},
+		{
 			Path:    "a.go",
 			Content: "package a",
 		},
@@ -558,13 +562,15 @@ go_proto_library(
     srcs = [":go_default_library_protos"],
 )
 `,
-		}, {
+		},
+		{
 			Path: "foo.proto",
 			Content: `syntax = "proto3";
 
 option go_package = "example.com/repo";
 `,
-		}, {
+		},
+		{
 			Path:    "foo.pb.go",
 			Content: `package repo`,
 		},
@@ -672,7 +678,8 @@ go_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}, {
+		},
+		{
 			Path:    "extra.go",
 			Content: `package repo`,
 		},
@@ -730,7 +737,8 @@ go_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}, {
+		},
+		{
 			Path: "foo.proto",
 			Content: `syntax = "proto3";
 
@@ -810,7 +818,8 @@ go_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}, {
+		},
+		{
 			Path:    "foo.proto",
 			Content: `syntax = "proto3";`,
 		},
@@ -819,8 +828,10 @@ go_library(
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 
-	args := []string{"update", "-go_prefix", "example.com/repo",
-		"-proto_import_prefix", "/bar"}
+	args := []string{
+		"update", "-go_prefix", "example.com/repo",
+		"-proto_import_prefix", "/bar",
+	}
 	if err := runGazelle(dir, args); err != nil {
 		t.Fatal(err)
 	}
@@ -862,7 +873,8 @@ func TestEmptyGoPrefix(t *testing.T) {
 		{
 			Path:    "foo/foo.go",
 			Content: "package foo",
-		}, {
+		},
+		{
 			Path: "bar/bar.go",
 			Content: `
 package bar
@@ -912,7 +924,8 @@ package foo
 
 import _ "example.com/alt/baz"
 `,
-		}, {
+		},
+		{
 			Path: "bar/BUILD.bazel",
 			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -923,7 +936,8 @@ go_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}, {
+		},
+		{
 			Path:    "bar/bar.go",
 			Content: "package bar",
 		},
@@ -974,7 +988,8 @@ func TestResolveVendorSubdirectory(t *testing.T) {
 		{
 			Path:    "sub/vendor/example.com/foo/foo.go",
 			Content: "package foo",
-		}, {
+		},
+		{
 			Path: "sub/bar/bar.go",
 			Content: `
 package bar
@@ -1057,10 +1072,12 @@ go_proto_library(
     deps = ["//foo/bar:go_default_library"],
 )
 `,
-		}, {
+		},
+		{
 			Path:    "foo/extra.go",
 			Content: "package foo",
-		}, {
+		},
+		{
 			Path: "foo/bar/bar.proto",
 			Content: `
 syntax = "proto3";
@@ -1290,7 +1307,8 @@ go_repository(
 
 gazelle_dependencies()
 `,
-		}})
+		},
+	})
 }
 
 func TestImportReposFromDepToWorkspace(t *testing.T) {
@@ -1433,7 +1451,8 @@ http_archive(
     urls = ["https://example.com/yaml.tar.gz"],
 )
 `,
-		}})
+		},
+	})
 }
 
 func TestImportReposFromDepToWorkspaceWithMacro(t *testing.T) {
@@ -1888,7 +1907,8 @@ def go_repositories():
         importpath = "golang.org/x/sys",
     )
 `,
-		}})
+		},
+	})
 }
 
 func TestPruneRepoRules(t *testing.T) {
@@ -2272,13 +2292,16 @@ package foo
 
 import _ "example.com/bar"
 `,
-		}, {
+		},
+		{
 			Path:    "third_party/example.com/bar/bar.go",
 			Content: "package bar",
-		}, {
+		},
+		{
 			Path:    "third_party/BUILD.bazel",
 			Content: "# gazelle:prefix",
-		}, {
+		},
+		{
 			Path: "third_party/example.com/bar/BUILD.bazel",
 			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
@@ -2343,7 +2366,8 @@ import (
 		{
 			Path:    "foo/bar/bar.go",
 			Content: "package bar",
-		}, {
+		},
+		{
 			Path: "third_party/baz/BUILD.bazel",
 			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
@@ -2355,7 +2379,8 @@ go_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}, {
+		},
+		{
 			Path:    "third_party/baz/baz.go",
 			Content: "package baz",
 		},
@@ -2463,7 +2488,8 @@ go_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}})
+		},
+	})
 }
 
 // TestSubdirectoryPrefixExternal checks that directives set in subdirectories
@@ -2675,27 +2701,34 @@ func TestMapKind(t *testing.T) {
 	files := []testtools.FileSpec{
 		{
 			Path: "WORKSPACE",
-		}, {
+		},
+		{
 			Path: "BUILD.bazel",
 			Content: `
 # gazelle:prefix example.com/mapkind
 # gazelle:go_naming_convention go_default_library
 `,
-		}, {
+		},
+		{
 			Path:    "root_lib.go",
 			Content: `package mapkind`,
-		}, {
+		},
+		{
 			Path:    "enabled/BUILD.bazel",
 			Content: "# gazelle:map_kind go_library my_library //tools/go:def.bzl",
-		}, {
+		},
+		{
 			Path:    "enabled/enabled_lib.go",
 			Content: `package enabled`,
-		}, {
+		},
+		{
 			Path: "enabled/inherited/BUILD.bazel",
-		}, {
+		},
+		{
 			Path:    "enabled/inherited/inherited_lib.go",
 			Content: `package inherited`,
-		}, {
+		},
+		{
 			Path: "enabled/existing_rules/mapped/BUILD.bazel",
 			Content: `
 load("//tools/go:def.bzl", "my_library")
@@ -2708,13 +2741,16 @@ my_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}, {
+		},
+		{
 			Path:    "enabled/existing_rules/mapped/mapped_lib.go",
 			Content: `package mapped`,
-		}, {
+		},
+		{
 			Path:    "enabled/existing_rules/mapped/mapped_lib2.go",
 			Content: `package mapped`,
-		}, {
+		},
+		{
 			Path: "enabled/existing_rules/unmapped/BUILD.bazel",
 			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
@@ -2727,30 +2763,38 @@ go_library(
     visibility = ["//visibility:public"],
 )
 `,
-		}, {
+		},
+		{
 			Path:    "enabled/existing_rules/unmapped/unmapped_lib.go",
 			Content: `package unmapped`,
-		}, {
+		},
+		{
 			Path:    "enabled/existing_rules/nobuild/nobuild_lib.go",
 			Content: `package nobuild`,
-		}, {
+		},
+		{
 			Path:    "enabled/overridden/BUILD.bazel",
 			Content: "# gazelle:map_kind go_library overridden_library //tools/overridden:def.bzl",
-		}, {
+		},
+		{
 			Path:    "enabled/overridden/overridden_lib.go",
 			Content: `package overridden`,
-		}, {
+		},
+		{
 			Path: "disabled/BUILD.bazel",
-		}, {
+		},
+		{
 			Path:    "disabled/disabled_lib.go",
 			Content: `package disabled`,
-		}, {
+		},
+		{
 			Path: "enabled/multiple_mappings/BUILD.bazel",
 			Content: `
 # gazelle:map_kind go_binary go_binary //tools/go:def.bzl
 # gazelle:map_kind go_library go_library //tools/go:def.bzl
 `,
-		}, {
+		},
+		{
 			Path:    "enabled/multiple_mappings/multiple_mappings.go",
 			Content: `package main`,
 		},
@@ -2929,6 +2973,107 @@ go_library(
         "//enabled/existing_rules/unmapped:go_default_library",
         "//enabled/overridden:go_default_library",
     ],
+)
+`,
+		},
+	})
+}
+
+// TestMapKindEmbeddedResolve tests the gazelle:map_kind properly resolves
+// dependencies for embedded rules (see #1162).
+func TestMapKindEmbeddedResolve(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		}, {
+			Path: "BUILD.bazel",
+			Content: `
+# gazelle:prefix example.com/mapkind
+# gazelle:map_kind go_library my_go_library //:my.bzl
+`,
+		}, {
+			Path: "a/a.proto",
+			Content: `
+syntax = "proto3";
+
+package test;
+option go_package = "example.com/mapkind/a";
+`,
+		}, {
+			Path: "b/b.proto",
+			Content: `
+syntax = "proto3";
+
+package test;
+option go_package = "example.com/mapkind/b";
+
+import "a/a.proto";
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"-external=vendored"}); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "a/BUILD.bazel",
+			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("//:my.bzl", "my_go_library")
+
+proto_library(
+    name = "a_proto",
+    srcs = ["a.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "a_go_proto",
+    importpath = "example.com/mapkind/a",
+    proto = ":a_proto",
+    visibility = ["//visibility:public"],
+)
+
+my_go_library(
+    name = "a",
+    embed = [":a_go_proto"],
+    importpath = "example.com/mapkind/a",
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
+			Path: "b/BUILD.bazel",
+			Content: `
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("//:my.bzl", "my_go_library")
+
+proto_library(
+    name = "b_proto",
+    srcs = ["b.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//a:a_proto"],
+)
+
+go_proto_library(
+    name = "b_go_proto",
+    importpath = "example.com/mapkind/b",
+    proto = ":b_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//a"],
+)
+
+my_go_library(
+    name = "b",
+    embed = [":b_go_proto"],
+    importpath = "example.com/mapkind/b",
+    visibility = ["//visibility:public"],
 )
 `,
 		},
@@ -3424,12 +3569,14 @@ import (
 		t.Fatal(err)
 	}
 
-	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
-		Path:     filepath.Join("foo", "BUILD.bazel"),
-		NotExist: true,
-	}, {
-		Path: filepath.Join("pb", "BUILD.bazel"),
-		Content: `
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path:     filepath.Join("foo", "BUILD.bazel"),
+			NotExist: true,
+		},
+		{
+			Path: filepath.Join("pb", "BUILD.bazel"),
+			Content: `
 load("@rules_proto//proto:defs.bzl", "proto_library")
 
 proto_library(
@@ -3437,7 +3584,7 @@ proto_library(
     srcs = ["pb.proto"],
     visibility = ["//visibility:public"],
 )`,
-	},
+		},
 		{
 			Path: filepath.Join("bar", "BUILD.bazel"),
 			Content: `

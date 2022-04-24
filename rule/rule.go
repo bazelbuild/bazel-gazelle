@@ -406,7 +406,7 @@ func (f *File) SortMacro() {
 func (f *File) Save(path string) error {
 	f.Sync()
 	f.Content = bzl.Format(f.File)
-	return ioutil.WriteFile(path, f.Content, 0666)
+	return ioutil.WriteFile(path, f.Content, 0o666)
 }
 
 // HasDefaultVisibility returns whether the File contains a "package" rule with

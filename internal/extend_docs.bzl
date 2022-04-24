@@ -20,29 +20,20 @@ To extend Gazelle, you must do three things:
   `bazel run //:gazelle`, your binary will be built and executed instead of
   the default binary.
 
+Tests
+-----
+
+To write tests for your gazelle extension, you can use [gazelle_generation_test](#gazelle_generation_test),
+which will run a gazelle binary of your choosing on a set of test workspaces.
+
+
 Supported languages
 -------------------
 
-Some extensions have been published by the community.
-
-* [bazel-skylib] has an extension for generating `bzl_library` rules.
-  See [@bazel_skylib//gazelle/bzl].
-* [rules_python] has an extension for generating `py_library`, `py_binary`, and
-  `py_test` rules (currently pending in PR [#514]).
-* [rules_sass] has an extension for generating `sass_library` and
-  `sass_binary` rules (currently pending in PR [#75]).
-* [rules_r] has an extension for generating rules for R package builds and
-  tests.
-* Ecosia's [bazel_rules_nodejs_contrib] has an extension for generating
-  `js_library`, `jest_node_test`, `js_import`, and `ts_library` rules.
-* Tweag's [rules_haskell] has an extension, [gazelle_cabal], for generating rules from Cabal files
-
-If you have an extension you'd like linked here, please open a PR!
+Moved to [/README.rst](/README.rst#supported-languages)
 
 Example
 -------
-
-**TODO:** Add a self-contained, concise, realistic example.
 
 Gazelle itself is built using the model described above, so it may serve as
 an example.
@@ -61,7 +52,13 @@ load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle_binary")
 
 gazelle_binary(
     name = "gazelle",
-    languages = DEFAULT_LANGUAGES,
+    languages = [
+        "@rules_python//gazelle",  # Use gazelle from rules_python.
+        "@bazel_gazelle//language/go",  # Built-in rule from gazelle for Golang.
+        "@bazel_gazelle//language/proto",  # Built-in rule from gazelle for Protos.
+         # Any languages that depend on Gazelle's proto plugin must come after it.
+        "@external_repository//language/gazelle",  # External languages can be added here.
+    ],
     visibility = ["//visibility:public"],
 )
 ```
@@ -110,19 +107,14 @@ includes the proto package name, as well as source names, imports, and options.
 [proto godoc]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto
 [proto.GetProtoConfig]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#GetProtoConfig
 [proto.Package]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#Package
-[rules_python]: https://github.com/bazelbuild/rules_python
-[rules_r]: https://github.com/grailbio/rules_r
-[rules_sass]: https://github.com/bazelbuild/rules_sass
-[rules_haskell]: https://github.com/tweag/rules_haskell
-[bazel_rules_nodejs_contrib]: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
-[bazel-skylib]: https://github.com/bazelbuild/bazel-skylib
-[@bazel_skylib//gazelle/bzl]: https://github.com/bazelbuild/bazel-skylib/tree/master/gazelle/bzl
-[gazelle_cabal]: https://github.com/tweag/gazelle_cabal
-[#75]: https://github.com/bazelbuild/rules_sass/pull/75
-[#514]: https://github.com/bazelbuild/rules_python/pull/514
-[#803]: https://github.com/bazelbuild/bazel-gazelle/issues/803
 """
 
 load("gazelle_binary.bzl", _gazelle_binary = "gazelle_binary")
+load(
+    "//internal/generationtest:generationtest.bzl",
+    _gazelle_generation_test = "gazelle_generation_test",
+)
 
 gazelle_binary = _gazelle_binary
+
+gazelle_generation_test = _gazelle_generation_test

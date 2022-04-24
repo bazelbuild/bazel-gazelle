@@ -16,6 +16,7 @@ limitations under the License.
 package golang
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,8 +30,10 @@ import (
 
 func TestImports(t *testing.T) {
 	for _, tc := range []struct {
-		desc, want string
-		files      []testtools.FileSpec
+		desc, want        string
+		wantErr           string
+		stubGoModDownload func(string, []string) ([]byte, error)
+		files             []testtools.FileSpec
 	}{
 		{
 			desc: "dep",
@@ -100,6 +103,8 @@ go_repository(
     importpath = "golang.org/x/net",
 )
 `,
+			wantErr:           "",
+			stubGoModDownload: nil,
 		}, {
 			desc: "modules",
 			files: []testtools.FileSpec{
@@ -220,6 +225,36 @@ go_repository(
     version = "v0.0.0-20190122202912-9c309ee22fab",
 )
 `,
+			wantErr:           "",
+			stubGoModDownload: nil,
+		}, {
+			desc: "modules-with-error",
+			files: []testtools.FileSpec{
+				{
+					Path: "go.mod",
+					Content: `
+module github.com/bazelbuild/bazel-gazelle
+
+require (
+	definitely.doesnotexist/ever v0.1.0
+)
+`,
+				}, {
+					Path: "go.sum",
+					Content: `
+					definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuJ=
+					`,
+				},
+			},
+			want:    "",
+			wantErr: "failed to download\nError downloading definitely.doesnotexist/ever: Did not exist",
+			stubGoModDownload: func(dir string, args []string) ([]byte, error) {
+				return []byte(`{
+	"Path": "definitely.doesnotexist/ever",
+    "Version": "0.1.0",
+    "Error": "Did not exist"
+}`), fmt.Errorf("failed to download")
+			},
 		}, {
 			desc: "godep",
 			files: []testtools.FileSpec{{
@@ -304,9 +339,16 @@ go_repository(
     importpath = "github.com/golang/protobuf",
 )
 `,
+			wantErr:           "",
+			stubGoModDownload: nil,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
+			if tc.stubGoModDownload != nil {
+				previousGoModDownload := goModDownload
+				goModDownload = tc.stubGoModDownload
+				defer func() { goModDownload = previousGoModDownload }()
+			}
 			dir, cleanup := testtools.CreateFiles(t, tc.files)
 			defer cleanup()
 
@@ -326,8 +368,18 @@ go_repository(
 				Path:   filename,
 				Cache:  rc,
 			})
-			if result.Error != nil {
-				t.Fatal(result.Error)
+			if tc.wantErr != "" {
+				if result.Error == nil {
+					t.Fatalf("Want error %v but got %v", tc.wantErr, result)
+				}
+				if result.Error.Error() != tc.wantErr {
+					t.Fatalf("Want error %v but got %v", tc.wantErr, result.Error)
+				}
+				return
+			} else {
+				if result.Error != nil {
+					t.Fatal(result.Error)
+				}
 			}
 			f := rule.EmptyFile("test", "")
 			for _, r := range result.Gen {

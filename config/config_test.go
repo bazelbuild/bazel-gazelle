@@ -36,7 +36,7 @@ func TestCommonConfigurerFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "WORKSPACE"), nil, 0666); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(dir, "WORKSPACE"), nil, 0o666); err != nil {
 		t.Fatal(err)
 	}
 

@@ -11,7 +11,6 @@ Gazelle build file generator
 .. _gazelle rule: #bazel-rule
 .. _doublestar.Match: https://github.com/bmatcuk/doublestar#match
 .. _Extending Gazelle: extend.md
-.. _Supported languages: extend.md#supported-languages
 .. _extended: `Extending Gazelle`_
 .. _gazelle_binary: extend.md#gazelle_binary
 .. _import_prefix: https://docs.bazel.build/versions/master/be/protocol-buffer.html#proto_library.import_prefix
@@ -21,6 +20,18 @@ Gazelle build file generator
 .. _bazel-go-discuss: https://groups.google.com/forum/#!forum/bazel-go-discuss
 .. _#bazel on Go Slack: https://gophers.slack.com/archives/C1SCQE54N
 .. _#go on Bazel Slack: https://bazelbuild.slack.com/archives/CDBP88Z0D
+.. _#514: https://github.com/bazelbuild/rules_python/pull/514
+.. _#1030: https://github.com/bazelbuild/bazel-gazelle/issues/1030
+.. _rules_python: https://github.com/bazelbuild/rules_python
+.. _rules_r: https://github.com/grailbio/rules_r
+.. _rules_haskell: https://github.com/tweag/rules_haskell
+.. _bazel_rules_nodejs_contrib: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
+.. _bazel-skylib: https://github.com/bazelbuild/bazel-skylib
+.. _bazel_skylib/gazelle/bzl: https://github.com/bazelbuild/bazel-skylib/tree/master/gazelle/bzl
+.. _gazelle_cabal: https://github.com/tweag/gazelle_cabal
+.. _stackb/rules_proto: https://github.com/stackb/rules_proto
+.. _Open a PR: https://github.com/bazelbuild/bazel-gazelle/edit/master/README.rst
+.. _Bazel Slack: https://slack.bazel.build
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -64,8 +75,53 @@ and say hello!*
   * `go_repository`_
 
 * `Extending Gazelle`_
-* `Supported languages`_
 * `Avoiding conflicts with proto rules`_
+
+Supported languages
+-------------------
+
+Gazelle can generate Bazel BUILD files for many languages:
+
+* Go
+
+  Go supported is included here in bazel-gazelle, see below.
+
+* Haskell
+
+  Tweag's `rules_haskell`_ has an extension, `gazelle_cabal`_, for generating rules from Cabal files.
+
+* JavaScript / TypeScript
+
+  Ecosia's `bazel_rules_nodejs_contrib`_ has an extension for generating
+  ``js_library``, ``jest_node_test``, ``js_import``, and ``ts_library`` rules.
+
+* Protocol Buffers
+
+  Support for the `proto_library` rule, as well as `go_proto_library` is in this repository, see below.
+  Other language-specific proto rules are not supported here.
+  `stackb/rules_proto`_ is a good resource for these rules.
+
+* Python
+
+  `rules_python`_ has an extension for generating ``py_library``, ``py_binary``, and ``py_test`` rules.
+
+* R
+
+  `rules_r`_ has an extension for generating rules for R package builds and tests.
+
+* Starlark
+
+  `bazel-skylib`_ has an extension for generating ``bzl_library`` rules. See `bazel_skylib//gazelle/bzl`_.
+
+If you know of an extension which could be linked here, please `open a PR`_!
+
+More languages can be added by `Extending Gazelle`_.
+Chat with us in the ``#gazelle`` channel on `Bazel Slack`_ if you'd like to discuss your design.
+
+If you've written your own extension, please consider open-sourcing it for
+use by the rest of the community.
+Note that such extensions belong in a language-specific repository, not in bazel-gazelle.
+See discussion in `#1030`_.
 
 Setup
 -----
@@ -83,33 +139,45 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "2b1641428dff9018f9e85c0384f03ec6c10660d935b750e3fa1492a281a53b0f",
+        sha256 = "f2dcd210c7095febe54b804bb1cd3a58fe8435a909db2ec04e31542631cf715c",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.29.0/rules_go-v0.29.0.zip",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.29.0/rules_go-v0.29.0.zip",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.31.0/rules_go-v0.31.0.zip",
         ],
     )
 
     http_archive(
         name = "bazel_gazelle",
-        sha256 = "de69a09dc70417580aabf20a28619bb3ef60d038470c7cf8442fafcf627c21cb",
+        sha256 = "5982e5463f171da99e3bdaeff8c0f48283a7a5f396ec5282910b9e8a49c0dd7e",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.24.0/bazel-gazelle-v0.24.0.tar.gz",
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.24.0/bazel-gazelle-v0.24.0.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.25.0/bazel-gazelle-v0.25.0.tar.gz",
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.25.0/bazel-gazelle-v0.25.0.tar.gz",
         ],
     )
 
+
     load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
-    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
+    load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies", "go_repository")
+
+    ############################################################
+    # Define your own dependencies here using go_repository.
+    # Else, dependencies declared by rules_go/gazelle will be used.
+    # The first declaration of an external repository "wins".
+    ############################################################
 
     go_rules_dependencies()
 
-    go_register_toolchains(version = "1.17.2")
+    go_register_toolchains(version = "1.18")
 
     gazelle_dependencies()
 
 ``gazelle_dependencies`` supports optional argument ``go_env`` (dict-mapping)
-to set project specific go environment variables.
+to set project specific go environment variables. If you are using a
+`WORKSPACE.bazel` file, you will need to specify that using:
+
+.. code:: bzl
+
+    gazelle_dependencies(go_repository_default_config = "//:WORKSPACE.bazel")
 
 Add the code below to the BUILD or BUILD.bazel file in the root directory
 of your repository.
@@ -165,7 +233,7 @@ command below:
 
 .. code::
 
-  go get github.com/bazelbuild/bazel-gazelle/cmd/gazelle
+  go install github.com/bazelbuild/bazel-gazelle/cmd/gazelle@latest
 
 Make sure to re-run this command to upgrade Gazelle whenever you upgrade
 rules_go in your repository.
@@ -241,6 +309,8 @@ you're using a compatible version.
 +---------------------+------------------------------+------------------------------+
 | 0.24                | 0.29                         | n/a                          |
 +---------------------+------------------------------+------------------------------+
+| 0.25                | 0.29                         | n/a                          |
++---------------------+------------------------------+------------------------------+
 
 Usage
 -----
@@ -286,7 +356,8 @@ The following attributes are available on the ``gazelle`` rule.
 | :param:`external`    | :type:`string`      | :value:`external`                    |
 +----------------------+---------------------+--------------------------------------+
 | The method for resolving unknown imports to Bazel dependencies. May be            |
-| :value:`external` or :value:`vendored`. See `Dependency resolution`_.             |
+| :value:`external`, :value:`static` or :value:`vendored`.                          |
+| See `Dependency resolution`_.                                                     |
 +----------------------+---------------------+--------------------------------------+
 | :param:`build_tags`  | :type:`string_list` | :value:`[]`                          |
 +----------------------+---------------------+--------------------------------------+
@@ -304,7 +375,7 @@ The following attributes are available on the ``gazelle`` rule.
 +----------------------+---------------------+--------------------------------------+
 | A list of extra command line arguments passed to Gazelle.  Note that              |
 | ``extra_args`` are suppressed by extra command line args (e.g.                    |
-| ``bazel run //:gazelle -- subdir``).                                              |  
+| ``bazel run //:gazelle -- subdir``).                                              |
 | See https://github.com/bazelbuild/bazel-gazelle/issues/536 for explanation.       |
 +----------------------+---------------------+--------------------------------------+
 | :param:`command`     | :type:`string`      | :value:`update`                      |
@@ -364,10 +435,10 @@ The following flags are accepted:
 | repository root. This is equivalent to the ``# gazelle:exclude pattern``                                   |
 | directive.                                                                                                 |
 +-------------------------------------------------------------------+----------------------------------------+
-| :flag:`-external external|vendored`                               | :value:`external`                      |
+| :flag:`-external external|static|vendored`                        | :value:`external`                      |
 +-------------------------------------------------------------------+----------------------------------------+
 | Determines how Gazelle resolves import paths that cannot be resolve in the                                 |
-| current repository. May be :value:`external` or :value:`vendored`. See                                     |
+| current repository. May be :value:`external`, :value:`static` or :value:`vendored`. See                    |
 | `Dependency resolution`_.                                                                                  |
 +-------------------------------------------------------------------+----------------------------------------+
 | :flag:`-index true|false`                                         | :value:`true`                          |
@@ -952,7 +1023,11 @@ below to resolve dependencies:
       ``importpath``, Gazelle will use its name. Gazelle does not index
       rules in external repositories, so it's possible the resolved dependency
       does not exist.
-   b) In ``vendored`` mode, Gazelle will transform the import string into
+   b) In ``static`` mode, Gazelle has the same behavior as ``external`` mode,
+      except that it will not call out to the network for resolution when no
+      matching import is found within WORKSPACE. Instead, it will skip the
+      unknown import. This is the default mode for ``go_repository`` rules.
+   c) In ``vendored`` mode, Gazelle will transform the import string into
       a label in the vendor directory. For example, ``"golang.org/x/sys/unix"``
       would be resolved to
       ``"//vendor/golang.org/x/sys/unix:go_default_library"``. This mode is

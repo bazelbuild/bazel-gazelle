@@ -20,29 +20,20 @@ To extend Gazelle, you must do three things:
   `bazel run //:gazelle`, your binary will be built and executed instead of
   the default binary.
 
+Tests
+-----
+
+To write tests for your gazelle extension, you can use [gazelle_generation_test](#gazelle_generation_test),
+which will run a gazelle binary of your choosing on a set of test workspaces.
+
+
 Supported languages
 -------------------
 
-Some extensions have been published by the community.
-
-* [bazel-skylib] has an extension for generating `bzl_library` rules.
-  See [@bazel_skylib//gazelle/bzl].
-* [rules_python] has an extension for generating `py_library`, `py_binary`, and
-  `py_test` rules (currently pending in PR [#514]).
-* [rules_sass] has an extension for generating `sass_library` and
-  `sass_binary` rules (currently pending in PR [#75]).
-* [rules_r] has an extension for generating rules for R package builds and
-  tests.
-* Ecosia's [bazel_rules_nodejs_contrib] has an extension for generating
-  `js_library`, `jest_node_test`, `js_import`, and `ts_library` rules.
-* Tweag's [rules_haskell] has an extension, [gazelle_cabal], for generating rules from Cabal files
-
-If you have an extension you'd like linked here, please open a PR!
+Moved to [/README.rst](/README.rst#supported-languages)
 
 Example
 -------
-
-**TODO:** Add a self-contained, concise, realistic example.
 
 Gazelle itself is built using the model described above, so it may serve as
 an example.
@@ -61,7 +52,13 @@ load("@bazel_gazelle//:def.bzl", "DEFAULT_LANGUAGES", "gazelle_binary")
 
 gazelle_binary(
     name = "gazelle",
-    languages = DEFAULT_LANGUAGES,
+    languages = [
+        "@rules_python//gazelle",  # Use gazelle from rules_python.
+        "@bazel_gazelle//language/go",  # Built-in rule from gazelle for Golang.
+        "@bazel_gazelle//language/proto",  # Built-in rule from gazelle for Protos.
+         # Any languages that depend on Gazelle's proto plugin must come after it.
+        "@external_repository//language/gazelle",  # External languages can be added here.
+    ],
     visibility = ["//visibility:public"],
 )
 ```
@@ -110,17 +107,6 @@ includes the proto package name, as well as source names, imports, and options.
 [proto godoc]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto
 [proto.GetProtoConfig]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#GetProtoConfig
 [proto.Package]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#Package
-[rules_python]: https://github.com/bazelbuild/rules_python
-[rules_r]: https://github.com/grailbio/rules_r
-[rules_sass]: https://github.com/bazelbuild/rules_sass
-[rules_haskell]: https://github.com/tweag/rules_haskell
-[bazel_rules_nodejs_contrib]: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
-[bazel-skylib]: https://github.com/bazelbuild/bazel-skylib
-[@bazel_skylib//gazelle/bzl]: https://github.com/bazelbuild/bazel-skylib/tree/master/gazelle/bzl
-[gazelle_cabal]: https://github.com/tweag/gazelle_cabal
-[#75]: https://github.com/bazelbuild/rules_sass/pull/75
-[#514]: https://github.com/bazelbuild/rules_python/pull/514
-[#803]: https://github.com/bazelbuild/bazel-gazelle/issues/803
 
 
 <a id="#gazelle_binary"></a>
@@ -151,5 +137,46 @@ proto extension stores metadata in hidden attributes of generated
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="gazelle_binary-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
 | <a id="gazelle_binary-languages"></a>languages |  A list of language extensions the Gazelle binary will use.<br><br>            Each extension must be a [go_library] or something compatible. Each extension             must export a function named <code>NewLanguage</code> with no parameters that returns             a value assignable to [Language].   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
+
+
+<a id="#gazelle_generation_test"></a>
+
+## gazelle_generation_test
+
+<pre>
+gazelle_generation_test(<a href="#gazelle_generation_test-name">name</a>, <a href="#gazelle_generation_test-gazelle_binary">gazelle_binary</a>, <a href="#gazelle_generation_test-test_data">test_data</a>, <a href="#gazelle_generation_test-build_in_suffix">build_in_suffix</a>, <a href="#gazelle_generation_test-build_out_suffix">build_out_suffix</a>)
+</pre>
+
+    gazelle_generation_test is a macro for testing gazelle against workspaces.
+
+The generation test expects a file structure like the following:
+
+```
+|-- <testDataPath>
+    |-- some_test
+        |-- WORKSPACE
+        |-- README.md --> README describing what the test does.
+        |-- expectedStdout.txt --> Expected stdout for this test.
+        |-- expectedStderr.txt --> Expected stderr for this test.
+        |-- expectedExitCode.txt --> Expected exit code for this test.
+        |-- app
+            |-- sourceFile.foo
+            |-- BUILD.in --> BUILD file prior to running gazelle.
+            |-- BUILD.out --> BUILD file expected after running gazelle.
+```
+
+To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the_test_target`.
+
+
+**PARAMETERS**
+
+
+| Name  | Description | Default Value |
+| :------------- | :------------- | :------------- |
+| <a id="gazelle_generation_test-name"></a>name |  The name of the test.   |  none |
+| <a id="gazelle_generation_test-gazelle_binary"></a>gazelle_binary |  The name of the gazelle binary target. For example, //path/to:my_gazelle.   |  none |
+| <a id="gazelle_generation_test-test_data"></a>test_data |  A list of target of the test data files you will pass to the test. This can be a https://bazel.build/reference/be/general#filegroup.   |  none |
+| <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  <code>".in"</code> |
+| <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  <code>".out"</code> |
 
 

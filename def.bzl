@@ -29,11 +29,16 @@ load(
     "//internal:gazelle_binary.bzl",
     _gazelle_binary = "gazelle_binary_wrapper",
 )
+load(
+    "//internal/generationtest:generationtest.bzl",
+    _gazelle_generation_test = "gazelle_generation_test",
+)
 
 go_repository = _go_repository
 git_repository = _git_repository
 http_archive = _http_archive
 gazelle_binary = _gazelle_binary
+gazelle_generation_test = _gazelle_generation_test
 
 DEFAULT_LANGUAGES = [
     "@bazel_gazelle//language/proto:go_default_library",

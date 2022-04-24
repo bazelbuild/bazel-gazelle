@@ -363,7 +363,7 @@ func TestShouldKeepExpr(t *testing.T) {
 }
 
 func TestInternalVisibility(t *testing.T) {
-	var tests = []struct {
+	tests := []struct {
 		rel      string
 		expected string
 	}{

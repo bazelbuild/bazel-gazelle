@@ -49,6 +49,7 @@ type updateConfig struct {
 	walkMode       walk.Mode
 	patchPath      string
 	patchBuffer    bytes.Buffer
+	print0         bool
 }
 
 type emitFunc func(c *config.Config, f *rule.File) error
@@ -81,6 +82,7 @@ func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *conf
 	fs.StringVar(&ucr.mode, "mode", "fix", "print: prints all of the updated BUILD files\n\tfix: rewrites all of the BUILD files in place\n\tdiff: computes the rewrite but then just does a diff")
 	fs.BoolVar(&ucr.recursive, "r", true, "when true, gazelle will update subdirectories recursively")
 	fs.StringVar(&uc.patchPath, "patch", "", "when set with -mode=diff, gazelle will write to a file instead of stdout")
+	fs.BoolVar(&uc.print0, "print0", false, "when set with -mode=fix, gazelle will print the names of rewritten files separated with \\0 (NULL)")
 	fs.Var(&gzflag.MultiFlag{Values: &ucr.knownImports}, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
 	fs.StringVar(&ucr.repoConfigPath, "repo_config", "", "file where Gazelle should load repository configuration. Defaults to WORKSPACE.")
 }
@@ -225,12 +227,6 @@ type visitRecord struct {
 	mappedKindInfo map[string]rule.KindInfo
 }
 
-type byPkgRel []visitRecord
-
-func (vs byPkgRel) Len() int           { return len(vs) }
-func (vs byPkgRel) Less(i, j int) bool { return vs[i].pkgRel < vs[j].pkgRel }
-func (vs byPkgRel) Swap(i, j int)      { vs[i], vs[j] = vs[j], vs[i] }
-
 var genericLoads = []rule.LoadInfo{
 	{
 		Name:    "@bazel_gazelle//:def.bzl",
@@ -304,7 +300,8 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 				RegularFiles: regularFiles,
 				GenFiles:     genFiles,
 				OtherEmpty:   empty,
-				OtherGen:     gen})
+				OtherGen:     gen,
+			})
 			if len(res.Gen) != len(res.Imports) {
 				log.Panicf("%s: language %s generated %d rules but returned %d imports", rel, l.Name(), len(res.Gen), len(res.Imports))
 			}
@@ -385,7 +382,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	for _, v := range visits {
 		merger.FixLoads(v.file, applyKindMappings(v.mappedKinds, loads))
 		if err := uc.emit(v.c, v.file); err != nil {
-			if err == exitError {
+			if err == errExit {
 				exit = err
 			} else {
 				log.Print(err)
@@ -393,7 +390,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 	}
 	if uc.patchPath != "" {
-		if err := ioutil.WriteFile(uc.patchPath, uc.patchBuffer.Bytes(), 0666); err != nil {
+		if err := ioutil.WriteFile(uc.patchPath, uc.patchBuffer.Bytes(), 0o666); err != nil {
 			return err
 		}
 	}

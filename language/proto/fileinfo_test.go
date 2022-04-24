@@ -112,8 +112,8 @@ import "second.proto";`,
 				HasServices: true,
 			},
 		}, {
-			desc: "service as name",
-			name: "service.proto",
+			desc:  "service as name",
+			name:  "service.proto",
 			proto: `message ServiceAccount { string service = 1; }`,
 			want: FileInfo{
 				HasServices: false,
@@ -126,7 +126,7 @@ import "second.proto";`,
 				t.Fatal(err)
 			}
 			defer os.RemoveAll(dir)
-			if err := ioutil.WriteFile(filepath.Join(dir, tc.name), []byte(tc.proto), 0600); err != nil {
+			if err := ioutil.WriteFile(filepath.Join(dir, tc.name), []byte(tc.proto), 0o600); err != nil {
 				t.Fatal(err)
 			}
 

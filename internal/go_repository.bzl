@@ -93,6 +93,17 @@ def _go_repository_impl(ctx):
     # TODO(#549): vcs repositories are not cached and still need to be fetched.
     # Download the repository or module.
     fetch_repo_args = None
+    gazelle_path = None
+
+    # Declare Label dependencies at the top of function to avoid unnecessary fetching:
+    # https://docs.bazel.build/versions/main/skylark/repository_rules.html#when-is-the-implementation-function-executed
+    go_env_cache = str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env")))
+    if not ctx.attr.urls:
+        fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
+    generate = ctx.attr.build_file_generation == "on"
+    _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
+    if generate:
+        gazelle_path = ctx.path(Label(_gazelle))
 
     if ctx.attr.urls:
         # HTTP mode
@@ -147,7 +158,7 @@ def _go_repository_impl(ctx):
     else:
         fail("one of urls, commit, tag, or importpath must be specified")
 
-    env = read_cache_env(ctx, str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env"))))
+    env = read_cache_env(ctx, go_env_cache)
     env_keys = [
         # Respect user proxy and sumdb settings for privacy.
         # TODO(jayconrod): gazelle in go_repository mode should probably
@@ -191,7 +202,6 @@ def _go_repository_impl(ctx):
         # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
         fetch_repo_env["GO111MODULE"] = "on"
 
-        fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
         result = env_execute(
             ctx,
             [fetch_repo] + fetch_repo_args,
@@ -200,7 +210,7 @@ def _go_repository_impl(ctx):
         )
         if result.return_code:
             fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
-        if result.stderr:
+        if ctx.attr.debug_mode and result.stderr:
             print("fetch_repo: " + result.stderr)
 
     # Repositories are fetched. Determine if build file generation is needed.
@@ -212,7 +222,7 @@ def _go_repository_impl(ctx):
             existing_build_file = name
             break
 
-    generate = (ctx.attr.build_file_generation == "on" or (not existing_build_file and ctx.attr.build_file_generation == "auto"))
+    generate = generate or (not existing_build_file and ctx.attr.build_file_generation == "auto")
 
     if generate:
         # Build file generation is needed. Populate Gazelle directive at root build file
@@ -224,10 +234,10 @@ def _go_repository_impl(ctx):
             )
 
         # Run Gazelle
-        _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
-        gazelle = ctx.path(Label(_gazelle))
+        if gazelle_path == None:
+            gazelle_path = ctx.path(Label(_gazelle))
         cmd = [
-            gazelle,
+            gazelle_path,
             "-go_repository_mode",
             "-go_prefix",
             ctx.attr.importpath,
@@ -252,13 +262,14 @@ def _go_repository_impl(ctx):
             cmd.extend(["-go_naming_convention", ctx.attr.build_naming_convention])
         cmd.extend(ctx.attr.build_extra_args)
         cmd.append(ctx.path(""))
+        ctx.report_progress("running Gazelle")
         result = env_execute(ctx, cmd, environment = env, timeout = _GO_REPOSITORY_TIMEOUT)
         if result.return_code:
             fail("failed to generate BUILD files for %s: %s" % (
                 ctx.attr.importpath,
                 result.stderr,
             ))
-        if result.stderr:
+        if ctx.attr.debug_mode and result.stderr:
             print("%s: %s" % (ctx.name, result.stderr))
 
     # Apply patches if necessary.
@@ -369,9 +380,11 @@ go_repository = repository_rule(
 
         # Attributes for a repository that needs automatic build file generation
         "build_external": attr.string(
-            doc = """One of `"external"`, `"vendored"`.
+            default = "static",
+            doc = """One of `"external"`, `"static"` or `"vendored"`.
 
-            This sets Gazelle's `-external` command line flag.
+            This sets Gazelle's `-external` command line flag. In `"static"` mode,
+            Gazelle will not call out to the network to resolve imports.
 
             **NOTE:** This cannot be used to ignore the `vendor` directory in a
             repository. The `-external` flag only controls how Gazelle resolves
@@ -380,6 +393,7 @@ go_repository = repository_rule(
             values = [
                 "",
                 "external",
+                "static",
                 "vendored",
             ],
         ),
@@ -476,6 +490,15 @@ go_repository = repository_rule(
             default = [],
             doc = "Commands to run in the repository after patches are applied.",
         ),
+
+        # Attributes that affect the verbosity of logging:
+        "debug_mode": attr.bool(
+            default = False,
+            doc = """Enables logging of fetch_repo and Gazelle output during succcesful runs. Gazelle can be noisy
+            so this defaults to `False`. However, setting to `True` can be useful for debugging build failures and
+            unexpected behavior for the given rule.
+            """,
+        )
     },
 )
 """See repository.md#go-repository for full documentation."""

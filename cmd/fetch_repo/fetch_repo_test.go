@@ -23,13 +23,11 @@ import (
 	"golang.org/x/tools/go/vcs"
 )
 
-var (
-	root = &vcs.RepoRoot{
-		VCS:  vcs.ByCmd("git"),
-		Repo: "https://github.com/bazeltest/rules_go",
-		Root: "github.com/bazeltest/rules_go",
-	}
-)
+var root = &vcs.RepoRoot{
+	VCS:  vcs.ByCmd("git"),
+	Repo: "https://github.com/bazeltest/rules_go",
+	Root: "github.com/bazeltest/rules_go",
+}
 
 func TestMain(m *testing.M) {
 	// Replace vcs.RepoRootForImportPath to disable any network calls.

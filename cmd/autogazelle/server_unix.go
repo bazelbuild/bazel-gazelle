@@ -1,3 +1,4 @@
+//go:build darwin || dragonfly || freebsd || linux || nacl || netbsd || openbsd || solaris || windows
 // +build darwin dragonfly freebsd linux nacl netbsd openbsd solaris windows
 
 /* Copyright 2018 The Bazel Authors. All rights reserved.
@@ -66,7 +67,7 @@ func startServer() error {
 // with SIGINT or SIGTERM.
 func runServer() error {
 	// Begin logging to the log file.
-	logFile, err := os.OpenFile(*logPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile(*logPath, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0o666)
 	if err != nil {
 		return err
 	}

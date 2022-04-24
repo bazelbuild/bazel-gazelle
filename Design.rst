@@ -441,7 +441,7 @@ Bazel, using the regular Go SDK.
 
 .. code:: bash
 
-  $ go get -u github.com/bazelbuild/bazel-gazelle/cmd/gazelle
+  $ go install github.com/bazelbuild/bazel-gazelle/cmd/gazelle@latest
   $ gazelle -go_prefix example.com/project
 
 We lightly discourage this method of running Gazelle. All developers on a

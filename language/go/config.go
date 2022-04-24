@@ -199,8 +199,13 @@ type dependencyMode int
 
 const (
 	// externalMode indicates imports should be resolved to external dependencies
-	// (declared in WORKSPACE).
+	// (declared in WORKSPACE). Calls out to the network if an import can't be resolved
+	// locally.
 	externalMode dependencyMode = iota
+
+	// staticMode indicates imports should be resolved only to dependencies known by
+	// Gazelle (declared in WORKSPACE). Unknown imports are ignored.
+	staticMode
 
 	// vendorMode indicates imports should be resolved to libraries in the
 	// vendor directory.
@@ -208,11 +213,15 @@ const (
 )
 
 func (m dependencyMode) String() string {
-	if m == externalMode {
+	switch m {
+	case externalMode:
 		return "external"
-	} else {
-		return "vendored"
+	case staticMode:
+		return "static"
+	case vendorMode:
+		return "vendor"
 	}
+	return ""
 }
 
 type externalFlag struct {
@@ -223,6 +232,8 @@ func (f *externalFlag) Set(value string) error {
 	switch value {
 	case "external":
 		*f.depMode = externalMode
+	case "static":
+		*f.depMode = staticMode
 	case "vendored":
 		*f.depMode = vendorMode
 	default:
@@ -320,9 +331,11 @@ type moduleRepo struct {
 	repoName, modulePath string
 }
 
-var validBuildExternalAttr = []string{"external", "vendored"}
-var validBuildFileGenerationAttr = []string{"auto", "on", "off"}
-var validBuildFileProtoModeAttr = []string{"default", "legacy", "disable", "disable_global", "package"}
+var (
+	validBuildExternalAttr       = []string{"external", "vendored"}
+	validBuildFileGenerationAttr = []string{"auto", "on", "off"}
+	validBuildFileProtoModeAttr  = []string{"default", "legacy", "disable", "disable_global", "package"}
+)
 
 func (*goLang) KnownDirectives() []string {
 	return []string{
@@ -518,7 +531,9 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 					continue
 				}
 				gc.preprocessTags()
-				gc.setBuildTags(d.Value)
+				if err := gc.setBuildTags(d.Value); err != nil {
+					log.Print(err)
+				}
 
 			case "go_generate_proto":
 				if goGenerateProto, err := strconv.ParseBool(d.Value); err == nil {

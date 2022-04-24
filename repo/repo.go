@@ -33,11 +33,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-type byRuleName []*rule.Rule
-
-func (s byRuleName) Len() int           { return len(s) }
-func (s byRuleName) Less(i, j int) bool { return s[i].Name() < s[j].Name() }
-func (s byRuleName) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+const gazelleFromDirectiveKey = "_gazelle_from_directive"
 
 // FindExternalRepo attempts to locate the directory where Bazel has fetched
 // the external repository with the given name. An error is returned if the
@@ -66,73 +62,113 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 	return cleanPath, nil
 }
 
+type macroKey struct {
+	file, def string
+}
+
+type loader struct {
+	repos        []*rule.Rule
+	repoRoot     string
+	repoFileMap  map[string]*rule.File // repo rule name => file that contains repo
+	repoIndexMap map[string]int        // repo rule name => index of rule in "repos" slice
+	visited      map[macroKey]struct{}
+}
+
+func isFromDirective(repo *rule.Rule) bool {
+	b, ok := repo.PrivateAttr(gazelleFromDirectiveKey).(bool)
+	return ok && b
+}
+
+// add adds a repository rule to a file.
+// In the case of duplicate rules, select the rule
+// with the following prioritization:
+//  - rules that were provided as directives have precedence
+//  - rules that were provided last
+func (l *loader) add(file *rule.File, repo *rule.Rule) {
+	name := repo.Name()
+	if name == "" {
+		return
+	}
+
+	if i, ok := l.repoIndexMap[repo.Name()]; ok {
+		if isFromDirective(l.repos[i]) && !isFromDirective(repo) {
+			// We always prefer directives over non-directives
+			return
+		}
+		// Update existing rule to new rule
+		l.repos[i] = repo
+	} else {
+		l.repos = append(l.repos, repo)
+		l.repoIndexMap[name] = len(l.repos) - 1
+	}
+	l.repoFileMap[name] = file
+}
+
+// visit returns true exactly once for each file,function key, and false for all future instances
+func (l *loader) visit(file, function string) bool {
+	if _, ok := l.visited[macroKey{file, function}]; ok {
+		return false
+	}
+	l.visited[macroKey{file, function}] = struct{}{}
+	return true
+}
+
 // ListRepositories extracts metadata about repositories declared in a
 // file.
 func ListRepositories(workspace *rule.File) (repos []*rule.Rule, repoFileMap map[string]*rule.File, err error) {
-	repoIndexMap := make(map[string]int)
-	repoFileMap = make(map[string]*rule.File)
-	visited := make(map[string]bool)
-	for _, repo := range workspace.Rules {
-		if name := repo.Name(); name != "" {
-			repos = append(repos, repo)
-			repoFileMap[name] = workspace
-			repoIndexMap[name] = len(repos) - 1
-		}
+	l := &loader{
+		repoRoot:     filepath.Dir(workspace.Path),
+		repoIndexMap: make(map[string]int),
+		repoFileMap:  make(map[string]*rule.File),
+		visited:      make(map[macroKey]struct{}),
 	}
-	if err := loadExtraRepos(workspace, &repos, repoFileMap, repoIndexMap); err != nil {
+
+	for _, repo := range workspace.Rules {
+		l.add(workspace, repo)
+	}
+	if err := l.loadExtraRepos(workspace); err != nil {
 		return nil, nil, err
 	}
 
 	for _, d := range workspace.Directives {
 		switch d.Key {
 		case "repository_macro":
-			f, defName, leveled, err := ParseRepositoryMacroDirective(d.Value)
+			parsed, err := ParseRepositoryMacroDirective(d.Value)
 			if err != nil {
 				return nil, nil, err
 			}
-			repoRoot := filepath.Dir(workspace.Path)
-			f = filepath.Join(repoRoot, filepath.Clean(f))
-			visited[f+"%"+defName] = true
 
-			la := &loadArgs{
-				repoRoot: repoRoot,
-				repos: repos,
-				repoFileMap: repoFileMap,
-				repoIndexMap: repoIndexMap,
-				visited: visited,
-			}
-
-			if err := loadRepositoriesFromMacro(la, leveled, f, defName); err != nil {
+			if err := l.loadRepositoriesFromMacro(parsed); err != nil {
 				return nil, nil, err
 			}
-			repos = la.repos
 		}
 	}
-	return repos, repoFileMap, nil
+	return l.repos, l.repoFileMap, nil
 }
 
-type loadArgs struct {
-	repoRoot string
-	repos []*rule.Rule
-	repoFileMap map[string]*rule.File
-	repoIndexMap map[string]int
-	visited map[string]bool
-}
+func (l *loader) loadRepositoriesFromMacro(macro *RepoMacro) error {
+	f := filepath.Join(l.repoRoot, macro.Path)
+	if !l.visit(f, macro.DefName) {
+		return nil
+	}
 
-func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) error {
-	macroFile, err := rule.LoadMacroFile(f, "", defName)
+	macroFile, err := rule.LoadMacroFile(f, "", macro.DefName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load %s in repoRoot %s: %w", f, l.repoRoot, err)
+	}
+	loads := map[string]*rule.Load{}
+	for _, load := range macroFile.Loads {
+		for _, name := range load.Symbols() {
+			loads[name] = load
+		}
 	}
 	for _, rule := range macroFile.Rules {
-		name := rule.Name()
-		if name != "" {
-			la.repos = append(la.repos, rule)
-			la.repoFileMap[name] = macroFile
-			la.repoIndexMap[name] = len(la.repos) - 1
+		// (Incorrectly) assume that anything with a name attribute is a rule, not a macro to recurse into
+		if rule.Name() != "" {
+			l.add(macroFile, rule)
 			continue
 		}
-		if !leveled {
+		if !macro.Leveled {
 			continue
 		}
 		// If another repository macro is loaded that macro defName must be called.
@@ -140,24 +176,21 @@ func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) er
 		// This then must be matched with the Load that it is imported with, so that
 		// file can be loaded
 		kind := rule.Kind()
-		for _, l := range macroFile.Loads {
-			if l.Has(kind) {
-				f, defName = loadToMacroDef(l, la.repoRoot, kind)
-				break
-			}
-		}
-		// TODO: Also handle the case where one macro calls another macro in the same bzl file
-		if f == "" {
+		load := loads[kind]
+		if load == nil {
 			continue
 		}
-		if !la.visited[f+"%"+defName] {
-			la.visited[f+"%"+defName] = true
-			if err := loadRepositoriesFromMacro(la, false /* leveled */, f, defName); err != nil {
-				return err
-			}
+		resolved := loadToMacroDef(load, l.repoRoot, kind)
+		// TODO: Also handle the case where one macro calls another macro in the same bzl file
+		if macro.Path == "" {
+			continue
+		}
+
+		if err := l.loadRepositoriesFromMacro(resolved); err != nil {
+			return err
 		}
 	}
-	return loadExtraRepos(macroFile, &la.repos, la.repoFileMap, la.repoIndexMap)
+	return l.loadExtraRepos(macroFile)
 }
 
 // loadToMacroDef takes a load
@@ -166,27 +199,24 @@ func loadRepositoriesFromMacro(la *loadArgs, leveled bool, f, defName string) er
 // with defAlias = "alias_name", it will return:
 //     -> "/Path/to/package_name/package_dir/file.bzl"
 //     -> "original_def_name"
-func loadToMacroDef(l *rule.Load, repoRoot, defAlias string) (string, string) {
+func loadToMacroDef(l *rule.Load, repoRoot, defAlias string) *RepoMacro {
 	rel := strings.Replace(filepath.Clean(l.Name()), ":", string(filepath.Separator), 1)
-	f := filepath.Join(repoRoot, rel)
 	// A loaded macro may refer to the macro by a different name (alias) in the load,
 	// thus, the original name must be resolved to load the macro file properly.
 	defName := l.Unalias(defAlias)
-	return f, defName
+	return &RepoMacro{
+		Path:    rel,
+		DefName: defName,
+	}
 }
 
-func loadExtraRepos(f *rule.File, repos *[]*rule.Rule, repoFileMap map[string]*rule.File, repoIndexMap map[string]int) error {
+func (l *loader) loadExtraRepos(f *rule.File) error {
 	extraRepos, err := parseRepositoryDirectives(f.Directives)
 	if err != nil {
 		return err
 	}
 	for _, repo := range extraRepos {
-		if i, ok := repoIndexMap[repo.Name()]; ok {
-			(*repos)[i] = repo
-		} else {
-			*repos = append(*repos, repo)
-		}
-		repoFileMap[repo.Name()] = f
+		l.add(f, repo)
 	}
 	return nil
 }
@@ -201,6 +231,7 @@ func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule,
 			}
 			kind := vals[0]
 			r := rule.NewRule(kind, "")
+			r.SetPrivateAttr(gazelleFromDirectiveKey, true)
 			for _, val := range vals[1:] {
 				kv := strings.SplitN(val, "=", 2)
 				if len(kv) != 2 {
@@ -217,17 +248,27 @@ func parseRepositoryDirectives(directives []rule.Directive) (repos []*rule.Rule,
 	return repos, nil
 }
 
+type RepoMacro struct {
+	Path    string
+	DefName string
+	Leveled bool
+}
+
 // ParseRepositoryMacroDirective checks the directive is in proper format, and splits
 // path and defName. Repository_macros prepended with a "+" (e.g. "# gazelle:repository_macro +file%def")
 // indicates a "leveled" macro, which loads other macro files.
-func ParseRepositoryMacroDirective(directive string) (string, string, bool, error) {
+func ParseRepositoryMacroDirective(directive string) (*RepoMacro, error) {
 	vals := strings.Split(directive, "%")
 	if len(vals) != 2 {
-		return "", "", false, fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", directive)
+		return nil, fmt.Errorf("Failure parsing repository_macro: %s, expected format is macroFile%%defName", directive)
 	}
 	f := vals[0]
 	if strings.HasPrefix(f, "..") {
-		return "", "", false, fmt.Errorf("Failure parsing repository_macro: %s, macro file path %s should not start with \"..\"", directive, f)
+		return nil, fmt.Errorf("Failure parsing repository_macro: %s, macro file path %s should not start with \"..\"", directive, f)
 	}
-	return strings.TrimPrefix(f, "+"), vals[1], strings.HasPrefix(f, "+"), nil
+	return &RepoMacro{
+		Path:    strings.TrimPrefix(f, "+"),
+		DefName: vals[1],
+		Leveled: strings.HasPrefix(f, "+"),
+	}, nil
 }

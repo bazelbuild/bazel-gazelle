@@ -1,5 +1,6 @@
 load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load(":gazelle_binary_test.bzl", "gazelle_binary_test_suite")
 
 # gazelle:exclude *_test.go
 go_bazel_test(
@@ -14,6 +15,8 @@ go_bazel_test(
     ],
     deps = ["//testtools"],
 )
+
+gazelle_binary_test_suite()
 
 # TODO(jayconrod): test fetch_repo error cases.
 
@@ -34,8 +37,10 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "common.bzl",
+        "extend_docs.bzl",
         "gazelle.bash.in",
         "gazelle_binary.bzl",
+        "gazelle_binary_test.bzl",
         "go_repository.bzl",
         "go_repository_cache.bzl",
         "go_repository_config.bzl",
@@ -43,8 +48,10 @@ filegroup(
         "go_repository_tools_srcs.bzl",
         "list_repository_tools_srcs.go",
         "overlay_repository.bzl",
+        "repository_docs.bzl",
         "repository_rules_test_errors.patch",
         "//internal/gazellebinarytest:all_files",
+        "//internal/generationtest:all_files",
         "//internal/language:all_files",
         "//internal/version:all_files",
         "//internal/wspace:all_files",
@@ -99,6 +106,26 @@ bzl_library(
 )
 
 bzl_library(
+    name = "repository_docs",
+    srcs = ["repository_docs.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        ":go_repository",
+        ":overlay_repository",
+    ],
+)
+
+bzl_library(
+    name = "extend_docs",
+    srcs = ["extend_docs.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "gazelle_binary",
+        "//internal/generationtest",
+    ],
+)
+
+bzl_library(
     name = "common",
     srcs = ["common.bzl"],
     visibility = ["//:__subpackages__"],
@@ -113,22 +140,5 @@ bzl_library(
 bzl_library(
     name = "overlay_repository",
     srcs = ["overlay_repository.bzl"],
-    visibility = ["//:__subpackages__"],
-)
-
-bzl_library(
-    name = "repository_docs",
-    srcs = ["repository_docs.bzl"],
-    deps = [
-        ":go_repository",
-        ":overlay_repository",
-    ],
-    visibility = ["//:__subpackages__"],
-)
-
-bzl_library(
-    name = "extend_docs",
-    srcs = ["extend_docs.bzl"],
-    deps = [":gazelle_binary"],
     visibility = ["//:__subpackages__"],
 )

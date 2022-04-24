@@ -50,12 +50,12 @@ func TestMain(m *testing.M) {
 		// to any files that don't have it. Files and directories in the module cache
 		// are read-only, and on Windows, the read-only bit prevents deletion and
 		// prevents Bazel from cleaning up the source tree.
-		filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
+		_ = filepath.Walk(tmpDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
-			if mode := info.Mode(); mode&0200 == 0 {
-				err = os.Chmod(path, mode|0200)
+			if mode := info.Mode(); mode&0o200 == 0 {
+				err = os.Chmod(path, mode|0o200)
 			}
 			return err
 		})
@@ -112,12 +112,14 @@ func TestCreateFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0600); err != nil {
+	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
 	// Check that Gazelle creates a new file named "BUILD.bazel".
-	run(dir, defaultArgs(dir))
+	if err = run(dir, defaultArgs(dir)); err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
 
 	buildFile := filepath.Join(dir, "BUILD.bazel")
 	if _, err = os.Stat(buildFile); err != nil {
@@ -135,17 +137,20 @@ func TestUpdateFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0600); err != nil {
+	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
 	buildFile := filepath.Join(dir, "BUILD")
-	if err = ioutil.WriteFile(buildFile, nil, 0600); err != nil {
+	if err = ioutil.WriteFile(buildFile, nil, 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", buildFile, err)
 	}
 
 	// Check that Gazelle updates the BUILD file in place.
-	run(dir, defaultArgs(dir))
+	if err = run(dir, defaultArgs(dir)); err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
+
 	if st, err := os.Stat(buildFile); err != nil {
 		t.Errorf("could not stat BUILD: %v", err)
 	} else if st.Size() == 0 {
@@ -167,7 +172,7 @@ func TestNoChanges(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0600); err != nil {
+	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
@@ -186,7 +191,7 @@ go_binary(
     embed = [":go_default_library"],
     visibility = ["//visibility:public"],
 )
-`), 0600); err != nil {
+`), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", buildFile, err)
 	}
 	st, err := os.Stat(buildFile)
@@ -196,7 +201,10 @@ go_binary(
 	modTime := st.ModTime()
 
 	// Ensure that Gazelle does not write to the BUILD file.
-	run(dir, defaultArgs(dir))
+	if err = run(dir, defaultArgs(dir)); err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
+
 	if st, err := os.Stat(buildFile); err != nil {
 		t.Errorf("could not stat BUILD: %v", err)
 	} else if !modTime.Equal(st.ModTime()) {
@@ -228,7 +236,8 @@ package main
 
 func main() {}
 `,
-		}, {
+		},
+		{
 			Path:    "out/BUILD",
 			Content: `this should get replaced`,
 		},
@@ -388,12 +397,14 @@ go_library(
 	defer cleanup()
 
 	// Check that Gazelle does not update the BUILD file, due to lang filter.
-	run(dir, []string{
+	if err := run(dir, []string{
 		"-repo_root", dir,
 		"-go_prefix", "example.com/repo",
 		"-lang=proto",
 		dir,
-	})
+	}); err != nil {
+		t.Fatalf("run failed: %v", err)
+	}
 
 	testtools.CheckFiles(t, dir, fixture)
 }

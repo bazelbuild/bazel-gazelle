@@ -27,7 +27,7 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 )
 
-var exitError = fmt.Errorf("encountered changes while running diff")
+var errExit = fmt.Errorf("encountered changes while running diff")
 
 func diffFile(c *config.Config, f *rule.File) error {
 	rel, err := filepath.Rel(c.RepoRoot, f.Path)
@@ -60,7 +60,7 @@ func diffFile(c *config.Config, f *rule.File) error {
 	}
 
 	if len(f.Content) != 0 {
-    		diff.A = difflib.SplitLines(string(f.Content))
+		diff.A = difflib.SplitLines(string(f.Content))
 	}
 
 	diff.B = difflib.SplitLines(string(newContent))
@@ -80,7 +80,7 @@ func diffFile(c *config.Config, f *rule.File) error {
 		return fmt.Errorf("error diffing %s: %v", f.Path, err)
 	}
 	if ds, _ := difflib.GetUnifiedDiffString(diff); ds != "" {
-		return exitError
+		return errExit
 	}
 
 	return nil

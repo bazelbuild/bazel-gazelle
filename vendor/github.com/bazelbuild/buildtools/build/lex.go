@@ -42,6 +42,8 @@ const (
 	TypeWorkspace
 	// TypeBzl represents .bzl files
 	TypeBzl
+	//TypeModule represents MODULE.bazel files
+	TypeModule
 )
 
 func (t FileType) String() string {
@@ -54,6 +56,8 @@ func (t FileType) String() string {
 		return "WORKSPACE"
 	case TypeBzl:
 		return ".bzl"
+	case TypeModule:
+		return "MODULE.bazel"
 	}
 	return "unknown"
 }
@@ -78,6 +82,18 @@ func ParseWorkspace(filename string, data []byte) (*File, error) {
 	f, err := in.parse()
 	if f != nil {
 		f.Type = TypeWorkspace
+	}
+	return f, err
+}
+
+// ParseModule parses a file, marks it as a MODULE.bazel file and returns the corresponding parse tree.
+//
+// The filename is used only for generating error messages.
+func ParseModule(filename string, data []byte) (*File, error) {
+	in := newInput(filename, data)
+	f, err := in.parse()
+	if f != nil {
+		f.Type = TypeModule
 	}
 	return f, err
 }
@@ -114,6 +130,9 @@ func getFileType(filename string) FileType {
 	if strings.HasSuffix(basename, ".oss") {
 		basename = basename[:len(basename)-4]
 	}
+	if basename == "module.bazel" {
+		return TypeModule
+	}
 	ext := filepath.Ext(basename)
 	switch ext {
 	case ".bzl":
@@ -141,6 +160,8 @@ func Parse(filename string, data []byte) (*File, error) {
 		return ParseBuild(filename, data)
 	case TypeWorkspace:
 		return ParseWorkspace(filename, data)
+	case TypeModule:
+		return ParseModule(filename, data)
 	case TypeBzl:
 		return ParseBzl(filename, data)
 	}

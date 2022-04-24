@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 /* Copyright 2018 The Bazel Authors. All rights reserved.
@@ -90,7 +91,7 @@ func main() {
 		log.Fatal("either -com_google_googleapis or -go_googleapis must be set")
 	}
 
-	if err := ioutil.WriteFile(*protoCsvPath, protoContent.Bytes(), 0666); err != nil {
+	if err := ioutil.WriteFile(*protoCsvPath, protoContent.Bytes(), 0o666); err != nil {
 		log.Fatal(err)
 	}
 }

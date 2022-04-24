@@ -39,6 +39,11 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
+const (
+	goRepoRuleKind      = "go_repository"
+	httpArchiveRuleKind = "http_archive"
+)
+
 var (
 	configSource = flag.String("config_source", "", "a file that is read to learn about external repositories")
 	configDest   = flag.String("config_dest", "", "destination file for the generated repo config")
@@ -101,27 +106,18 @@ func generateRepoConfig(configDest, configSource string) ([]string, error) {
 		}
 		return sortedFiles[i].DefName < sortedFiles[j].DefName
 	})
-	for _, r := range sortedFiles {
-		for _, d := range r.Directives {
-			// skip repository_macro directives, because for the repo config we flatten
-			// macros into one file
-			if d.Key != "repository_macro" {
-				buf.WriteString("# gazelle:" + d.Key + " " + d.Value + "\n")
-			}
-		}
-	}
 
 	destFile := rule.EmptyFile(configDest, "")
 	for _, rsrc := range repos {
 		var rdst *rule.Rule
-		if rsrc.Kind() == "go_repository" {
-			rdst = rule.NewRule("go_repository", rsrc.Name())
+		if rsrc.Kind() == goRepoRuleKind {
+			rdst = rule.NewRule(goRepoRuleKind, rsrc.Name())
 			rdst.SetAttr("importpath", rsrc.AttrString("importpath"))
 			if namingConvention := rsrc.AttrString("build_naming_convention"); namingConvention != "" {
 				rdst.SetAttr("build_naming_convention", namingConvention)
 			}
-		} else if rsrc.Kind() == "http_archive" && rsrc.Name() == "io_bazel_rules_go" {
-			rdst = rule.NewRule("http_archive", "io_bazel_rules_go")
+		} else if rsrc.Kind() == httpArchiveRuleKind && rsrc.Name() == "io_bazel_rules_go" {
+			rdst = rule.NewRule(httpArchiveRuleKind, "io_bazel_rules_go")
 			rdst.SetAttr("urls", rsrc.AttrStrings("urls"))
 		}
 		if rdst != nil {
@@ -131,7 +127,7 @@ func generateRepoConfig(configDest, configSource string) ([]string, error) {
 
 	buf.WriteString("\n")
 	buf.Write(destFile.Format())
-	if err := ioutil.WriteFile(configDest, buf.Bytes(), 0666); err != nil {
+	if err := ioutil.WriteFile(configDest, buf.Bytes(), 0o666); err != nil {
 		return nil, err
 	}
 

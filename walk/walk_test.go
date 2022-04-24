@@ -474,11 +474,11 @@ type testConfigurer struct {
 	configure func(c *config.Config, rel string, f *rule.File)
 }
 
-func (_ *testConfigurer) RegisterFlags(_ *flag.FlagSet, _ string, _ *config.Config) {}
+func (*testConfigurer) RegisterFlags(_ *flag.FlagSet, _ string, _ *config.Config) {}
 
-func (_ *testConfigurer) CheckFlags(_ *flag.FlagSet, _ *config.Config) error { return nil }
+func (*testConfigurer) CheckFlags(_ *flag.FlagSet, _ *config.Config) error { return nil }
 
-func (_ *testConfigurer) KnownDirectives() []string { return nil }
+func (*testConfigurer) KnownDirectives() []string { return nil }
 
 func (tc *testConfigurer) Configure(c *config.Config, rel string, f *rule.File) {
 	tc.configure(c, rel, f)

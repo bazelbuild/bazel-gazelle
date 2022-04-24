@@ -109,7 +109,8 @@ go_test(
     data = glob(["testdata/*"]),
     embed = [":go_default_library"],
 )
-`}, {
+`,
+	}, {
 		desc: "merge dicts",
 		previous: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")

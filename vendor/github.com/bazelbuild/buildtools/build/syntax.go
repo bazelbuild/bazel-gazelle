@@ -194,8 +194,8 @@ func (x *Ident) asString() *StringExpr {
 // An TypedIdent represents an identifier with type annotation: "foo: int".
 type TypedIdent struct {
 	Comments
-	Ident   *Ident
-	Type    Expr
+	Ident *Ident
+	Type  Expr
 }
 
 // Span returns the start and end positions of the node

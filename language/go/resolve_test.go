@@ -199,7 +199,8 @@ go_library(
 )
 `,
 			}},
-			old: buildFile{content: `
+			old: buildFile{
+				content: `
 go_binary(
     name = "bin",
     _imports = ["example.com/foo"],
@@ -354,7 +355,8 @@ go_binary(
 `,
 		}, {
 			desc: "skip_self_embed",
-			old: buildFile{content: `
+			old: buildFile{
+				content: `
 go_library(
     name = "go_default_library",
     srcs = ["lib.go"],
@@ -1087,6 +1089,7 @@ func TestResolveExternal(t *testing.T) {
 		desc, importpath         string
 		repos                    []repo.Repo
 		moduleMode               bool
+		depMode                  dependencyMode
 		namingConvention         namingConvention
 		namingConventionExternal namingConvention
 		repoNamingConvention     map[string]namingConvention
@@ -1214,9 +1217,24 @@ func TestResolveExternal(t *testing.T) {
 			},
 			moduleMode: true,
 			want:       "@com_example_foo//:go_default_library",
+		}, {
+			desc:       "static_mode_known",
+			importpath: "example.com/repo/v2/foo",
+			repos: []repo.Repo{{
+				Name:     "custom_repo",
+				GoPrefix: "example.com/repo",
+			}},
+			depMode: staticMode,
+			want:    "@custom_repo//v2/foo:go_default_library",
+		}, {
+			desc:       "static_mode_unknown",
+			importpath: "example.com/repo/v2/foo",
+			depMode:    staticMode,
+			want:       "",
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
+			gc.depMode = tc.depMode
 			gc.moduleMode = tc.moduleMode
 			gc.goNamingConvention = tc.namingConvention
 			gc.goNamingConventionExternal = tc.namingConventionExternal
@@ -1226,7 +1244,12 @@ func TestResolveExternal(t *testing.T) {
 			imports := rule.PlatformStrings{Generic: []string{tc.importpath}}
 			gl.Resolve(c, ix, rc, r, imports, label.New("", "", "x"))
 			deps := r.AttrStrings("deps")
-			if len(deps) != 1 {
+			if tc.want == "" {
+				if len(deps) != 0 {
+					t.Fatalf("deps: got %d; want 0", len(deps))
+				}
+				return
+			} else if len(deps) != 1 {
 				t.Fatalf("deps: got %d; want 1", len(deps))
 			}
 			if deps[0] != tc.want {

@@ -46,17 +46,17 @@ func TestFindExternalRepo(t *testing.T) {
 
 	name := "foo"
 	externalPath := filepath.Join(dir, "bazel", "output-base", "external", name)
-	if err := os.MkdirAll(externalPath, 0777); err != nil {
+	if err := os.MkdirAll(externalPath, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
 	bazelOutPath := filepath.Join(dir, "bazel", "output-base", "execroot", "test", "bazel-out")
-	if err := os.MkdirAll(bazelOutPath, 0777); err != nil {
+	if err := os.MkdirAll(bazelOutPath, 0o777); err != nil {
 		t.Fatal(err)
 	}
 
 	workspacePath := filepath.Join(dir, "workspace")
-	if err := os.MkdirAll(workspacePath, 0777); err != nil {
+	if err := os.MkdirAll(workspacePath, 0o777); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Symlink(bazelOutPath, filepath.Join(workspacePath, "bazel-out")); err != nil {
@@ -128,6 +128,15 @@ git_repository(
 `,
 			want: `custom_repo example.com/repo1
 custom_repo_2 example.com/repo2`,
+		}, {
+			desc: "directive_prefer_latest",
+			workspace: `
+			# gazelle:repository go_repository name=custom_repo importpath=example.com/repo1
+			# gazelle:repository go_repository name=custom_repo_2 importpath=example.com/repo2
+			# gazelle:repository go_repository name=custom_repo importpath=example.com/repo3
+`,
+			want: `custom_repo example.com/repo3
+custom_repo_2 example.com/repo2`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -166,7 +175,8 @@ def foo_repositories():
         remote = "https://example.com/foo",
         importpath = "example.com/foo",
     )
-`}, {
+`,
+	}, {
 		Path: "repos2.bzl",
 		Content: `
 def bar_repositories():
@@ -186,7 +196,8 @@ def baz_repositories():
         remote = "https://example.com/ignored",
         importpath = "example.com/ignored",
     )
-`}}
+`,
+	}}
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 	workspaceString := `
@@ -229,7 +240,8 @@ def go_repositories():
         importpath = "example.com/go",
     )
 
-`}, {
+`,
+	}, {
 		Path: "repos2.bzl",
 		Content: `
 def bar_repositories():
@@ -247,12 +259,13 @@ def alias_repositories():
         remote = "https://example.com/alias",
         importpath = "example.com/alias",
     )
-`}}
+`,
+	}}
 	dir, cleanup := testtools.CreateFiles(t, files)
 	defer cleanup()
 	workspaceString := `
 # gazelle:repository_macro +repos1.bzl%go_repositories`
-	workspace, err := rule.LoadData(filepath.Join(dir,"WORKSPACE"), "", []byte(workspaceString))
+	workspace, err := rule.LoadData(filepath.Join(dir, "WORKSPACE"), "", []byte(workspaceString))
 	if err != nil {
 		t.Fatal(err)
 	}

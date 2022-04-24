@@ -65,7 +65,7 @@ const protoName = "proto"
 
 type protoLang struct{}
 
-func (_ *protoLang) Name() string { return protoName }
+func (*protoLang) Name() string { return protoName }
 
 func NewLanguage() language.Language {
 	return &protoLang{}
