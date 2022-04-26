@@ -33,6 +33,7 @@ func TestImports(t *testing.T) {
 		desc, want        string
 		wantErr           string
 		stubGoModDownload func(string, []string) ([]byte, error)
+		stubGoListModules func(string) ([]byte, error)
 		files             []testtools.FileSpec
 	}{
 		{
@@ -228,7 +229,7 @@ go_repository(
 			wantErr:           "",
 			stubGoModDownload: nil,
 		}, {
-			desc: "modules-with-error",
+			desc: "modules-download-error",
 			files: []testtools.FileSpec{
 				{
 					Path: "go.mod",
@@ -242,17 +243,105 @@ require (
 				}, {
 					Path: "go.sum",
 					Content: `
-					definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuJ=
-					`,
+definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuJ=
+`,
 				},
 			},
 			want:    "",
-			wantErr: "failed to download\nError downloading definitely.doesnotexist/ever: Did not exist",
+			wantErr: "error from go mod download: failed to download\nError downloading definitely.doesnotexist/ever: Did not exist",
 			stubGoModDownload: func(dir string, args []string) ([]byte, error) {
 				return []byte(`{
-	"Path": "definitely.doesnotexist/ever",
+"Path": "definitely.doesnotexist/ever",
+"Version": "0.1.0",
+"Error": {
+    "Err": "Did not exist"
+}
+}`), fmt.Errorf("failed to download")
+			},
+		}, {
+			desc: "modules-download-bad-json",
+			files: []testtools.FileSpec{
+				{
+					Path: "go.mod",
+					Content: `
+module github.com/bazelbuild/bazel-gazelle
+
+require (
+	definitely.doesnotexist/ever v0.1.0
+)
+`,
+				}, {
+					Path: "go.sum",
+					Content: `
+definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuJ=
+`,
+				},
+			},
+			want:    "",
+			wantErr: "error from go mod download: failed to download\nError parsing module for more error information: invalid character 'o' in literal null (expecting 'u')",
+			stubGoModDownload: func(dir string, args []string) ([]byte, error) {
+				return []byte(`{
+"Path": "definitely.doesnotexist/ever",
+"Version": "0.1.0",
+"Error": {
+   "Err": not valid json
+}
+}`), fmt.Errorf("failed to download")
+			},
+		}, {
+			desc: "list-modules-error",
+			files: []testtools.FileSpec{
+				{
+					Path: "go.mod",
+					Content: `
+module github.com/bazelbuild/bazel-gazelle
+
+require (
+	definitely.doesnotexist/ever v0.1.0
+)
+`,
+				}, {
+					Path: "go.sum",
+					Content: `
+definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuJ=
+`,
+				},
+			},
+			want:    "",
+			wantErr: "error from go list: failed to download\nError listing definitely.doesnotexist/ever: Did not exist",
+			stubGoListModules: func(dir string) ([]byte, error) {
+				return []byte(`{
+"Path": "definitely.doesnotexist/ever",
+"Version": "0.1.0",
+"Error": "Did not exist"
+}`), fmt.Errorf("failed to download")
+			},
+		}, {
+			desc: "list-modules-bad-json",
+			files: []testtools.FileSpec{
+				{
+					Path: "go.mod",
+					Content: `
+module github.com/bazelbuild/bazel-gazelle
+
+require (
+	definitely.doesnotexist/ever v0.1.0
+)
+`,
+				}, {
+					Path: "go.sum",
+					Content: `
+definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqwp+5A1VGuJ=
+`,
+				},
+			},
+			want:    "",
+			wantErr: "error from go list: failed to download\nError parsing module for more error information: invalid character 'n' after object key",
+			stubGoListModules: func(dir string) ([]byte, error) {
+				return []byte(`{
+    "Path": "definitely.doesnotexist/ever",
     "Version": "0.1.0",
-    "Error": "Did not exist"
+    "Error" not valid json
 }`), fmt.Errorf("failed to download")
 			},
 		}, {
@@ -348,6 +437,11 @@ go_repository(
 				previousGoModDownload := goModDownload
 				goModDownload = tc.stubGoModDownload
 				defer func() { goModDownload = previousGoModDownload }()
+			}
+			if tc.stubGoListModules != nil {
+				previousGoListModules := goListModules
+				goListModules = tc.stubGoListModules
+				defer func() { goListModules = previousGoListModules }()
 			}
 			dir, cleanup := testtools.CreateFiles(t, tc.files)
 			defer cleanup()
