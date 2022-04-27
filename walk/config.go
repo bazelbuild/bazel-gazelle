@@ -16,9 +16,14 @@ limitations under the License.
 package walk
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"log"
+	"os"
 	"path"
+	"strings"
+	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -35,6 +40,7 @@ type walkConfig struct {
 	excludes []string
 	ignore   bool
 	follow   []string
+	loadOnce sync.Once
 }
 
 const walkName = "_walk"
@@ -84,6 +90,12 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	*wcCopy = *wc
 	wcCopy.ignore = false
 
+	wc.loadOnce.Do(func() {
+		if err := cr.loadBazelIgnore(c.RepoRoot, wcCopy); err != nil {
+			log.Printf("error loading .bazelignore: %v", err)
+		}
+	})
+
 	if f != nil {
 		for _, d := range f.Directives {
 			switch d.Key {
@@ -102,6 +114,35 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	}
 
 	c.Exts[walkName] = wcCopy
+}
+
+func (c *Configurer) loadBazelIgnore(repoRoot string, wc *walkConfig) error {
+	ignorePath := path.Join(repoRoot, ".bazelignore")
+	file, err := os.Open(ignorePath)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf(".bazelignore exists but couldn't be read: %v", err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		ignore := strings.TrimSpace(scanner.Text())
+		if ignore == "" || string(ignore[0]) == "#" {
+			continue
+		}
+		// Bazel ignore paths are always relative to repo root.
+		// Glob patterns are not supported.
+		if strings.ContainsAny(ignore, "*?[") {
+			log.Printf("the .bazelignore exclusion pattern must not be a glob %s", ignore)
+			continue
+		}
+		// Ensure we remove trailing slashes or the exclude matching won't work correctly
+		wc.excludes = append(wc.excludes, strings.TrimSuffix(ignore, "/"))
+	}
+	return nil
 }
 
 func checkPathMatchPattern(pattern string) error {

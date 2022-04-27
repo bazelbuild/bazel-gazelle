@@ -192,13 +192,28 @@ func TestExcludeFiles(t *testing.T) {
 gen(
     name = "x",
     out = "gen",
-)
+)`,
+		},
+		{
+			Path: ".bazelignore",
+			Content: `
+dir
+dir2/a/b
+dir3/
+
+# Globs are not allowed in .bazelignore so this will not be ignored
+foo/*
+
+# Random comment followed by a line
+a.file
 `,
 		},
 		{Path: ".dot"},       // not ignored
 		{Path: "_blank"},     // not ignored
 		{Path: "a/a.proto"},  // not ignored
 		{Path: "a/b.gen.go"}, // not ignored
+		{Path: "dir2/a/c"},   // not ignored
+		{Path: "foo/a/c"},    // not ignored
 
 		{Path: "a.gen.go"},        // ignored by '*.gen.go'
 		{Path: "a.go"},            // ignored by 'a.go'
@@ -210,6 +225,10 @@ gen(
 		{Path: "c/x/y/b/foo/bar"}, // ignored by 'c/**/b'
 		{Path: "ign/bad"},         // ignored by 'ign'
 		{Path: "sub/b.go"},        // ignored by 'sub/b.go'
+		{Path: "dir/contents"},    // ignored by .bazelignore 'dir'
+		{Path: "dir2/a/b"},        // ignored by .bazelignore 'dir2/a/b'
+		{Path: "dir3/g/h"},        // ignored by .bazelignore 'dir3/'
+		{Path: "a.file"},          // ignored by .bazelignore 'a.file'
 	})
 	defer cleanup()
 
@@ -223,7 +242,7 @@ gen(
 			files = append(files, path.Join(rel, f))
 		}
 	})
-	want := []string{"a/a.proto", "a/b.gen.go", ".dot", "BUILD.bazel", "_blank"}
+	want := []string{"a/a.proto", "a/b.gen.go", "dir2/a/c", "foo/a/c", ".bazelignore", ".dot", "BUILD.bazel", "_blank"}
 	if diff := cmp.Diff(want, files); diff != "" {
 		t.Errorf("Walk files (-want +got):\n%s", diff)
 	}
