@@ -21,8 +21,10 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/build/constraint"
 	"go/parser"
 	"go/token"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -31,6 +33,7 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
+	_ "unsafe"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/version"
@@ -75,11 +78,11 @@ type fileInfo struct {
 
 	// tags is a list of build tag lines. Each entry is the trimmed text of
 	// a line after a "+build" prefix.
-	tags []tagLine
+	tags *buildTags
 
 	// cppopts, copts, cxxopts and clinkopts contain flags that are part
 	// of CPPFLAGS, CFLAGS, CXXFLAGS, and LDFLAGS directives in cgo comments.
-	cppopts, copts, cxxopts, clinkopts []taggedOpts
+	cppopts, copts, cxxopts, clinkopts []*cgoTagsAndOpts
 
 	// hasServices indicates whether a .proto file has service definitions.
 	hasServices bool
@@ -93,76 +96,170 @@ type fileEmbed struct {
 	pos  token.Position
 }
 
-// tagLine represents the space-separated disjunction of build tag groups
-// in a line comment.
-type tagLine []tagGroup
-
-// check returns true if at least one of the tag groups is satisfied.
-func (l tagLine) check(c *config.Config, os, arch string) bool {
-	if len(l) == 0 {
-		return false
-	}
-	for _, g := range l {
-		if g.check(c, os, arch) {
-			return true
-		}
-	}
-	return false
+// buildTags represents the build tags specified in a file.
+type buildTags struct {
+	// expr represents the parsed constraint expression
+	// that can be used to evaluate a file against a set
+	// of tags.
+	expr constraint.Expr
+	// rawTags represents the concrete tags that make up expr.
+	rawTags []string
 }
 
-// tagGroup represents a comma-separated conjuction of build tags.
-type tagGroup []string
-
-// check returns true if all of the tags are true. Tags that start with
-// "!" are negated (but "!!") is not allowed. Go release tags (e.g., "go1.8")
-// are ignored. If the group contains an os or arch tag, but the os or arch
-// parameters are empty, check returns false even if the tag is negated.
-func (g tagGroup) check(c *config.Config, os, arch string) bool {
-	goConf := getGoConfig(c)
-	for _, t := range g {
-		if strings.HasPrefix(t, "!!") { // bad syntax, reject always
-			return false
-		}
-		not := strings.HasPrefix(t, "!")
-		if not {
-			t = t[1:]
-		}
-		if isIgnoredTag(t) {
-			// Release tags are treated as "unknown" and are considered true,
-			// whether or not they are negated.
-			continue
-		}
-		var match bool
-		if _, ok := rule.KnownOSSet[t]; ok {
-			if os == "" {
-				return false
-			}
-			match = matchesOS(os, t)
-		} else if _, ok := rule.KnownArchSet[t]; ok {
-			if arch == "" {
-				return false
-			}
-			match = arch == t
-		} else {
-			match = goConf.genericTags[t]
-		}
-		if not {
-			match = !match
-		}
-		if !match {
-			return false
-		}
+func newBuildTags(x constraint.Expr) (*buildTags, error) {
+	filtered, err := filterTags(x, func(tag string) bool {
+		return !isIgnoredTag(tag)
+	})
+	if err != nil {
+		return nil, err
 	}
-	return true
+
+	rawTags, err := collectTags(x)
+	if err != nil {
+		return nil, err
+	}
+
+	return &buildTags{
+		expr:    filtered,
+		rawTags: rawTags,
+	}, nil
 }
 
-// taggedOpts a list of compile or link options which should only be applied
+func (b *buildTags) tags() []string {
+	if b == nil {
+		return nil
+	}
+
+	return b.rawTags
+}
+
+func (b *buildTags) eval(ok func(string) bool) bool {
+	if b == nil || b.expr == nil {
+		return true
+	}
+
+	return b.expr.Eval(ok)
+}
+
+func (b *buildTags) empty() bool {
+	if b == nil {
+		return true
+	}
+
+	return len(b.rawTags) == 0
+}
+
+func filterTags(expr constraint.Expr, ok func(string) bool) (constraint.Expr, error) {
+	if expr == nil {
+		return nil, nil
+	}
+
+	switch x := expr.(type) {
+	case *constraint.TagExpr:
+		if ok(x.Tag) {
+			return &constraint.TagExpr{Tag: x.Tag}, nil
+		}
+
+	case *constraint.NotExpr:
+		filtered, err := filterTags(x.X, ok)
+		if err != nil {
+			return nil, err
+		}
+
+		if filtered != nil {
+			return &constraint.NotExpr{X: filtered}, nil
+		}
+
+	case *constraint.AndExpr:
+		a, err := filterTags(x.X, ok)
+		if err != nil {
+			return nil, err
+		}
+
+		b, err := filterTags(x.Y, ok)
+		if err != nil {
+			return nil, err
+		}
+
+		if a != nil && b != nil {
+			return &constraint.AndExpr{
+				X: a,
+				Y: b,
+			}, nil
+
+		} else if a != nil {
+			return a, nil
+
+		} else if b != nil {
+			return b, nil
+		}
+
+	case *constraint.OrExpr:
+		a, err := filterTags(x.X, ok)
+		if err != nil {
+			return nil, err
+		}
+
+		b, err := filterTags(x.Y, ok)
+		if err != nil {
+			return nil, err
+		}
+
+		if a != nil && b != nil {
+			return &constraint.OrExpr{
+				X: a,
+				Y: b,
+			}, nil
+
+		} else if a != nil {
+			return a, nil
+
+		} else if b != nil {
+			return b, nil
+		}
+	default:
+		return nil, fmt.Errorf("unknown constraint type: %T", x)
+	}
+
+	return nil, nil
+}
+
+func collectTags(expr constraint.Expr) ([]string, error) {
+	var tags []string
+	_, err := filterTags(expr, func(tag string) bool {
+		tags = append(tags, tag)
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return tags, err
+}
+
+// cgoTagsAndOpts contains compile or link options which should only be applied
 // if the given set of build tags are satisfied. These options have already
 // been tokenized using the same algorithm that "go build" uses, then joined
 // with OptSeparator.
-type taggedOpts struct {
-	tags tagLine
+type cgoTagsAndOpts struct {
+	*buildTags
 	opts string
+}
+
+func (c *cgoTagsAndOpts) tags() []string {
+	if c == nil {
+		return nil
+	}
+
+	return c.buildTags.tags()
+}
+
+func (c *cgoTagsAndOpts) eval(ok func(string) bool) bool {
+	if c == nil {
+		return true
+	}
+
+	return c.buildTags.eval(ok)
 }
 
 // optSeparator is a special character inserted between options that appeared
@@ -376,6 +473,28 @@ func goFileInfo(path, rel string) fileInfo {
 	return info
 }
 
+// matchAuto interprets text as either a +build or //go:build expression (whichever works).
+// Intended to match go/build.Context.matchAuto
+func matchAuto(tokens []string) (*buildTags, error) {
+	if len(tokens) == 0 {
+		return nil, nil
+	}
+
+	text := strings.Join(tokens, " ")
+	if strings.ContainsAny(text, "&|()") {
+		text = "//go:build " + text
+	} else {
+		text = "// +build " + text
+	}
+
+	x, err := constraint.Parse(text)
+	if err != nil {
+		return nil, err
+	}
+
+	return newBuildTags(x)
+}
+
 // saveCgo extracts CFLAGS, CPPFLAGS, CXXFLAGS, and LDFLAGS directives
 // from a comment above a "C" import. This is intended to match logic in
 // go/build.Context.saveCgo.
@@ -393,27 +512,29 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 		}
 
 		// Split at colon.
-		line = strings.TrimSpace(line[4:])
-		i := strings.Index(line, ":")
-		if i < 0 {
+		line, argstr, ok := strings.Cut(strings.TrimSpace(line[4:]), ":")
+		if !ok {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
 		}
-		line, optstr := strings.TrimSpace(line[:i]), strings.TrimSpace(line[i+1:])
 
-		// Parse tags and verb.
+		// Parse GOOS/GOARCH stuff.
 		f := strings.Fields(line)
 		if len(f) < 1 {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
 		}
-		verb := f[len(f)-1]
-		tags := parseTagsInGroups(f[:len(f)-1])
+
+		cond, verb := f[:len(f)-1], f[len(f)-1]
+		tags, err := matchAuto(cond)
+		if err != nil {
+			return err
+		}
 
 		// Parse options.
-		opts, err := splitQuoted(optstr)
+		opts, err := splitQuoted(argstr)
 		if err != nil {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
 		}
-		var ok bool
+
 		for i, opt := range opts {
 			if opt, ok = expandSrcDir(opt, rel); !ok {
 				return fmt.Errorf("%s: malformed #cgo argument: %s", info.path, orig)
@@ -425,13 +546,16 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 		// Add tags to appropriate list.
 		switch verb {
 		case "CPPFLAGS":
-			info.cppopts = append(info.cppopts, taggedOpts{tags, joinedStr})
+			info.cppopts = append(info.cppopts, &cgoTagsAndOpts{tags, joinedStr})
 		case "CFLAGS":
-			info.copts = append(info.copts, taggedOpts{tags, joinedStr})
+			info.copts = append(info.copts, &cgoTagsAndOpts{tags, joinedStr})
 		case "CXXFLAGS":
-			info.cxxopts = append(info.cxxopts, taggedOpts{tags, joinedStr})
+			info.cxxopts = append(info.cxxopts, &cgoTagsAndOpts{tags, joinedStr})
+		case "FFLAGS":
+			// TODO: Add support
+			return fmt.Errorf("%s: unsupported #cgo verb: %s", verb, info.path)
 		case "LDFLAGS":
-			info.clinkopts = append(info.clinkopts, taggedOpts{tags, joinedStr})
+			info.clinkopts = append(info.clinkopts, &cgoTagsAndOpts{tags, joinedStr})
 		case "pkg-config":
 			return fmt.Errorf("%s: pkg-config not supported: %s", info.path, orig)
 		default:
@@ -564,80 +688,91 @@ func safeCgoName(s string, spaces bool) bool {
 // rest of the file by a blank line. Each string in the returned slice
 // is the trimmed text of a line after a "+build" prefix.
 // Based on go/build.Context.shouldBuild.
-func readTags(path string) ([]tagLine, error) {
+func readTags(path string) (*buildTags, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	scanner := bufio.NewScanner(f)
 
-	// Pass 1: Identify leading run of // comments and blank lines,
-	// which must be followed by a blank line.
-	var lines []string
-	end := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			end = len(lines)
-			continue
-		}
-		if strings.HasPrefix(line, "//") {
-			lines = append(lines, line[len("//"):])
-			continue
-		}
-		break
-	}
-	if err := scanner.Err(); err != nil {
+	content, err := readComments(f)
+	if err != nil {
 		return nil, err
 	}
-	lines = lines[:end]
 
-	// Pass 2: Process each line in the run.
-	var tagLines []tagLine
-	for _, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) > 0 && fields[0] == "+build" {
-			tagLines = append(tagLines, parseTagsInGroups(fields[1:]))
+	content, goBuild, _, err := parseFileHeader(content)
+	if err != nil {
+		return nil, err
+	}
+
+	if goBuild != nil {
+		x, err := constraint.Parse(string(goBuild))
+		if err != nil {
+			return nil, err
+		}
+
+		return newBuildTags(x)
+	}
+
+	var fullConstraint constraint.Expr
+	// Search and parse +build tags
+	scanner := bufio.NewScanner(bytes.NewReader(content))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		if !constraint.IsPlusBuild(line) {
+			continue
+		}
+
+		x, err := constraint.Parse(line)
+		if err != nil {
+			return nil, err
+		}
+
+		if fullConstraint != nil {
+			fullConstraint = &constraint.AndExpr{
+				X: fullConstraint,
+				Y: x,
+			}
+		} else {
+			fullConstraint = x
 		}
 	}
-	return tagLines, nil
-}
 
-func parseTagsInGroups(groups []string) tagLine {
-	var l tagLine
-	for _, g := range groups {
-		l = append(l, tagGroup(strings.Split(g, ",")))
+	if scanner.Err() != nil {
+		return nil, scanner.Err()
 	}
-	return l
+
+	if fullConstraint == nil {
+		return nil, nil
+	}
+
+	return newBuildTags(fullConstraint)
 }
 
-func isOSArchSpecific(info fileInfo, cgoTags tagLine) (osSpecific, archSpecific bool) {
+func isOSArchSpecific(info fileInfo, cgoTags *cgoTagsAndOpts) (osSpecific, archSpecific bool) {
 	if info.goos != "" {
 		osSpecific = true
 	}
 	if info.goarch != "" {
 		archSpecific = true
 	}
-	lines := info.tags
-	if len(cgoTags) > 0 {
-		lines = append(lines, cgoTags)
-	}
-	for _, line := range lines {
-		for _, group := range line {
-			for _, tag := range group {
-				tag = strings.TrimPrefix(tag, "!")
-				_, osOk := rule.KnownOSSet[tag]
-				if osOk {
-					osSpecific = true
-				}
-				_, archOk := rule.KnownArchSet[tag]
-				if archOk {
-					archSpecific = true
-				}
+
+	checkTags := func(tags []string) {
+		for _, tag := range tags {
+			_, osOk := rule.KnownOSSet[tag]
+			if osOk {
+				osSpecific = true
+			}
+			_, archOk := rule.KnownArchSet[tag]
+			if archOk {
+				archSpecific = true
 			}
 		}
 	}
+	checkTags(info.tags.tags())
+	checkTags(cgoTags.tags())
+
 	return osSpecific, archSpecific
 }
 
@@ -665,22 +800,34 @@ func matchesOS(os, value string) bool {
 // if they are negated.
 //
 // The remaining arguments describe the file being tested. All of these may
-// be empty or nil. osSuffix and archSuffix are filename suffixes. fileTags
-// is a list tags from +build comments found near the top of the file. cgoTags
+// be empty or nil. osSuffix and archSuffix are filename suffixes. tags
+// is the parsed build tags found near the top of the file. cgoTags
 // is an extra set of tags in a #cgo directive.
-func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, fileTags []tagLine, cgoTags tagLine) bool {
+func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, tags *buildTags, cgoTags *cgoTagsAndOpts) bool {
 	if osSuffix != "" && !matchesOS(os, osSuffix) || archSuffix != "" && archSuffix != arch {
 		return false
 	}
-	for _, l := range fileTags {
-		if !l.check(c, os, arch) {
-			return false
+
+	goConf := getGoConfig(c)
+	checker := func(tag string) bool {
+		if _, ok := rule.KnownOSSet[tag]; ok {
+			if os == "" {
+				return false
+			}
+			return matchesOS(os, tag)
+
+		} else if _, ok := rule.KnownArchSet[tag]; ok {
+			if arch == "" {
+				return false
+			}
+			return arch == tag
+
+		} else {
+			return goConf.genericTags[tag]
 		}
 	}
-	if len(cgoTags) > 0 && !cgoTags.check(c, os, arch) {
-		return false
-	}
-	return true
+
+	return tags.eval(checker) && cgoTags.eval(checker)
 }
 
 // rulesGoSupportsOS returns whether the os tag is recognized by the version of
@@ -827,3 +974,14 @@ func parseGoEmbed(args string, pos token.Position) ([]fileEmbed, error) {
 	}
 	return list, nil
 }
+
+// In order to correctly capture the subtleties of build tag placement
+// and to automatically stay up-to-date with the parsing semantics and
+// syntax, we link to the stdlib version of header parsing.
+//go:linkname parseFileHeader go/build.parseFileHeader
+func parseFileHeader(_ []byte) ([]byte, []byte, bool, error)
+
+// readComments is like io.ReadAll, except that it only reads the leading
+// block of comments in the file.
+//go:linkname readComments go/build.readComments
+func readComments(_ io.Reader) ([]byte, error)

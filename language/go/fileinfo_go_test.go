@@ -16,6 +16,7 @@ limitations under the License.
 package golang
 
 import (
+	"go/build/constraint"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -29,7 +30,8 @@ var (
 	fileInfoCmpOption = cmp.AllowUnexported(
 		fileInfo{},
 		fileEmbed{},
-		taggedOpts{},
+		buildTags{},
+		cgoTagsAndOpts{},
 	)
 )
 
@@ -126,7 +128,10 @@ package foo
 `,
 			fileInfo{
 				packageName: "foo",
-				tags:        []tagLine{{{"linux"}, {"darwin"}}, {{"!ignore"}}},
+				tags: &buildTags{
+					expr:    mustParseBuildTag(t, "(linux || darwin) && !ignore"),
+					rawTags: []string{"linux", "darwin", "ignore"},
+				},
 			},
 		},
 		{
@@ -142,7 +147,10 @@ package route
 `,
 			fileInfo{
 				packageName: "route",
-				tags:        []tagLine{{{"darwin"}, {"dragonfly"}, {"freebsd"}, {"netbsd"}, {"openbsd"}}},
+				tags: &buildTags{
+					expr:    mustParseBuildTag(t, "darwin || dragonfly || freebsd || netbsd || openbsd"),
+					rawTags: []string{"darwin", "dragonfly", "freebsd", "netbsd", "openbsd"},
+				},
 			},
 		},
 		{
@@ -253,16 +261,16 @@ import "C"
 `,
 			fileInfo{
 				isCgo: true,
-				cppopts: []taggedOpts{
+				cppopts: []*cgoTagsAndOpts{
 					{opts: "-O1"},
 				},
-				copts: []taggedOpts{
+				copts: []*cgoTagsAndOpts{
 					{opts: "-O0"},
 				},
-				cxxopts: []taggedOpts{
+				cxxopts: []*cgoTagsAndOpts{
 					{opts: "-O2"},
 				},
-				clinkopts: []taggedOpts{
+				clinkopts: []*cgoTagsAndOpts{
 					{opts: strings.Join([]string{"-O3", "-O4"}, optSeparator)},
 				},
 			},
@@ -278,9 +286,12 @@ import "C"
 `,
 			fileInfo{
 				isCgo: true,
-				copts: []taggedOpts{
+				copts: []*cgoTagsAndOpts{
 					{
-						tags: tagLine{{"foo"}, {"bar", "!baz"}},
+						buildTags: &buildTags{
+							expr:    mustParseBuildTag(t, "foo || (bar && !baz)"),
+							rawTags: []string{"foo", "bar", "baz"},
+						},
 						opts: "-O0",
 					},
 				},
@@ -296,7 +307,7 @@ import "C"
 `,
 			fileInfo{
 				isCgo: true,
-				copts: []taggedOpts{
+				copts: []*cgoTagsAndOpts{
 					{opts: "-O0"},
 					{opts: "-O1"},
 				},
@@ -313,7 +324,7 @@ import ("C")
 `,
 			fileInfo{
 				isCgo: true,
-				copts: []taggedOpts{
+				copts: []*cgoTagsAndOpts{
 					{opts: "-O0"},
 				},
 			},
@@ -459,4 +470,13 @@ func TestShellSafety(t *testing.T) {
 			t.Errorf("Expected %q while %q expands with SRCDIR=%q; got %q", test.expected, test.input, test.srcdir, output)
 		}
 	}
+}
+
+func mustParseBuildTag(t *testing.T, in string) constraint.Expr {
+	x, err := constraint.Parse("//go:build " + in)
+	if err != nil {
+		t.Fatalf("%s: %s", in, err)
+	}
+
+	return x
 }
