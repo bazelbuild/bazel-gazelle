@@ -19,9 +19,18 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+)
+
+var (
+	fileInfoCmpOption = cmp.AllowUnexported(
+		fileInfo{},
+		fileEmbed{},
+		taggedOpts{},
+	)
 )
 
 func TestGoFileInfo(t *testing.T) {
@@ -178,9 +187,10 @@ var src string
 				got.embeds[i] = fileEmbed{path: got.embeds[i].path}
 			}
 
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("case %q: got %#v; want %#v", tc.desc, got, tc.want)
+			if diff := cmp.Diff(tc.want, got, fileInfoCmpOption); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
 			}
+
 		})
 	}
 }
@@ -205,9 +215,10 @@ func TestGoFileInfoFailure(t *testing.T) {
 		goos:   "linux",
 		goarch: "amd64",
 	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %#v ; want %#v", got, want)
+	if diff := cmp.Diff(want, got, fileInfoCmpOption); diff != "" {
+		t.Errorf("(-want, +got): %s", diff)
 	}
+
 }
 
 func TestCgo(t *testing.T) {
@@ -331,9 +342,10 @@ import ("C")
 				clinkopts: got.clinkopts,
 			}
 
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("case %q: got %#v; want %#v", tc.desc, got, tc.want)
+			if diff := cmp.Diff(tc.want, got, fileInfoCmpOption); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
 			}
+
 		})
 	}
 }
@@ -370,6 +382,16 @@ func TestExpandSrcDir(t *testing.T) {
 		}
 	}
 }
+
+var (
+	goPackageCmpOption = cmp.AllowUnexported(
+		goPackage{},
+		goTarget{},
+		protoTarget{},
+		platformStringsBuilder{},
+		platformStringInfo{},
+	)
+)
 
 func TestExpandSrcDirRepoRelative(t *testing.T) {
 	repo, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "repo")
@@ -409,9 +431,10 @@ import "C"
 	}
 	want.library.sources.addGenericString("sub.go")
 	want.library.copts.addGenericString("-Isub/..")
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %#v ; want %#v", got, want)
+	if diff := cmp.Diff(want, got, goPackageCmpOption); diff != "" {
+		t.Errorf("(-want, +got): %s", diff)
 	}
+
 }
 
 // Copied from go/build build_test.go
