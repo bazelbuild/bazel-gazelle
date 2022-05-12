@@ -15,6 +15,7 @@ std_package_list(
 go_library(
     name = "go",
     srcs = [
+        "build_tags.go",
         "config.go",
         "constants.go",
         "dep.go",
@@ -29,6 +30,7 @@ go_library(
         "package.go",
         "resolve.go",
         "std_package_list.go",
+        "stdlib_links.go",
         "update.go",
         "utils.go",
         "work.go",

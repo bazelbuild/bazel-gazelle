@@ -16,7 +16,6 @@ limitations under the License.
 package golang
 
 import (
-	"go/build/constraint"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -367,10 +366,8 @@ package main`,
 			}
 			path := f.Name()
 			defer os.Remove(path)
-			if err = f.Close(); err != nil {
-				t.Fatal(err)
-			}
-			if err = ioutil.WriteFile(path, []byte(tc.source), 0o600); err != nil {
+
+			if _, err := f.WriteString(tc.source); err != nil {
 				t.Fatal(err)
 			}
 
@@ -578,52 +575,6 @@ import "C"
 
 			got := checkConstraints(c, tc.os, tc.arch, fi.goos, fi.goarch, fi.tags, cgoTags)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
-				t.Errorf("(-want, +got): %s", diff)
-			}
-		})
-	}
-}
-
-func TestFilterBuildTags(t *testing.T) {
-	for _, tc := range []struct {
-		desc  string
-		input constraint.Expr
-		want  constraint.Expr
-	}{
-		{
-			desc:  "should be empty",
-			input: mustParseBuildTag(t, "go1.8 || go1.9"),
-		},
-		{
-			desc:  "filtered not is empty",
-			input: mustParseBuildTag(t, "!(go1.8 || go1.9)"),
-		},
-		{
-			desc:  "remaining not remains",
-			input: mustParseBuildTag(t, "!(foobar || go1.8 || go1.9)"),
-			want:  mustParseBuildTag(t, "!foobar"),
-		},
-		{
-			desc:  "complex becomes empty",
-			input: mustParseBuildTag(t, "!(cgo && (go1.8 || go1.9) || race || msan)"),
-		},
-		{
-			desc:  "complex becomes simple",
-			input: mustParseBuildTag(t, "!(cgo && (go1.8 || go1.9 && (race && foobar)))"),
-			want:  mustParseBuildTag(t, "!foobar"),
-		},
-		{
-			desc:  "complex becomes simple 2",
-			input: mustParseBuildTag(t, "!(cgo && (go1.8 || go1.9 && (race && foobar) || baz))"),
-			want:  mustParseBuildTag(t, "!(foobar || baz)"),
-		},
-	} {
-		t.Run(tc.desc, func(t *testing.T) {
-			bt, err := newBuildTags(tc.input)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if diff := cmp.Diff(tc.want, bt.expr); diff != "" {
 				t.Errorf("(-want, +got): %s", diff)
 			}
 		})

@@ -8,6 +8,7 @@ go_library(
         "cgo_linux.c",
         "cgo_linux.go",
         "generic.go",
+        "new_tag_a.go",
         "no_cgo.go",
         "release.go",
         "suffix_amd64.go",
