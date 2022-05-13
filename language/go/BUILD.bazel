@@ -30,6 +30,7 @@ go_library(
         "resolve.go",
         "std_package_list.go",
         "update.go",
+        "work.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/language/go",
     visibility = ["//visibility:public"],
