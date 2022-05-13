@@ -113,6 +113,7 @@ filegroup(
         "stubs_test.go",
         "update.go",
         "update_import_test.go",
+        "work.go",
         "//language/go/gen_std_package_list:all_files",
     ],
     visibility = ["//visibility:public"],
