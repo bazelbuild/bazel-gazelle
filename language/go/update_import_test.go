@@ -248,7 +248,7 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
 				},
 			},
 			want:    "",
-			wantErr: "error from go mod download: failed to download\nError downloading definitely.doesnotexist/ever: Did not exist",
+			wantErr: "finding module sums: error from go mod download: failed to download\nError downloading definitely.doesnotexist/ever: Did not exist",
 			stubGoModDownload: func(dir string, args []string) ([]byte, error) {
 				return []byte(`{
 "Path": "definitely.doesnotexist/ever",
@@ -278,7 +278,7 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
 				},
 			},
 			want:    "",
-			wantErr: "error from go mod download: failed to download\nError parsing module for more error information: invalid character 'o' in literal null (expecting 'u')",
+			wantErr: "finding module sums: error from go mod download: failed to download\nError parsing module for more error information: invalid character 'o' in literal null (expecting 'u')",
 			stubGoModDownload: func(dir string, args []string) ([]byte, error) {
 				return []byte(`{
 "Path": "definitely.doesnotexist/ever",

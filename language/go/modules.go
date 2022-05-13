@@ -17,76 +17,24 @@ package golang
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"go/build"
 	"io/ioutil"
-	"log"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"sort"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
-	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 func importReposFromModules(args language.ImportReposArgs) language.ImportReposResult {
-	dir := filepath.Dir(args.Path)
-
-	// List all modules except for the main module, including implicit indirect
-	// dependencies.
-	// Schema is documented at https://go.dev/ref/mod#go-list-m
-	type moduleFromList struct {
-		Path, Version, Sum, Error string
-		Main                      bool
-		Replace                   *struct {
-			Path, Version string
-		}
-	}
-	// path@version can be used as a unique identifier for looking up sums
-	pathToModule := map[string]*moduleFromList{}
-	data, err := goListModules(dir)
-	dec := json.NewDecoder(bytes.NewReader(data))
+	// run go list in the dir where go.mod is located
+	data, err := goListModules(filepath.Dir(args.Path))
 	if err != nil {
-		// Best-effort try to adorn specific error details from the JSON output.
-		for dec.More() {
-			var dl moduleFromList
-			if decodeErr := dec.Decode(&dl); decodeErr != nil {
-				// If we couldn't parse a possible error description, just return the raw error.
-				err = fmt.Errorf("%w\nError parsing module for more error information: %v", err, decodeErr)
-				break
-			}
-			if dl.Error != "" {
-				err = fmt.Errorf("%w\nError listing %v: %v", err, dl.Path, dl.Error)
-			}
-		}
-		err = fmt.Errorf("error from go list: %w", err)
-
-		return language.ImportReposResult{Error: err}
+		return language.ImportReposResult{Error: processGoListError(err, data)}
 	}
-	for dec.More() {
-		mod := new(moduleFromList)
-		if err := dec.Decode(mod); err != nil {
-			return language.ImportReposResult{Error: err}
-		}
-		if mod.Main {
-			continue
-		}
-		if mod.Replace != nil {
-			if filepath.IsAbs(mod.Replace.Path) || build.IsLocalImport(mod.Replace.Path) {
-				log.Printf("go_repository does not support file path replacements for %s -> %s", mod.Path,
-					mod.Replace.Path)
-				continue
-			}
-			pathToModule[mod.Replace.Path+"@"+mod.Replace.Version] = mod
-		} else {
-			pathToModule[mod.Path+"@"+mod.Version] = mod
-		}
+
+	pathToModule, err := extractModules(data)
+	if err != nil {
+		return language.ImportReposResult{Error: err}
 	}
 
 	// Load sums from go.sum. Ideally, they're all there.
@@ -108,154 +56,12 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 		}
 	}
 
-	// If sums are missing, run 'go mod download' to get them.
-	// This must be done in a temporary directory because 'go mod download'
-	// may modify go.mod and go.sum. It does not support -mod=readonly.
-	var missingSumArgs []string
-	for pathVer, mod := range pathToModule {
-		if mod.Sum == "" {
-			missingSumArgs = append(missingSumArgs, pathVer)
-		}
-	}
-
-	type downloadError struct {
-		Err string
-	}
-
-	// Schema is documented at https://go.dev/ref/mod#go-mod-download
-	type moduleFromDownload struct {
-		Path, Version, Sum string
-		Main               bool
-		Replace            *struct {
-			Path, Version string
-		}
-		Error *downloadError
-	}
-
-	if len(missingSumArgs) > 0 {
-		tmpDir, err := ioutil.TempDir("", "")
-		if err != nil {
-			return language.ImportReposResult{Error: fmt.Errorf("finding module sums: %v", err)}
-		}
-		defer os.RemoveAll(tmpDir)
-		data, err := goModDownload(tmpDir, missingSumArgs)
-		dec = json.NewDecoder(bytes.NewReader(data))
-		if err != nil {
-			// Best-effort try to adorn specific error details from the JSON output.
-			for dec.More() {
-				var dl moduleFromDownload
-				if decodeErr := dec.Decode(&dl); decodeErr != nil {
-					// If we couldn't parse a possible error description, just return the raw error.
-					err = fmt.Errorf("%w\nError parsing module for more error information: %v", err, decodeErr)
-					break
-				}
-				if dl.Error != nil {
-					err = fmt.Errorf("%w\nError downloading %v: %v", err, dl.Path, dl.Error.Err)
-				}
-			}
-			err = fmt.Errorf("error from go mod download: %w", err)
-
-			return language.ImportReposResult{Error: err}
-		}
-		for dec.More() {
-			var dl moduleFromDownload
-			if err := dec.Decode(&dl); err != nil {
-				return language.ImportReposResult{Error: err}
-			}
-			if mod, ok := pathToModule[dl.Path+"@"+dl.Version]; ok {
-				mod.Sum = dl.Sum
-			}
-		}
+	pathToModule, err = fillMissingSums(pathToModule)
+	if err != nil {
+		return language.ImportReposResult{Error: fmt.Errorf("finding module sums: %v", err)}
 	}
 
 	// Translate to repository rules.
-	gen := make([]*rule.Rule, 0, len(pathToModule))
-	for pathVer, mod := range pathToModule {
-		if mod.Sum == "" {
-			log.Printf("could not determine sum for module %s", pathVer)
-			continue
-		}
-		r := rule.NewRule("go_repository", label.ImportPathToBazelRepoName(mod.Path))
-		r.SetAttr("importpath", mod.Path)
-		r.SetAttr("sum", mod.Sum)
-		if mod.Replace == nil {
-			r.SetAttr("version", mod.Version)
-		} else {
-			r.SetAttr("replace", mod.Replace.Path)
-			r.SetAttr("version", mod.Replace.Version)
-		}
-		gen = append(gen, r)
-	}
-	sort.Slice(gen, func(i, j int) bool {
-		return gen[i].Name() < gen[j].Name()
-	})
+	gen := toRepositoryRules(pathToModule)
 	return language.ImportReposResult{Gen: gen}
-}
-
-// goListModules invokes "go list" in a directory containing a go.mod file.
-var goListModules = func(dir string) ([]byte, error) {
-	return runGoCommandForOutput(dir, "list", "-mod=readonly", "-e", "-m", "-json", "all")
-}
-
-// goModDownload invokes "go mod download" in a directory containing a
-// go.mod file.
-var goModDownload = func(dir string, args []string) ([]byte, error) {
-	dlArgs := []string{"mod", "download", "-json"}
-	dlArgs = append(dlArgs, args...)
-	return runGoCommandForOutput(dir, dlArgs...)
-}
-
-// findGoTool attempts to locate the go executable. If GOROOT is set, we'll
-// prefer the one in there; otherwise, we'll rely on PATH. If the wrapper
-// script generated by the gazelle rule is invoked by Bazel, it will set
-// GOROOT to the configured SDK. We don't want to rely on the host SDK in
-// that situation.
-func findGoTool() string {
-	path := "go" // rely on PATH by default
-	if goroot, ok := os.LookupEnv("GOROOT"); ok {
-		path = filepath.Join(goroot, "bin", "go")
-	}
-	if runtime.GOOS == "windows" {
-		path += ".exe"
-	}
-	return path
-}
-
-func runGoCommandForOutput(dir string, args ...string) ([]byte, error) {
-	goTool := findGoTool()
-	env := os.Environ()
-	env = append(env, "GO111MODULE=on")
-	if os.Getenv("GOCACHE") == "" && os.Getenv("HOME") == "" {
-		gocache, err := ioutil.TempDir("", "")
-		if err != nil {
-			return nil, err
-		}
-		env = append(env, "GOCACHE="+gocache)
-		defer os.RemoveAll(gocache)
-	}
-	if os.Getenv("GOPATH") == "" && os.Getenv("HOME") == "" {
-		gopath, err := ioutil.TempDir("", "")
-		if err != nil {
-			return nil, err
-		}
-		env = append(env, "GOPATH="+gopath)
-		defer os.RemoveAll(gopath)
-	}
-	cmd := exec.Command(goTool, args...)
-	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-	cmd.Dir = dir
-	cmd.Env = env
-	out, err := cmd.Output()
-	if err != nil {
-		var errStr string
-		var xerr *exec.ExitError
-		if errors.As(err, &xerr) {
-			errStr = strings.TrimSpace(stderr.String())
-		} else {
-			errStr = err.Error()
-		}
-		return out, fmt.Errorf("running '%s %s': %s", cmd.Path, strings.Join(cmd.Args, " "), errStr)
-	}
-	return out, nil
 }
