@@ -39,7 +39,5 @@ func importReposFromWork(args language.ImportReposArgs) language.ImportReposResu
 		return language.ImportReposResult{Error: fmt.Errorf("finding module sums: %v", err)}
 	}
 
-	// Translate to repository rules.
-	gen := toRepositoryRules(pathToModule)
-	return language.ImportReposResult{Gen: gen}
+	return language.ImportReposResult{Gen: toRepositoryRules(pathToModule)}
 }
