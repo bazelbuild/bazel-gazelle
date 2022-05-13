@@ -63,7 +63,7 @@ var NoLabel = Label{}
 
 var (
 	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z.-][A-Za-z0-9_.-]*$`)
-	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._-]*$`)
+	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._@-]*$`)
 	// This was taken from https://docs.bazel.build/versions/main/build-ref.html#name
 	// Note: We've manually removed space from the regex, because though these technically parse
 	// with Bazel (and can appear in query results), they cannot actually be used in practice.
