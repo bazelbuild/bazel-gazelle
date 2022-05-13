@@ -62,6 +62,7 @@ GO_REPOSITORY_TOOLS_SRCS = [
 	"@bazel_gazelle//language/go:resolve.go",
 	"@bazel_gazelle//language/go:std_package_list.go",
 	"@bazel_gazelle//language/go:update.go",
+	"@bazel_gazelle//language/go:work.go",
 	"@bazel_gazelle//language:lang.go",
 	"@bazel_gazelle//language/proto:BUILD.bazel",
 	"@bazel_gazelle//language/proto:config.go",
