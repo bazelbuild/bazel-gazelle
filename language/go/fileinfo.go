@@ -324,7 +324,7 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
 		}
 
-		// Parse GOOS/GOARCH stuff.
+		// Parse tags and verbs.
 		f := strings.Fields(line)
 		if len(f) < 1 {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
@@ -568,7 +568,7 @@ func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, t
 			return arch == tag
 
 		}
-		
+
 		return goConf.genericTags[tag]
 	}
 
