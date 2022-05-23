@@ -324,7 +324,7 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
 		}
 
-		// Parse tags and verbs.
+		// Parse tags and verb.
 		f := strings.Fields(line)
 		if len(f) < 1 {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
