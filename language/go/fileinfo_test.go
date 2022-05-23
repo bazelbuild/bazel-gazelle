@@ -28,7 +28,7 @@ func TestOtherFileInfo(t *testing.T) {
 	dir := "."
 	for _, tc := range []struct {
 		desc, name, source string
-		wantTag            *buildTags
+		wantTags           *buildTags
 	}{
 		{
 			"empty file",
@@ -59,7 +59,7 @@ func TestOtherFileInfo(t *testing.T) {
 
 			// Only check that we can extract tags. Everything else is covered
 			// by other tests.
-			if diff := cmp.Diff(tc.wantTag, got.tags, fileInfoCmpOption); diff != "" {
+			if diff := cmp.Diff(tc.wantTags, got.tags, fileInfoCmpOption); diff != "" {
 				t.Errorf("(-want, +got): %s", diff)
 			}
 

@@ -559,15 +559,17 @@ func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, t
 			}
 			return matchesOS(os, tag)
 
-		} else if _, ok := rule.KnownArchSet[tag]; ok {
+		}
+
+		if _, ok := rule.KnownArchSet[tag]; ok {
 			if arch == "" {
 				return false
 			}
 			return arch == tag
 
-		} else {
-			return goConf.genericTags[tag]
 		}
+		
+		return goConf.genericTags[tag]
 	}
 
 	return tags.eval(checker) && cgoTags.eval(checker)
