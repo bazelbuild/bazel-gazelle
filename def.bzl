@@ -111,7 +111,7 @@ _gazelle_runner = rule(
             default = "",
         ),
         "external": attr.string(
-            values = ["", "external", "vendored"],
+            values = ["", "external", "static", "vendored"],
             default = "",
         ),
         "build_tags": attr.string_list(),

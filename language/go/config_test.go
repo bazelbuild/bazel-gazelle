@@ -18,7 +18,6 @@ package golang
 import (
 	"path"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/testtools"
 	"github.com/bazelbuild/bazel-gazelle/walk"
+	"github.com/google/go-cmp/cmp"
 )
 
 func testConfig(t *testing.T, args ...string) (*config.Config, []language.Language, []config.Configurer) {
@@ -121,14 +121,15 @@ func TestDirectives(t *testing.T) {
 	if !gc.goGrpcCompilersSet {
 		t.Error("expected goGrpcCompilersSet to be set")
 	}
-	if !reflect.DeepEqual(gc.goGrpcCompilers, []string{"abc", "def"}) {
-		t.Errorf("got goGrpcCompilers %v; want [abc def]", gc.goGrpcCompilers)
+	if diff := cmp.Diff([]string{"abc", "def"}, gc.goGrpcCompilers); diff != "" {
+		t.Errorf("(-want, +got): %s", diff)
 	}
+
 	if !gc.goProtoCompilersSet {
 		t.Error("expected goProtoCompilersSet to be set")
 	}
-	if !reflect.DeepEqual(gc.goProtoCompilers, []string{"foo", "bar"}) {
-		t.Errorf("got goProtoCompilers %v; want [foo bar]", gc.goProtoCompilers)
+	if diff := cmp.Diff(gc.goProtoCompilers, []string{"foo", "bar"}); diff != "" {
+		t.Errorf("(-want, +got): %s", diff)
 	}
 
 	subContent := []byte(`
@@ -146,15 +147,17 @@ func TestDirectives(t *testing.T) {
 	if gc.goGrpcCompilersSet {
 		t.Error("expected goGrpcCompilersSet to be unset")
 	}
-	if !reflect.DeepEqual(gc.goGrpcCompilers, defaultGoGrpcCompilers) {
-		t.Errorf("got goGrpcCompilers %v; want %v", gc.goGrpcCompilers, defaultGoGrpcCompilers)
+	if diff := cmp.Diff(defaultGoGrpcCompilers, gc.goGrpcCompilers); diff != "" {
+		t.Errorf("(-want, +got): %s", diff)
 	}
+
 	if gc.goProtoCompilersSet {
 		t.Error("expected goProtoCompilersSet to be unset")
 	}
-	if !reflect.DeepEqual(gc.goProtoCompilers, defaultGoProtoCompilers) {
-		t.Errorf("got goProtoCompilers %v; want %v", gc.goProtoCompilers, defaultGoProtoCompilers)
+	if diff := cmp.Diff(defaultGoProtoCompilers, gc.goProtoCompilers); diff != "" {
+		t.Errorf("(-want, +got): %s", diff)
 	}
+
 }
 
 func TestVendorConfig(t *testing.T) {
@@ -340,8 +343,9 @@ func TestSplitValue(t *testing.T) {
 		},
 	} {
 		parts := splitValue(tc.value)
-		if !reflect.DeepEqual(tc.parts, parts) {
-			t.Errorf("want %v; got %v", tc.parts, parts)
+		if diff := cmp.Diff(tc.parts, parts); diff != "" {
+			t.Errorf("(-want, +got): %s", diff)
 		}
+
 	}
 }

@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestOtherFileInfo(t *testing.T) {
@@ -55,9 +57,10 @@ func TestOtherFileInfo(t *testing.T) {
 
 			// Only check that we can extract tags. Everything else is covered
 			// by other tests.
-			if !reflect.DeepEqual(got.tags, tc.wantTags) {
-				t.Errorf("got %#v; want %#v", got.tags, tc.wantTags)
+			if diff := cmp.Diff(tc.wantTags, got.tags, fileInfoCmpOption); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
 			}
+
 		})
 	}
 }
@@ -331,8 +334,8 @@ package main`,
 
 		if got, err := readTags(path); err != nil {
 			t.Fatal(err)
-		} else if !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("case %q: got %#v; want %#v", tc.desc, got, tc.want)
+		} else if diff := cmp.Diff(tc.want, got); diff != "" {
+			t.Errorf("(-want, +got): %s", diff)
 		}
 	}
 }

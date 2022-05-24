@@ -40,7 +40,8 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 
 	// List all modules except for the main module, including implicit indirect
 	// dependencies.
-	type module struct {
+	// Schema is documented at https://go.dev/ref/mod#go-list-m
+	type moduleFromList struct {
 		Path, Version, Sum, Error string
 		Main                      bool
 		Replace                   *struct {
@@ -48,14 +49,28 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 		}
 	}
 	// path@version can be used as a unique identifier for looking up sums
-	pathToModule := map[string]*module{}
+	pathToModule := map[string]*moduleFromList{}
 	data, err := goListModules(dir)
+	dec := json.NewDecoder(bytes.NewReader(data))
 	if err != nil {
+		// Best-effort try to adorn specific error details from the JSON output.
+		for dec.More() {
+			var dl moduleFromList
+			if decodeErr := dec.Decode(&dl); decodeErr != nil {
+				// If we couldn't parse a possible error description, just return the raw error.
+				err = fmt.Errorf("%w\nError parsing module for more error information: %v", err, decodeErr)
+				break
+			}
+			if dl.Error != "" {
+				err = fmt.Errorf("%w\nError listing %v: %v", err, dl.Path, dl.Error)
+			}
+		}
+		err = fmt.Errorf("error from go list: %w", err)
+
 		return language.ImportReposResult{Error: err}
 	}
-	dec := json.NewDecoder(bytes.NewReader(data))
 	for dec.More() {
-		mod := new(module)
+		mod := new(moduleFromList)
 		if err := dec.Decode(mod); err != nil {
 			return language.ImportReposResult{Error: err}
 		}
@@ -103,6 +118,20 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 		}
 	}
 
+	type downloadError struct {
+		Err string
+	}
+
+	// Schema is documented at https://go.dev/ref/mod#go-mod-download
+	type moduleFromDownload struct {
+		Path, Version, Sum string
+		Main               bool
+		Replace            *struct {
+			Path, Version string
+		}
+		Error *downloadError
+	}
+
 	if len(missingSumArgs) > 0 {
 		tmpDir, err := ioutil.TempDir("", "")
 		if err != nil {
@@ -114,20 +143,22 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 		if err != nil {
 			// Best-effort try to adorn specific error details from the JSON output.
 			for dec.More() {
-				var dl module
-				if err := dec.Decode(&dl); err != nil {
-					// If we couldn't parse a possible error description, just ignore this part of the output.
-					continue
+				var dl moduleFromDownload
+				if decodeErr := dec.Decode(&dl); decodeErr != nil {
+					// If we couldn't parse a possible error description, just return the raw error.
+					err = fmt.Errorf("%w\nError parsing module for more error information: %v", err, decodeErr)
+					break
 				}
-				if dl.Error != "" {
-					err = fmt.Errorf("%v\nError downloading %v: %v", err, dl.Path, dl.Error)
+				if dl.Error != nil {
+					err = fmt.Errorf("%w\nError downloading %v: %v", err, dl.Path, dl.Error.Err)
 				}
 			}
+			err = fmt.Errorf("error from go mod download: %w", err)
 
 			return language.ImportReposResult{Error: err}
 		}
 		for dec.More() {
-			var dl module
+			var dl moduleFromDownload
 			if err := dec.Decode(&dl); err != nil {
 				return language.ImportReposResult{Error: err}
 			}
