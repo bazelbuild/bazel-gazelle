@@ -32,7 +32,7 @@ function find_runfile {
     readlink "$runfile"
     return
   fi
-  runfile=$(echo "$runfile" | sed -e 's!^\(\.\./\|external/\)!!')
+  runfile=${runfile#external/}
   if grep -q "^$runfile" "$0.runfiles_manifest"; then
     grep "^$runfile" "$0.runfiles_manifest" | head -n 1 | cut -d' ' -f2
     return
