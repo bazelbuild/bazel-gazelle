@@ -17,6 +17,7 @@ package walk
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io/fs"
