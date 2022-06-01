@@ -19,7 +19,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"fs"
+	"io/fs"
 	"log"
 	"os"
 	"path"
