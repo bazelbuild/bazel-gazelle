@@ -119,7 +119,7 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 func (c *Configurer) loadBazelIgnore(repoRoot string, wc *walkConfig) error {
 	ignorePath := path.Join(repoRoot, ".bazelignore")
 	file, err := os.Open(ignorePath)
-	if os.IsNotExist(err) {
+	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
