@@ -1,0 +1,39 @@
+module(
+    name = "gazelle_bcr_tests",
+)
+
+bazel_dep(name = "gazelle", version = "")
+local_path_override(
+    module_name = "gazelle",
+    path = "../..",
+)
+
+bazel_dep(name = "rules_go", version = "0.33.0")
+
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+
+# Using an older version than a transitive dependency (in this case, gazelle itself) emits a warning for the root
+# module, but still fetches the most recent version due to Minimum Version Selection (MVS).
+go_deps.module(
+    importpath = "github.com/pelletier/go-toml",
+    sum = "h1:7utD74fnzVc/cpcyy8sjrlFr5vYpypUixARcHIMIGuI=",
+    version = "v1.7.0",
+)
+go_deps.module(
+    importpath = "github.com/stretchr/testify",
+    sum = "h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=",
+    version = "v1.8.0",
+)
+# Transitive dependencies have to be listed here explicitly.
+go_deps.module(
+    importpath = "gopkg.in/yaml.v3",
+    sum = "h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=",
+    version = "v3.0.1",
+)
+use_repo(
+    go_deps,
+     "com_github_pelletier_go_toml",
+     "com_github_stretchr_testify",
+     # It is not necessary to list transitive dependencies here, only direct ones.
+     # "in_gopkg_yaml_v3",
+)

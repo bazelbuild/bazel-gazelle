@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_test")
+load("@gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/bazel-gazelle/tests/bcr
+gazelle(name = "gazelle")
+
+go_test(
+    name = "mvs_test",
+    srcs = ["mvs_test.go"],
+    deps = [
+        "@com_github_pelletier_go_toml//:go-toml",
+        "@com_github_stretchr_testify//require",
+    ]
+)
