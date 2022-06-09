@@ -140,7 +140,7 @@ type GenerateResult struct {
 
 	// Empty is a list of rules that cannot be built with the files found in the
 	// directory GenerateRules was asked to process. These will be merged with
-	// existing rules. If ther merged rules are empty, they will be deleted.
+	// existing rules. If the merged rules are empty, they will be deleted.
 	Empty []*rule.Rule
 
 	// Imports contains information about the imported libraries for each
