@@ -241,6 +241,12 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		&updateConfigurer{},
 		&walk.Configurer{},
 		&resolve.Configurer{})
+
+	c, err := newFixUpdateConfiguration(wd, cmd, args, cexts)
+	if err != nil {
+		return err
+	}
+
 	mrslv := newMetaResolver()
 	kinds := make(map[string]rule.KindInfo)
 	loads := genericLoads
@@ -255,11 +261,6 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		exts = append(exts, lang)
 	}
 	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)
-
-	c, err := newFixUpdateConfiguration(wd, cmd, args, cexts)
-	if err != nil {
-		return err
-	}
 
 	if err := fixRepoFiles(c, loads); err != nil {
 		return err
