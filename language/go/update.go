@@ -62,6 +62,7 @@ var repoImportFuncs = map[string]func(args language.ImportReposArgs) language.Im
 	"Gopkg.lock":  importReposFromDep,
 	"go.mod":      importReposFromModules,
 	"Godeps.json": importReposFromGodep,
+	"go.work":     importReposFromWork,
 }
 
 func (*goLang) CanImport(path string) bool {

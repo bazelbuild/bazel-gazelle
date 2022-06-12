@@ -248,7 +248,7 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
 				},
 			},
 			want:    "",
-			wantErr: "error from go mod download: failed to download\nError downloading definitely.doesnotexist/ever: Did not exist",
+			wantErr: "finding module sums: error from go mod download: failed to download\nError downloading definitely.doesnotexist/ever: Did not exist",
 			stubGoModDownload: func(dir string, args []string) ([]byte, error) {
 				return []byte(`{
 "Path": "definitely.doesnotexist/ever",
@@ -278,7 +278,7 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
 				},
 			},
 			want:    "",
-			wantErr: "error from go mod download: failed to download\nError parsing module for more error information: invalid character 'o' in literal null (expecting 'u')",
+			wantErr: "finding module sums: error from go mod download: failed to download\nError parsing module for more error information: invalid character 'o' in literal null (expecting 'u')",
 			stubGoModDownload: func(dir string, args []string) ([]byte, error) {
 				return []byte(`{
 "Path": "definitely.doesnotexist/ever",
@@ -430,6 +430,318 @@ go_repository(
 `,
 			wantErr:           "",
 			stubGoModDownload: nil,
+		},
+		{
+			desc: "work",
+			files: []testtools.FileSpec{
+				{
+					Path: "go.work",
+					Content: `
+go 1.18
+
+use (
+	./project1
+	./project2
+	./project3
+)
+`,
+				},
+				{
+					Path: "project1/go.mod",
+					Content: `
+module project1
+
+go 1.18
+
+require github.com/vmware/govmomi v0.21.0 // indirect
+`,
+				},
+				{
+					Path: "project1/go.sum",
+					Content: `
+github.com/davecgh/go-xdr v0.0.0-20161123171359-e6a2ba005892/go.mod h1:CTDl0pzVzE5DEzZhPfvhY/9sPFMQIxaJ9VAMs9AagrE=
+github.com/google/uuid v0.0.0-20170306145142-6a5e28554805/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
+github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
+github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/vmware/govmomi v0.21.0 h1:jc8uMuxpcV2xMAA/cnEDlnsIjvqcMra5Y8onh/U3VuY=
+github.com/vmware/govmomi v0.21.0/go.mod h1:zbnFoBQ9GIjs2RVETy8CNEpb+L+Lwkjs3XZUL0B3/m0=
+github.com/vmware/vmw-guestinfo v0.0.0-20170707015358-25eff159a728/go.mod h1:x9oS4Wk2s2u4tS29nEaDLdzvuHdB19CvSGJjPgkZJNk=
+`,
+				},
+				{
+					Path: "project2/go.mod",
+					Content: `
+module project2
+
+go 1.18
+
+require github.com/vmware/govmomi v0.24.0 // indirect
+`,
+				},
+				{
+					Path: "project2/go.sum",
+					Content: `
+github.com/davecgh/go-xdr v0.0.0-20161123171359-e6a2ba005892/go.mod h1:CTDl0pzVzE5DEzZhPfvhY/9sPFMQIxaJ9VAMs9AagrE=
+github.com/google/uuid v0.0.0-20170306145142-6a5e28554805/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
+github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
+github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/vmware/govmomi v0.24.0 h1:G7YFF6unMTG3OY25Dh278fsomVTKs46m2ENlEFSbmbs=
+github.com/vmware/govmomi v0.24.0/go.mod h1:Y+Wq4lst78L85Ge/F8+ORXIWiKYqaro1vhAulACy9Lc=
+github.com/vmware/vmw-guestinfo v0.0.0-20170707015358-25eff159a728/go.mod h1:x9oS4Wk2s2u4tS29nEaDLdzvuHdB19CvSGJjPgkZJNk=
+`,
+				},
+				{
+					Path: "project3/go.mod",
+					Content: `
+module project3
+
+go 1.18
+
+require github.com/vmware/govmomi v0.27.0 // indirect
+`,
+				},
+				{
+					Path: "project3/go.sum",
+					Content: `
+github.com/a8m/tree v0.0.0-20210115125333-10a5fd5b637d/go.mod h1:FSdwKX97koS5efgm8WevNf7XS3PqtyFkKDDXrz778cg=
+github.com/davecgh/go-xdr v0.0.0-20161123171359-e6a2ba005892/go.mod h1:CTDl0pzVzE5DEzZhPfvhY/9sPFMQIxaJ9VAMs9AagrE=
+github.com/google/uuid v1.2.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
+github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
+github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/vmware/govmomi v0.27.0 h1:KoQ8IsLAa7V78s5d7dgpZA8d039GBM83cVxgAq9uWuw=
+github.com/vmware/govmomi v0.27.0/go.mod h1:daTuJEcQosNMXYJOeku0qdBJP9SOLLWB3Mqz8THtv6o=
+github.com/vmware/vmw-guestinfo v0.0.0-20170707015358-25eff159a728/go.mod h1:x9oS4Wk2s2u4tS29nEaDLdzvuHdB19CvSGJjPgkZJNk=
+`,
+				},
+			},
+			want: `
+go_repository(
+    name = "com_github_a8m_tree",
+    importpath = "github.com/a8m/tree",
+    sum = "h1:4E8RufAN3UQ/weB6AnQ4y5miZCO0Yco8ZdGId41WuQs=",
+    version = "v0.0.0-20210115125333-10a5fd5b637d",
+)
+
+go_repository(
+    name = "com_github_davecgh_go_xdr",
+    importpath = "github.com/davecgh/go-xdr",
+    sum = "h1:qg9VbHo1TlL0KDM0vYvBG9EY0X0Yku5WYIPoFWt8f6o=",
+    version = "v0.0.0-20161123171359-e6a2ba005892",
+)
+
+go_repository(
+    name = "com_github_google_uuid",
+    importpath = "github.com/google/uuid",
+    sum = "h1:qJYtXnJRWmpe7m/3XlyhrsLrEURqHRM2kxzoxXqyUDs=",
+    version = "v1.2.0",
+)
+
+go_repository(
+    name = "com_github_kr_pretty",
+    importpath = "github.com/kr/pretty",
+    sum = "h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=",
+    version = "v0.1.0",
+)
+
+go_repository(
+    name = "com_github_kr_pty",
+    importpath = "github.com/kr/pty",
+    sum = "h1:VkoXIwSboBpnk99O/KFauAEILuNHv5DVFKZMBN/gUgw=",
+    version = "v1.1.1",
+)
+
+go_repository(
+    name = "com_github_kr_text",
+    importpath = "github.com/kr/text",
+    sum = "h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=",
+    version = "v0.1.0",
+)
+
+go_repository(
+    name = "com_github_vmware_govmomi",
+    importpath = "github.com/vmware/govmomi",
+    sum = "h1:KoQ8IsLAa7V78s5d7dgpZA8d039GBM83cVxgAq9uWuw=",
+    version = "v0.27.0",
+)
+
+go_repository(
+    name = "com_github_vmware_vmw_guestinfo",
+    importpath = "github.com/vmware/vmw-guestinfo",
+    sum = "h1:sH9mEk+flyDxiUa5BuPiuhDETMbzrt9A20I2wktMvRQ=",
+    version = "v0.0.0-20170707015358-25eff159a728",
+)
+`,
+			wantErr: "",
+			stubGoModDownload: func(s string, i []string) ([]byte, error) {
+				return []byte(`
+{
+	"Path": "github.com/a8m/tree",
+	"Version": "v0.0.0-20210115125333-10a5fd5b637d",
+	"Info": "/Users/hhalil/go/pkg/mod/cache/download/github.com/a8m/tree/@v/v0.0.0-20210115125333-10a5fd5b637d.info",
+	"GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/a8m/tree/@v/v0.0.0-20210115125333-10a5fd5b637d.mod",
+	"Zip": "/Users/hhalil/go/pkg/mod/cache/download/github.com/a8m/tree/@v/v0.0.0-20210115125333-10a5fd5b637d.zip",
+	"Dir": "/Users/hhalil/go/pkg/mod/github.com/a8m/tree@v0.0.0-20210115125333-10a5fd5b637d",
+	"Sum": "h1:4E8RufAN3UQ/weB6AnQ4y5miZCO0Yco8ZdGId41WuQs=",
+	"GoModSum": "h1:FSdwKX97koS5efgm8WevNf7XS3PqtyFkKDDXrz778cg="
+}
+{
+	"Path": "github.com/davecgh/go-xdr",
+	"Version": "v0.0.0-20161123171359-e6a2ba005892",
+	"Info": "/Users/hhalil/go/pkg/mod/cache/download/github.com/davecgh/go-xdr/@v/v0.0.0-20161123171359-e6a2ba005892.info",
+	"GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/davecgh/go-xdr/@v/v0.0.0-20161123171359-e6a2ba005892.mod",
+	"Zip": "/Users/hhalil/go/pkg/mod/cache/download/github.com/davecgh/go-xdr/@v/v0.0.0-20161123171359-e6a2ba005892.zip",
+	"Dir": "/Users/hhalil/go/pkg/mod/github.com/davecgh/go-xdr@v0.0.0-20161123171359-e6a2ba005892",
+	"Sum": "h1:qg9VbHo1TlL0KDM0vYvBG9EY0X0Yku5WYIPoFWt8f6o=",
+	"GoModSum": "h1:CTDl0pzVzE5DEzZhPfvhY/9sPFMQIxaJ9VAMs9AagrE="
+}
+{
+	"Path": "github.com/google/uuid",
+	"Version": "v1.2.0",
+	"Info": "/Users/hhalil/go/pkg/mod/cache/download/github.com/google/uuid/@v/v1.2.0.info",
+	"GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/google/uuid/@v/v1.2.0.mod",
+	"Zip": "/Users/hhalil/go/pkg/mod/cache/download/github.com/google/uuid/@v/v1.2.0.zip",
+	"Dir": "/Users/hhalil/go/pkg/mod/github.com/google/uuid@v1.2.0",
+	"Sum": "h1:qJYtXnJRWmpe7m/3XlyhrsLrEURqHRM2kxzoxXqyUDs=",
+	"GoModSum": "h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo="
+}
+{
+	"Path": "github.com/kr/pretty",
+	"Version": "v0.1.0",
+	"Info": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/pretty/@v/v0.1.0.info",
+	"GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/pretty/@v/v0.1.0.mod",
+	"Zip": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/pretty/@v/v0.1.0.zip",
+	"Dir": "/Users/hhalil/go/pkg/mod/github.com/kr/pretty@v0.1.0",
+	"Sum": "h1:L/CwN0zerZDmRFUapSPitk6f+Q3+0za1rQkzVuMiMFI=",
+	"GoModSum": "h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo="
+}
+{
+	"Path": "github.com/kr/pty",
+	"Version": "v1.1.1",
+	"Info": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/pty/@v/v1.1.1.info",
+	"GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/pty/@v/v1.1.1.mod",
+	"Zip": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/pty/@v/v1.1.1.zip",
+	"Dir": "/Users/hhalil/go/pkg/mod/github.com/kr/pty@v1.1.1",
+	"Sum": "h1:VkoXIwSboBpnk99O/KFauAEILuNHv5DVFKZMBN/gUgw=",
+	"GoModSum": "h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ="
+}
+{
+	"Path": "github.com/kr/text",
+	"Version": "v0.1.0",
+	"Info": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/text/@v/v0.1.0.info",
+	"GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/text/@v/v0.1.0.mod",
+	"Zip": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/text/@v/v0.1.0.zip",
+	"Dir": "/Users/hhalil/go/pkg/mod/github.com/kr/text@v0.1.0",
+	"Sum": "h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=",
+	"GoModSum": "h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI="
+}
+{
+	"Path": "github.com/vmware/govmomi",
+	"Version": "v0.27.0",
+	"Info": "/Users/hhalil/go/pkg/mod/cache/download/github.com/vmware/govmomi/@v/v0.27.0.info",
+	"GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/vmware/govmomi/@v/v0.27.0.mod",
+	"Zip": "/Users/hhalil/go/pkg/mod/cache/download/github.com/vmware/govmomi/@v/v0.27.0.zip",
+	"Dir": "/Users/hhalil/go/pkg/mod/github.com/vmware/govmomi@v0.27.0",
+	"Sum": "h1:KoQ8IsLAa7V78s5d7dgpZA8d039GBM83cVxgAq9uWuw=",
+	"GoModSum": "h1:daTuJEcQosNMXYJOeku0qdBJP9SOLLWB3Mqz8THtv6o="
+}
+{
+	"Path": "github.com/vmware/vmw-guestinfo",
+	"Version": "v0.0.0-20170707015358-25eff159a728",
+	"Info": "/Users/hhalil/go/pkg/mod/cache/download/github.com/vmware/vmw-guestinfo/@v/v0.0.0-20170707015358-25eff159a728.info",
+	"GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/vmware/vmw-guestinfo/@v/v0.0.0-20170707015358-25eff159a728.mod",
+	"Zip": "/Users/hhalil/go/pkg/mod/cache/download/github.com/vmware/vmw-guestinfo/@v/v0.0.0-20170707015358-25eff159a728.zip",
+	"Dir": "/Users/hhalil/go/pkg/mod/github.com/vmware/vmw-guestinfo@v0.0.0-20170707015358-25eff159a728",
+	"Sum": "h1:sH9mEk+flyDxiUa5BuPiuhDETMbzrt9A20I2wktMvRQ=",
+	"GoModSum": "h1:x9oS4Wk2s2u4tS29nEaDLdzvuHdB19CvSGJjPgkZJNk="
+}
+`), nil
+			},
+			stubGoListModules: func(dir string) ([]byte, error) {
+				return []byte(`
+{
+        "Path": "project1",
+        "Main": true,
+        "Dir": "/Users/hhalil/Documents/VMware/mirrors_github_bazel-gazelle/hakan/project1",
+        "GoMod": "/Users/hhalil/Documents/VMware/mirrors_github_bazel-gazelle/hakan/project1/go.mod",
+        "GoVersion": "1.18"
+}
+{
+        "Path": "project2",
+        "Main": true,
+        "Dir": "/Users/hhalil/Documents/VMware/mirrors_github_bazel-gazelle/hakan/project2",
+        "GoMod": "/Users/hhalil/Documents/VMware/mirrors_github_bazel-gazelle/hakan/project2/go.mod",
+        "GoVersion": "1.18"
+}
+{
+        "Path": "project3",
+        "Main": true,
+        "Dir": "/Users/hhalil/Documents/VMware/mirrors_github_bazel-gazelle/hakan/project3",
+        "GoMod": "/Users/hhalil/Documents/VMware/mirrors_github_bazel-gazelle/hakan/project3/go.mod",
+        "GoVersion": "1.18"
+}
+{
+        "Path": "github.com/a8m/tree",
+        "Version": "v0.0.0-20210115125333-10a5fd5b637d",
+        "Time": "2021-01-15T12:53:33Z",
+        "Indirect": true,
+        "GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/a8m/tree/@v/v0.0.0-20210115125333-10a5fd5b637d.mod"
+}
+{
+        "Path": "github.com/davecgh/go-xdr",
+        "Version": "v0.0.0-20161123171359-e6a2ba005892",
+        "Time": "2016-11-23T17:13:59Z",
+        "Indirect": true,
+        "GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/davecgh/go-xdr/@v/v0.0.0-20161123171359-e6a2ba005892.mod"
+}
+{
+        "Path": "github.com/google/uuid",
+        "Version": "v1.2.0",
+        "Time": "2021-01-22T18:20:15Z",
+        "Indirect": true,
+        "GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/google/uuid/@v/v1.2.0.mod"
+}
+{
+        "Path": "github.com/kr/pretty",
+        "Version": "v0.1.0",
+        "Time": "2018-05-06T08:33:45Z",
+        "Indirect": true,
+        "GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/pretty/@v/v0.1.0.mod"
+}
+{
+        "Path": "github.com/kr/pty",
+        "Version": "v1.1.1",
+        "Time": "2018-01-13T18:08:13Z",
+        "Indirect": true,
+        "GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/pty/@v/v1.1.1.mod"
+}
+{
+        "Path": "github.com/kr/text",
+        "Version": "v0.1.0",
+        "Time": "2018-05-06T08:24:08Z",
+        "Indirect": true,
+        "GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/kr/text/@v/v0.1.0.mod"
+}
+{
+        "Path": "github.com/vmware/govmomi",
+        "Version": "v0.27.0",
+        "Time": "2021-10-14T20:30:09Z",
+        "Indirect": true,
+        "Dir": "/Users/hhalil/go/pkg/mod/github.com/vmware/govmomi@v0.27.0",
+        "GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/vmware/govmomi/@v/v0.27.0.mod",
+        "GoVersion": "1.14"
+}
+{
+        "Path": "github.com/vmware/vmw-guestinfo",
+        "Version": "v0.0.0-20170707015358-25eff159a728",
+        "Time": "2017-07-07T01:53:58Z",
+        "Indirect": true,
+        "GoMod": "/Users/hhalil/go/pkg/mod/cache/download/github.com/vmware/vmw-guestinfo/@v/v0.0.0-20170707015358-25eff159a728.mod"
+}
+`), nil
+			},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

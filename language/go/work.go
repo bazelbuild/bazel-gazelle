@@ -1,4 +1,4 @@
-/* Copyright 2018 The Bazel Authors. All rights reserved.
+/* Copyright 2022 The Bazel Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,44 +16,22 @@ limitations under the License.
 package golang
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
-	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/language"
 )
 
-func importReposFromModules(args language.ImportReposArgs) language.ImportReposResult {
-	// run go list in the dir where go.mod is located
+func importReposFromWork(args language.ImportReposArgs) language.ImportReposResult {
+	// run go list in the dir where go.work is located
 	data, err := goListModules(filepath.Dir(args.Path))
 	if err != nil {
-		return language.ImportReposResult{Error: processGoListError(err, data)}
+		return language.ImportReposResult{Error: processGoListError(nil, data)}
 	}
 
 	pathToModule, err := extractModules(data)
 	if err != nil {
 		return language.ImportReposResult{Error: err}
-	}
-
-	// Load sums from go.sum. Ideally, they're all there.
-	goSumPath := filepath.Join(filepath.Dir(args.Path), "go.sum")
-	data, _ = ioutil.ReadFile(goSumPath)
-	lines := bytes.Split(data, []byte("\n"))
-	for _, line := range lines {
-		line = bytes.TrimSpace(line)
-		fields := bytes.Fields(line)
-		if len(fields) != 3 {
-			continue
-		}
-		path, version, sum := string(fields[0]), string(fields[1]), string(fields[2])
-		if strings.HasSuffix(version, "/go.mod") {
-			continue
-		}
-		if mod, ok := pathToModule[path+"@"+version]; ok {
-			mod.Sum = sum
-		}
 	}
 
 	pathToModule, err = fillMissingSums(pathToModule)
