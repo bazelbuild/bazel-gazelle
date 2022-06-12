@@ -68,6 +68,42 @@ go_repository(
 
 """
 
+# copied from
+# https://github.com/bazelbuild/bazel/blob/d273cb62f43ef8169415cf60fc96e503ea2ad823/tools/build_defs/repo/http.bzl#L76
+_AUTH_PATTERN_DOC = """An optional dict mapping host names to custom authorization patterns.
+
+If a URL's host name is present in this dict the value will be used as a pattern when
+generating the authorization header for the http request. This enables the use of custom
+authorization schemes used in a lot of common cloud storage providers.
+
+The pattern currently supports 2 tokens: <code>&lt;login&gt;</code> and
+<code>&lt;password&gt;</code>, which are replaced with their equivalent value
+in the netrc file for the same host name. After formatting, the result is set
+as the value for the <code>Authorization</code> field of the HTTP request.
+
+Example attribute and netrc for a http download to an oauth2 enabled API using a bearer token:
+
+<pre>
+auth_patterns = {
+    "storage.cloudprovider.com": "Bearer &lt;password&gt;"
+}
+</pre>
+
+netrc:
+
+<pre>
+machine storage.cloudprovider.com
+        password RANDOM-TOKEN
+</pre>
+
+The final HTTP request would have the following header:
+
+<pre>
+Authorization: Bearer RANDOM-TOKEN
+</pre>
+"""
+
+
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
 
@@ -85,7 +121,7 @@ def _get_auth(ctx, urls):
 
     if netrcfile and ctx.path(netrcfile).exists:
         netrc = read_netrc(ctx, netrcfile)
-        return use_netrc(netrc, urls, {})
+        return use_netrc(netrc, urls, ctx.attr.auth_patterns)
 
     return {}
 
@@ -354,6 +390,9 @@ go_repository = repository_rule(
         "canonical_id": attr.string(
             doc = """If the repository is downloaded via HTTP (`urls` is set) and this is set, restrict cache hits to those cases where the
             repository was added to the cache with the same canonical id.""",
+        ),
+        "auth_patterns": attr.string_dict(
+            doc = _AUTH_PATTERN_DOC,
         ),
 
         # Attributes for a module that should be downloaded with the Go toolchain.
