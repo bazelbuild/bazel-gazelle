@@ -14,7 +14,7 @@
 
 load("//internal:common.bzl", "env_execute", "executable_extension")
 load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
-load("@bazel_tools//tools/build_defs/repo:utils.bzl", "patch", "read_netrc", "use_netrc")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "read_netrc", "use_netrc")
 
 _DOC = """
 `go_repository` downloads a Go project and generates build files with Gazelle
@@ -102,7 +102,6 @@ The final HTTP request would have the following header:
 Authorization: Bearer RANDOM-TOKEN
 </pre>
 """
-
 
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
@@ -414,7 +413,7 @@ go_repository = repository_rule(
             `replace` will be downloaded at `version` and verified with `sum`.
 
             NOTE: There is no `go_repository` equivalent to file path `replace`
-            directives. Use `local_repository` instead."""
+            directives. Use `local_repository` instead.""",
         ),
 
         # Attributes for a repository that needs automatic build file generation
@@ -518,9 +517,8 @@ go_repository = repository_rule(
             doc = "A list of patches to apply to the repository after gazelle runs.",
         ),
         "patch_tool": attr.string(
-            default = "",
-            doc = """The patch tool used to apply `patches`. If this is specified, Bazel will
-            use the specifed patch tool instead of the Bazel-native patch implementation.""",
+            default = "patch",
+            doc = "The patch tool used to apply `patches`.",
         ),
         "patch_args": attr.string_list(
             default = ["-p0"],
@@ -538,7 +536,34 @@ go_repository = repository_rule(
             so this defaults to `False`. However, setting to `True` can be useful for debugging build failures and
             unexpected behavior for the given rule.
             """,
-        )
+        ),
     },
 )
 """See repository.md#go-repository for full documentation."""
+
+# Copied from @bazel_tools//tools/build_defs/repo:utils.bzl
+#
+# Here we shell out to `patch` executable instead of calling repository_ctx.patch()
+# so that we can apply the patch files _AFTER_ gazelle ran and generated the
+# BUILD files.  This enables patch files to modify the generated BUILD files.
+def patch(ctx):
+    """Implementation of patching an already extracted repository"""
+    bash_exe = ctx.os.environ["BAZEL_SH"] if "BAZEL_SH" in ctx.os.environ else "bash"
+    for patchfile in ctx.attr.patches:
+        command = "{patchtool} {patch_args} < {patchfile}".format(
+            patchtool = ctx.attr.patch_tool,
+            patchfile = ctx.path(patchfile),
+            patch_args = " ".join([
+                "'%s'" % arg
+                for arg in ctx.attr.patch_args
+            ]),
+        )
+        st = ctx.execute([bash_exe, "-c", command])
+        if st.return_code:
+            fail("Error applying patch %s:\n%s%s" %
+                 (str(patchfile), st.stderr, st.stdout))
+    for cmd in ctx.attr.patch_cmds:
+        st = ctx.execute([bash_exe, "-c", cmd])
+        if st.return_code:
+            fail("Error applying patch command %s:\n%s%s" %
+                 (cmd, st.stdout, st.stderr))
