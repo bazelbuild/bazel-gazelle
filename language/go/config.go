@@ -125,6 +125,19 @@ type goConfig struct {
 	// buildTagsAttr are attributes for go_repository rules, set on the command
 	// line.
 	buildDirectivesAttr, buildExternalAttr, buildExtraArgsAttr, buildFileGenerationAttr, buildFileNamesAttr, buildFileProtoModeAttr, buildTagsAttr string
+
+	// goEnv attributes for go_repository rules, set on the command line.
+	goEnv
+}
+
+// goEnv attributes for go_repository rules, set on the command line.
+type goEnv struct {
+	// GoProxy, GoNoProxy, GoPrivate, GoSumDb, and GoNoSumDb
+	// used to specify GO env vars for the go_repository rule.
+	GoProxy, GoNoProxy, GoPrivate, GoSumDb, GoNoSumDb goEnvKey
+}
+type goEnvKey struct {
+	key, value string
 }
 
 var (
@@ -137,6 +150,13 @@ func newGoConfig() *goConfig {
 		goProtoCompilers: defaultGoProtoCompilers,
 		goGrpcCompilers:  defaultGoGrpcCompilers,
 		goGenerateProto:  true,
+		goEnv: goEnv{
+			GoProxy:   goEnvKey{key: "GOPROXY"},
+			GoNoProxy: goEnvKey{key: "GONOPROXY"},
+			GoPrivate: goEnvKey{key: "GOPRIVATE"},
+			GoSumDb:   goEnvKey{key: "GOSUMDB"},
+			GoNoSumDb: goEnvKey{key: "GONOSUMDB"},
+		},
 	}
 	gc.preprocessTags()
 	return gc
@@ -420,6 +440,26 @@ func (*goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			"build_tags",
 			"",
 			"Sets the build_tags attribute for the generated go_repository rule(s).")
+		fs.StringVar(&gc.goEnv.GoProxy.value,
+			"env_goproxy",
+			"",
+			"Sets the go_env.GOPROXY attribute for the generated go_repository rule(s).")
+		fs.StringVar(&gc.goEnv.GoNoProxy.value,
+			"env_gonoproxy",
+			"",
+			"Sets the go_env.GONOPROXY attribute for the generated go_repository rule(s).")
+		fs.StringVar(&gc.goEnv.GoPrivate.value,
+			"env_goprivate",
+			"",
+			"Sets the go_env.GOPRIVATE attribute for the generated go_repository rule(s).")
+		fs.StringVar(&gc.goEnv.GoSumDb.value,
+			"env_gosumdb",
+			"",
+			"Sets the go_env.GOSUMDB attribute for the generated go_repository rule(s).")
+		fs.StringVar(&gc.goEnv.GoNoSumDb.value,
+			"env_gonosumdb",
+			"",
+			"Sets the go_env.GONOSUMDB attribute for the generated go_repository rule(s).")
 	}
 	c.Exts[goName] = gc
 }
