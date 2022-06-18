@@ -151,7 +151,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 					protoName = name
 					break
 				}
-			} else if len(protoPackages) > 1 {
+			} else {
 				pkg = emptyPackage(c, args.Dir, args.Rel, args.File)
 			}
 		} else {
@@ -403,9 +403,6 @@ func emptyPackage(c *config.Config, dir, rel string, f *rule.File) *goPackage {
 		name: pkgName,
 		dir:  dir,
 		rel:  rel,
-	}
-	if err := pkg.inferImportPath(c); err != nil {
-		log.Printf("could not infer import path: %v", err)
 	}
 
 	return pkg
