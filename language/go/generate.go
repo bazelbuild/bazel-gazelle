@@ -404,9 +404,6 @@ func emptyPackage(c *config.Config, dir, rel string, f *rule.File) *goPackage {
 		dir:  dir,
 		rel:  rel,
 	}
-	if err := pkg.inferImportPath(c); err != nil {
-		log.Printf("could not infer import path: %v", err)
-	}
 
 	return pkg
 }
