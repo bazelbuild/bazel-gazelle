@@ -18,6 +18,8 @@ go_library(
         "tag_a.go",
         "tag_d.go",
         "tag_l.go",
+        "tags_dual_cgo.go",
+        "tags_dual_no_cgo.go",
     ],
     _gazelle_imports = [
         "example.com/repo/platforms/generic",
