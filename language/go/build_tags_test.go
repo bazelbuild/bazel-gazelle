@@ -29,31 +29,34 @@ func TestFilterBuildTags(t *testing.T) {
 		want  constraint.Expr
 	}{
 		{
-			desc:  "should be empty",
+			desc:  "should remain",
 			input: mustParseBuildTag(t, "go1.8 || go1.9"),
+			want:  mustParseBuildTag(t, "go1.8 || go1.9"),
 		},
 		{
-			desc:  "filtered not is empty",
+			desc:  "simple 1",
 			input: mustParseBuildTag(t, "!(go1.8 || go1.9)"),
+			want:  mustParseBuildTag(t, "go1.8 && go1.9"),
 		},
 		{
-			desc:  "remaining not remains",
+			desc:  "simple 2",
 			input: mustParseBuildTag(t, "!(foobar || go1.8 || go1.9)"),
-			want:  mustParseBuildTag(t, "!foobar"),
+			want:  mustParseBuildTag(t, "!foobar && go1.8 && go1.9"),
 		},
 		{
-			desc:  "complex becomes empty",
+			desc:  "complex 1",
 			input: mustParseBuildTag(t, "!(cgo && (go1.8 || go1.9) || race || msan)"),
+			want:  mustParseBuildTag(t, "(cgo || (go1.8 && go1.9)) && race && msan"),
 		},
 		{
-			desc:  "complex becomes simple",
+			desc:  "complex 2",
 			input: mustParseBuildTag(t, "!(cgo && (go1.8 || go1.9 && (race && foobar)))"),
-			want:  mustParseBuildTag(t, "!foobar"),
+			want:  mustParseBuildTag(t, "cgo || go1.8 && (go1.9 || (race || !foobar))"),
 		},
 		{
-			desc:  "complex becomes simple 2",
+			desc:  "complex 3",
 			input: mustParseBuildTag(t, "!(cgo && (go1.8 || go1.9 && (race && foobar) || baz))"),
-			want:  mustParseBuildTag(t, "!(foobar || baz)"),
+			want:  mustParseBuildTag(t, "cgo || (go1.8 && (go1.9 || (race || !foobar)) && !baz)"),
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

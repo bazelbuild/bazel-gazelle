@@ -553,6 +553,10 @@ func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, t
 
 	goConf := getGoConfig(c)
 	checker := func(tag string) bool {
+		if isIgnoredTag(tag) {
+			return true
+		}
+
 		if _, ok := rule.KnownOSSet[tag]; ok {
 			if os == "" {
 				return false
