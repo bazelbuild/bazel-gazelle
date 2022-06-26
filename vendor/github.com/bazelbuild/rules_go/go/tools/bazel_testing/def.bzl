@@ -28,7 +28,7 @@ def go_bazel_test(rule_files = None, **kwargs):
 
     bazel_testing_library = "@io_bazel_rules_go//go/tools/bazel_testing"
     if bazel_testing_library not in kwargs["deps"]:
-        kwargs["deps"] += [bazel_testing_library]
+        kwargs["deps"].append(bazel_testing_library)
 
     # Add data dependency on rules_go files. bazel_testing will copy or link
     # these files in an external repo.
@@ -55,8 +55,8 @@ def go_bazel_test(rule_files = None, **kwargs):
     #   much slower.
     kwargs.setdefault("tags", [])
     if "local" not in kwargs["tags"]:
-        kwargs["tags"] += ["local"]
+        kwargs["tags"].append("local")
     if "exclusive" not in kwargs["tags"]:
-        kwargs["tags"] += ["exclusive"]
+        kwargs["tags"].append("exclusive")
 
     go_test(**kwargs)

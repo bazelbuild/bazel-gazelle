@@ -957,6 +957,11 @@ func reorderArguments(f *File) {
 			return
 		}
 		compare := func(i, j int) bool {
+			// Keep nil nodes at their place. They are no-op for the formatter but can
+			// be useful for the linter which expects them to not move.
+			if call.List[i] == nil || call.List[j] == nil {
+				return false
+			}
 			return argumentType(call.List[i]) < argumentType(call.List[j])
 		}
 		if !sort.SliceIsSorted(call.List, compare) {

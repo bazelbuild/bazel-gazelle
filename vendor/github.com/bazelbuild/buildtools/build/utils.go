@@ -46,3 +46,36 @@ func GetParamIdent(param Expr) (ident *Ident, op string) {
 	}
 	return nil, ""
 }
+
+// GetTypes returns the list of types defined by the a given expression.
+// Examples:
+//
+// List[tuple[bool, int]] should return [List, Tuple, bool, int]
+// str should return str
+func GetTypes(t Expr) []string {
+	switch t := t.(type) {
+	case *TypedIdent:
+		return GetTypes(t.Type)
+	case *Ident:
+		return []string{t.Name}
+	case *DefStmt:
+		ret := GetTypes(t.Type)
+		params := make([]string, 0)
+		for _, p := range t.Params {
+			params = append(params, GetTypes(p)...)
+		}
+		return append(ret, params...)
+	case *IndexExpr:
+		left := GetTypes(t.X)
+		right := GetTypes(t.Y)
+		return append(left, right...)
+	case *DotExpr:
+		// Special handling for skylark-rust interpreter, types are referred to by a `.type` suffix
+		if t.Name == "type" {
+			return GetTypes(t.X)
+		}
+		return []string{}
+	default:
+		return []string{}
+	}
+}

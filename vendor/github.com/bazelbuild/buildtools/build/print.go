@@ -46,6 +46,11 @@ func Format(f *File) []byte {
 
 // FormatString returns the string form of the given expression.
 func FormatString(x Expr) string {
+	// Expr is an interface and can be nil
+	if x == nil {
+		return ""
+	}
+
 	fileType := TypeBuild // for compatibility
 	if file, ok := x.(*File); ok {
 		fileType = file.Type
