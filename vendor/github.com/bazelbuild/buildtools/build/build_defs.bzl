@@ -51,7 +51,7 @@ _go_yacc = rule(
             default = _GO_YACC_TOOL,
             allow_single_file = True,
             executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
     },
 )
