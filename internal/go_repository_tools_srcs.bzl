@@ -46,7 +46,7 @@ GO_REPOSITORY_TOOLS_SRCS = [
 	Label("//label:label.go"),
 	Label("//language:BUILD.bazel"),
 	Label("//language/go:BUILD.bazel"),
-	Label("//language/go:build_tags.go"),
+	Label("//language/go:build_constraints.go"),
 	Label("//language/go:config.go"),
 	Label("//language/go:constants.go"),
 	Label("//language/go:dep.go"),

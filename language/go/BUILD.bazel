@@ -15,7 +15,7 @@ std_package_list(
 go_library(
     name = "go",
     srcs = [
-        "build_tags.go",
+        "build_constraints.go",
         "config.go",
         "constants.go",
         "dep.go",
@@ -58,7 +58,7 @@ go_library(
 go_test(
     name = "go_test",
     srcs = [
-        "build_tags_test.go",
+        "build_constraints_test.go",
         "config_test.go",
         "fileinfo_go_test.go",
         "fileinfo_test.go",
@@ -93,8 +93,8 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
-        "build_tags.go",
-        "build_tags_test.go",
+        "build_constraints.go",
+        "build_constraints_test.go",
         "config.go",
         "config_test.go",
         "constants.go",

@@ -144,7 +144,7 @@ func (b *buildTags) empty() bool {
 	return len(b.rawTags) == 0
 }
 
-// dropNegationForIgnoredTags wil drop negations for any concrete tags that should be ignored.
+// dropNegationForIgnoredTags drops negations for any concrete tags that should be ignored.
 // This is done to ensure that when ignored tags are evaluated, they can always return true
 // without having to worry that the result will be negated later on. Ignored tags should always
 // evaluate to true, regardless of whether they are negated or not leaving the final evaluation
