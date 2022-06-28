@@ -90,6 +90,12 @@ Gazelle can generate Bazel BUILD files for many languages:
 
   Tweag's `rules_haskell`_ has an extension, `gazelle_cabal`_, for generating rules from Cabal files.
 
+* Java
+
+  `bazel-contrib`'s [`rules_jvm`](https://github.com/bazel-contrib/rules_jvm) extensions include
+  [a gazele extension](https://github.com/bazel-contrib/rules_jvm/tree/main/java/gazelle) for
+  generating `java_library`, `java_binary`, `java_test`, and `java_test_suite` rules.
+
 * JavaScript / TypeScript
 
   Ecosia's `bazel_rules_nodejs_contrib`_ has an extension for generating
