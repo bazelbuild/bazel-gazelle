@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package runner
 
 import (
 	"bytes"
@@ -382,7 +382,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	for _, v := range visits {
 		merger.FixLoads(v.file, applyKindMappings(v.mappedKinds, loads))
 		if err := uc.emit(v.c, v.file); err != nil {
-			if err == errExit {
+			if err == ErrExit {
 				exit = err
 			} else {
 				log.Print(err)

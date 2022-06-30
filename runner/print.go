@@ -13,34 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package runner
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func fixFile(c *config.Config, f *rule.File) error {
-	newContent := f.Format()
-	if bytes.Equal(f.Content, newContent) {
-		return nil
-	}
-	outPath := findOutputPath(c, f)
-	if err := os.MkdirAll(filepath.Dir(outPath), 0o777); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(outPath, newContent, 0o666); err != nil {
-		return err
-	}
-	f.Content = newContent
-	if getUpdateConfig(c).print0 {
-		fmt.Printf("%s\x00", outPath)
-	}
-	return nil
+func printFile(c *config.Config, f *rule.File) error {
+	fmt.Printf(">>> %s\n", f.Path)
+	content := f.Format()
+	_, err := os.Stdout.Write(content)
+	return err
 }

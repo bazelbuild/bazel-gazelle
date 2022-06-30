@@ -17,7 +17,7 @@ limitations under the License.
 // common usage patterns and check for errors that are difficult to test in
 // unit tests.
 
-package main
+package runner
 
 import (
 	"bytes"

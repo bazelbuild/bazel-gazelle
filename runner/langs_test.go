@@ -1,4 +1,4 @@
-/* Copyright 2016 The Bazel Authors. All rights reserved.
+/* Copyright 2018 The Bazel Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,14 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Command gazelle is a BUILD file generator for Go projects.
-// See "gazelle --help" for more details.
-package main
+package runner
 
 import (
-	"github.com/bazelbuild/bazel-gazelle/runner"
+	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/language/go"
+	"github.com/bazelbuild/bazel-gazelle/language/proto"
 )
 
-func main() {
-	runner.Main(languages)
+func init() {
+	languages = []language.Language{
+		proto.NewLanguage(),
+		golang.NewLanguage(),
+	}
 }
