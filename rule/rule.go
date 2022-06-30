@@ -749,6 +749,10 @@ func (r *Rule) ShouldKeep() bool {
 	return ShouldKeep(r.expr)
 }
 
+func (r *Rule) Expr() bzl.Expr {
+	return r.expr
+}
+
 // Kind returns the kind of rule this is (for example, "go_library").
 func (r *Rule) Kind() string {
 	return r.kind

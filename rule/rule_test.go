@@ -362,6 +362,88 @@ func TestShouldKeepExpr(t *testing.T) {
 	}
 }
 
+func TestWalkForKeeps(t *testing.T) {
+	for _, tc := range []struct {
+		desc, src string
+		want      bool
+	}{
+		{
+			desc: "no keep",
+			src: `
+filegroup(
+    name = "fg",
+    srcs = ["foo"],
+)
+`,
+			want: false,
+		},
+		{
+			desc: "before",
+			src: `
+# keep
+filegroup(
+    name = "fg",
+    srcs = ["foo"],
+)
+`,
+			want: true,
+		},
+		{
+			desc: "before-attr",
+			src: `
+filegroup(
+    name = "fg",
+    # keep
+    srcs = ["foo"],
+)
+`,
+			want: true,
+		},
+		{
+			desc: "in-attr",
+			src: `
+filegroup(
+    name = "fg",
+    srcs = [
+        # keep
+        "foo",
+    ],
+)
+`,
+			want: true,
+		},
+		{
+			desc: "after-attr",
+			src: `
+filegroup(
+    name = "fg",
+    srcs = [
+        "foo", # keep
+    ],
+)
+`,
+			want: true,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			ast, err := bzl.Parse(tc.desc, []byte(tc.src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			r := ruleFromExpr(0, ast.Stmt[0])
+			var hasKeep bool
+			bzl.Walk(r.Expr(), func(expr bzl.Expr, stack []bzl.Expr) {
+				if ShouldKeep(expr) {
+					hasKeep = true
+				}
+			})
+			if hasKeep != tc.want {
+				t.Errorf("got %v; want %v", hasKeep, tc.want)
+			}
+		})
+	}
+}
+
 func TestInternalVisibility(t *testing.T) {
 	tests := []struct {
 		rel      string
