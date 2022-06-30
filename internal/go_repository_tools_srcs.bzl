@@ -43,6 +43,7 @@ GO_REPOSITORY_TOOLS_SRCS = [
 	"@bazel_gazelle//internal/wspace:finder.go",
 	"@bazel_gazelle//label:BUILD.bazel",
 	"@bazel_gazelle//label:label.go",
+	"@bazel_gazelle//label:pattern.go",
 	"@bazel_gazelle//language:BUILD.bazel",
 	"@bazel_gazelle//language/go:BUILD.bazel",
 	"@bazel_gazelle//language/go:config.go",
