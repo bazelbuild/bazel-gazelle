@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("//internal:common.bzl", "env_execute", "executable_extension")
-load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
+load("//internal:go_repository_cache.bzl", "read_cache_env")
 
 def _go_repository_config_impl(ctx):
     # Locate and resolve configuration files. Gazelle reads directives and
@@ -47,10 +47,10 @@ def _go_repository_config_impl(ctx):
 
     else:
         ctx.file(
-        "WORKSPACE",
-        "",
-        False,
-    )
+            "WORKSPACE",
+            "",
+            False,
+        )
 
     # add an empty build file so Bazel recognizes the config
     ctx.file(

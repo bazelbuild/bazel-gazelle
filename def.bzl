@@ -41,8 +41,8 @@ gazelle_binary = _gazelle_binary
 gazelle_generation_test = _gazelle_generation_test
 
 DEFAULT_LANGUAGES = [
-    "@bazel_gazelle//language/proto:go_default_library",
-    "@bazel_gazelle//language/go:go_default_library",
+    Label("//language/proto:go_default_library"),
+    Label("//language/go:go_default_library"),
 ]
 
 def _gazelle_runner_impl(ctx):
@@ -94,7 +94,7 @@ _gazelle_runner = rule(
     implementation = _gazelle_runner_impl,
     attrs = {
         "gazelle": attr.label(
-            default = "@bazel_gazelle//cmd/gazelle",
+            default = "//cmd/gazelle",
             executable = True,
             cfg = "host",
         ),
@@ -119,7 +119,7 @@ _gazelle_runner = rule(
         "extra_args": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "_template": attr.label(
-            default = "@bazel_gazelle//internal:gazelle.bash.in",
+            default = "//internal:gazelle.bash.in",
             allow_single_file = True,
         ),
     },
