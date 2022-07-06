@@ -102,10 +102,10 @@ bzl_library(
     srcs = ["deps.bzl"],
     visibility = ["//visibility:public"],
     deps = [
-        "@bazel_gazelle//internal:go_repository",
-        "@bazel_gazelle//internal:go_repository_cache",
-        "@bazel_gazelle//internal:go_repository_config",
-        "@bazel_gazelle//internal:go_repository_tools",
+        "//internal:go_repository",
+        "//internal:go_repository_cache",
+        "//internal:go_repository_config",
+        "//internal:go_repository_tools",
         "@bazel_tools//tools/build_defs/repo:git.bzl",
     ],
 )

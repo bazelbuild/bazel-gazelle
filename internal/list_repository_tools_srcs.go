@@ -76,9 +76,9 @@ func main() {
 				base == "BUILD.bazel" || base == "BUILD") {
 			label := filepath.ToSlash(path)
 			if i := strings.LastIndexByte(label, '/'); i >= 0 {
-				label = "@bazel_gazelle//" + label[:i] + ":" + label[i+1:]
+				label = fmt.Sprintf(`Label("//%s:%s")`, label[:i], label[i+1:])
 			} else {
-				label = "@bazel_gazelle//:" + label
+				label = fmt.Sprintf(`Label("//%s")`, label)
 			}
 			labels = append(labels, label)
 		}
@@ -93,7 +93,7 @@ func main() {
 	fmt.Fprintln(buf, "# regenerate with `go run internal/list_repository_tools_srcs.go -dir $PWD -generate internal/go_repository_tools_srcs.bzl`")
 	fmt.Fprintln(buf, "GO_REPOSITORY_TOOLS_SRCS = [")
 	for _, label := range labels {
-		fmt.Fprintf(buf, "\t%q,\n", label)
+		fmt.Fprintf(buf, "\t%s,\n", label)
 	}
 	fmt.Fprintln(buf, "]")
 

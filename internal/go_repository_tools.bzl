@@ -13,8 +13,8 @@
 # limitations under the License.
 
 load("//internal:common.bzl", "env_execute", "executable_extension")
-load("@bazel_gazelle//internal:go_repository_cache.bzl", "read_cache_env")
-load("@bazel_gazelle//internal:go_repository_tools_srcs.bzl", "GO_REPOSITORY_TOOLS_SRCS")
+load("//internal:go_repository_cache.bzl", "read_cache_env")
+load("//internal:go_repository_tools_srcs.bzl", "GO_REPOSITORY_TOOLS_SRCS")
 
 _GO_REPOSITORY_TOOLS_BUILD_FILE = """
 package(default_visibility = ["//visibility:public"])
@@ -44,7 +44,7 @@ def _go_repository_tools_impl(ctx):
     go_tool = env["GOROOT"] + "/bin/go" + extension
 
     ctx.symlink(
-        ctx.path(Label("@bazel_gazelle//:WORKSPACE")).dirname,
+        ctx.path(Label("//:WORKSPACE")).dirname,
         "src/github.com/bazelbuild/bazel-gazelle",
     )
 
@@ -125,7 +125,7 @@ go_repository_tools = repository_rule(
             default = GO_REPOSITORY_TOOLS_SRCS,
         ),
         "_list_repository_tools_srcs": attr.label(
-            default = "@bazel_gazelle//internal:list_repository_tools_srcs.go",
+            default = "//internal:list_repository_tools_srcs.go",
         ),
     },
     environ = [

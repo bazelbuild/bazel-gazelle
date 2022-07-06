@@ -10,7 +10,7 @@ go_bazel_test(
         "runner_test.go",
     ],
     rule_files = [
-        "@bazel_gazelle//:all_files",
+        "//:all_files",
         "@io_bazel_rules_go//:all_files",
     ],
     deps = ["//testtools"],
@@ -72,7 +72,7 @@ bzl_library(
     visibility = ["//:__subpackages__"],
     deps = [
         ":common",
-        "@bazel_gazelle//internal:go_repository_cache",
+        "//internal:go_repository_cache",
         "@bazel_tools//tools/build_defs/repo:utils.bzl",
     ],
 )
@@ -90,7 +90,7 @@ bzl_library(
     visibility = ["//:__subpackages__"],
     deps = [
         ":common",
-        "@bazel_gazelle//internal:go_repository_cache",
+        "//internal:go_repository_cache",
     ],
 )
 
@@ -100,8 +100,8 @@ bzl_library(
     visibility = ["//:__subpackages__"],
     deps = [
         ":common",
-        "@bazel_gazelle//internal:go_repository_cache",
-        "@bazel_gazelle//internal:go_repository_tools_srcs",
+        "//internal:go_repository_cache",
+        "//internal:go_repository_tools_srcs",
     ],
 )
 
