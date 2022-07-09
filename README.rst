@@ -94,8 +94,8 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Java
 
-  `bazel-contrib`'s `rules_jvm`_ extensions include `a gazelle extension`_ for
-  generating `java_library`, `java_binary`, `java_test`, and `java_test_suite` rules.
+  bazel-contrib's `rules_jvm`_ extensions include `a gazelle extension`_ for
+  generating ``java_library``, ``java_binary``, ``java_test``, and ``java_test_suite`` rules.
 
 * JavaScript / TypeScript
 
