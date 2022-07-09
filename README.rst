@@ -2,6 +2,7 @@ Gazelle build file generator
 ============================
 
 .. All external links are here
+.. _a gazelle extension: https://github.com/bazel-contrib/rules_jvm/tree/main/java/gazelle
 .. _Architecture of Gazelle: Design.rst
 .. _Repository rules: repository.md
 .. _go_repository: repository.md#go_repository
@@ -22,6 +23,7 @@ Gazelle build file generator
 .. _#go on Bazel Slack: https://bazelbuild.slack.com/archives/CDBP88Z0D
 .. _#514: https://github.com/bazelbuild/rules_python/pull/514
 .. _#1030: https://github.com/bazelbuild/bazel-gazelle/issues/1030
+.. _rules_jvm: https://github.com/bazel-contrib/rules_jvm
 .. _rules_python: https://github.com/bazelbuild/rules_python
 .. _rules_r: https://github.com/grailbio/rules_r
 .. _rules_haskell: https://github.com/tweag/rules_haskell
@@ -92,9 +94,8 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Java
 
-  `bazel-contrib`'s [`rules_jvm`](https://github.com/bazel-contrib/rules_jvm) extensions include
-  [a gazele extension](https://github.com/bazel-contrib/rules_jvm/tree/main/java/gazelle) for
-  generating `java_library`, `java_binary`, `java_test`, and `java_test_suite` rules.
+  bazel-contrib's `rules_jvm`_ extensions include `a gazelle extension`_ for
+  generating ``java_library``, ``java_binary``, ``java_test``, and ``java_test_suite`` rules.
 
 * JavaScript / TypeScript
 
