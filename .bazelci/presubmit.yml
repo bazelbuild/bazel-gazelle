@@ -1,6 +1,7 @@
 ---
-platforms:
+tasks:
   ubuntu1804:
+    platform: ubuntu1804
     build_targets:
     - "..."
     run_targets:
@@ -9,17 +10,32 @@ platforms:
     - "//:gazelle_ci"
     test_targets:
     - "..."
+  ubuntu1804_bcr_tests:
+    name: BCR test module
+    platform: ubuntu1804
+    # Includes https://github.com/bazelbuild/bazel/commit/4e439689db73a12b9c8a1f9f1a5f8023e09d40b0,
+    # which will eventually be released in Bazel 5.3.0.
+    bazel_version: 4e439689db73a12b9c8a1f9f1a5f8023e09d40b0
+    working_directory: tests/bcr
+    build_targets:
+      - "//..."
+      - "//:gazelle"
+    test_targets:
+      - "//..."
   ubuntu1604:
+    platform: ubuntu1604
     build_targets:
     - "..."
     test_targets:
     - "..."
   macos:
+    platform: macos
     build_targets:
     - "..."
     test_targets:
     - "..."
   windows:
+    platform: windows
     build_targets:
     - "--"
     - "..."

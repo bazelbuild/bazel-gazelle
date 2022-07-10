@@ -50,6 +50,7 @@ filegroup(
         "overlay_repository.bzl",
         "repository_docs.bzl",
         "repository_rules_test_errors.patch",
+        "//internal/bzlmod:all_files",
         "//internal/gazellebinarytest:all_files",
         "//internal/generationtest:all_files",
         "//internal/language:all_files",

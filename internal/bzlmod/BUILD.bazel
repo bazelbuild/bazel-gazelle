@@ -1,0 +1,40 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "go_deps.bzl",
+        "non_module_deps.bzl",
+        "semver.bzl",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "go_deps",
+    srcs = ["go_deps.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        ":semver",
+        "//internal:go_repository",
+    ],
+)
+
+bzl_library(
+    name = "non_module_deps",
+    srcs = ["non_module_deps.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//internal:go_repository_cache",
+        "//internal:go_repository_config",
+        "//internal:go_repository_tools",
+    ],
+)
+
+bzl_library(
+    name = "semver",
+    srcs = ["semver.bzl"],
+    visibility = ["//:__subpackages__"],
+)

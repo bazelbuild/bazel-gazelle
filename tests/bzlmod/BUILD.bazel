@@ -1,0 +1,3 @@
+load(":semver_test.bzl", "semver_test_suite")
+
+semver_test_suite(name = "semver_test")

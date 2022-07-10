@@ -109,3 +109,10 @@ bzl_library(
         "@bazel_tools//tools/build_defs/repo:git.bzl",
     ],
 )
+
+bzl_library(
+    name = "extensions",
+    srcs = ["extensions.bzl"],
+    visibility = ["//visibility:public"],
+    deps = ["//internal/bzlmod:go_deps"],
+)
