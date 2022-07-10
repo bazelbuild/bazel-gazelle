@@ -69,8 +69,7 @@ def _go_deps_impl(module_ctx):
             if getattr(module, "is_root", False):
                 root_versions[module_tag.importpath] = raw_version
             version = semver.to_comparable(raw_version)
-            current_resolution = module_resolutions.get(module_tag.importpath, default = None)
-            if not current_resolution or version > current_resolution.version:
+            if module_tag.importpath not in module_resolutions or version > module_resolutions[module_tag.importpath].version:
                 module_resolutions[module_tag.importpath] = struct(
                     module = module.name,
                     repo_name = _repo_name(module_tag.importpath),
