@@ -1,4 +1,5 @@
 load("//internal:go_repository.bzl", "go_repository")
+load(":go_mod.bzl", "deps_from_go_mod")
 load(":semver.bzl", "semver")
 
 def _repo_name(importpath):
@@ -47,6 +48,10 @@ def _go_deps_impl(module_ctx):
             elif check_direct_deps == "error":
                 outdated_direct_dep_printer = fail
 
+        additional_module_tags = []
+        for from_file_tag in module.tags.from_file:
+            additional_module_tags += deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+
         # Parse the go_dep.module tags of all transitive dependencies and apply
         # Minimum Version Selection to resolve importpaths to Go module versions
         # and sums.
@@ -59,14 +64,19 @@ def _go_deps_impl(module_ctx):
         # transitive dependencies have also been declared - we may end up
         # resolving them to higher versions, but only compatible ones.
         paths = {}
-        for module_tag in module.tags.module:
+        for module_tag in module.tags.module + additional_module_tags:
             if module_tag.path in paths:
                 fail("Duplicate Go module path '{}' in module '{}'".format(module_tag.path, module.name))
             paths[module_tag.path] = None
             raw_version = module_tag.version
             if raw_version.startswith("v"):
                 raw_version = raw_version[1:]
-            if getattr(module, "is_root", False):
+
+            # For modules imported from a go.sum, we know which ones are direct
+            # dependencies and can thus only report implicit version upgrades
+            # for direct dependencies. For manually specified go_deps.module
+            # tags, we always report version upgrades.
+            if getattr(module, "is_root", False) and getattr(module_tag, "direct", True):
                 root_versions[module_tag.path] = raw_version
             version = semver.to_comparable(raw_version)
             if module_tag.path not in module_resolutions or version > module_resolutions[module_tag.path].version:
@@ -78,7 +88,6 @@ def _go_deps_impl(module_ctx):
                     sum = module_tag.sum,
                     build_naming_convention = module_tag.build_naming_convention,
                 )
-        is_root_module = False
 
     for path, root_version in root_versions.items():
         if semver.to_comparable(root_version) < module_resolutions[path].version:
@@ -125,6 +134,12 @@ _config_tag = tag_class(
     },
 )
 
+_from_file_tag = tag_class(
+    attrs = {
+        "go_mod": attr.label(mandatory = True),
+    }
+)
+
 _module_tag = tag_class(
     attrs = {
         "path": attr.string(mandatory = True),
@@ -138,6 +153,7 @@ go_deps = module_extension(
     _go_deps_impl,
     tag_classes = {
         "config": _config_tag,
+        "from_file": _from_file_tag,
         "module": _module_tag,
     },
 )
