@@ -58,21 +58,21 @@ def _go_deps_impl(module_ctx):
         # full graph, we can assume that at that place all its required
         # transitive dependencies have also been declared - we may end up
         # resolving them to higher versions, but only compatible ones.
-        importpaths = {}
+        paths = {}
         for module_tag in module.tags.module:
-            if module_tag.importpath in importpaths:
-                fail("Duplicate importpath '{}' in module '{}'".format(module_tag.importpath, module.name))
-            importpaths[module_tag.importpath] = None
+            if module_tag.path in paths:
+                fail("Duplicate Go module path '{}' in module '{}'".format(module_tag.path, module.name))
+            paths[module_tag.path] = None
             raw_version = module_tag.version
             if raw_version.startswith("v"):
                 raw_version = raw_version[1:]
             if getattr(module, "is_root", False):
-                root_versions[module_tag.importpath] = raw_version
+                root_versions[module_tag.path] = raw_version
             version = semver.to_comparable(raw_version)
-            if module_tag.importpath not in module_resolutions or version > module_resolutions[module_tag.importpath].version:
-                module_resolutions[module_tag.importpath] = struct(
+            if module_tag.path not in module_resolutions or version > module_resolutions[module_tag.path].version:
+                module_resolutions[module_tag.path] = struct(
                     module = module.name,
-                    repo_name = _repo_name(module_tag.importpath),
+                    repo_name = _repo_name(module_tag.path),
                     version = version,
                     raw_version = raw_version,
                     sum = module_tag.sum,
@@ -80,25 +80,25 @@ def _go_deps_impl(module_ctx):
                 )
         is_root_module = False
 
-    for importpath, root_version in root_versions.items():
-        if semver.to_comparable(root_version) < module_resolutions[importpath].version:
+    for path, root_version in root_versions.items():
+        if semver.to_comparable(root_version) < module_resolutions[path].version:
             outdated_direct_dep_printer(
-                "For Go module '{importpath}', the root module requires module version v{root_version}, but got v{resolved_version} in the resolved dependency graph.".format(
-                    importpath = importpath,
+                "For Go module '{path}', the root module requires module version v{root_version}, but got v{resolved_version} in the resolved dependency graph.".format(
+                    path = path,
                     root_version = root_version,
-                    resolved_version = module_resolutions[importpath].raw_version,
+                    resolved_version = module_resolutions[path].raw_version,
                 ),
             )
 
     [
         go_repository(
             name = module.repo_name,
-            importpath = importpath,
+            importpath = path,
             sum = module.sum,
             version = "v" + module.raw_version,
             build_naming_convention = module.build_naming_convention,
         )
-        for importpath, module in module_resolutions.items()
+        for path, module in module_resolutions.items()
     ]
 
     # With transitive dependencies, Gazelle would no longer just have to pass a
@@ -107,10 +107,10 @@ def _go_deps_impl(module_ctx):
     # Gazelle directives for all of those modules here.
     directives = {
         module.repo_name: [
-            "importpath=" + importpath,
+            "importpath=" + path,
             "build_naming_convention=" + module.build_naming_convention,
         ]
-        for importpath, module in module_resolutions.items()
+        for path, module in module_resolutions.items()
     }
     _go_repository_directives(
         name = "bazel_gazelle_go_repository_directives",
@@ -127,7 +127,7 @@ _config_tag = tag_class(
 
 _module_tag = tag_class(
     attrs = {
-        "importpath": attr.string(mandatory = True),
+        "path": attr.string(mandatory = True),
         "version": attr.string(mandatory = True),
         "sum": attr.string(),
         "build_naming_convention": attr.string(default = "import_alias"),
