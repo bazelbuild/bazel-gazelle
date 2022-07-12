@@ -6,6 +6,7 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "go_deps.bzl",
+        "go_mod.bzl",
         "non_module_deps.bzl",
         "semver.bzl",
     ],
@@ -20,6 +21,12 @@ bzl_library(
         ":semver",
         "//internal:go_repository",
     ],
+)
+
+bzl_library(
+    name = "go_mod",
+    srcs = ["go_mod.bzl"],
+    visibility = ["//:__subpackages__"],
 )
 
 bzl_library(
