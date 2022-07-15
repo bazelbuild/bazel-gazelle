@@ -18,9 +18,27 @@ limitations under the License.
 package main
 
 import (
+	"flag"
+	"log"
+	"os"
+
 	"github.com/bazelbuild/bazel-gazelle/runner"
 )
 
 func main() {
-	runner.Main(languages)
+	log.SetPrefix("gazelle: ")
+	log.SetFlags(0) // don't print timestamps
+
+	wd, err := runner.GetDefaultWorkspaceDirectory()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := runner.Run(languages, wd, os.Args[1:]); err != nil && err != flag.ErrHelp {
+		if err == runner.ErrDiff {
+			os.Exit(1)
+		} else {
+			log.Fatal(err)
+		}
+	}
 }

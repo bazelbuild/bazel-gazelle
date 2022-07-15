@@ -55,37 +55,25 @@ func (cmd command) String() string {
 	return nameFromCommand[cmd]
 }
 
-// Main runs gazelle with the given set of languages, default workspace directory,
-// and os.Args.  The method does not return, it exits the running process with
-// a successful or failing status code. See Run().
-func Main(langs []language.Language) {
-	log.SetPrefix("gazelle: ")
-	log.SetFlags(0) // don't print timestamps
+func GetDefaultWorkspaceDirectory() (string, error) {
+	if wd := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wd != "" {
+		return wd, nil
+	}
 
-	var wd string
-	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
-		wd = wsDir
+	if wd, err := os.Getwd(); err != nil {
+		return "", err
 	} else {
-		var err error
-		if wd, err = os.Getwd(); err != nil {
-			log.Fatal(err)
-		}
+		return wd, nil
 	}
-
-	if err := Run(langs, wd, os.Args[1:]); err != nil && err != flag.ErrHelp {
-		if err == errExit {
-			os.Exit(1)
-		} else {
-			log.Fatal(err)
-		}
-	}
-
-	os.Exit(0)
 }
 
 // Run runs gazelle with the given set of languages, workspace directory,
-// and arguments. Returns nil if the run was successful or error if the
-// run failed.
+// and arguments.
+//
+// Returns nil on success.
+// Returns flag.Help if help was requested.
+// Returns ErrExit if diff ran and produced any changes.
+// Returns some other non-nil error on failure.
 func Run(langs []language.Language, wd string, args []string) error {
 	languages = langs
 	return run(wd, args)
