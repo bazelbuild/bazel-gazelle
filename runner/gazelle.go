@@ -55,6 +55,8 @@ func (cmd command) String() string {
 	return nameFromCommand[cmd]
 }
 
+// GetDefaultWorkspaceDirectory returns the default bazel workspace directory, either
+// BUILD_WORKSPACE_DIRECTORY if set, or the current working directory.
 func GetDefaultWorkspaceDirectory() (string, error) {
 	if wd := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wd != "" {
 		return wd, nil
