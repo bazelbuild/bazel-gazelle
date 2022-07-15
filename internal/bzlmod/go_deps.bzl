@@ -87,7 +87,7 @@ def _go_deps_impl(module_ctx):
                     importpath = importpath,
                     root_version = root_version,
                     resolved_version = module_resolutions[importpath].raw_version,
-                )
+                ),
             )
 
     [
@@ -113,7 +113,7 @@ def _go_deps_impl(module_ctx):
         for importpath, module in module_resolutions.items()
     }
     _go_repository_directives(
-        name = "_bazel_gazelle_go_repository_directives",
+        name = "bazel_gazelle_go_repository_directives",
         directives = directives,
     )
 
