@@ -240,5 +240,5 @@ use_repo(
     "org_golang_x_sync",
     "org_golang_x_tools",
     # Used internally by the go_deps module extension.
-    "_bazel_gazelle_go_repository_directives",
+    "bazel_gazelle_go_repository_directives",
 )
