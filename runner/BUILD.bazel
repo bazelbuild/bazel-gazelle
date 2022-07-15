@@ -13,7 +13,6 @@ go_library(
         "update-repos.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/runner",
-    tags = ["manual"],
     visibility = ["//visibility:public"],
     deps = [
         "//config",

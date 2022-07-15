@@ -55,6 +55,9 @@ func (cmd command) String() string {
 	return nameFromCommand[cmd]
 }
 
+// Main runs gazelle with the given set of languages, default workspace directory,
+// and os.Args.  The method does not return, it exits the running process with
+// a successful or failing status code. See Run().
 func Main(langs []language.Language) {
 	log.SetPrefix("gazelle: ")
 	log.SetFlags(0) // don't print timestamps
@@ -70,14 +73,19 @@ func Main(langs []language.Language) {
 	}
 
 	if err := Run(langs, wd, os.Args[1:]); err != nil && err != flag.ErrHelp {
-		if err == ErrExit {
+		if err == errExit {
 			os.Exit(1)
 		} else {
 			log.Fatal(err)
 		}
 	}
+
+	os.Exit(0)
 }
 
+// Run runs gazelle with the given set of languages, workspace directory,
+// and arguments. Returns nil if the run was successful or error if the
+// run failed.
 func Run(langs []language.Language, wd string, args []string) error {
 	languages = langs
 	return run(wd, args)
