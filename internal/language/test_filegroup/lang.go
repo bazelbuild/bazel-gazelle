@@ -24,20 +24,17 @@ limitations under the License.
 package test_filegroup
 
 import (
-	"flag"
 	"path"
 
-	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
-	"github.com/bazelbuild/bazel-gazelle/repo"
-	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
 const testFilegroupName = "test_filegroup"
 
-type testFilegroupLang struct{}
+type testFilegroupLang struct {
+	language.BaseLang
+}
 
 func NewLanguage() language.Language {
 	return &testFilegroupLang{}
@@ -45,29 +42,8 @@ func NewLanguage() language.Language {
 
 func (*testFilegroupLang) Name() string { return testFilegroupName }
 
-func (*testFilegroupLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {}
-
-func (*testFilegroupLang) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
-
-func (*testFilegroupLang) KnownDirectives() []string { return nil }
-
-func (*testFilegroupLang) Configure(c *config.Config, rel string, f *rule.File) {}
-
 func (*testFilegroupLang) Kinds() map[string]rule.KindInfo {
 	return kinds
-}
-
-func (*testFilegroupLang) Loads() []rule.LoadInfo { return nil }
-
-func (*testFilegroupLang) Fix(c *config.Config, f *rule.File) {}
-
-func (*testFilegroupLang) Imports(c *config.Config, r *rule.Rule, f *rule.File) []resolve.ImportSpec {
-	return nil
-}
-
-func (*testFilegroupLang) Embeds(r *rule.Rule, from label.Label) []label.Label { return nil }
-
-func (*testFilegroupLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
 }
 
 var kinds = map[string]rule.KindInfo{
