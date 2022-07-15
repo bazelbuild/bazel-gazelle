@@ -74,7 +74,9 @@ func GetDefaultWorkspaceDirectory() (string, error) {
 // Returns flag.Help if help was requested.
 // Returns ErrExit if diff ran and produced any changes.
 // Returns some other non-nil error on failure.
-func Run(langs []language.Language, wd string, args []string) error {
+//
+// See github.com/bazelbuild/bazel-gazelle/cmd/gazelle.main() for example invocation.
+func Run(langs []language.Language, wd string, args ...string) error {
 	languages = langs
 	return run(wd, args)
 }
