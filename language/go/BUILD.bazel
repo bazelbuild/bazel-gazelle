@@ -15,6 +15,7 @@ std_package_list(
 go_library(
     name = "go",
     srcs = [
+        "build_constraints.go",
         "config.go",
         "constants.go",
         "dep.go",
@@ -29,6 +30,7 @@ go_library(
         "package.go",
         "resolve.go",
         "std_package_list.go",
+        "stdlib_links.go",
         "update.go",
         "utils.go",
         "work.go",
@@ -56,6 +58,7 @@ go_library(
 go_test(
     name = "go_test",
     srcs = [
+        "build_constraints_test.go",
         "config_test.go",
         "fileinfo_go_test.go",
         "fileinfo_test.go",
@@ -90,6 +93,8 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
+        "build_constraints.go",
+        "build_constraints_test.go",
         "config.go",
         "config_test.go",
         "constants.go",
@@ -111,6 +116,7 @@ filegroup(
         "resolve.go",
         "resolve_test.go",
         "std_package_list.go",
+        "stdlib_links.go",
         "stubs_test.go",
         "update.go",
         "update_import_test.go",

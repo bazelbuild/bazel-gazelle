@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -29,7 +28,7 @@ func TestOtherFileInfo(t *testing.T) {
 	dir := "."
 	for _, tc := range []struct {
 		desc, name, source string
-		wantTags           []tagLine
+		wantTags           *buildTags
 	}{
 		{
 			"empty file",
@@ -44,7 +43,10 @@ func TestOtherFileInfo(t *testing.T) {
 // +build baz,!ignore
 
 `,
-			[]tagLine{{{"foo"}, {"bar"}}, {{"baz", "!ignore"}}},
+			&buildTags{
+				expr:    mustParseBuildTag(t, "(foo || bar) && (baz && !ignore)"),
+				rawTags: []string{"foo", "bar", "baz", "ignore"},
+			},
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
@@ -252,19 +254,21 @@ func TestFileNameInfo(t *testing.T) {
 			},
 		},
 	} {
-		tc.want.name = tc.name
-		tc.want.path = filepath.Join("dir", tc.name)
-
-		if got := fileNameInfo(tc.want.path); !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("case %q: got %#v; want %#v", tc.desc, got, tc.want)
-		}
+		t.Run(tc.desc, func(t *testing.T) {
+			tc.want.name = tc.name
+			tc.want.path = filepath.Join("dir", tc.name)
+			got := fileNameInfo(tc.want.path)
+			if diff := cmp.Diff(tc.want, got, fileInfoCmpOption); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
+			}
+		})
 	}
 }
 
 func TestReadTags(t *testing.T) {
 	for _, tc := range []struct {
 		desc, source string
-		want         []tagLine
+		want         *buildTags
 	}{
 		{
 			"empty file",
@@ -284,12 +288,18 @@ func TestReadTags(t *testing.T) {
 package main
 
 `,
-			[]tagLine{{{"foo"}}},
+			&buildTags{
+				expr:    mustParseBuildTag(t, "foo"),
+				rawTags: []string{"foo"},
+			},
 		},
 		{
 			"single comment",
 			"// +build foo\n\n",
-			[]tagLine{{{"foo"}}},
+			&buildTags{
+				expr:    mustParseBuildTag(t, "foo"),
+				rawTags: []string{"foo"},
+			},
 		},
 		{
 			"multiple comments",
@@ -297,7 +307,10 @@ package main
 // +build bar
 
 package main`,
-			[]tagLine{{{"foo"}}, {{"bar"}}},
+			&buildTags{
+				expr:    mustParseBuildTag(t, "foo && bar"),
+				rawTags: []string{"foo", "bar"},
+			},
 		},
 		{
 			"multiple comments with blank",
@@ -306,12 +319,39 @@ package main`,
 // +build bar
 
 package main`,
-			[]tagLine{{{"foo"}}, {{"bar"}}},
+			&buildTags{
+				expr:    mustParseBuildTag(t, "foo && bar"),
+				rawTags: []string{"foo", "bar"},
+			},
+		},
+		{
+			"Basic go:build",
+			`//go:build foo && bar
+
+package main`,
+			&buildTags{
+				expr:    mustParseBuildTag(t, "foo && bar"),
+				rawTags: []string{"foo", "bar"},
+			},
+		},
+		{
+			"Both go:build and +build",
+			`//go:build foo && bar
+// +build foo,bar
+
+package main`,
+			&buildTags{
+				expr:    mustParseBuildTag(t, "foo && bar"),
+				rawTags: []string{"foo", "bar"},
+			},
 		},
 		{
 			"comment with space",
 			"  //   +build   foo   bar  \n\n",
-			[]tagLine{{{"foo"}, {"bar"}}},
+			&buildTags{
+				expr:    mustParseBuildTag(t, "foo || bar"),
+				rawTags: []string{"foo", "bar"},
+			},
 		},
 		{
 			"slash star comment",
@@ -319,24 +359,24 @@ package main`,
 			nil,
 		},
 	} {
-		f, err := ioutil.TempFile(".", "TestReadTags")
-		if err != nil {
-			t.Fatal(err)
-		}
-		path := f.Name()
-		defer os.Remove(path)
-		if err = f.Close(); err != nil {
-			t.Fatal(err)
-		}
-		if err = ioutil.WriteFile(path, []byte(tc.source), 0o600); err != nil {
-			t.Fatal(err)
-		}
+		t.Run(tc.desc, func(t *testing.T) {
+			f, err := ioutil.TempFile(".", "TestReadTags")
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := f.Name()
+			defer os.Remove(path)
 
-		if got, err := readTags(path); err != nil {
-			t.Fatal(err)
-		} else if diff := cmp.Diff(tc.want, got); diff != "" {
-			t.Errorf("(-want, +got): %s", diff)
-		}
+			if _, err := f.WriteString(tc.source); err != nil {
+				t.Fatal(err)
+			}
+
+			if got, err := readTags(path); err != nil {
+				t.Fatal(err)
+			} else if diff := cmp.Diff(tc.want, got, fileInfoCmpOption); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
+			}
+		})
 	}
 }
 
@@ -523,19 +563,19 @@ import "C"
 			}
 
 			path := filepath.Join(dir, filename)
-			if err := ioutil.WriteFile(path, []byte(content), 0o666); err != nil {
+			if err := ioutil.WriteFile(path, content, 0o666); err != nil {
 				t.Fatal(err)
 			}
 
 			fi := goFileInfo(path, "")
-			var cgoTags tagLine
+			var cgoTags *cgoTagsAndOpts
 			if len(fi.copts) > 0 {
-				cgoTags = fi.copts[0].tags
+				cgoTags = fi.copts[0]
 			}
 
 			got := checkConstraints(c, tc.os, tc.arch, fi.goos, fi.goarch, fi.tags, cgoTags)
-			if got != tc.want {
-				t.Errorf("got %v ; want %v", got, tc.want)
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
 			}
 		})
 	}

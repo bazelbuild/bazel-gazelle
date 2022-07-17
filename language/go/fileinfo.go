@@ -16,7 +16,6 @@ limitations under the License.
 package golang
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -24,7 +23,6 @@ import (
 	"go/parser"
 	"go/token"
 	"log"
-	"os"
 	"path"
 	"path/filepath"
 	"strconv"
@@ -75,11 +73,11 @@ type fileInfo struct {
 
 	// tags is a list of build tag lines. Each entry is the trimmed text of
 	// a line after a "+build" prefix.
-	tags []tagLine
+	tags *buildTags
 
 	// cppopts, copts, cxxopts and clinkopts contain flags that are part
 	// of CPPFLAGS, CFLAGS, CXXFLAGS, and LDFLAGS directives in cgo comments.
-	cppopts, copts, cxxopts, clinkopts []taggedOpts
+	cppopts, copts, cxxopts, clinkopts []*cgoTagsAndOpts
 
 	// hasServices indicates whether a .proto file has service definitions.
 	hasServices bool
@@ -91,78 +89,6 @@ type fileInfo struct {
 type fileEmbed struct {
 	path string
 	pos  token.Position
-}
-
-// tagLine represents the space-separated disjunction of build tag groups
-// in a line comment.
-type tagLine []tagGroup
-
-// check returns true if at least one of the tag groups is satisfied.
-func (l tagLine) check(c *config.Config, os, arch string) bool {
-	if len(l) == 0 {
-		return false
-	}
-	for _, g := range l {
-		if g.check(c, os, arch) {
-			return true
-		}
-	}
-	return false
-}
-
-// tagGroup represents a comma-separated conjuction of build tags.
-type tagGroup []string
-
-// check returns true if all of the tags are true. Tags that start with
-// "!" are negated (but "!!") is not allowed. Go release tags (e.g., "go1.8")
-// are ignored. If the group contains an os or arch tag, but the os or arch
-// parameters are empty, check returns false even if the tag is negated.
-func (g tagGroup) check(c *config.Config, os, arch string) bool {
-	goConf := getGoConfig(c)
-	for _, t := range g {
-		if strings.HasPrefix(t, "!!") { // bad syntax, reject always
-			return false
-		}
-		not := strings.HasPrefix(t, "!")
-		if not {
-			t = t[1:]
-		}
-		if isIgnoredTag(t) {
-			// Release tags are treated as "unknown" and are considered true,
-			// whether or not they are negated.
-			continue
-		}
-		var match bool
-		if _, ok := rule.KnownOSSet[t]; ok {
-			if os == "" {
-				return false
-			}
-			match = matchesOS(os, t)
-		} else if _, ok := rule.KnownArchSet[t]; ok {
-			if arch == "" {
-				return false
-			}
-			match = arch == t
-		} else {
-			match = goConf.genericTags[t]
-		}
-		if not {
-			match = !match
-		}
-		if !match {
-			return false
-		}
-	}
-	return true
-}
-
-// taggedOpts a list of compile or link options which should only be applied
-// if the given set of build tags are satisfied. These options have already
-// been tokenized using the same algorithm that "go build" uses, then joined
-// with OptSeparator.
-type taggedOpts struct {
-	tags tagLine
-	opts string
 }
 
 // optSeparator is a special character inserted between options that appeared
@@ -393,27 +319,29 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 		}
 
 		// Split at colon.
-		line = strings.TrimSpace(line[4:])
-		i := strings.Index(line, ":")
-		if i < 0 {
+		line, argstr, ok := strings.Cut(strings.TrimSpace(line[4:]), ":")
+		if !ok {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
 		}
-		line, optstr := strings.TrimSpace(line[:i]), strings.TrimSpace(line[i+1:])
 
 		// Parse tags and verb.
 		f := strings.Fields(line)
 		if len(f) < 1 {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
 		}
-		verb := f[len(f)-1]
-		tags := parseTagsInGroups(f[:len(f)-1])
+
+		cond, verb := f[:len(f)-1], f[len(f)-1]
+		tags, err := matchAuto(cond)
+		if err != nil {
+			return err
+		}
 
 		// Parse options.
-		opts, err := splitQuoted(optstr)
+		opts, err := splitQuoted(argstr)
 		if err != nil {
 			return fmt.Errorf("%s: invalid #cgo line: %s", info.path, orig)
 		}
-		var ok bool
+
 		for i, opt := range opts {
 			if opt, ok = expandSrcDir(opt, rel); !ok {
 				return fmt.Errorf("%s: malformed #cgo argument: %s", info.path, orig)
@@ -425,13 +353,16 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 		// Add tags to appropriate list.
 		switch verb {
 		case "CPPFLAGS":
-			info.cppopts = append(info.cppopts, taggedOpts{tags, joinedStr})
+			info.cppopts = append(info.cppopts, &cgoTagsAndOpts{tags, joinedStr})
 		case "CFLAGS":
-			info.copts = append(info.copts, taggedOpts{tags, joinedStr})
+			info.copts = append(info.copts, &cgoTagsAndOpts{tags, joinedStr})
 		case "CXXFLAGS":
-			info.cxxopts = append(info.cxxopts, taggedOpts{tags, joinedStr})
+			info.cxxopts = append(info.cxxopts, &cgoTagsAndOpts{tags, joinedStr})
+		case "FFLAGS":
+			// TODO: Add support
+			return fmt.Errorf("%s: unsupported #cgo verb: %s", verb, info.path)
 		case "LDFLAGS":
-			info.clinkopts = append(info.clinkopts, taggedOpts{tags, joinedStr})
+			info.clinkopts = append(info.clinkopts, &cgoTagsAndOpts{tags, joinedStr})
 		case "pkg-config":
 			return fmt.Errorf("%s: pkg-config not supported: %s", info.path, orig)
 		default:
@@ -559,86 +490,33 @@ func safeCgoName(s string, spaces bool) bool {
 	return true
 }
 
-// readTags reads and extracts build tags from the block of comments
-// and blank lines at the start of a file which is separated from the
-// rest of the file by a blank line. Each string in the returned slice
-// is the trimmed text of a line after a "+build" prefix.
-// Based on go/build.Context.shouldBuild.
-func readTags(path string) ([]tagLine, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-
-	// Pass 1: Identify leading run of // comments and blank lines,
-	// which must be followed by a blank line.
-	var lines []string
-	end := 0
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			end = len(lines)
-			continue
-		}
-		if strings.HasPrefix(line, "//") {
-			lines = append(lines, line[len("//"):])
-			continue
-		}
-		break
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	lines = lines[:end]
-
-	// Pass 2: Process each line in the run.
-	var tagLines []tagLine
-	for _, line := range lines {
-		fields := strings.Fields(line)
-		if len(fields) > 0 && fields[0] == "+build" {
-			tagLines = append(tagLines, parseTagsInGroups(fields[1:]))
-		}
-	}
-	return tagLines, nil
-}
-
-func parseTagsInGroups(groups []string) tagLine {
-	var l tagLine
-	for _, g := range groups {
-		l = append(l, tagGroup(strings.Split(g, ",")))
-	}
-	return l
-}
-
-func isOSArchSpecific(info fileInfo, cgoTags tagLine) (osSpecific, archSpecific bool) {
+func isOSArchSpecific(info fileInfo, cgoTags *cgoTagsAndOpts) (osSpecific, archSpecific bool) {
 	if info.goos != "" {
 		osSpecific = true
 	}
 	if info.goarch != "" {
 		archSpecific = true
 	}
-	lines := info.tags
-	if len(cgoTags) > 0 {
-		lines = append(lines, cgoTags)
-	}
-	for _, line := range lines {
-		for _, group := range line {
-			for _, tag := range group {
-				tag = strings.TrimPrefix(tag, "!")
-				_, osOk := rule.KnownOSSet[tag]
-				if osOk {
-					osSpecific = true
-				}
-				_, archOk := rule.KnownArchSet[tag]
-				if archOk {
-					archSpecific = true
-				}
+
+	checkTags := func(tags []string) {
+		for _, tag := range tags {
+			_, osOk := rule.KnownOSSet[tag]
+			if osOk {
+				osSpecific = true
+			}
+			_, archOk := rule.KnownArchSet[tag]
+			if archOk {
+				archSpecific = true
 			}
 		}
 	}
-	return osSpecific, archSpecific
+	checkTags(info.tags.tags())
+	if osSpecific && archSpecific {
+		return
+	}
+
+	checkTags(cgoTags.tags())
+	return
 }
 
 // matchesOS checks if a value is equal to either an OS value or to any of its
@@ -665,22 +543,40 @@ func matchesOS(os, value string) bool {
 // if they are negated.
 //
 // The remaining arguments describe the file being tested. All of these may
-// be empty or nil. osSuffix and archSuffix are filename suffixes. fileTags
-// is a list tags from +build comments found near the top of the file. cgoTags
+// be empty or nil. osSuffix and archSuffix are filename suffixes. tags
+// is the parsed build tags found near the top of the file. cgoTags
 // is an extra set of tags in a #cgo directive.
-func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, fileTags []tagLine, cgoTags tagLine) bool {
+func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, tags *buildTags, cgoTags *cgoTagsAndOpts) bool {
 	if osSuffix != "" && !matchesOS(os, osSuffix) || archSuffix != "" && archSuffix != arch {
 		return false
 	}
-	for _, l := range fileTags {
-		if !l.check(c, os, arch) {
-			return false
+
+	goConf := getGoConfig(c)
+	checker := func(tag string) bool {
+		if isIgnoredTag(tag) {
+			return true
 		}
+
+		if _, ok := rule.KnownOSSet[tag]; ok {
+			if os == "" {
+				return false
+			}
+			return matchesOS(os, tag)
+
+		}
+
+		if _, ok := rule.KnownArchSet[tag]; ok {
+			if arch == "" {
+				return false
+			}
+			return arch == tag
+
+		}
+
+		return goConf.genericTags[tag]
 	}
-	if len(cgoTags) > 0 && !cgoTags.check(c, os, arch) {
-		return false
-	}
-	return true
+
+	return tags.eval(checker) && cgoTags.eval(checker)
 }
 
 // rulesGoSupportsOS returns whether the os tag is recognized by the version of
@@ -727,28 +623,6 @@ func rulesGoSupportsPlatform(v version.Version, p rule.Platform) bool {
 			p.OS == "openbsd" && p.Arch == "arm64" ||
 			p.OS == "windows" && p.Arch == "arm") {
 		return false
-	}
-	return true
-}
-
-// isIgnoredTag returns whether the tag is "cgo" or is a release tag.
-// Release tags match the pattern "go[0-9]\.[0-9]+".
-// Gazelle won't consider whether an ignored tag is satisfied when evaluating
-// build constraints for a file.
-func isIgnoredTag(tag string) bool {
-	if tag == "cgo" || tag == "race" || tag == "msan" {
-		return true
-	}
-	if len(tag) < 5 || !strings.HasPrefix(tag, "go") {
-		return false
-	}
-	if tag[2] < '0' || tag[2] > '9' || tag[3] != '.' {
-		return false
-	}
-	for _, c := range tag[4:] {
-		if c < '0' || c > '9' {
-			return false
-		}
 	}
 	return true
 }
