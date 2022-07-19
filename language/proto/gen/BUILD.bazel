@@ -1,34 +1,9 @@
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
-
-go_library(
-    name = "gen_lib",
-    srcs = ["gen_known_imports.go"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/language/proto/gen",
-    visibility = ["//visibility:private"],
-    deps = ["//label"],
-)
-
-go_binary(
-    name = "gen_known_imports",
-    embed = [":gen_lib"],
-    visibility = ["//:__subpackages__"],
-)
-
 filegroup(
     name = "all_files",
     testonly = True,
     srcs = [
         "BUILD.bazel",
-        "def.bzl",
-        "gen_known_imports.go",
         "update_proto_csv.go",
     ],
-    visibility = ["//visibility:public"],
-)
-
-bzl_library(
-    name = "def",
-    srcs = ["def.bzl"],
     visibility = ["//visibility:public"],
 )

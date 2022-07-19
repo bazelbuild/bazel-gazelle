@@ -118,7 +118,7 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp str
 		return l, nil
 	}
 
-	if l, ok := knownImports[imp]; ok && pc.Mode.ShouldUseKnownImports() {
+	if l, ok := knownImport(imp); ok && pc.Mode.ShouldUseKnownImports() {
 		if l.Equal(from) {
 			return label.NoLabel, errSkipImport
 		} else {
@@ -161,7 +161,7 @@ func (*protoLang) CrossResolve(c *config.Config, ix *resolve.RuleIndex, imp reso
 	}
 	pc := GetProtoConfig(c)
 	if imp.Lang == "proto" && pc.Mode.ShouldUseKnownImports() {
-		if l, ok := knownProtoImports[imp.Imp]; ok {
+		if l, ok := knownProtoImport(imp.Imp); ok {
 			return []resolve.FindResult{{Label: l}}
 		}
 	}
@@ -186,7 +186,7 @@ func (*protoLang) CrossResolve(c *config.Config, ix *resolve.RuleIndex, imp reso
 		case "google.golang.org/grpc":
 			return []resolve.FindResult{{Label: label.New("org_golang_google_grpc", "", "go_default_library")}}
 		}
-		if l, ok := knownGoProtoImports[imp.Imp]; ok {
+		if l, ok := knownGoProtoImport(imp.Imp); ok {
 			return []resolve.FindResult{{Label: l}}
 		}
 	}
