@@ -96,7 +96,7 @@ _gazelle_runner = rule(
         "gazelle": attr.label(
             default = "//cmd/gazelle",
             executable = True,
-            cfg = "host",
+            cfg = "exec",
         ),
         "command": attr.string(
             values = [
@@ -135,14 +135,18 @@ def gazelle(name, **kwargs):
             fail("{}: both args and extra_args were provided".format(name))
         kwargs["extra_args"] = kwargs["args"]
         kwargs.pop("args")
+
+    tags_set = {t: "" for t in kwargs.pop("tags", [])}
+    tags_set["manual"] = ""
+    tags = [k for k in tags_set.keys()]
     runner_name = name + "-runner"
     _gazelle_runner(
         name = runner_name,
-        tags = ["manual"],
+        tags = tags,
         **kwargs
     )
     native.sh_binary(
         name = name,
         srcs = [runner_name],
-        tags = ["manual"],
+        tags = tags,
     )
