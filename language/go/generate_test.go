@@ -30,6 +30,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/walk"
 	bzl "github.com/bazelbuild/buildtools/build"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestGenerateRules(t *testing.T) {
@@ -97,9 +98,8 @@ func TestGenerateRules(t *testing.T) {
 			}
 			want := string(wantBytes)
 			want = strings.ReplaceAll(want, "\r\n", "\n")
-
-			if got != want {
-				t.Errorf("GenerateRules %q: got:\n%s\nwant:\n%s", rel, got, want)
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
 			}
 		})
 	})

@@ -101,7 +101,7 @@ func (pkg *goPackage) addFile(c *config.Config, er *embedResolver, info fileInfo
 			// Only add files in legacy mode. This is used to generate a filegroup
 			// that contains all protos. In order modes, we get the .proto files
 			// from information emitted by the proto language extension.
-			pkg.proto.addFile(c, info)
+			pkg.proto.addFile(info)
 		}
 	case info.isTest:
 		if info.isCgo {
@@ -277,29 +277,29 @@ func (t *goTarget) addFile(c *config.Config, er *embedResolver, info fileInfo) {
 	}
 	for _, cppopts := range info.cppopts {
 		optAdd := add
-		if len(cppopts.tags) > 0 {
-			optAdd = getPlatformStringsAddFunction(c, info, cppopts.tags)
+		if !cppopts.empty() {
+			optAdd = getPlatformStringsAddFunction(c, info, cppopts)
 		}
 		optAdd(&t.cppopts, cppopts.opts)
 	}
 	for _, copts := range info.copts {
 		optAdd := add
-		if len(copts.tags) > 0 {
-			optAdd = getPlatformStringsAddFunction(c, info, copts.tags)
+		if !copts.empty() {
+			optAdd = getPlatformStringsAddFunction(c, info, copts)
 		}
 		optAdd(&t.copts, copts.opts)
 	}
 	for _, cxxopts := range info.cxxopts {
 		optAdd := add
-		if len(cxxopts.tags) > 0 {
-			optAdd = getPlatformStringsAddFunction(c, info, cxxopts.tags)
+		if !cxxopts.empty() {
+			optAdd = getPlatformStringsAddFunction(c, info, cxxopts)
 		}
 		optAdd(&t.cxxopts, cxxopts.opts)
 	}
 	for _, clinkopts := range info.clinkopts {
 		optAdd := add
-		if len(clinkopts.tags) > 0 {
-			optAdd = getPlatformStringsAddFunction(c, info, clinkopts.tags)
+		if !clinkopts.empty() {
+			optAdd = getPlatformStringsAddFunction(c, info, clinkopts)
 		}
 		optAdd(&t.clinkopts, clinkopts.opts)
 	}
@@ -317,7 +317,7 @@ func protoTargetFromProtoPackage(name string, pkg proto.Package) protoTarget {
 	return target
 }
 
-func (t *protoTarget) addFile(c *config.Config, info fileInfo) {
+func (t *protoTarget) addFile(info fileInfo) {
 	t.sources.addGenericString(info.name)
 	for _, imp := range info.imports {
 		t.imports.addGenericString(imp)
@@ -328,7 +328,7 @@ func (t *protoTarget) addFile(c *config.Config, info fileInfo) {
 // getPlatformStringsAddFunction returns a function used to add strings to
 // a *platformStringsBuilder under the same set of constraints. This is a
 // performance optimization to avoid evaluating constraints repeatedly.
-func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags tagLine) func(sb *platformStringsBuilder, ss ...string) {
+func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgoTagsAndOpts) func(sb *platformStringsBuilder, ss ...string) {
 	isOSSpecific, isArchSpecific := isOSArchSpecific(info, cgoTags)
 	v := getGoConfig(c).rulesGoVersion
 

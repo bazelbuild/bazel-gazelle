@@ -50,11 +50,16 @@ var goModDownload = func(dir string, args []string) ([]byte, error) {
 // modulesFromList is an abstraction to preserve the output of `go list`.
 // The output schema is documented at https://go.dev/ref/mod#go-list-m
 type moduleFromList struct {
-	Path, Version, Sum, Error string
-	Main                      bool
-	Replace                   *struct {
+	Path, Version, Sum string
+	Main               bool
+	Replace            *struct {
 		Path, Version string
 	}
+	Error *moduleError
+}
+
+type moduleError struct {
+	Err string
 }
 
 type downloadError struct {
@@ -82,6 +87,9 @@ func extractModules(data []byte) (map[string]*moduleFromList, error) {
 		mod := new(moduleFromList)
 		if err := dec.Decode(mod); err != nil {
 			return nil, err
+		}
+		if mod.Error != nil {
+			return nil, fmt.Errorf("error listing %s: %s", mod.Path, mod.Error.Err)
 		}
 		if mod.Main {
 			continue
@@ -186,8 +194,8 @@ func processGoListError(err error, data []byte) error {
 			err = fmt.Errorf("%w\nError parsing module for more error information: %v", err, decodeErr)
 			break
 		}
-		if dl.Error != "" {
-			err = fmt.Errorf("%w\nError listing %v: %v", err, dl.Path, dl.Error)
+		if dl.Error != nil {
+			err = fmt.Errorf("%w\nError listing %v: %v", err, dl.Path, dl.Error.Err)
 		}
 	}
 	err = fmt.Errorf("error from go list: %w", err)
