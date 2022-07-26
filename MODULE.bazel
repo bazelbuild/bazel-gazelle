@@ -21,7 +21,7 @@ use_repo(
     "bazel_gazelle_go_repository_tools",
 )
 
-go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps = use_extension("//:extensions.bzl", "go_deps")
 go_deps.module(
     importpath = "honnef.co/go/tools",
     sum = "h1:/hemPrYIhOhy8zYrNj+069zDB68us2sMGsfkFJO0iZs=",
