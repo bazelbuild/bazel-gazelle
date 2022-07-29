@@ -58,7 +58,11 @@ y_library(name = "bar")
 	foo.Delete()
 	bar := f.Rules[1]
 	bar.SetAttr("srcs", []string{"bar.y"})
-	baz := NewRule("z", "baz")
+	loadMaybe := NewLoad("//some:maybe.bzl")
+	loadMaybe.Add("maybe")
+	loadMaybe.Insert(f, 0)
+	baz := NewRule("maybe", "baz")
+	baz.AddArg(&bzl.LiteralExpr{Token: "z"})
 	baz.SetAttr("srcs", GlobValue{
 		Patterns: []string{"**"},
 		Excludes: []string{"*.pem"},
@@ -67,6 +71,7 @@ y_library(name = "bar")
 
 	got := strings.TrimSpace(string(f.Format()))
 	want := strings.TrimSpace(`
+load("//some:maybe.bzl", "maybe")
 load("b.bzl", "x_library")
 load(
     "c.bzl",
@@ -79,7 +84,8 @@ y_library(
     srcs = ["bar.y"],
 )
 
-z(
+maybe(
+    z,
     name = "baz",
     srcs = glob(
         ["**"],
@@ -160,6 +166,31 @@ func TestFunctionInserted(t *testing.T) {
 	want := strings.TrimSpace(`
 def foo():
     go_repository(name = "bar")
+`)
+
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
+	}
+}
+
+func TestArgsAlwaysEndUpBeforeKwargs(t *testing.T) {
+	f, err := LoadData(filepath.Join("old", "BUILD.bazel"), "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	bar := NewRule("maybe", "bar")
+	bar.SetAttr("url", "https://doesnotexist.com")
+	bar.AddArg(&bzl.Ident{Name: "http_archive"})
+	bar.Insert(f)
+	f.Sync()
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+maybe(
+    http_archive,
+    name = "bar",
+    url = "https://doesnotexist.com",
+)
 `)
 
 	if got != want {
