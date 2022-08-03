@@ -1,0 +1,80 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "runner",
+    srcs = [
+        "diff.go",
+        "fix.go",
+        "fix-update.go",
+        "gazelle.go",
+        "langs.go",
+        "metaresolver.go",
+        "print.go",
+        "update-repos.go",
+    ],
+    importpath = "github.com/bazelbuild/bazel-gazelle/runner",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//config",
+        "//flag",
+        "//internal/wspace",
+        "//label",
+        "//language",
+        "//merger",
+        "//repo",
+        "//resolve",
+        "//rule",
+        "//walk",
+        "@com_github_pmezard_go_difflib//difflib",
+    ],
+)
+
+go_test(
+    name = "runner_test",
+    size = "small",
+    srcs = [
+        "diff_test.go",
+        "fix_test.go",
+        "integration_test.go",
+        "langs_test.go",
+    ],
+    args = ["-go_sdk=go_sdk"],
+    data = ["@go_sdk//:files"],
+    embed = [":runner"],
+    deps = [
+        "//config",
+        "//internal/wspace",
+        "//language",
+        "//language/go",
+        "//language/proto",
+        "//testtools",
+        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+    ],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "diff.go",
+        "diff_test.go",
+        "fix.go",
+        "fix-update.go",
+        "fix_test.go",
+        "gazelle.go",
+        "integration_test.go",
+        "langs.go",
+        "langs_test.go",
+        "metaresolver.go",
+        "print.go",
+        "update-repos.go",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":runner",
+    visibility = ["//visibility:public"],
+)

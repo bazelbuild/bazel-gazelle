@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package runner
 
 import (
 	"bytes"
@@ -27,7 +27,8 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 )
 
-var errExit = fmt.Errorf("encountered changes while running diff")
+// ErrDiff indicates that diff produced changes.
+var ErrDiff = fmt.Errorf("encountered changes while running diff")
 
 func diffFile(c *config.Config, f *rule.File) error {
 	rel, err := filepath.Rel(c.RepoRoot, f.Path)
@@ -80,7 +81,7 @@ func diffFile(c *config.Config, f *rule.File) error {
 		return fmt.Errorf("error diffing %s: %v", f.Path, err)
 	}
 	if ds, _ := difflib.GetUnifiedDiffString(diff); ds != "" {
-		return errExit
+		return ErrDiff
 	}
 
 	return nil

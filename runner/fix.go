@@ -13,32 +13,34 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Command gazelle is a BUILD file generator for Go projects.
-// See "gazelle --help" for more details.
-package main
+package runner
 
 import (
-	"flag"
-	"log"
+	"bytes"
+	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 
-	"github.com/bazelbuild/bazel-gazelle/runner"
+	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-func main() {
-	log.SetPrefix("gazelle: ")
-	log.SetFlags(0) // don't print timestamps
-
-	wd, err := runner.GetDefaultWorkspaceDirectory()
-	if err != nil {
-		log.Fatal(err)
+func fixFile(c *config.Config, f *rule.File) error {
+	newContent := f.Format()
+	if bytes.Equal(f.Content, newContent) {
+		return nil
 	}
-
-	if err := runner.Run(languages, wd, os.Args[1:]...); err != nil && err != flag.ErrHelp {
-		if err == runner.ErrDiff {
-			os.Exit(1)
-		} else {
-			log.Fatal(err)
-		}
+	outPath := findOutputPath(c, f)
+	if err := os.MkdirAll(filepath.Dir(outPath), 0o777); err != nil {
+		return err
 	}
+	if err := ioutil.WriteFile(outPath, newContent, 0o666); err != nil {
+		return err
+	}
+	f.Content = newContent
+	if getUpdateConfig(c).print0 {
+		fmt.Printf("%s\x00", outPath)
+	}
+	return nil
 }

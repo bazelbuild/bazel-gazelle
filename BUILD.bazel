@@ -79,6 +79,7 @@ filegroup(
         "//repo:all_files",
         "//resolve:all_files",
         "//rule:all_files",
+        "//runner:all_files",
         "//testtools:all_files",
         "//walk:all_files",
     ],
