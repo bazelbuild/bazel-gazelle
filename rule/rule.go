@@ -880,6 +880,11 @@ func (r *Rule) Args() []bzl.Expr {
 	return r.args
 }
 
+// AddArg adds a positional argument to the rule.
+func (r *Rule) AddArg(value bzl.Expr) {
+	r.args = append(r.args, value)
+}
+
 // Insert marks this statement for insertion at the end of the file. Multiple
 // statements will be inserted in the order Insert is called.
 func (r *Rule) Insert(f *File) {
