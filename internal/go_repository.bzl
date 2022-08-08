@@ -106,11 +106,15 @@ Authorization: Bearer RANDOM-TOKEN
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
 
+GO_TAG_FORMAT="go_%s=%s"
+
 def _go_repository_impl(ctx):
     # TODO(#549): vcs repositories are not cached and still need to be fetched.
     # Download the repository or module.
     fetch_repo_args = None
     gazelle_path = None
+
+    tags = []
 
     # Declare Label dependencies at the top of function to avoid unnecessary fetching:
     # https://docs.bazel.build/versions/main/skylark/repository_rules.html#when-is-the-implementation-function-executed
@@ -135,20 +139,26 @@ def _go_repository_impl(ctx):
             type = ctx.attr.type,
             auth = use_netrc(read_user_netrc(ctx), ctx.attr.urls, ctx.attr.auth_patterns),
         )
+        tags.append(GO_TAG_FORMAT % ("url", ",".join(ctx.attr.urls)))
+        tags.append(GO_TAG_FORMAT % ("sha256", ctx.attr.sha256))
     elif ctx.attr.commit or ctx.attr.tag:
         # repository mode
         if ctx.attr.commit:
             rev = ctx.attr.commit
             rev_key = "commit"
+            tags.append(GO_TAG_FORMAT % ("commit", ctx.attr.commit))
         elif ctx.attr.tag:
             rev = ctx.attr.tag
             rev_key = "tag"
+            tags.append(GO_TAG_FORMAT % ("tag", ctx.attr.tag))
         for key in ("urls", "strip_prefix", "type", "sha256", "version", "sum", "replace", "canonical_id"):
             if getattr(ctx.attr, key):
                 fail("cannot specify both %s and %s" % (rev_key, key), key)
 
         if ctx.attr.vcs and not ctx.attr.remote:
             fail("if vcs is specified, remote must also be")
+
+        tags.append(GO_TAG_FORMAT % ("importpath", ctx.attr.importpath))
 
         fetch_repo_args = ["-dest", ctx.path(""), "-importpath", ctx.attr.importpath]
         if ctx.attr.remote:
@@ -172,6 +182,10 @@ def _go_repository_impl(ctx):
             "-version=" + ctx.attr.version,
             "-sum=" + ctx.attr.sum,
         ]
+
+        tags.append(GO_TAG_FORMAT % ("version", ctx.attr.version))
+        tags.append(GO_TAG_FORMAT % ("sum", ctx.attr.sum))
+
     else:
         fail("one of urls, commit, tag, or importpath must be specified")
 
@@ -291,6 +305,24 @@ def _go_repository_impl(ctx):
 
     # Apply patches if necessary.
     patch(ctx)
+
+    if ctx.os.name.startswith("mac"):
+        arch = getattr(ctx.os, "arch", "x86")
+        if arch.startswith("x"):
+            buildozer = ctx.path(Label("@buildozer_macos_x86//file:buildozer"))
+        else:
+            buildozer = ctx.path(Label("@buildozer_macos_arm//file:buildozer"))
+    elif ctx.os.name.startswith("linux"):
+        buildozer = ctx.path(Label("@buildozer_linux_x86//file:buildozer"))
+    else:
+        buildozer = None
+        print("Unable to find buildozer binary, so omitting version information from tags")
+
+    if buildozer:
+        for tag in tags:
+            res = ctx.execute([buildozer, "add tags %s" % tag, "//...:%go_library"])
+            if res.return_code != 0:
+                fail("Unable to execute buildozer for tag %s" % tag)
 
 go_repository = repository_rule(
     implementation = _go_repository_impl,
