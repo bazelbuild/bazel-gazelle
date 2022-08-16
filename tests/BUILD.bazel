@@ -15,13 +15,21 @@ gazelle_binary(
     ],
 )
 
+gazelle_binary(
+    name = "gazelle_with_language_loads_from_flag",
+    visibility = ["//visibility:private"],
+    languages = [
+        "//internal/language/test_loads_from_flag",
+    ],
+)
+
 [gazelle_generation_test(
     # Name the test the path to the directory containing the WORKSPACE file.
     name = file[0:-len("/WORKSPACE")],
-    gazelle_binary = ":gazelle",
+    gazelle_binary = ":gazelle" if "loads_from_flag" not in file else ":gazelle_with_language_loads_from_flag",
     test_data = glob(
     	include = [file[0:-len("/WORKSPACE")] + "/**"],
     ),
 ) for file in glob(
     include = ["**/WORKSPACE"],
-) if file != "BUILD.bazel"]
+)]

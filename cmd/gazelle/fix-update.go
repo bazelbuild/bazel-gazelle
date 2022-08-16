@@ -235,18 +235,27 @@ var genericLoads = []rule.LoadInfo{
 }
 
 func runFixUpdate(wd string, cmd command, args []string) (err error) {
-	cexts := make([]config.Configurer, 0, len(languages)+3)
+	cexts := make([]config.Configurer, 0, len(languages)+4)
 	cexts = append(cexts,
 		&config.CommonConfigurer{},
 		&updateConfigurer{},
 		&walk.Configurer{},
 		&resolve.Configurer{})
+
+	for _, lang := range languages {
+		cexts = append(cexts, lang)
+	}
+
+	c, err := newFixUpdateConfiguration(wd, cmd, args, cexts)
+	if err != nil {
+		return err
+	}
+
 	mrslv := newMetaResolver()
 	kinds := make(map[string]rule.KindInfo)
 	loads := genericLoads
 	exts := make([]interface{}, 0, len(languages))
 	for _, lang := range languages {
-		cexts = append(cexts, lang)
 		for kind, info := range lang.Kinds() {
 			mrslv.AddBuiltin(kind, lang)
 			kinds[kind] = info
@@ -255,11 +264,6 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		exts = append(exts, lang)
 	}
 	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)
-
-	c, err := newFixUpdateConfiguration(wd, cmd, args, cexts)
-	if err != nil {
-		return err
-	}
 
 	if err := fixRepoFiles(c, loads); err != nil {
 		return err
