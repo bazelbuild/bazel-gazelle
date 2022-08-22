@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "test_loads_from_flag",
+    srcs = ["lang.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/internal/language/test_loads_from_flag",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//config",
+        "//language",
+        "//rule",
+    ],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "lang.go",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":test_loads_from_flag",
+    visibility = ["//:__subpackages__"],
+)
