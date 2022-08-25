@@ -413,6 +413,48 @@ func TestInternalVisibility(t *testing.T) {
 	}
 }
 
+func TestSortLoadsByName(t *testing.T) {
+	f, err := LoadMacroData(
+		filepath.Join("third_party", "repos.bzl"),
+		"", "repos",
+		[]byte(`load("@bazel_gazelle//:deps.bzl", "go_repository")
+load("//some:maybe.bzl", "maybe")
+load("//some2:maybe.bzl", "maybe2")
+load("//some1:maybe4.bzl", "maybe1")
+load("b.bzl", "x_library")
+def repos():
+    go_repository(
+        name = "com_github_bazelbuild_bazel_gazelle",
+    )
+`))
+	if err != nil {
+		t.Error(err)
+	}
+	sort.Stable(loadsByName{
+		loads: f.Loads,
+		exprs: f.File.Stmt,
+	})
+	f.Sync()
+
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+load("//some1:maybe4.bzl", "maybe1")
+load("//some2:maybe.bzl", "maybe2")
+load("//some:maybe.bzl", "maybe")
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+load("b.bzl", "x_library")
+
+def repos():
+    go_repository(
+        name = "com_github_bazelbuild_bazel_gazelle",
+    )
+`)
+
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
+	}
+}
+
 func TestSortRulesByName(t *testing.T) {
 	f, err := LoadMacroData(
 		filepath.Join("third_party", "repos.bzl"),
@@ -435,7 +477,7 @@ def repos():
 	if err != nil {
 		t.Error(err)
 	}
-	sort.Stable(byName{
+	sort.Stable(rulesByName{
 		rules: f.Rules,
 		exprs: f.function.stmt.Body,
 	})

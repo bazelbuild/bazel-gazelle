@@ -390,16 +390,18 @@ func (f *File) Format() []byte {
 	return bzl.Format(f.File)
 }
 
-// SortMacro sorts rules in the macro of this File. It doesn't sort the rules if
+// SortMacro sorts rules and loads in the macro of this File. It doesn't sort the rules if
 // this File does not have a macro, e.g., WORKSPACE.
 // This method calls Sync internally.
 func (f *File) SortMacro() {
 	f.Sync()
-	if f.function != nil {
-		sort.Stable(byName{f.Rules, f.function.stmt.Body})
-	} else {
+
+	if f.function == nil {
 		panic(fmt.Sprintf("%s: not loaded as macro file", f.Path))
 	}
+	
+	sort.Stable(loadsByName{f.Loads, f.File.Stmt})
+	sort.Stable(rulesByName{f.Rules, f.function.stmt.Body})
 }
 
 // Save writes the build file to disk. This method calls Sync internally.
@@ -490,26 +492,48 @@ func (s byIndex) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-type byName struct {
+type rulesByName struct {
 	rules []*Rule
 	exprs []bzl.Expr
 }
 
 // type checking
-var _ sort.Interface = byName{}
+var _ sort.Interface = rulesByName{}
 
-func (s byName) Len() int {
+func (s rulesByName) Len() int {
 	return len(s.rules)
 }
 
-func (s byName) Less(i, j int) bool {
+func (s rulesByName) Less(i, j int) bool {
 	return s.rules[i].Name() < s.rules[j].Name()
 }
 
-func (s byName) Swap(i, j int) {
+func (s rulesByName) Swap(i, j int) {
 	s.exprs[s.rules[i].index], s.exprs[s.rules[j].index] = s.exprs[s.rules[j].index], s.exprs[s.rules[i].index]
 	s.rules[i].index, s.rules[j].index = s.rules[j].index, s.rules[i].index
 	s.rules[i], s.rules[j] = s.rules[j], s.rules[i]
+}
+
+type loadsByName struct {
+	loads []*Load
+	exprs []bzl.Expr
+}
+
+// type checking
+var _ sort.Interface = loadsByName{}
+
+func (s loadsByName) Len() int {
+	return len(s.loads)
+}
+
+func (s  loadsByName) Less(i, j int) bool {
+	return s.loads[i].Name() < s.loads[j].Name()
+}
+
+func (s  loadsByName) Swap(i, j int) {
+	s.exprs[s.loads[i].index], s.exprs[s.loads[j].index] = s.exprs[s.loads[j].index], s.exprs[s.loads[i].index]
+	s.loads[i].index, s.loads[j].index = s.loads[j].index, s.loads[i].index
+	s.loads[i], s.loads[j] = s.loads[j], s.loads[i]
 }
 
 // identPair represents one symbol, with or without remapping, in a load
