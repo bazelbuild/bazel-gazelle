@@ -16,7 +16,7 @@ def deps_from_go_mod(module_ctx, go_mod_label):
     # We go through a Label so that the module extension is restarted if go.sum
     # changes. We have to use a canonical label as we may not have visibility
     # into the module that provides the go.sum.
-    go_sum_label = Label("@{}//{}:{}".format(
+    go_sum_label = Label("@@{}//{}:{}".format(
         go_mod_label.workspace_name,
         go_mod_label.package,
         "go.sum",
