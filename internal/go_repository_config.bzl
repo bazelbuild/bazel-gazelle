@@ -42,7 +42,14 @@ def _go_repository_config_impl(ctx):
             for f in result.stdout.splitlines():
                 f = f.lstrip()
                 if len(f) > 0:
-                    macro_label = Label("@" + ctx.attr.config.workspace_name + "//:" + f)
+                    macro_label_str = "@" + ctx.attr.config.workspace_name + "//:" + f
+                    if "~" in ctx.attr.config.workspace_name:
+                        # The workspace name is a Bzlmod canonical repository
+                        # name that we don't have visibility into directly.
+                        # Instead, use a canonical label literal (starting with
+                        # "@@") to bypass visibility checks.
+                        macro_label_str = "@" + macro_label_str
+                    macro_label = Label(macro_label_str)
                     ctx.path(macro_label)
 
     else:
