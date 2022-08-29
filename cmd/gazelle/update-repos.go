@@ -147,7 +147,13 @@ func updateRepos(wd string, args []string) (err error) {
 
 	// TODO(jayconrod): move Go-specific RemoteCache logic to language/go.
 	var knownRepos []repo.Repo
+
+	reposFromDirectives := make(map[string]bool)
 	for _, r := range c.Repos {
+		if repo.IsFromDirective(r) {
+			reposFromDirectives[r.Name()] = true
+		}
+
 		if r.Kind() == "go_repository" {
 			knownRepos = append(knownRepos, repo.Repo{
 				Name:     r.Name(),
@@ -188,6 +194,12 @@ func updateRepos(wd string, args []string) (err error) {
 	emptyForFiles := make(map[*rule.File][]*rule.Rule)
 	genNames := make(map[string]*rule.Rule)
 	for _, r := range gen {
+
+		// Skip generation of rules that are defined as directives.
+		if reposFromDirectives[r.Name()] {
+			continue
+		}
+
 		if existingRule := genNames[r.Name()]; existingRule != nil {
 			import1 := existingRule.AttrString("importpath")
 			import2 := r.AttrString("importpath")
