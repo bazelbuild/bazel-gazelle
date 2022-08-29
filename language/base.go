@@ -67,4 +67,6 @@ func (b *BaseLang) GenerateRules(args GenerateArgs) GenerateResult {
 	return GenerateResult{}
 }
 
+func (b *BaseLang) DoneGeneratingRules() {}
+
 func (b *BaseLang) Fix(c *config.Config, f *rule.File) {}

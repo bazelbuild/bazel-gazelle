@@ -6,7 +6,11 @@ go_library(
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/language/test_filegroup",
     visibility = ["//visibility:public"],
     deps = [
+        "//config",
+        "//label",
         "//language",
+        "//repo",
+        "//resolve",
         "//rule",
     ],
 )
