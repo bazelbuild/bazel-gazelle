@@ -74,7 +74,8 @@ type loader struct {
 	visited      map[macroKey]struct{}
 }
 
-func isFromDirective(repo *rule.Rule) bool {
+// IsFromDirective returns true if the repo rule was defined from a directive.
+func IsFromDirective(repo *rule.Rule) bool {
 	b, ok := repo.PrivateAttr(gazelleFromDirectiveKey).(bool)
 	return ok && b
 }
@@ -82,8 +83,8 @@ func isFromDirective(repo *rule.Rule) bool {
 // add adds a repository rule to a file.
 // In the case of duplicate rules, select the rule
 // with the following prioritization:
-//  - rules that were provided as directives have precedence
-//  - rules that were provided last
+//   - rules that were provided as directives have precedence
+//   - rules that were provided last
 func (l *loader) add(file *rule.File, repo *rule.Rule) {
 	name := repo.Name()
 	if name == "" {
@@ -91,7 +92,7 @@ func (l *loader) add(file *rule.File, repo *rule.Rule) {
 	}
 
 	if i, ok := l.repoIndexMap[repo.Name()]; ok {
-		if isFromDirective(l.repos[i]) && !isFromDirective(repo) {
+		if IsFromDirective(l.repos[i]) && !IsFromDirective(repo) {
 			// We always prefer directives over non-directives
 			return
 		}
@@ -197,8 +198,9 @@ func (l *loader) loadRepositoriesFromMacro(macro *RepoMacro) error {
 // e.g. for if called on
 // load("package_name:package_dir/file.bzl", alias_name="original_def_name")
 // with defAlias = "alias_name", it will return:
-//     -> "/Path/to/package_name/package_dir/file.bzl"
-//     -> "original_def_name"
+//
+//	-> "/Path/to/package_name/package_dir/file.bzl"
+//	-> "original_def_name"
 func loadToMacroDef(l *rule.Load, repoRoot, defAlias string) *RepoMacro {
 	rel := strings.Replace(filepath.Clean(l.Name()), ":", string(filepath.Separator), 1)
 	// A loaded macro may refer to the macro by a different name (alias) in the load,
