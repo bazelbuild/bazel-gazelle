@@ -54,15 +54,56 @@ func allowedSort(name string) bool {
 	return false
 }
 
-// Rewrite applies the high-level Buildifier rewrites to f, modifying it in place.
+// Rewriter controls the rewrites to be applied.
+//
+// If non-nil, the rewrites with the specified names will be run. If
+// nil, a default set of rewrites will be used that is determined by
+// the type (BUILD vs default starlark) of the file being rewritten.
+type Rewriter struct {
+	RewriteSet                      []string
+	IsLabelArg                      map[string]bool
+	LabelDenyList                   map[string]bool
+	IsSortableListArg               map[string]bool
+	SortableDenylist                map[string]bool
+	SortableAllowlist               map[string]bool
+	NamePriority                    map[string]int
+	StripLabelLeadingSlashes        bool
+	ShortenAbsoluteLabelsToRelative bool
+}
+
 func Rewrite(f *File) {
+	var rewriter = &Rewriter{
+		IsLabelArg:                      tables.IsLabelArg,
+		LabelDenyList:                   tables.LabelDenylist,
+		IsSortableListArg:               tables.IsSortableListArg,
+		SortableDenylist:                tables.SortableDenylist,
+		SortableAllowlist:               tables.SortableAllowlist,
+		NamePriority:                    tables.NamePriority,
+		StripLabelLeadingSlashes:        tables.StripLabelLeadingSlashes,
+		ShortenAbsoluteLabelsToRelative: tables.ShortenAbsoluteLabelsToRelative,
+	}
+	rewriter.Rewrite(f)
+}
+
+// Rewrite applies the rewrites to a file
+func (w *Rewriter) Rewrite(f *File) {
 	for _, r := range rewrites {
-		if !disabled(r.name) {
-			if f.Type&r.scope != 0 {
-				r.fn(f)
-			}
+		// f.Type&r.scope is a bitwise comparison. Because starlark files result in a scope that will
+		// not be changed by rewrites, we have included another check looking on the right side.
+		// If we have an empty rewrite set, we do not want any rewrites to happen.
+		if (!disabled(r.name) && (f.Type&r.scope != 0) && w.RewriteSet == nil) || (w.RewriteSet != nil && rewriteSetContains(w, r.name)) {
+			r.fn(f, w)
 		}
 	}
+}
+
+func rewriteSetContains(w *Rewriter, name string) bool {
+	for _, value := range w.RewriteSet {
+		if value == name {
+			return true
+		}
+	}
+	return false
 }
 
 // Each rewrite function can be either applied for BUILD files, other files (such as .bzl),
@@ -78,7 +119,7 @@ const (
 // before sorting lists of strings.
 var rewrites = []struct {
 	name  string
-	fn    func(*File)
+	fn    func(*File, *Rewriter)
 	scope FileType
 }{
 	{"removeParens", removeParens, scopeBuild},
@@ -146,8 +187,7 @@ func keepSorted(x Expr) bool {
 // Second, it removes redundant target qualifiers, turning labels like
 // "//third_party/m4:m4" into "//third_party/m4" as well as ones like
 // "@foo//:foo" into "@foo".
-//
-func fixLabels(f *File) {
+func fixLabels(f *File, w *Rewriter) {
 	joinLabel := func(p *Expr) {
 		add, ok := (*p).(*BinaryExpr)
 		if !ok || add.Op != "+" {
@@ -178,7 +218,7 @@ func fixLabels(f *File) {
 	}
 
 	labelPrefix := "//"
-	if tables.StripLabelLeadingSlashes {
+	if w.StripLabelLeadingSlashes {
 		labelPrefix = ""
 	}
 	// labelRE matches label strings, e.g. @r//x/y/z:abc
@@ -191,13 +231,12 @@ func fixLabels(f *File) {
 			return
 		}
 
-		if tables.StripLabelLeadingSlashes && strings.HasPrefix(str.Value, "//") {
+		if w.StripLabelLeadingSlashes && strings.HasPrefix(str.Value, "//") {
 			if filepath.Dir(f.Path) == "." || !strings.HasPrefix(str.Value, "//:") {
 				str.Value = str.Value[2:]
 			}
 		}
-
-		if tables.ShortenAbsoluteLabelsToRelative {
+		if w.ShortenAbsoluteLabelsToRelative {
 			thisPackage := labelPrefix + filepath.Dir(f.Path)
 			// filepath.Dir on Windows uses backslashes as separators, while labels always have slashes.
 			if filepath.Separator != '/' {
@@ -237,7 +276,7 @@ func fixLabels(f *File) {
 					continue
 				}
 				key, ok := as.LHS.(*Ident)
-				if !ok || !tables.IsLabelArg[key.Name] || tables.LabelDenylist[callName(v)+"."+key.Name] {
+				if !ok || !w.IsLabelArg[key.Name] || w.LabelDenyList[callName(v)+"."+key.Name] {
 					continue
 				}
 				if leaveAlone1(as.RHS) {
@@ -277,7 +316,8 @@ func callName(call *CallExpr) string {
 }
 
 // sortCallArgs sorts lists of named arguments to a call.
-func sortCallArgs(f *File) {
+func sortCallArgs(f *File, w *Rewriter) {
+
 	Walk(f, func(v Expr, stk []Expr) {
 		call, ok := v.(*CallExpr)
 		if !ok {
@@ -301,7 +341,7 @@ func sortCallArgs(f *File) {
 		var args namedArgs
 		for i, x := range call.List[start:] {
 			name := argName(x)
-			args = append(args, namedArg{ruleNamePriority(rule, name), name, i, x})
+			args = append(args, namedArg{ruleNamePriority(w, rule, name), name, i, x})
 		}
 
 		// Sort the list and put the args back in the new order.
@@ -318,12 +358,13 @@ func sortCallArgs(f *File) {
 // ruleNamePriority maps a rule argument name to its sorting priority.
 // It could use the auto-generated per-rule tables but for now it just
 // falls back to the original list.
-func ruleNamePriority(rule, arg string) int {
+func ruleNamePriority(w *Rewriter, rule, arg string) int {
 	ruleArg := rule + "." + arg
-	if val, ok := tables.NamePriority[ruleArg]; ok {
+	if val, ok := w.NamePriority[ruleArg]; ok {
 		return val
 	}
-	return tables.NamePriority[arg]
+	return w.NamePriority[arg]
+
 	/*
 		list := ruleArgOrder[rule]
 		if len(list) == 0 {
@@ -377,7 +418,7 @@ func (x namedArgs) Less(i, j int) bool {
 }
 
 // sortStringLists sorts lists of string literals used as specific rule arguments.
-func sortStringLists(f *File) {
+func sortStringLists(f *File, w *Rewriter) {
 	Walk(f, func(v Expr, stk []Expr) {
 		switch v := v.(type) {
 		case *CallExpr:
@@ -402,11 +443,11 @@ func sortStringLists(f *File) {
 					continue
 				}
 				context := rule + "." + key.Name
-				if tables.SortableDenylist[context] {
+				if w.SortableDenylist[context] {
 					continue
 				}
-				if tables.IsSortableListArg[key.Name] ||
-					tables.SortableAllowlist[context] ||
+				if w.IsSortableListArg[key.Name] ||
+					w.SortableAllowlist[context] ||
 					(!disabled("unsafesort") && allowedSort(context)) {
 					if doNotSort(as) {
 						deduplicateStringList(as.RHS)
@@ -657,6 +698,7 @@ func (x byStringExpr) Less(i, j int) bool {
 //	call(...)
 //
 // into
+//
 //	... + [
 //		...
 //	]
@@ -666,7 +708,7 @@ func (x byStringExpr) Less(i, j int) bool {
 //	)
 //
 // which typically works better with our aggressively compact formatting.
-func fixMultilinePlus(f *File) {
+func fixMultilinePlus(f *File, _ *Rewriter) {
 
 	// List manipulation helpers.
 	// As a special case, we treat f([...]) as a list, mainly
@@ -806,7 +848,7 @@ func fixMultilinePlus(f *File) {
 }
 
 // sortAllLoadArgs sorts all load arguments in the file
-func sortAllLoadArgs(f *File) {
+func sortAllLoadArgs(f *File, _ *Rewriter) {
 	Walk(f, func(v Expr, stk []Expr) {
 		if load, ok := v.(*LoadStmt); ok {
 			SortLoadArgs(load)
@@ -876,7 +918,7 @@ func SortLoadArgs(load *LoadStmt) bool {
 }
 
 // formatDocstrings fixes the indentation and trailing whitespace of docstrings
-func formatDocstrings(f *File) {
+func formatDocstrings(f *File, _ *Rewriter) {
 	Walk(f, func(v Expr, stk []Expr) {
 		def, ok := v.(*DefStmt)
 		if !ok || len(def.Body) == 0 {
@@ -950,7 +992,7 @@ func argumentType(expr Expr) int {
 
 // reorderArguments fixes the order of arguments of a function call
 // (positional, named, *args, **kwargs)
-func reorderArguments(f *File) {
+func reorderArguments(f *File, _ *Rewriter) {
 	Walk(f, func(expr Expr, stack []Expr) {
 		call, ok := expr.(*CallExpr)
 		if !ok {
@@ -972,7 +1014,7 @@ func reorderArguments(f *File) {
 
 // editOctals inserts 'o' into octal numbers to make it more obvious they are octal
 // 0123 -> 0o123
-func editOctals(f *File) {
+func editOctals(f *File, _ *Rewriter) {
 	Walk(f, func(expr Expr, stack []Expr) {
 		l, ok := expr.(*LiteralExpr)
 		if !ok {
@@ -985,7 +1027,7 @@ func editOctals(f *File) {
 }
 
 // removeParens removes trivial parens
-func removeParens(f *File) {
+func removeParens(f *File, _ *Rewriter) {
 	var simplify func(expr Expr, stack []Expr) Expr
 	simplify = func(expr Expr, stack []Expr) Expr {
 		// Look for parenthesized expressions, ignoring those with

@@ -6,6 +6,7 @@ package proto
 import "github.com/bazelbuild/bazel-gazelle/label"
 
 var knownProtoImports = map[string]label.Label{
+
 	"google/protobuf/any.proto":                                                                              label.New("io_bazel_rules_go", "proto/wkt", "any_go_proto"),
 	"google/protobuf/api.proto":                                                                              label.New("io_bazel_rules_go", "proto/wkt", "api_go_proto"),
 	"google/protobuf/compiler/plugin.proto":                                                                  label.New("io_bazel_rules_go", "proto/wkt", "compiler_plugin_go_proto"),
