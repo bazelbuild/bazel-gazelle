@@ -455,12 +455,13 @@ def repos():
 	}
 }
 
-func TestSortRulesByName(t *testing.T) {
+func TestSortRulesByKindAndName(t *testing.T) {
 	f, err := LoadMacroData(
 		filepath.Join("third_party", "repos.bzl"),
 		"", "repos",
 		[]byte(`load("@bazel_gazelle//:deps.bzl", "go_repository")
 def repos():
+    some_other_call_rule()
     go_repository(
         name = "com_github_andybalholm_cascadia",
     )
@@ -473,15 +474,19 @@ def repos():
     go_repository(
         name = "com_github_bazelbuild_bazel_gazelle",
     )
+    a_rule(
+        name = "name1",
+    )
 `))
 	if err != nil {
 		t.Error(err)
 	}
-	sort.Stable(rulesByName{
+	sort.Stable(rulesByKindAndName{
 		rules: f.Rules,
 		exprs: f.function.stmt.Body,
 	})
 	repos := []string{
+		"name1",
 		"com_github_andybalholm_cascadia",
 		"com_github_bazelbuild_bazel_gazelle",
 		"com_github_bazelbuild_buildtools",
@@ -498,6 +503,34 @@ def repos():
 		if f.function.stmt.Body[i] != rule.expr {
 			t.Errorf("underlying syntax tree of rule %s not sorted", r)
 		}
+	}
+
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+def repos():
+    a_rule(
+        name = "name1",
+    )
+    go_repository(
+        name = "com_github_andybalholm_cascadia",
+    )
+
+    go_repository(
+        name = "com_github_bazelbuild_bazel_gazelle",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_buildtools",
+    )
+    go_repository(
+        name = "com_github_bazelbuild_rules_go",
+    )
+    some_other_call_rule()
+`)
+
+	if got != want {
+		t.Errorf("got:%s\nwant:%s", got, want)
 	}
 }
 
