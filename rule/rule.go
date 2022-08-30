@@ -399,9 +399,9 @@ func (f *File) SortMacro() {
 	if f.function == nil {
 		panic(fmt.Sprintf("%s: not loaded as macro file", f.Path))
 	}
-	
+
 	sort.Stable(loadsByName{f.Loads, f.File.Stmt})
-	sort.Stable(rulesByName{f.Rules, f.function.stmt.Body})
+	sort.Stable(rulesByKindAndName{f.Rules, f.function.stmt.Body})
 }
 
 // Save writes the build file to disk. This method calls Sync internally.
@@ -492,23 +492,26 @@ func (s byIndex) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-type rulesByName struct {
+type rulesByKindAndName struct {
 	rules []*Rule
 	exprs []bzl.Expr
 }
 
 // type checking
-var _ sort.Interface = rulesByName{}
+var _ sort.Interface = rulesByKindAndName{}
 
-func (s rulesByName) Len() int {
+func (s rulesByKindAndName) Len() int {
 	return len(s.rules)
 }
 
-func (s rulesByName) Less(i, j int) bool {
-	return s.rules[i].Name() < s.rules[j].Name()
+func (s rulesByKindAndName) Less(i, j int) bool {
+	if s.rules[i].Kind() == s.rules[j].Kind() {
+		return s.rules[i].Name() < s.rules[j].Name()
+	}
+	return s.rules[i].Kind() < s.rules[j].Kind()
 }
 
-func (s rulesByName) Swap(i, j int) {
+func (s rulesByKindAndName) Swap(i, j int) {
 	s.exprs[s.rules[i].index], s.exprs[s.rules[j].index] = s.exprs[s.rules[j].index], s.exprs[s.rules[i].index]
 	s.rules[i].index, s.rules[j].index = s.rules[j].index, s.rules[i].index
 	s.rules[i], s.rules[j] = s.rules[j], s.rules[i]
@@ -526,11 +529,11 @@ func (s loadsByName) Len() int {
 	return len(s.loads)
 }
 
-func (s  loadsByName) Less(i, j int) bool {
+func (s loadsByName) Less(i, j int) bool {
 	return s.loads[i].Name() < s.loads[j].Name()
 }
 
-func (s  loadsByName) Swap(i, j int) {
+func (s loadsByName) Swap(i, j int) {
 	s.exprs[s.loads[i].index], s.exprs[s.loads[j].index] = s.exprs[s.loads[j].index], s.exprs[s.loads[i].index]
 	s.loads[i].index, s.loads[j].index = s.loads[j].index, s.loads[i].index
 	s.loads[i], s.loads[j] = s.loads[j], s.loads[i]
