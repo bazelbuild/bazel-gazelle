@@ -65,20 +65,30 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 			return
 		}
 
-		id, ok := ce.X.(*bzl.Ident)
+		functionIdent, ok := ce.X.(*bzl.Ident)
 		if !ok {
 			return
 		}
 
-		file, ok := knownSymbols[id.Name]
-		if !ok || otherLoadedKinds[id.Name] {
-			return
+		idents := []*bzl.Ident{functionIdent}
+
+		for _, arg := range ce.List {
+			if argIdent, ok := arg.(*bzl.Ident); ok {
+				idents = append(idents, argIdent)
+			}
 		}
 
-		if usedSymbols[file] == nil {
-			usedSymbols[file] = make(map[string]bool)
+		for _, id := range idents {
+			file, ok := knownSymbols[id.Name]
+			if !ok || otherLoadedKinds[id.Name] {
+				continue
+			}
+
+			if usedSymbols[file] == nil {
+				usedSymbols[file] = make(map[string]bool)
+			}
+			usedSymbols[file][id.Name] = true
 		}
-		usedSymbols[file][id.Name] = true
 	})
 
 	// Fix the load statements. The order is important, so we iterate over
