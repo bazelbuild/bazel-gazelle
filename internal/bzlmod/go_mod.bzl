@@ -29,7 +29,7 @@ def deps_from_go_mod(module_ctx, go_mod_label):
     for require in go_mod.require:
         entry = (require.path, require.version)
         if entry not in go_sum:
-            fail("No sum for {}@{} found in {}", require.path, require.version, go_sum_path)
+            fail("No sum for {}@{} found in {}".format(require.path, require.version, go_sum_path))
         deps.append(struct(
             path = require.path,
             version = require.version,
