@@ -4,8 +4,9 @@ Path pattern matching and globbing supporting `doublestar` (`**`) patterns.
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/bmatcuk/doublestar)](https://pkg.go.dev/github.com/bmatcuk/doublestar/v4)
 [![Release](https://img.shields.io/github/release/bmatcuk/doublestar.svg?branch=master)](https://github.com/bmatcuk/doublestar/releases)
-[![Build Status](https://travis-ci.com/bmatcuk/doublestar.svg?branch=master)](https://travis-ci.com/bmatcuk/doublestar)
+[![Build Status](https://github.com/bmatcuk/doublestar/actions/workflows/test.yml/badge.svg)](https://github.com/bmatcuk/doublestar/actions)
 [![codecov.io](https://img.shields.io/codecov/c/github/bmatcuk/doublestar.svg?branch=master)](https://codecov.io/github/bmatcuk/doublestar?branch=master)
+[![Sponsor](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/bmatcuk)
 
 ## About
 
@@ -135,7 +136,10 @@ GlobWalk may have a small performance benefit over Glob if you do not need a
 slice of matches because it can avoid allocating memory for the matches.
 Additionally, GlobWalk gives you access to the `fs.DirEntry` objects for each
 match, and lets you quit early by returning a non-nil error from your callback
-function.
+function. Like `io/fs.WalkDir`, if your callback returns `SkipDir`, GlobWalk
+will skip the current directory. This means that if the current path _is_ a
+directory, GlobWalk will not recurse into it. If the current path is not a
+directory, the rest of the parent directory will be skipped.
 
 GlobWalk ignores file system errors such as I/O errors reading directories.
 GlobWalk may return ErrBadPattern, reporting that the pattern is malformed.
@@ -146,6 +150,32 @@ Like Glob(), this function assumes that your pattern uses `/` as the path
 separator even if that's not correct for your OS (like Windows). If you aren't
 sure if that's the case, you can use filepath.ToSlash() on your pattern before
 calling GlobWalk().
+
+### FilepathGlob
+
+```go
+func FilepathGlob(pattern string) (matches []string, err error)
+```
+
+FilepathGlob returns the names of all files matching pattern or nil if there is
+no matching file. The syntax of pattern is the same as in Match(). The pattern
+may describe hierarchical names such as usr/*/bin/ed.
+
+FilepathGlob ignores file system errors such as I/O errors reading directories.
+The only possible returned error is ErrBadPattern, reporting that the pattern
+is malformed.
+
+Note: FilepathGlob is a convenience function that is meant as a drop-in
+replacement for `path/filepath.Glob()` for users who don't need the
+complication of io/fs. Basically, it:
+
+* Runs `filepath.Clean()` and `ToSlash()` on the pattern
+* Runs `SplitPattern()` to get a base path and a pattern to Glob
+* Creates an FS object from the base path and `Glob()s` on the pattern
+* Joins the base path with all of the matches from `Glob()`
+
+Returned paths will use the system's path separator, just like
+`filepath.Glob()`.
 
 ### SplitPattern
 
@@ -266,6 +296,16 @@ matching (ie, Match()) and globbing (Glob()).
 can cause a large number of reads when globbing as it will need to recursively
 traverse your filesystem.
 
+## Sponsors
+I started this project in 2014 in my spare time and have been maintaining it
+ever since. In that time, it has grown into one of the most popular globbing
+libraries in the Go ecosystem. So, if **doublestar** is a useful library in
+your project, consider [sponsoring] my work! I'd really appreciate it!
+
+[![reviewpad](../sponsors/reviewpad.png?raw=true)](https://reviewpad.com/)
+
+Thanks for sponsoring me!
+
 ## License
 
 [MIT License](LICENSE)
@@ -273,6 +313,7 @@ traverse your filesystem.
 [SplitPattern]: #splitpattern
 [doublestar]: https://github.com/bmatcuk/doublestar
 [golang]: http://golang.org/
-[io/fs]: https://golang.org/pkg/io/fs/
+[io/fs]: https://pkg.go.dev/io/fs
 [see "character classes"]: #character-classes
 [see "patterns"]: #patterns
+[sponsoring]: https://github.com/sponsors/bmatcuk

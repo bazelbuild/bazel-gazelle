@@ -44,6 +44,12 @@ func Format(f *File) []byte {
 	return FormatWithoutRewriting(f)
 }
 
+// FormatWithRewriter rewites the file with custom rewriter and returns the formatted form of it
+func FormatWithRewriter(w *Rewriter, f *File) []byte {
+	w.Rewrite(f)
+	return FormatWithoutRewriting(f)
+}
+
 // FormatString returns the string form of the given expression.
 func FormatString(x Expr) string {
 	// Expr is an interface and can be nil
@@ -130,10 +136,10 @@ func (p *printer) newline() {
 // If softNewline is called several times, just one newline is printed.
 // Usecase: if there are several nested blocks ending at the same time, for instance
 //
-//     if True:
-//         for a in b:
-//             pass
-//     foo()
+//	if True:
+//	    for a in b:
+//	        pass
+//	foo()
 //
 // the last statement (`pass`) doesn't end with a newline, each block ends with a lazy newline
 // which actually gets printed only once when right before the next statement (`foo()`) is printed.
@@ -317,10 +323,12 @@ func isDifferentLines(p1, p2 *Position) bool {
 // input, so extra parentheses are only needed if we have edited the tree.
 //
 // For example consider these expressions:
+//
 //	(1) "x" "y" % foo
 //	(2) "x" + "y" % foo
 //	(3) "x" + ("y" % foo)
 //	(4) ("x" + "y") % foo
+//
 // When we parse (1), we represent the concatenation as an addition.
 // However, if we print the addition back out without additional parens,
 // as in (2), it has the same meaning as (3), which is not the original
@@ -946,15 +954,16 @@ func needsTrailingComma(mode seqMode, v Expr) bool {
 
 // listFor formats a ListForExpr (list comprehension).
 // The single-line form is:
+//
 //	[x for y in z if c]
 //
 // and the multi-line form is:
+//
 //	[
 //	    x
 //	    for y in z
 //	    if c
 //	]
-//
 func (p *printer) listFor(v *Comprehension) {
 	multiLine := v.ForceMultiLine || len(v.End.Before) > 0
 

@@ -49,8 +49,10 @@ func doGlob(fsys fs.FS, pattern string, m []string, firstSegment bool) (matches 
 	if patternStart == -1 {
 		// pattern doesn't contain any meta characters - does a file matching the
 		// pattern exist?
-		if exists(fsys, pattern) {
-			matches = append(matches, pattern)
+		// The pattern may contain escaped wildcard characters for an exact path match.
+		path := unescapeMeta(pattern)
+		if exists(fsys, path) {
+			matches = append(matches, path)
 			return
 		} else {
 			return
@@ -79,7 +81,7 @@ func doGlob(fsys fs.FS, pattern string, m []string, firstSegment bool) (matches 
 	// if `splitIdx` is less than `patternStart`, we know `dir` has no meta
 	// characters. They would be equal if they are both -1, which means `dir`
 	// will be ".", and we know that doesn't have meta characters either.
-	if splitIdx <= patternStart{
+	if splitIdx <= patternStart {
 		return globDir(fsys, dir, pattern, matches, firstSegment)
 	}
 
@@ -318,10 +320,14 @@ func isPathDir(fsys fs.FS, name string) bool {
 
 // Returns whether or not the given DirEntry is a directory. If the DirEntry
 // represents a symbolic link, the link is followed by running fs.Stat() on
-// `path.Join(dir, name)`
-func isDir(fsys fs.FS, dir string, name string, info fs.DirEntry) bool {
+// `path.Join(dir, name)` (if dir is "", name will be used without joining)
+func isDir(fsys fs.FS, dir, name string, info fs.DirEntry) bool {
 	if (info.Type() & fs.ModeSymlink) > 0 {
-		finfo, err := fs.Stat(fsys, path.Join(dir, name))
+		p := name
+		if dir != "" {
+			p = path.Join(dir, name)
+		}
+		finfo, err := fs.Stat(fsys, p)
 		if err != nil {
 			return false
 		}
@@ -345,8 +351,8 @@ func buildAlt(prefix, pattern string, startIdx, openingIdx, currentIdx, nextIdx,
 	var buf []byte
 	patLen := len(pattern)
 	size := (openingIdx - startIdx) + (nextIdx - currentIdx) + (patLen - afterIdx)
-	if prefix != "" {
-		buf = make([]byte, 0, size + len(prefix) + 1)
+	if prefix != "" && prefix != "." {
+		buf = make([]byte, 0, size+len(prefix)+1)
 		buf = append(buf, prefix...)
 		buf = append(buf, '/')
 	} else {
@@ -377,13 +383,13 @@ func sortAndRemoveDups(matches []string, idx1, idx2, l int) []string {
 
 			shft := idx2 + 1
 			for ; shft < l && matches[shft] < tmp; shft++ {
-				matches[shft - 1] = matches[shft]
+				matches[shft-1] = matches[shft]
 			}
-			matches[shft - 1] = tmp
+			matches[shft-1] = tmp
 		} else {
 			// duplicate - shift matches above idx2 down one and decrement l
 			for shft := idx2 + 1; shft < l; shft++ {
-				matches[shft - 1] = matches[shft]
+				matches[shft-1] = matches[shft]
 			}
 			if l--; idx2 == l {
 				// nothing left to do... matches[idx2:] must have been full of dups
