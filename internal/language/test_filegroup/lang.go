@@ -26,7 +26,11 @@ package test_filegroup
 import (
 	"path"
 
+	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
+	"github.com/bazelbuild/bazel-gazelle/repo"
+	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -34,6 +38,8 @@ const testFilegroupName = "test_filegroup"
 
 type testFilegroupLang struct {
 	language.BaseLang
+
+	sawDone bool
 }
 
 func NewLanguage() language.Language {
@@ -53,7 +59,11 @@ var kinds = map[string]rule.KindInfo{
 	},
 }
 
-func (*testFilegroupLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
+func (l *testFilegroupLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
+	if l.sawDone {
+		panic("GenerateRules must not be called after DoneGeneratingRules")
+	}
+
 	r := rule.NewRule("filegroup", "all_files")
 	srcs := make([]string, 0, len(args.Subdirs)+len(args.RegularFiles))
 	srcs = append(srcs, args.RegularFiles...)
@@ -69,5 +79,15 @@ func (*testFilegroupLang) GenerateRules(args language.GenerateArgs) language.Gen
 	return language.GenerateResult{
 		Gen:     []*rule.Rule{r},
 		Imports: []interface{}{nil},
+	}
+}
+
+func (l *testFilegroupLang) DoneGeneratingRules() {
+	l.sawDone = true
+}
+
+func (l *testFilegroupLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
+	if !l.sawDone {
+		panic("Expected a call to DoneGeneratingRules before Resolve")
 	}
 }
