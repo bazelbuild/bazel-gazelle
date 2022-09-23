@@ -62,6 +62,9 @@ type goConfig struct {
 	// to infer an importpath for a rule without setting the prefix.
 	prefixSet bool
 
+	// stackPathPrefix
+	stackPathPrefix string
+
 	// importMapPrefix is a prefix of a package path, used to generate importmap
 	// attributes. Set with # gazelle:importmap_prefix.
 	importMapPrefix string
@@ -393,6 +396,10 @@ func (*goLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
 			&namingConventionFlag{&gc.goNamingConventionExternal},
 			"go_naming_convention_external",
 			"controls naming convention used when resolving libraries in external repositories with unknown conventions")
+		fs.StringVar(&gc.stackPathPrefix,
+			"stack_path_prefix",
+			"",
+			"Stacktrace path prefix")
 
 	case "update-repos":
 		fs.StringVar(&gc.buildDirectivesAttr,
