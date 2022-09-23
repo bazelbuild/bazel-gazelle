@@ -160,6 +160,9 @@ type TestGazelleGenerationArgs struct {
 	// BuildOutSuffix is the suffix for all test output build files. Includes the ".".
 	// Default: ".out", so out BUILD files should be named BUILD.out.
 	BuildOutSuffix string
+
+	// Timeout is the duration after which the generation process will be killed.
+	Timeout time.Duration
 }
 
 var (
@@ -322,7 +325,7 @@ Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
 			}
 		}()
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), args.Timeout)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, args.GazelleBinaryPath, config.Args...)
 		cmd.Stdout = &stdout

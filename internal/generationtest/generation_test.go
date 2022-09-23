@@ -4,6 +4,7 @@ import (
 	"flag"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
@@ -15,6 +16,7 @@ var (
 		" By default, will use files named BUILD.in as the BUILD files before running gazelle.")
 	buildOutSuffix = flag.String("build_out_suffix", ".out", "The suffix on the expected BUILD.bazel files after running gazelle. Defaults to .out. "+
 		" By default, will use files named BUILD.out as the expected results of the gazelle run.")
+	timeout = flag.Duration("timeout", 2*time.Second, "Time to allow the gazelle process to run before killing.")
 )
 
 // TestFullGeneration runs the gazelle binary on a few example
@@ -51,6 +53,7 @@ func TestFullGeneration(t *testing.T) {
 				GazelleBinaryPath:    absoluteGazelleBinary,
 				BuildInSuffix:        *buildInSuffix,
 				BuildOutSuffix:       *buildOutSuffix,
+				Timeout:              *timeout,
 			})
 		}
 	}
