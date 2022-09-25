@@ -14,7 +14,7 @@
 
 load("//internal:common.bzl", "env_execute", "executable_extension")
 load("//internal:go_repository_cache.bzl", "read_cache_env")
-load("@bazel_tools//tools/build_defs/repo:utils.bzl", "read_netrc", "use_netrc")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "read_user_netrc", "use_netrc")
 
 _DOC = """
 `go_repository` downloads a Go project and generates build files with Gazelle
@@ -106,24 +106,6 @@ Authorization: Bearer RANDOM-TOKEN
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
 
-# Inspired by @bazel_tools//tools/build_defs/repo:http.bzl
-def _get_auth(ctx, urls):
-    """Given the list of URLs obtain the correct auth dict."""
-    netrcfile = ""
-    if "NETRC" in ctx.os.environ:
-        netrcfile = ctx.os.environ["NETRC"]
-    elif ctx.os.name.startswith("windows"):
-        if "USERPROFILE" in ctx.os.environ:
-            netrcfile = "%s/_netrc" % (ctx.os.environ["USERPROFILE"])
-    elif "HOME" in ctx.os.environ:
-        netrcfile = "%s/.netrc" % (ctx.os.environ["HOME"])
-
-    if netrcfile and ctx.path(netrcfile).exists:
-        netrc = read_netrc(ctx, netrcfile)
-        return use_netrc(netrc, urls, ctx.attr.auth_patterns)
-
-    return {}
-
 def _go_repository_impl(ctx):
     # TODO(#549): vcs repositories are not cached and still need to be fetched.
     # Download the repository or module.
@@ -151,7 +133,7 @@ def _go_repository_impl(ctx):
             canonical_id = ctx.attr.canonical_id,
             stripPrefix = ctx.attr.strip_prefix,
             type = ctx.attr.type,
-            auth = _get_auth(ctx, ctx.attr.urls),
+            auth = use_netrc(read_user_netrc(ctx), ctx.attr.urls, ctx.attr.auth_patterns),
         )
     elif ctx.attr.commit or ctx.attr.tag:
         # repository mode
