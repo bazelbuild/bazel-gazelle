@@ -1,17 +1,6 @@
-sh_binary(
-    name = "print_gazelle",
-    srcs = ["print_gazelle.sh"],
-    data = ["//tests/visibility_attr:gazelle"],
-    deps = [
-        "@bazel_tools//tools/bash/runfiles",
-    ],
-)
+load("@bazel_skylib//rules:build_test.bzl", "build_test")
 
-sh_test(
-    name = "print_gazelle_test",
-    srcs = ["print_gazelle_test.sh"],
-    data = [":print_gazelle"],
-    deps = [
-        "@bazel_tools//tools/bash/runfiles",
-    ],
+build_test(
+    name = "visibility_test",
+    targets = ["//tests/visibility_attr:gazelle"],
 )
