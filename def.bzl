@@ -136,6 +136,8 @@ def gazelle(name, **kwargs):
         kwargs["extra_args"] = kwargs["args"]
         kwargs.pop("args")
 
+    visibility = kwargs.pop("visibility", default = None)
+
     tags_set = {t: "" for t in kwargs.pop("tags", [])}
     tags_set["manual"] = ""
     tags = [k for k in tags_set.keys()]
@@ -149,4 +151,5 @@ def gazelle(name, **kwargs):
         name = name,
         srcs = [runner_name],
         tags = tags,
+        visibility = visibility,
     )
