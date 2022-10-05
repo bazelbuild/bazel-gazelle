@@ -262,6 +262,35 @@ func TestConsumedGenFiles(t *testing.T) {
 	}
 }
 
+// Test visibility attribute is only set if no default visibility is provided
+// by the file or other rules.
+func TestShouldSetVisibility(t *testing.T) {
+	if !shouldSetVisibility(language.GenerateArgs{}) {
+		t.Error("got 'False' for shouldSetVisibility with default args; expected 'True'")
+	}
+
+	if !shouldSetVisibility(language.GenerateArgs{
+		File: rule.EmptyFile("path", "pkg"),
+	}) {
+		t.Error("got 'False' for shouldSetVisibility with empty file; expected 'True'")
+	}
+
+	fileWithDefaultVisibile, _ := rule.LoadData("path", "pkg", []byte(`package(default_visibility = "//src:__subpackages__")`))
+	if shouldSetVisibility(language.GenerateArgs{
+		File: fileWithDefaultVisibile,
+	}) {
+		t.Error("got 'True' for shouldSetVisibility with file with default visibility; expected 'False'")
+	}
+
+	defaultVisibilityRule := rule.NewRule("package", "")
+	defaultVisibilityRule.SetAttr("default_visibility", []string{"//src:__subpackages__"})
+	if shouldSetVisibility(language.GenerateArgs{
+		OtherGen: []*rule.Rule{defaultVisibilityRule},
+	}) {
+		t.Error("got 'True' for shouldSetVisibility with rule defining a default visibility; expected 'False'")
+	}
+}
+
 func prebuiltProtoRules() []*rule.Rule {
 	protoRule := rule.NewRule("proto_library", "foo_proto")
 	protoRule.SetAttr("srcs", []string{"foo.proto"})
