@@ -29,7 +29,7 @@ Gazelle build file generator
 .. _rules_haskell: https://github.com/tweag/rules_haskell
 .. _bazel_rules_nodejs_contrib: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
 .. _bazel-skylib: https://github.com/bazelbuild/bazel-skylib
-.. _bazel_skylib/gazelle/bzl: https://github.com/bazelbuild/bazel-skylib/tree/master/gazelle/bzl
+.. _bazel-skylib/gazelle/bzl: https://github.com/bazelbuild/bazel-skylib/tree/main/gazelle/bzl
 .. _gazelle_cabal: https://github.com/tweag/gazelle_cabal
 .. _stackb/rules_proto: https://github.com/stackb/rules_proto
 .. _Open a PR: https://github.com/bazelbuild/bazel-gazelle/edit/master/README.rst
@@ -118,7 +118,7 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Starlark
 
-  `bazel-skylib`_ has an extension for generating ``bzl_library`` rules. See `bazel_skylib//gazelle/bzl`_.
+  `bazel-skylib`_ has an extension for generating ``bzl_library`` rules. See `bazel-skylib/gazelle/bzl`_
 
 If you know of an extension which could be linked here, please `open a PR`_!
 
