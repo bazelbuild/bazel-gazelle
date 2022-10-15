@@ -87,6 +87,7 @@ def _go_deps_impl(module_ctx):
                     raw_version = raw_version,
                     sum = module_tag.sum,
                     build_naming_convention = module_tag.build_naming_convention,
+                    build_file_proto_mode = module_tag.build_file_proto_mode,
                 )
 
     for path, root_version in root_versions.items():
@@ -106,6 +107,7 @@ def _go_deps_impl(module_ctx):
             sum = module.sum,
             version = "v" + module.raw_version,
             build_naming_convention = module.build_naming_convention,
+            build_file_proto_mode = module.build_file_proto_mode,
         )
         for path, module in module_resolutions.items()
     ]
@@ -118,6 +120,7 @@ def _go_deps_impl(module_ctx):
         module.repo_name: [
             "importpath=" + path,
             "build_naming_convention=" + module.build_naming_convention,
+            "build_file_proto_mode=" + module_tag.build_file_proto_mode,
         ]
         for path, module in module_resolutions.items()
     }
@@ -137,7 +140,7 @@ _config_tag = tag_class(
 _from_file_tag = tag_class(
     attrs = {
         "go_mod": attr.label(mandatory = True),
-    }
+    },
 )
 
 _module_tag = tag_class(
@@ -145,7 +148,24 @@ _module_tag = tag_class(
         "path": attr.string(mandatory = True),
         "version": attr.string(mandatory = True),
         "sum": attr.string(),
-        "build_naming_convention": attr.string(default = "import_alias"),
+        "build_naming_convention": attr.string(
+            default = "import_alias",
+            values = [
+                "go_default_library",
+                "import",
+                "import_alias",
+            ],
+        ),
+        "build_file_proto_mode": attr.string(
+            default = "default",
+            values = [
+                "default",
+                "disable",
+                "disable_global",
+                "legacy",
+                "package",
+            ],
+        ),
     },
 )
 
