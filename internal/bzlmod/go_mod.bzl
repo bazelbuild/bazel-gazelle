@@ -36,6 +36,7 @@ def deps_from_go_mod(module_ctx, go_mod_label):
             sum = go_sum[entry],
             direct = require.direct,
             build_naming_convention = "import_alias",
+            build_file_proto_mode = "default",
         ))
 
     return deps
