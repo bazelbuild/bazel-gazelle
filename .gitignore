@@ -6,3 +6,4 @@
 /tests/bcr/bazel-bin
 /tests/bcr/bazel-out
 /tests/bcr/bazel-testlogs
+.DS_STORE

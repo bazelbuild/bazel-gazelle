@@ -1,0 +1,51 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "visibility",
+    srcs = [
+        "config.go",
+        "lang.go",
+        "resolve.go",
+    ],
+    importpath = "github.com/bazelbuild/bazel-gazelle/language/bazel/visibility",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//config",
+        "//label",
+        "//language",
+        "//repo",
+        "//resolve",
+        "//rule",
+    ],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":visibility",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "visibility_test",
+    srcs = ["lang_test.go"],
+    deps = [
+        ":visibility",
+        "//config",
+        "//label",
+        "//language",
+        "//rule",
+    ],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "config.go",
+        "lang.go",
+        "lang_test.go",
+        "resolve.go",
+    ],
+    visibility = ["//visibility:public"],
+)
