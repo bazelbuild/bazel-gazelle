@@ -180,5 +180,6 @@ To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the
 | <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  <code>".in"</code> |
 | <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  <code>".out"</code> |
 | <a id="gazelle_generation_test-gazelle_timeout_seconds"></a>gazelle_timeout_seconds |  <p align="center"> - </p>   |  <code>2</code> |
+| <a id="gazelle_generation_test-size"></a>size | Specifies a test target's "heaviness": how much time/resources it needs to run.<p align="center"> - </p>   |  <code>medium</code> |
 
 
