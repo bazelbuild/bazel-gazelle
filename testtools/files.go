@@ -299,7 +299,7 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 							}
 
 							if info.Name() == "BUILD.bazel" {
-								destFile := strings.TrimSuffix(path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative)+relativePath), ".bazel") + ".out"
+								destFile := strings.TrimSuffix(path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative)+relativePath), ".bazel") + args.BuildOutSuffix
 
 								err := copyFile(walkedPath, destFile)
 								if err != nil {
