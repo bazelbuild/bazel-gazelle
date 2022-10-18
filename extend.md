@@ -145,7 +145,7 @@ proto extension stores metadata in hidden attributes of generated
 
 <pre>
 gazelle_generation_test(<a href="#gazelle_generation_test-name">name</a>, <a href="#gazelle_generation_test-gazelle_binary">gazelle_binary</a>, <a href="#gazelle_generation_test-test_data">test_data</a>, <a href="#gazelle_generation_test-build_in_suffix">build_in_suffix</a>, <a href="#gazelle_generation_test-build_out_suffix">build_out_suffix</a>,
-                        <a href="#gazelle_generation_test-gazelle_timeout_seconds">gazelle_timeout_seconds</a>)
+                        <a href="#gazelle_generation_test-gazelle_timeout_seconds">gazelle_timeout_seconds</a>, <a href="#gazelle_generation_test-size">size</a>)
 </pre>
 
     gazelle_generation_test is a macro for testing gazelle against workspaces.
@@ -180,5 +180,6 @@ To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the
 | <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  <code>".in"</code> |
 | <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  <code>".out"</code> |
 | <a id="gazelle_generation_test-gazelle_timeout_seconds"></a>gazelle_timeout_seconds |  <p align="center"> - </p>   |  <code>2</code> |
+| <a id="gazelle_generation_test-size"></a>size |  Specifies a test target's "heaviness": how much time/resources it needs to run.   |  <code>None</code> |
 
 

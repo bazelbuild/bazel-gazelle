@@ -1,10 +1,10 @@
 """
-Test for generating rules from gazelle. 
+Test for generating rules from gazelle.
 """
 
 load("@io_bazel_rules_go//go:def.bzl", "go_test")
 
-def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = ".in", build_out_suffix = ".out", gazelle_timeout_seconds = 2):
+def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = ".in", build_out_suffix = ".out", gazelle_timeout_seconds = 2, size=None):
     """
     gazelle_generation_test is a macro for testing gazelle against workspaces.
 
@@ -36,6 +36,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
         build_out_suffix: The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out.
             By default, will use files named check the results of the gazelle run against files named BUILD.out.
         timeout_seconds: Number of seconds to allow the gazelle process to run before killing.
+        size: Specifies a test target's "heaviness": how much time/resources it needs to run.
     """
     go_test(
         name = name,
@@ -50,6 +51,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
             "-build_out_suffix=%s" % build_out_suffix,
             "-timeout=%ds" % gazelle_timeout_seconds,
         ],
+        size = size,
         data = test_data + [
             gazelle_binary,
         ],
