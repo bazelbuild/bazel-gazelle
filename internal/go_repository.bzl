@@ -456,7 +456,7 @@ go_repository = repository_rule(
         "build_file_proto_mode": attr.string(
             doc = """One of `"default"`, `"legacy"`, `"disable"`, `"disable_global"` or `"package"`.
 
-            This sets Gazelle's `-proto` command line flag. See Directives_ for more
+            This sets Gazelle's `-proto` command line flag. See [Directives] for more
             information on each mode.""",
             values = [
                 "",
