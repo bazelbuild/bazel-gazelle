@@ -42,9 +42,7 @@ func (f *File) Rule(call *CallExpr) *Rule {
 	return r
 }
 
-// Rules returns the rules in the file of the given kind (such as "go_library").
-// If kind == "", Rules returns all rules in the file.
-func (f *File) Rules(kind string) []*Rule {
+func (f *File) rules(p func(r *Rule) bool) []*Rule {
 	var all []*Rule
 
 	for _, stmt := range f.Stmt {
@@ -61,9 +59,9 @@ func (f *File) Rules(kind string) []*Rule {
 				}
 			}
 
-			// Check if the rule kind is correct.
+			// Check if the rule is correct.
 			rule := f.Rule(call)
-			if kind != "" && rule.Kind() != kind {
+			if !p(rule) {
 				return
 			}
 			all = append(all, rule)
@@ -73,20 +71,25 @@ func (f *File) Rules(kind string) []*Rule {
 	return all
 }
 
+// Rules returns the rules in the file of the given kind (such as "go_library").
+// If kind == "", Rules returns all rules in the file.
+func (f *File) Rules(kind string) []*Rule {
+	return f.rules(func(rule *Rule) bool {
+		// Check if the rule kind is correct.
+		return kind == "" || rule.Kind() == kind
+	})
+}
+
 // RuleAt returns the rule in the file that starts at the specified line, or null if no such rule.
 func (f *File) RuleAt(linenum int) *Rule {
-
-	for _, stmt := range f.Stmt {
-		call, ok := stmt.(*CallExpr)
-		if !ok {
-			continue
-		}
-		start, end := call.X.Span()
-		if start.Line <= linenum && linenum <= end.Line {
-			return f.Rule(call)
-		}
+	all := f.rules(func(rule *Rule) bool {
+		start, end := rule.Call.X.Span()
+		return start.Line <= linenum && linenum <= end.Line
+	})
+	if len(all) != 1 {
+		return nil
 	}
-	return nil
+	return all[0]
 }
 
 // DelRules removes rules with the given kind and name from the file.
