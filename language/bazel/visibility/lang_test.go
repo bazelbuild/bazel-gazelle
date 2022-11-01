@@ -43,7 +43,10 @@ func Test_NoDirective(t *testing.T) {
 
 	ext := visibility.NewLanguage()
 	ext.Configure(cfg, "rel", file)
-	res := ext.GenerateRules(language.GenerateArgs{Config: cfg})
+	res := ext.GenerateRules(language.GenerateArgs{
+		Config: cfg,
+		File:   rule.EmptyFile("path/file", "pkg"),
+	})
 
 	if len(res.Imports) != 0 {
 		t.Fatal("expected empty array")
@@ -63,7 +66,10 @@ func Test_NewDirective(t *testing.T) {
 
 	ext := visibility.NewLanguage()
 	ext.Configure(cfg, "rel", file)
-	res := ext.GenerateRules(language.GenerateArgs{Config: cfg})
+	res := ext.GenerateRules(language.GenerateArgs{
+		Config: cfg,
+		File:   rule.EmptyFile("path/file", "pkg"),
+	})
 
 	if len(res.Gen) != 1 {
 		t.Fatal("expected array of length 1")
@@ -93,7 +99,10 @@ package(default_visibility = "//not-src:__subpackages__")
 
 	ext := visibility.NewLanguage()
 	ext.Configure(cfg, "rel", file)
-	res := ext.GenerateRules(language.GenerateArgs{Config: cfg})
+	res := ext.GenerateRules(language.GenerateArgs{
+		Config: cfg,
+		File:   rule.EmptyFile("path/file", "pkg"),
+	})
 
 	if len(res.Gen) != 1 {
 		t.Fatal("expected array of length 1")
@@ -123,7 +132,10 @@ func Test_MultipleDirectives(t *testing.T) {
 
 	ext := visibility.NewLanguage()
 	ext.Configure(cfg, "rel", file)
-	res := ext.GenerateRules(language.GenerateArgs{Config: cfg})
+	res := ext.GenerateRules(language.GenerateArgs{
+		Config: cfg,
+		File:   rule.EmptyFile("path/file", "pkg"),
+	})
 
 	if len(res.Gen) != 1 {
 		t.Fatal("expected array of length 1")
@@ -155,7 +167,10 @@ func Test_MultipleDefaultsSingleDirective(t *testing.T) {
 
 	ext := visibility.NewLanguage()
 	ext.Configure(cfg, "rel", file)
-	res := ext.GenerateRules(language.GenerateArgs{Config: cfg})
+	res := ext.GenerateRules(language.GenerateArgs{
+		Config: cfg,
+		File:   rule.EmptyFile("path/file", "pkg"),
+	})
 
 	if len(res.Gen) != 1 {
 		t.Fatal("expected array of length 1")
@@ -171,5 +186,30 @@ func Test_MultipleDefaultsSingleDirective(t *testing.T) {
 	}
 	if testVis2 != res.Gen[0].AttrStrings("default_visibility")[1] {
 		t.Fatal("expected returned visibility to match '//src2:__subpackages__'")
+	}
+}
+
+func Test_NoRuleIfNoBuildFile(t *testing.T) {
+	testVis1 := "//src:__subpackages__"
+	cfg := config.New()
+	file, err := rule.LoadData("path", "pkg", []byte(fmt.Sprintf(`
+# gazelle:default_visibility %s
+`, testVis1)))
+	if err != nil {
+		t.Fatalf("expected not nil - %+v", err)
+	}
+
+	ext := visibility.NewLanguage()
+	ext.Configure(cfg, "rel", file)
+	res := ext.GenerateRules(language.GenerateArgs{
+		Config: cfg,
+		File:   nil,
+	})
+
+	if len(res.Gen) != 0 {
+		t.Fatal("expected array of length 0, no rules generated for missing BUILD.bazel file")
+	}
+	if len(res.Imports) != 0 {
+		t.Fatal("expected array of length 0")
 	}
 }

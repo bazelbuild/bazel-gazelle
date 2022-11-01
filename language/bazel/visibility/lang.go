@@ -39,6 +39,11 @@ func (*visibilityExtension) GenerateRules(args language.GenerateArgs) language.G
 		return res
 	}
 
+	if args.File == nil {
+		// No need to create a visibility if we're not in a visible directory.
+		return res
+	}
+
 	r := rule.NewRule("package", "")
 	r.SetAttr("default_visibility", cfg.visibilityTargets)
 
