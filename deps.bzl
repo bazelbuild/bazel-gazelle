@@ -13,8 +13,8 @@
 # limitations under the License.
 
 load(
-    "@bazel_tools//tools/build_defs/repo:git.bzl",
-    "git_repository",
+    "@bazel_tools//tools/build_defs/repo:http.bzl",
+    "http_archive",
 )
 load(
     "//internal:go_repository.bzl",
@@ -41,10 +41,13 @@ def gazelle_dependencies(
         go_repository_default_config = "@//:WORKSPACE",
         go_env = {}):
     _maybe(
-        git_repository,
+        http_archive,
         name = "bazel_skylib",
-        commit = "df3c9e2735f02a7fe8cd80db4db00fec8e13d25f",  # `master` as of 2021-08-19
-        remote = "https://github.com/bazelbuild/bazel-skylib",
+        urls = [
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.3.0/bazel-skylib-1.3.0.tar.gz",
+            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.3.0/bazel-skylib-1.3.0.tar.gz",
+        ],
+        sha256 = "74d544d96f4a5bb630d465ca8bbcfe231e3594e5aae57e1edbf17a6eb3ca2506",  
     )
 
     if go_sdk:
