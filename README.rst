@@ -99,7 +99,7 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * JavaScript / TypeScript
 
-  BencSci's `rules_nodejs_gazelle`_ supports generating `ts_project`, `js_library`, `jest_test`,
+  BenchSci's `rules_nodejs_gazelle`_ supports generating `ts_project`, `js_library`, `jest_test`,
   and `web_asset` rules, and is able to support module bundlers like Webpack and Next.js
 
 * Protocol Buffers
