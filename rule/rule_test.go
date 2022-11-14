@@ -224,6 +224,24 @@ x_library(name = "bar")
 	}
 }
 
+func TestInsertDeleteSync(t *testing.T) {
+	old := []byte("")
+	f, err := LoadData(filepath.Join("old", "BUILD.bazel"), "", old)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	foo := NewRule("filegroup", "test")
+	foo.Insert(f)
+	foo.Delete()
+	f.Sync()
+	got := strings.TrimSpace(string(f.Format()))
+	want := ""
+	if got != want {
+		t.Errorf("got:\n%s\nwant:%s", got, want)
+	}
+}
+
 func TestSymbolsReturnsKeys(t *testing.T) {
 	f, err := LoadData(filepath.Join("load", "BUILD.bazel"), "", []byte(`load("a.bzl", "y", z = "a")`))
 	if err != nil {

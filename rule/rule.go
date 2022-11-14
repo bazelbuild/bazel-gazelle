@@ -357,7 +357,11 @@ func updateStmt(oldStmt *[]bzl.Expr, inserts, deletes, stmts []*stmt) {
 	sort.Stable(byIndex(deletes))
 	sort.Stable(byIndex(inserts))
 	sort.Stable(byIndex(stmts))
-	newStmt := make([]bzl.Expr, 0, len(*oldStmt)-len(deletes)+len(inserts))
+	cap := len(*oldStmt) - len(deletes) + len(inserts)
+	if cap < 0 {
+		cap = 0
+	}
+	newStmt := make([]bzl.Expr, 0, cap)
 	var ii, di, si int
 	for i, stmt := range *oldStmt {
 		for ii < len(inserts) && inserts[ii].index == i {
