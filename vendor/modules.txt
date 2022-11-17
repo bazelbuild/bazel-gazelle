@@ -1,4 +1,4 @@
-# github.com/bazelbuild/buildtools v0.0.0-20221004120235-7186f635531b
+# github.com/bazelbuild/buildtools v0.0.0-20221110131218-762712d8ce3f
 ## explicit; go 1.15
 github.com/bazelbuild/buildtools/build
 github.com/bazelbuild/buildtools/tables
@@ -7,7 +7,7 @@ github.com/bazelbuild/buildtools/tables
 github.com/bazelbuild/rules_go/go/tools/bazel
 github.com/bazelbuild/rules_go/go/tools/bazel_testing
 github.com/bazelbuild/rules_go/go/tools/internal/txtar
-# github.com/bmatcuk/doublestar/v4 v4.2.0
+# github.com/bmatcuk/doublestar/v4 v4.4.0
 ## explicit; go 1.16
 github.com/bmatcuk/doublestar/v4
 # github.com/fsnotify/fsnotify v1.6.0
@@ -26,7 +26,7 @@ github.com/pelletier/go-toml
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# golang.org/x/mod v0.6.0
+# golang.org/x/mod v0.7.0
 ## explicit; go 1.17
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
@@ -35,12 +35,12 @@ golang.org/x/mod/semver
 # golang.org/x/sync v0.1.0
 ## explicit
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.1.0
+# golang.org/x/sys v0.2.0
 ## explicit; go 1.17
 golang.org/x/sys/execabs
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/tools v0.2.0
+# golang.org/x/tools v0.3.0
 ## explicit; go 1.18
 golang.org/x/tools/go/vcs

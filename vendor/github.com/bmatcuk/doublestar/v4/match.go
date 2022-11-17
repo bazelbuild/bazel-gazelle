@@ -46,6 +46,9 @@ import (
 // is PathMatch(). Alternatively, you can run filepath.ToSlash() on both
 // pattern and name and then use this function.
 //
+// Note: users should _not_ count on the returned error,
+// doublestar.ErrBadPattern, being equal to path.ErrBadPattern.
+//
 func Match(pattern, name string) (bool, error) {
 	return matchWithSeparator(pattern, name, '/', true)
 }
