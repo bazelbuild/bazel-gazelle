@@ -50,8 +50,7 @@ func cli(ctx context.Context, stderr *os.File, args []string) error {
 
 This utility is intended to handle many of the steps to release a new version.
 
-Only run it from the root of the bazel-gazelle repository.
-`)
+Only run it from the root of the bazel-gazelle repository.`)
 		return nil
 	}
 
