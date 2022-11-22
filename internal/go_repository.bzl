@@ -106,7 +106,7 @@ Authorization: Bearer RANDOM-TOKEN
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
 
-GO_TAG_FORMAT="go_%s=%s"
+GO_TAG_FORMAT = "go_%s=%s"
 
 def _go_repository_impl(ctx):
     # TODO(#549): vcs repositories are not cached and still need to be fetched.
