@@ -306,14 +306,11 @@ def _go_repository_impl(ctx):
     # Apply patches if necessary.
     patch(ctx)
 
-    if ctx.os.name.startswith("mac"):
-        arch = getattr(ctx.os, "arch", "x86")
-        if arch.startswith("x"):
-            buildozer = ctx.path(Label("@buildozer_macos_x86//file:buildozer"))
-        else:
-            buildozer = ctx.path(Label("@buildozer_macos_arm//file:buildozer"))
-    elif ctx.os.name.startswith("linux"):
-        buildozer = ctx.path(Label("@buildozer_linux_x86//file:buildozer"))
+    arch = normalize_arch(ctx.os)
+    if arch != None and ctx.os.name.startswith("linux"):
+        buildozer = ctx.path(Label("@buildozer_linux_%s//file:buildozer" % arch))
+    elif arch != None and ctx.os.name.startswith("mac"):
+        buildozer = ctx.path(Label("@buildozer_macos_%s//file:buildozer" % arch))
     else:
         buildozer = None
         print("Unable to find buildozer binary, so omitting version information from tags")
@@ -322,7 +319,7 @@ def _go_repository_impl(ctx):
         for tag in tags:
             res = ctx.execute([buildozer, "add tags %s" % tag, "//...:%go_library"])
             if res.return_code != 0:
-                fail("Unable to execute buildozer for tag %s" % tag)
+                msg = "Unable to execute buildozer for tag %s\nstdout:\n%s\nstderr:%s" % (tag, res.stdout, res.stderr)
 
 go_repository = repository_rule(
     implementation = _go_repository_impl,
@@ -581,3 +578,25 @@ def patch(ctx):
         if st.return_code:
             fail("Error applying patch command %s:\n%s%s" %
                  (cmd, st.stdout, st.stderr))
+
+# The value of `os.arch` is defined as being "the value of the `os.arch`
+# Java property converted to lower case". There are, of course, a
+# bajillion of these, but for our needs, all we need to check is whether
+# we're on some ARM platform or x86. If we're not on either of those,
+# return `None`.
+#
+# Values are obtained by manual inspection of:
+# https://github.com/openjdk/jdk/blob/jdk-17%2B35/src/java.base/unix/native/libjava/java_props_md.c
+# https://github.com/openjdk/jdk/blob/jdk-17%2B35/src/java.base/windows/native/libjava/java_props_md.c
+# https://github.com/openjdk/jdk/blob/jdk-17%2B35/make/autoconf/platform.m4
+def normalize_arch(os):
+    x86 = ("amd64", "i386", "x86", "x86_64")
+    arm64 = ("aarch64")
+
+    if os.arch in x86:
+        return "x86"
+
+    if os.arch in arm64:
+        return "arm"
+
+    return None
