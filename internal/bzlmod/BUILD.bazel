@@ -46,3 +46,13 @@ bzl_library(
     srcs = ["semver.bzl"],
     visibility = ["//:__subpackages__"],
 )
+
+bzl_library(
+    name = "buildozer_deps",
+    srcs = ["buildozer_deps.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "@bazel_tools//tools/build_defs/repo:http.bzl",
+        "@bazel_tools//tools/build_defs/repo:utils.bzl",
+    ],
+)
