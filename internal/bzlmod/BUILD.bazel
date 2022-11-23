@@ -5,6 +5,7 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
+        "buildozer_deps.bzl",
         "go_deps.bzl",
         "go_mod.bzl",
         "non_module_deps.bzl",
