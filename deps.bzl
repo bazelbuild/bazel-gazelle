@@ -17,10 +17,6 @@ load(
     "git_repository",
 )
 load(
-    "@bazel_tools//tools/build_defs/repo:http.bzl",
-    "http_file",
-)
-load(
     "//internal:go_repository.bzl",
     _go_repository = "go_repository",
 )
