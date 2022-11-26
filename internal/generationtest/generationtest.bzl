@@ -37,6 +37,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
             By default, will use files named check the results of the gazelle run against files named BUILD.out.
         timeout_seconds: Number of seconds to allow the gazelle process to run before killing.
         size: Specifies a test target's "heaviness": how much time/resources it needs to run.
+        **kwargs: Attributes that are passed directly to the test declaration.
     """
     go_test(
         name = name,
