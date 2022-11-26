@@ -27,6 +27,9 @@ gazelle_binary(
     # Name the test the path to the directory containing the WORKSPACE file.
     name = file[0:-len("/WORKSPACE")],
     gazelle_binary = ":gazelle" if "loads_from_flag" not in file else ":gazelle_with_language_loads_from_flag",
+    # This is a noop as the default is False. However, it does confirm that
+    # gazelle_generation_test accepts setting common test attributes.
+    local = False,
     test_data = glob(
     	include = [file[0:-len("/WORKSPACE")] + "/**"],
     ),
