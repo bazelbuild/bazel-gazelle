@@ -538,7 +538,7 @@ func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
 // maybePublishToolLib makes the given go_library rule public if needed for nogo.
 // Updating it here automatically makes it easier to upgrade org_golang_x_tools.
 func (g *generator) maybePublishToolLib(lib *rule.Rule, pkg *goPackage) {
-	if pkg.importPath == "golang.org/x/tools/go/analysis/internal/facts" {
+	if pkg.importPath == "golang.org/x/tools/go/analysis/internal/facts" || pkg.importPath == "golang.org/x/tools/internal/facts" {
 		// Imported by nogo main. We add a visibility exception.
 		lib.SetAttr("visibility", []string{"//visibility:public"})
 	}
