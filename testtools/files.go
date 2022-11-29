@@ -35,6 +35,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+const cmdTimeoutOrInterruptExitCode = -1
+
 // FileSpec specifies the content of a test file.
 type FileSpec struct {
 	// Path is a slash-separated path relative to the test directory. If Path
@@ -341,9 +343,14 @@ Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
 		errs := make([]error, 0)
 		actualExitCode = cmd.ProcessState.ExitCode()
 		if config.ExitCode != actualExitCode {
-			errs = append(errs, fmt.Errorf("expected gazelle exit code: %d\ngot: %d",
-				config.ExitCode, actualExitCode,
-			))
+			if actualExitCode == cmdTimeoutOrInterruptExitCode {
+				errs = append(errs, fmt.Errorf("gazelle exceeded the timeout or was interrupted"))
+			} else {
+
+				errs = append(errs, fmt.Errorf("expected gazelle exit code: %d\ngot: %d",
+					config.ExitCode, actualExitCode,
+				))
+			}
 		}
 		actualStdout := redactWorkspacePath(stdout.String(), workspaceRoot)
 		if strings.TrimSpace(config.Stdout) != strings.TrimSpace(actualStdout) {
