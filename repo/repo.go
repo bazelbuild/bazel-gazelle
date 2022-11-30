@@ -45,8 +45,6 @@ func FindExternalRepo(repoRoot, name string) (string, error) {
 	// <output-base>/execroot/<workspace-name>/bazel-out
 	// We expect the external repository to be checked out at
 	// <output-base>/external/<name>
-	// Note that users can change the prefix for most of the Bazel symlinks with
-	// --symlink_prefix, but this does not include bazel-out.
 	externalPath := strings.Join([]string{repoRoot, "bazel-out", "..", "..", "..", "external", name}, string(os.PathSeparator))
 	cleanPath, err := filepath.EvalSymlinks(externalPath)
 	if err != nil {

@@ -324,12 +324,6 @@ type symlinkResolver struct {
 
 // Decide if symlink dir/base should be followed.
 func (r *symlinkResolver) follow(c *config.Config, dir, rel, base string) bool {
-	if dir == c.RepoRoot && strings.HasPrefix(base, "bazel-") {
-		// Links such as bazel-<workspace>, bazel-out, bazel-genfiles are created by
-		// Bazel to point to internal build directories.
-		return false
-	}
-
 	// See if the user has explicitly directed us to follow the link.
 	wc := getWalkConfig(c)
 	linkRel := path.Join(rel, base)
@@ -339,7 +333,7 @@ func (r *symlinkResolver) follow(c *config.Config, dir, rel, base string) bool {
 		}
 	}
 
-	// See if the symlink points to a tree that has been already visited.
+	// Get canonical path as dest
 	fullpath := filepath.Join(dir, base)
 	dest, err := filepath.EvalSymlinks(fullpath)
 	if err != nil {
@@ -351,6 +345,31 @@ func (r *symlinkResolver) follow(c *config.Config, dir, rel, base string) bool {
 			return false
 		}
 	}
+
+	// Ignore symlinks into Bazel's output.
+	// This includes the bazel-* convenience symlinks and any created for IDEs.
+	// Start by getting a canonical path to Bazel's output base.
+	// Note that we expect the bazel-out symlink in the workspace root directory to point to
+	// <output-base>/execroot/<workspace-name>/bazel-out
+	// See https://docs.bazel.build/versions/master/output_directories.html
+	// for documentation on Bazel directory layout.
+	bazelOut, err := filepath.EvalSymlinks(filepath.Join(c.RepoRoot, "bazel-out"))
+	if err == nil {
+		if !filepath.IsAbs(bazelOut) {
+			absBazelOut, err := filepath.Abs(bazelOut)
+			if err == nil {
+				bazelOut = absBazelOut
+			}
+		}
+		if err == nil {
+			outputBase := filepath.Dir(filepath.Dir(filepath.Dir(bazelOut)))
+			if pathtools.HasPrefix(dest, outputBase) {
+				return false
+			}
+		}
+	}
+
+	// See if the symlink points to a tree that has been already visited.
 	for _, p := range r.visited {
 		if pathtools.HasPrefix(dest, p) || pathtools.HasPrefix(p, dest) {
 			return false
