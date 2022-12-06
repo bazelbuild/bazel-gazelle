@@ -7,6 +7,9 @@
       "name": "Fabian Meumertzheim"
     }
   ],
+  "repository": [
+      "github:bazelbuild/bazel-gazelle"
+  ],
   "versions": [],
   "yanked_versions": {}
 }
