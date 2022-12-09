@@ -577,9 +577,8 @@ func TestRuleAttrAssignExpr(t *testing.T) {
 	for name, tc := range map[string]struct {
 		src   string
 		check func(t *testing.T, r *Rule)
-		want  string
 	}{
-		"returns nil when assigment name does not exist": {
+		"returns nil when assigment does not exist": {
 			src: `
 test_rule(
     name = "test",
@@ -591,13 +590,8 @@ test_rule(
 					t.Fatalf("wanted non-existent attr name to return nil, got: %v", deps)
 				}
 			},
-			want: `
-test_rule(
-    name = "test",
-    srcs = [],
-)`,
 		},
-		"returns the assignment so a comment can be added": {
+		"returns the assignment so a comment can be written": {
 			src: `
 test_rule(
     name = "test",
@@ -606,25 +600,43 @@ test_rule(
 			check: func(t *testing.T, r *Rule) {
 				srcs := r.AttrAssignExpr("srcs")
 				srcs.Comments.Before = append(srcs.Comments.Before, bzl.Comment{Token: "# Added a comment!"})
-			},
-			want: `
+				want := `
 test_rule(
     name = "test",
     # Added a comment!
     srcs = [],
-)
-			`,
+)`
+				got := formatRule(r)
+				if diff := cmp.Diff(strings.TrimSpace(want), got); diff != "" {
+					t.Errorf("formatted rule (-want +got):\n%s", diff)
+				}
+
+			},
+		},
+		"returns the assignment so a comment can be read": {
+			src: `
+test_rule(
+	name = "test",
+	# The answer is: 42
+	srcs = [],
+)`,
+			check: func(t *testing.T, r *Rule) {
+				srcs := r.AttrAssignExpr("srcs")
+				want := []bzl.Comment{
+					{
+						Start: bzl.Position{Line: 4, LineRune: 2, Byte: 29},
+						Token: "# The answer is: 42",
+					},
+				}
+				got := srcs.Comments.Before
+				if diff := cmp.Diff(want, got); diff != "" {
+					t.Errorf("comments: (-want +got):\n%s", diff)
+				}
+			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			r := mustLoadOneRule(t, tc.src)
-			if tc.check != nil {
-				tc.check(t, r)
-			}
-			got := formatRule(r)
-			if diff := cmp.Diff(strings.TrimSpace(tc.want), got); diff != "" {
-				t.Errorf("(-want +got):\n%s", diff)
-			}
+			tc.check(t, mustLoadOneRule(t, tc.src))
 		})
 	}
 }
