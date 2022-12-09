@@ -2979,6 +2979,430 @@ go_library(
 	})
 }
 
+func TestMapKindEdgeCases(t *testing.T) {
+	for name, tc := range map[string]struct {
+		before []testtools.FileSpec
+		after  []testtools.FileSpec
+	}{
+		"new generated rule applies map_kind": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library go_library //custom:def.bzl
+`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"existing generated rule with non-renaming mapping applied applies map_kind": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library go_library //custom:def.bzl
+`,
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"existing generated rule without non-renaming mapping applied applies map_kind": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library go_library //custom:def.bzl
+`,
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"existing generated rule without renaming mapping applied doesn't apply map_kind": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library custom_go_library //custom:def.bzl
+`,
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"existing generated rule with renaming mapping applied preserves map_kind": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library custom_go_library //custom:def.bzl
+`,
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "custom_go_library")
+
+custom_go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "custom_go_library")
+
+custom_go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"unrelated non-generated non-map_kind'd rule of same kind applies map_kind if other rule is generated": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library go_library //custom:def.bzl
+		`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "custom_lib",
+    srcs = ["custom_lib.go"],
+)
+`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_library")
+
+go_library(
+    name = "custom_lib",
+    srcs = ["custom_lib.go"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"unrelated non-generated non-renaming map_kind'd rule of same kind keeps map_kind if other rule is generated": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library go_library //custom:def.bzl
+		`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_library")
+
+go_library(
+    name = "custom_lib",
+    srcs = ["custom_lib.go"],
+)
+`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_library")
+
+go_library(
+    name = "custom_lib",
+    srcs = ["custom_lib.go"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"unrelated non-generated non-renaming map_kind'd rule un-applies map_kind if other generated rule is newly generated": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library go_library //custom:def.bzl
+# gazelle:map_kind go_test go_test //custom:def.bzl
+		`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_test")
+
+go_test(
+    name = "custom_test",
+    srcs = ["custom_test.java"],
+)
+`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
+load("//custom:def.bzl", "go_library")
+
+go_test(
+    name = "custom_test",
+    srcs = ["custom_test.java"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"unrelated non-generated non-renaming map_kind'd rule un-applies map_kind if other generated rule already existed": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library go_library //custom:def.bzl
+# gazelle:map_kind go_test go_test //custom:def.bzl
+`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//custom:def.bzl", "go_library", "go_test")
+
+go_test(
+    name = "custom_test",
+    srcs = ["custom_test.java"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
+load("//custom:def.bzl", "go_library")
+
+go_test(
+    name = "custom_test",
+    srcs = ["custom_test.java"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir, cleanup := testtools.CreateFiles(t, tc.before)
+			t.Cleanup(cleanup)
+			if err := runGazelle(dir, []string{"-external=vendored"}); err != nil {
+				t.Fatal(err)
+			}
+			testtools.CheckFiles(t, dir, tc.after)
+		})
+	}
+}
+
 // TestMapKindEmbeddedResolve tests the gazelle:map_kind properly resolves
 // dependencies for embedded rules (see #1162).
 func TestMapKindEmbeddedResolve(t *testing.T) {
