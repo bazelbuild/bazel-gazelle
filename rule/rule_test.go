@@ -601,8 +601,6 @@ test_rule(
 							Token: "# The answer is: 42",
 						},
 					},
-					Suffix: nil,
-					After:  nil,
 				},
 				LHS:   &bzl.Ident{NamePos: bzl.Position{Line: 5, LineRune: 2, Byte: 50}, Name: "srcs"},
 				OpPos: bzl.Position{Line: 5, LineRune: 7, Byte: 55},
