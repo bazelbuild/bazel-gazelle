@@ -827,6 +827,16 @@ func (r *Rule) Attr(key string) bzl.Expr {
 	return attr.RHS
 }
 
+// AttrAssignExpr returns the assignment value of the named attribute. nil is
+// returned when the attribute is not set.
+func (r *Rule) AttrAssignExpr(key string) *bzl.AssignExpr {
+	attr, ok := r.attrs[key]
+	if !ok {
+		return nil
+	}
+	return attr
+}
+
 // AttrString returns the value of the named attribute if it is a scalar string.
 // "" is returned if the attribute is not set or is not a string.
 func (r *Rule) AttrString(key string) string {

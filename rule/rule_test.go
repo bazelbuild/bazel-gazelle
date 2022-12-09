@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	bzl "github.com/bazelbuild/buildtools/build"
+	"github.com/google/go-cmp/cmp"
 )
 
 // This file contains tests for File, Load, Rule, and related functions.
@@ -570,4 +571,77 @@ func TestCheckFile(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
+}
+
+func TestRuleAttrAssignExpr(t *testing.T) {
+	for name, tc := range map[string]struct {
+		src   string
+		check func(t *testing.T, r *Rule)
+		want  string
+	}{
+		"returns nil when assigment name does not exist": {
+			src: `
+test_rule(
+    name = "test",
+    srcs = [],
+)`,
+			check: func(t *testing.T, r *Rule) {
+				deps := r.AttrAssignExpr("deps")
+				if deps != nil {
+					t.Fatalf("wanted non-existent attr name to return nil, got: %v", deps)
+				}
+			},
+			want: `
+test_rule(
+    name = "test",
+    srcs = [],
+)`,
+		},
+		"returns the assignment so a comment can be added": {
+			src: `
+test_rule(
+    name = "test",
+    srcs = [],
+)`,
+			check: func(t *testing.T, r *Rule) {
+				srcs := r.AttrAssignExpr("srcs")
+				srcs.Comments.Before = append(srcs.Comments.Before, bzl.Comment{Token: "# Added a comment!"})
+			},
+			want: `
+test_rule(
+    name = "test",
+    # Added a comment!
+    srcs = [],
+)
+			`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := mustLoadOneRule(t, tc.src)
+			if tc.check != nil {
+				tc.check(t, r)
+			}
+			got := formatRule(r)
+			if diff := cmp.Diff(strings.TrimSpace(tc.want), got); diff != "" {
+				t.Errorf("(-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func mustLoadOneRule(t *testing.T, content string) *Rule {
+	f, err := LoadData("<in-memory>", "", []byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Rules) != 1 {
+		t.Fatal("want 1 rule, got:", len(f.Rules))
+	}
+	return f.Rules[0]
+}
+
+func formatRule(r *Rule) string {
+	file := EmptyFile("", "")
+	r.Insert(file)
+	return strings.TrimSpace(string(file.Format()))
 }
