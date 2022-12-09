@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bazelbuild/buildtools/build"
 	bzl "github.com/bazelbuild/buildtools/build"
 	"github.com/google/go-cmp/cmp"
 )
@@ -575,68 +576,56 @@ func TestCheckFile(t *testing.T) {
 
 func TestRuleAttrAssignExpr(t *testing.T) {
 	for name, tc := range map[string]struct {
-		src   string
-		check func(t *testing.T, r *Rule)
+		src  string
+		want *bzl.AssignExpr
 	}{
 		"returns nil when assigment does not exist": {
 			src: `
 test_rule(
     name = "test",
-    srcs = [],
 )`,
-			check: func(t *testing.T, r *Rule) {
-				deps := r.AttrAssignExpr("deps")
-				if deps != nil {
-					t.Fatalf("wanted non-existent attr name to return nil, got: %v", deps)
-				}
-			},
+			want: nil,
 		},
-		"returns the assignment so a comment can be written": {
-			src: `
-test_rule(
-    name = "test",
-    srcs = [],
-)`,
-			check: func(t *testing.T, r *Rule) {
-				srcs := r.AttrAssignExpr("srcs")
-				srcs.Comments.Before = append(srcs.Comments.Before, bzl.Comment{Token: "# Added a comment!"})
-				want := `
-test_rule(
-    name = "test",
-    # Added a comment!
-    srcs = [],
-)`
-				got := formatRule(r)
-				if diff := cmp.Diff(strings.TrimSpace(want), got); diff != "" {
-					t.Errorf("formatted rule (-want +got):\n%s", diff)
-				}
-
-			},
-		},
-		"returns the assignment so a comment can be read": {
+		"returns the assignment": {
 			src: `
 test_rule(
 	name = "test",
 	# The answer is: 42
 	srcs = [],
 )`,
-			check: func(t *testing.T, r *Rule) {
-				srcs := r.AttrAssignExpr("srcs")
-				want := []bzl.Comment{
-					{
-						Start: bzl.Position{Line: 4, LineRune: 2, Byte: 29},
-						Token: "# The answer is: 42",
+			want: &bzl.AssignExpr{
+				Comments: bzl.Comments{
+					Before: []bzl.Comment{
+						{
+							Start: bzl.Position{Line: 4, LineRune: 2, Byte: 29},
+							Token: "# The answer is: 42",
+						},
 					},
-				}
-				got := srcs.Comments.Before
-				if diff := cmp.Diff(want, got); diff != "" {
-					t.Errorf("comments: (-want +got):\n%s", diff)
-				}
+					Suffix: nil,
+					After:  nil,
+				},
+				LHS:   &bzl.Ident{NamePos: bzl.Position{Line: 5, LineRune: 2, Byte: 50}, Name: "srcs"},
+				OpPos: bzl.Position{Line: 5, LineRune: 7, Byte: 55},
+				Op:    "=",
+				RHS: &bzl.ListExpr{
+					Start: bzl.Position{Line: 5, LineRune: 9, Byte: 57},
+					End: build.End{
+						Pos: build.Position{
+							Line:     5,
+							LineRune: 10,
+							Byte:     58,
+						},
+					},
+				},
 			},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			tc.check(t, mustLoadOneRule(t, tc.src))
+			r := mustLoadOneRule(t, tc.src)
+			got := r.AttrAssignExpr("srcs")
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("r.AttrAssignExpr(srcs) diff (-got, +want):\n%s", diff)
+			}
 		})
 	}
 }
@@ -650,10 +639,4 @@ func mustLoadOneRule(t *testing.T, content string) *Rule {
 		t.Fatal("want 1 rule, got:", len(f.Rules))
 	}
 	return f.Rules[0]
-}
-
-func formatRule(r *Rule) string {
-	file := EmptyFile("", "")
-	r.Insert(file)
-	return strings.TrimSpace(string(file.Format()))
 }
