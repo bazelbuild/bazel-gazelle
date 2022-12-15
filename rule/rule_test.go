@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	bzl "github.com/bazelbuild/buildtools/build"
+	"github.com/google/go-cmp/cmp"
 )
 
 // This file contains tests for File, Load, Rule, and related functions.
@@ -570,4 +571,54 @@ func TestCheckFile(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
+}
+
+func TestRuleAttrComments(t *testing.T) {
+	for name, tc := range map[string]struct {
+		src  string
+		want *bzl.Comments
+	}{
+		"returns nil when assigment does not exist": {
+			src: `
+test_rule(
+    name = "test",
+)`,
+			want: nil,
+		},
+		"returns the comments for 'srcs'": {
+			src: `
+test_rule(
+	name = "test",
+	# The answer is: 42
+	srcs = [],
+)`,
+			want: &bzl.Comments{
+				Before: []bzl.Comment{
+					{
+						Start: bzl.Position{Line: 4, LineRune: 2, Byte: 29},
+						Token: "# The answer is: 42",
+					},
+				},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r := mustLoadOneRule(t, tc.src)
+			got := r.AttrComments("srcs")
+			if diff := cmp.Diff(got, tc.want); diff != "" {
+				t.Errorf("r.AttrComments(srcs) diff (-got, +want):\n%s", diff)
+			}
+		})
+	}
+}
+
+func mustLoadOneRule(t *testing.T, content string) *Rule {
+	f, err := LoadData("<in-memory>", "", []byte(content))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(f.Rules) != 1 {
+		t.Fatal("want 1 rule, got:", len(f.Rules))
+	}
+	return f.Rules[0]
 }

@@ -827,6 +827,17 @@ func (r *Rule) Attr(key string) bzl.Expr {
 	return attr.RHS
 }
 
+// AttrComments returns the Comments struct of the underlying binary assigment
+// expression for the given attribute name. nil is returned when the attribute
+// is not set.
+func (r *Rule) AttrComments(key string) *bzl.Comments {
+	attr, ok := r.attrs[key]
+	if !ok {
+		return nil
+	}
+	return &attr.Comments
+}
+
 // AttrString returns the value of the named attribute if it is a scalar string.
 // "" is returned if the attribute is not set or is not a string.
 func (r *Rule) AttrString(key string) string {
