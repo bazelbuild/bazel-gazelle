@@ -19,7 +19,7 @@ std_package_list = rule(
         "out": attr.output(mandatory = True),
         "_gen_std_package_list": attr.label(
             default = "//language/go/gen_std_package_list",
-            cfg = "host",
+            cfg = "exec",
             executable = True,
         ),
         "_go_context_data": attr.label(
