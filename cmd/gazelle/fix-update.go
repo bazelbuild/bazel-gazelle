@@ -376,6 +376,9 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 			err = cerr
 		}
 	}()
+	if err := maybePopulateRemoteCacheFromGoMod(c, rc); err != nil {
+		log.Print(err)
+	}
 	for _, v := range visits {
 		for i, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
@@ -562,6 +565,41 @@ func findOutputPath(c *config.Config, f *rule.File) string {
 		return defaultOutputPath
 	}
 	return outputPath
+}
+
+// maybePopulateRemoteCacheFromGoMod reads go.mod and adds a root to rc for each
+// module requirement. This lets the Go extension avoid a network lookup for
+// unknown imports with -external=external, and it lets dependency resolution
+// succeed with -external=static when it might not otherwise.
+//
+// This function does not override roots added from WORKSPACE (or some other
+// configuration file), but it's useful when there is no such file. In most
+// cases, a user of Gazelle with indirect Go dependencies does not need to add
+// '# gazelle:repository' or '# gazelle:repository_macro' directives to their
+// WORKSPACE file. This need was frustrating for developers in non-Go
+// repositories with go_repository dependencies declared in macros. It wasn't
+// obvious that Gazelle was missing these.
+//
+// This function is regrettably Go specific and does not belong here, but it
+// can't be moved to //language/go until //repo is broken up and moved there.
+func maybePopulateRemoteCacheFromGoMod(c *config.Config, rc *repo.RemoteCache) error {
+	haveGo := false
+	for name := range c.Exts {
+		if name == "go" {
+			haveGo = true
+			break
+		}
+	}
+	if !haveGo {
+		return nil
+	}
+
+	goModPath := filepath.Join(c.RepoRoot, "go.mod")
+	if _, err := os.Stat(goModPath); err != nil {
+		return nil
+	}
+
+	return rc.PopulateFromGoMod(goModPath)
 }
 
 func unionKindInfoMaps(a, b map[string]rule.KindInfo) map[string]rule.KindInfo {
