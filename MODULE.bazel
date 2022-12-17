@@ -22,6 +22,10 @@ use_repo(
     "bazel_gazelle_go_repository_cache",
     "bazel_gazelle_go_repository_config",
     "bazel_gazelle_go_repository_tools",
+    "buildozer_macos_arm",
+    "buildozer_macos_x86",
+    "buildozer_linux_arm",
+    "buildozer_linux_x86",
 )
 
 rules_go_non_module_deps = use_extension("@io_bazel_rules_go//go/private:extensions.bzl", "non_module_dependencies")

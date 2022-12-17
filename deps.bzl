@@ -32,6 +32,10 @@ load(
     "//internal:go_repository_config.bzl",
     "go_repository_config",
 )
+load(
+    "//internal/bzlmod:buildozer_deps.bzl",
+    "buildozer_deps",
+)
 
 # Re-export go_repository . Users should get it from this file.
 go_repository = _go_repository
@@ -46,6 +50,8 @@ def gazelle_dependencies(
         commit = "df3c9e2735f02a7fe8cd80db4db00fec8e13d25f",  # `master` as of 2021-08-19
         remote = "https://github.com/bazelbuild/bazel-skylib",
     )
+
+    buildozer_deps()
 
     if go_sdk:
         go_repository_cache(
