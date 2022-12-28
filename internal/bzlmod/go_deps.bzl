@@ -1,3 +1,4 @@
+load("@auto_use_repo//:defs.bzl", "use_repos")
 load("//internal:go_repository.bzl", "go_repository")
 load(":go_mod.bzl", "deps_from_go_mod")
 load(":semver.bzl", "semver")
@@ -39,9 +40,14 @@ def _noop(s):
 def _go_deps_impl(module_ctx):
     module_resolutions = {}
     root_versions = {}
+    root_repos = []
+    gazelle_is_root_module = False
 
     outdated_direct_dep_printer = print
     for module in module_ctx.modules:
+        if module.is_root and module.name == "gazelle":
+            gazelle_is_root_module = True
+
         # Parse the go_dep.config tag of the root module only.
         for mod_config in module.tags.config:
             # bazel_module.is_root is only available as of Bazel 5.3.0.
@@ -85,18 +91,21 @@ def _go_deps_impl(module_ctx):
             # dependencies and can thus only report implicit version upgrades
             # for direct dependencies. For manually specified go_deps.module
             # tags, we always report version upgrades.
-            if getattr(module, "is_root", False) and getattr(module_tag, "direct", True):
+            repo_name = _repo_name(module_tag.path)
+            if module.is_root and getattr(module_tag, "direct", True):
                 root_versions[module_tag.path] = raw_version
+                root_repos.append(repo_name)
             version = semver.to_comparable(raw_version)
             if module_tag.path not in module_resolutions or version > module_resolutions[module_tag.path].version:
                 module_resolutions[module_tag.path] = struct(
                     module = module.name,
-                    repo_name = _repo_name(module_tag.path),
+                    repo_name = repo_name,
                     version = version,
                     raw_version = raw_version,
                     sum = module_tag.sum,
                     build_naming_convention = module_tag.build_naming_convention,
                     build_file_proto_mode = module_tag.build_file_proto_mode,
+                    direct = getattr(module_tag, "direct", True),
                 )
 
     for path, root_version in root_versions.items():
@@ -136,6 +145,13 @@ def _go_deps_impl(module_ctx):
     _go_repository_directives(
         name = "bazel_gazelle_go_repository_directives",
         directives = directives,
+    )
+
+    if gazelle_is_root_module:
+        root_repos += ["bazel_gazelle_go_repository_directives", "bazel_gazelle_auto_use_repo"]
+    use_repos(
+        name = "bazel_gazelle_auto_use_repo",
+        root_repos = root_repos,
     )
 
 _config_tag = tag_class(
