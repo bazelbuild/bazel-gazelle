@@ -1,4 +1,4 @@
-def deps_from_go_mod(module_ctx, go_mod_label):
+def deps_from_go_mod(module_ctx, go_mod_label, dev_dependency):
     go_mod_path = module_ctx.path(go_mod_label)
     go_mod_content = module_ctx.read(go_mod_path)
     go_mod = parse_go_mod(go_mod_content, go_mod_path)
@@ -37,6 +37,7 @@ def deps_from_go_mod(module_ctx, go_mod_label):
             direct = require.direct,
             build_naming_convention = "import_alias",
             build_file_proto_mode = "default",
+            dev_dependency = dev_dependency,
         ))
 
     return deps

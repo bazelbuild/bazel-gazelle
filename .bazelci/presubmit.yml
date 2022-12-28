@@ -13,9 +13,6 @@ tasks:
   ubuntu1804_bcr_tests:
     name: BCR test module
     platform: ubuntu1804
-    # Includes https://github.com/bazelbuild/bazel/commit/3f92232c17bf4aad51880c811c291ba4b5b42721,
-    # which will eventually be released in Bazel 5.3.0.
-    bazel_version: 3f92232c17bf4aad51880c811c291ba4b5b42721
     working_directory: tests/bcr
     build_targets:
       - "//..."

@@ -29,9 +29,24 @@ _go_repository_directives = repository_rule(
 def _noop(s):
     pass
 
+def _dev_only_repo_impl(ctx):
+    fail("The repository {repo_name} is only a development dependency of the modules {modules} and has not been loaded as neither of these modules is the root module".format(
+        repo_name = ctx.repo_name,
+        modules = ", ".join(ctx.attr.modules),
+    ))
+
+_dev_only_repo = repository_rule(
+    implementation = _dev_only_repo_impl,
+    attrs = {
+        "modules": attr.string_list(),
+        "repo_name": attr.string(),
+    },
+)
+
 def _go_deps_impl(module_ctx):
     module_resolutions = {}
     root_versions = {}
+    dev_repos = {}
 
     outdated_direct_dep_printer = print
     for module in module_ctx.modules:
@@ -50,7 +65,11 @@ def _go_deps_impl(module_ctx):
 
         additional_module_tags = []
         for from_file_tag in module.tags.from_file:
-            additional_module_tags += deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+            additional_module_tags += deps_from_go_mod(
+                module_ctx,
+                from_file_tag.go_mod,
+                from_file_tag.dev_dependency,
+            )
 
         # Parse the go_dep.module tags of all transitive dependencies and apply
         # Minimum Version Selection to resolve importpaths to Go module versions
@@ -65,6 +84,9 @@ def _go_deps_impl(module_ctx):
         # resolving them to higher versions, but only compatible ones.
         paths = {}
         for module_tag in module.tags.module + additional_module_tags:
+            if module_tag.dev_dependency and not module.is_root:
+                dev_repos.setdefault(_repo_name(module_tag.path), {})[module.name] = True
+                continue
             if module_tag.path in paths:
                 fail("Duplicate Go module path '{}' in module '{}'".format(module_tag.path, module.name))
             paths[module_tag.path] = None
@@ -76,7 +98,7 @@ def _go_deps_impl(module_ctx):
             # dependencies and can thus only report implicit version upgrades
             # for direct dependencies. For manually specified go_deps.module
             # tags, we always report version upgrades.
-            if getattr(module, "is_root", False) and getattr(module_tag, "direct", True):
+            if module.is_root and getattr(module_tag, "direct", True):
                 root_versions[module_tag.path] = raw_version
             version = semver.to_comparable(raw_version)
             if module_tag.path not in module_resolutions or version > module_resolutions[module_tag.path].version:
@@ -112,6 +134,22 @@ def _go_deps_impl(module_ctx):
         for path, module in module_resolutions.items()
     ]
 
+    for module in module_resolutions.values():
+        dev_repos.pop(module.repo_name, default = None)
+
+    [
+        # Dev dependencies brought into scope via use_repo still have to be
+        # backed by a repository rule instance to prevent a build failure.
+        # Since the repository should never be fetched, we use a repository rule
+        # that failed with a descriptive error message.
+        _dev_only_repo(
+            name = repo_name,
+            modules = modules.keys(),
+            repo_name = repo_name,
+        )
+        for repo_name, modules in dev_repos.items()
+    ]
+
     # With transitive dependencies, Gazelle would no longer just have to pass a
     # single top-level WORKSPACE/MODULE.bazel file, but those of all modules
     # that use the go_dep tag. Instead, emit a synthetic WORKSPACE file with
@@ -140,6 +178,7 @@ _config_tag = tag_class(
 _from_file_tag = tag_class(
     attrs = {
         "go_mod": attr.label(mandatory = True),
+        "dev_dependency": attr.bool(),
     },
 )
 
@@ -166,6 +205,7 @@ _module_tag = tag_class(
                 "package",
             ],
         ),
+        "dev_dependency": attr.bool(),
     },
 )
 

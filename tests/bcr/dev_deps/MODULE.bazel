@@ -1,0 +1,27 @@
+module(
+    name = "dev_deps",
+    version = "0.0.1",
+)
+
+bazel_dep(name = "gazelle", version = "")
+
+go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
+go_deps.module(
+    # Invalid path that leads to a build failure if fetched.
+    path = "github.com/bazelbuild/does_not_exist",
+    sum = "h1:7utD74fnzVc/cpcyy8sjrlFr5vYpypUixARcHIMIGuI=",
+    version = "v1.0.0",
+    dev_dependency = True,
+)
+go_deps.module(
+    path = "github.com/pelletier/go-toml",
+    sum = "h1:7utD74fnzVc/cpcyy8sjrlFr5vYpypUixARcHIMIGuI=",
+    # Invalid very high version that leads to a build failure if not skipped for MVS.
+    version = "v1000.0.0",
+    dev_dependency = True,
+)
+use_repo(
+    go_deps,
+    "com_github_bazelbuild_does_not_exist",
+    "com_github_pelletier_go_toml",
+)
