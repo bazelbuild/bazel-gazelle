@@ -27,7 +27,7 @@ Gazelle build file generator
 .. _rules_python: https://github.com/bazelbuild/rules_python
 .. _rules_r: https://github.com/grailbio/rules_r
 .. _rules_haskell: https://github.com/tweag/rules_haskell
-.. _bazel_rules_nodejs_contrib: https://github.com/ecosia/bazel_rules_nodejs_contrib#build-file-generation
+.. _rules_nodejs_gazelle: https://github.com/benchsci/rules_nodejs_gazelle
 .. _bazel-skylib: https://github.com/bazelbuild/bazel-skylib
 .. _bazel_skylib/gazelle/bzl: https://github.com/bazelbuild/bazel-skylib/tree/master/gazelle/bzl
 .. _gazelle_cabal: https://github.com/tweag/gazelle_cabal
@@ -99,8 +99,8 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * JavaScript / TypeScript
 
-  Ecosia's `bazel_rules_nodejs_contrib`_ has an extension for generating
-  ``js_library``, ``jest_node_test``, ``js_import``, and ``ts_library`` rules.
+  BenchSci's `rules_nodejs_gazelle`_ supports generating `ts_project`, `js_library`, `jest_test`,
+  and `web_asset` rules, and is able to support module bundlers like Webpack and Next.js
 
 * Protocol Buffers
 
