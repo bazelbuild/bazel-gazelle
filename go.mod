@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/bazelbuild/buildtools v0.0.0-20221004120235-7186f635531b
-	github.com/bazelbuild/rules_go v0.35.0
+	github.com/bazelbuild/rules_go v0.37.0
 	github.com/bmatcuk/doublestar/v4 v4.2.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/google/go-cmp v0.5.9
