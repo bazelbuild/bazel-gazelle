@@ -18,6 +18,7 @@ package golang
 import (
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -30,16 +31,36 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/walk"
 	bzl "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/rules_go/go/tools/bazel"
 	"github.com/google/go-cmp/cmp"
 )
 
 func TestGenerateRules(t *testing.T) {
+	testdataDir := "testdata"
 	if runtime.GOOS == "windows" {
-		// TODO(jayconrod): set up testdata directory on windows before running test
-		if _, err := os.Stat("testdata"); os.IsNotExist(err) {
-			t.Skip("testdata missing on windows due to lack of symbolic links")
-		} else if err != nil {
+		var err error
+		testdataDir, err = bazel.NewTmpDir("testdata")
+		if err != nil {
 			t.Fatal(err)
+		}
+		files, _ := bazel.ListRunfiles()
+		parent := "language/go/testdata"
+		for _, rf := range files {
+			rel, err := filepath.Rel(parent, rf.ShortPath)
+			if err != nil {
+				continue
+			}
+			if strings.HasPrefix(rel, "..") {
+				// make sure we're not moving around file that we're not inrerested in
+				continue
+			}
+			newPath := filepath.FromSlash(path.Join(testdataDir, rel))
+			if err := os.MkdirAll(filepath.FromSlash(filepath.Dir(newPath)), os.ModePerm); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Link(filepath.FromSlash(rf.Path), newPath); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 
@@ -47,13 +68,13 @@ func TestGenerateRules(t *testing.T) {
 		t,
 		"-build_file_name=BUILD.old",
 		"-go_prefix=example.com/repo",
-		"-repo_root=testdata")
+		"-repo_root="+testdataDir)
 
 	var loads []rule.LoadInfo
 	for _, lang := range langs {
 		loads = append(loads, lang.Loads()...)
 	}
-	walk.Walk(c, cexts, []string{"testdata"}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
+	walk.Walk(c, cexts, []string{testdataDir}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
 		t.Run(rel, func(t *testing.T) {
 			var empty, gen []*rule.Rule
 			for _, lang := range langs {

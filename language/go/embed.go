@@ -112,6 +112,7 @@ func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map
 				return err
 			}
 			fileRel, _ := filepath.Rel(dir, p)
+			fileRel = filepath.ToSlash(fileRel)
 			base := filepath.Base(p)
 			if !info.IsDir() {
 				if !isBadEmbedName(base) {
