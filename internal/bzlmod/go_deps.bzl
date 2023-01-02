@@ -2,6 +2,13 @@ load("//internal:go_repository.bzl", "go_repository")
 load(":go_mod.bzl", "deps_from_go_mod")
 load(":semver.bzl", "semver")
 
+# These Go modules are imported as Bazel modules via bazel_dep, not as
+# go_repository.
+IGNORED_MODULE_PATHS = [
+    "github.com/bazelbuild/bazel-gazelle",
+    "github.com/bazelbuild/rules_go",
+]
+
 def _repo_name(importpath):
     path_segments = importpath.split("/")
     segments = reversed(path_segments[0].split(".")) + path_segments[1:]
@@ -67,6 +74,8 @@ def _go_deps_impl(module_ctx):
         for module_tag in module.tags.module + additional_module_tags:
             if module_tag.path in paths:
                 fail("Duplicate Go module path '{}' in module '{}'".format(module_tag.path, module.name))
+            if module_tag.path in IGNORED_MODULE_PATHS:
+                continue
             paths[module_tag.path] = None
             raw_version = module_tag.version
             if raw_version.startswith("v"):
