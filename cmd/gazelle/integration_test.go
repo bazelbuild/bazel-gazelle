@@ -4489,3 +4489,54 @@ require golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 	}
 	testtools.CheckFiles(t, dir, []testtools.FileSpec{goSumFile})
 }
+
+func TestResolveGoStaticFromGoMod(t *testing.T) {
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{
+			Path: "go.mod",
+			Content: `
+module example.com/use
+
+go 1.19
+
+require example.com/dep v1.0.0
+`,
+		},
+		{
+			Path: "use.go",
+			Content: `
+package use
+
+import _ "example.com/dep/pkg"
+`,
+		},
+	})
+	defer cleanup()
+
+	args := []string{
+		"-go_prefix=example.com/use",
+		"-external=static",
+		"-go_naming_convention_external=import",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "use",
+    srcs = ["use.go"],
+    importpath = "example.com/use",
+    visibility = ["//visibility:public"],
+    deps = ["@com_example_dep//pkg"],
+)
+`,
+		},
+	})
+}

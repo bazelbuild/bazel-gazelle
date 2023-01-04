@@ -32,6 +32,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
+	"golang.org/x/mod/modfile"
 	"golang.org/x/tools/go/vcs"
 )
 
@@ -200,6 +201,38 @@ func (r *RemoteCache) cleanup() error {
 	return os.RemoveAll(r.tmpDir)
 }
 
+// PopulateFromGoMod reads a go.mod file and adds entries to the r.root
+// map based on the file's require directives. PopulateFromGoMod does not
+// override entries already in the cache. This should help avoid going
+// out to the network for external dependency resolution, and it should
+// let static dependency resolution succeed more often.
+func (r *RemoteCache) PopulateFromGoMod(goModPath string) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("reading module paths from %s: %w", goModPath, err)
+		}
+	}()
+
+	data, err := os.ReadFile(goModPath)
+	if err != nil {
+		return err
+	}
+	var versionFixer modfile.VersionFixer
+	f, err := modfile.Parse(goModPath, data, versionFixer)
+	if err != nil {
+		return err
+	}
+	for _, req := range f.Require {
+		r.root.ensure(req.Mod.Path, func() (any, error) {
+			return rootValue{
+				root: req.Mod.Path,
+				name: label.ImportPathToBazelRepoName(req.Mod.Path),
+			}, nil
+		})
+	}
+	return nil
+}
+
 var gopkginPattern = regexp.MustCompile(`^(gopkg.in/(?:[^/]+/)?[^/]+\.v\d+)(?:/|$)`)
 
 var knownPrefixes = []struct {
@@ -216,7 +249,7 @@ var knownPrefixes = []struct {
 // If no matches are found, rather than going out to the network to determine the root,
 // nothing is returned.
 func (r *RemoteCache) RootStatic(importPath string) (root, name string, err error) {
-	for prefix := importPath; prefix != "." && prefix != "/"; prefix = path.Dir(prefix){
+	for prefix := importPath; prefix != "." && prefix != "/"; prefix = path.Dir(prefix) {
 		v, ok, err := r.root.get(prefix)
 		if ok {
 			if err != nil {
@@ -283,7 +316,6 @@ func (r *RemoteCache) Root(importPath string) (root, name string, err error) {
 		name = label.ImportPathToBazelRepoName(root)
 		return root, name, nil
 	}
-
 
 	// Find the prefix using vcs and cache the result.
 	v, err := r.root.ensure(importPath, func() (interface{}, error) {

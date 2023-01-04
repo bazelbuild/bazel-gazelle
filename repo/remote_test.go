@@ -16,7 +16,12 @@ limitations under the License.
 package repo
 
 import (
+	"errors"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"golang.org/x/tools/go/vcs"
 )
 
 func TestRootSpecialCases(t *testing.T) {
@@ -130,7 +135,51 @@ func TestRootStatic(t *testing.T) {
 	}
 }
 
+func TestRootPopulatedFromGoMod(t *testing.T) {
+	tmpDir := t.TempDir()
+	goModPath := filepath.Join(tmpDir, "go.mod")
+	goModData := []byte(`
+		module example.com/use
+		go 1.19
+		require example.com/good v1.0.0
+	`)
+	if err := os.WriteFile(goModPath, goModData, 0666); err != nil {
+		t.Fatal(err)
+	}
 
+	rc := NewStubRemoteCache(nil)
+	if err := rc.PopulateFromGoMod(goModPath); err != nil {
+		t.Fatal(err)
+	}
+	errResolve := errors.New("test cannot lookup external package")
+	rc.RepoRootForImportPath = func(string, bool) (*vcs.RepoRoot, error) {
+		return nil, errResolve
+	}
+
+	// Resolving golang.org/x/mod/module from go.mod should work.
+	goodPkgPath := "example.com/good/pkg"
+	wantRoot := "example.com/good"
+	wantName := "com_example_good"
+	root, name, err := rc.Root(goodPkgPath)
+	if err != nil {
+		t.Fatalf("could not resolve %q from go.mod: %v", goodPkgPath, err)
+	}
+	if root != wantRoot {
+		t.Errorf("got root %q; want %q", root, wantRoot)
+	}
+	if name != wantName {
+		t.Errorf("got name %q; want %q", root, wantName)
+	}
+
+	// Resolving another module should fail because RepoRootForImportPath
+	// is stubbed out.
+	badPkgPath := "example.com/bad/pkg"
+	if _, _, err := rc.Root(badPkgPath); err == nil {
+		t.Errorf("resolving %q: unexpected success", badPkgPath)
+	} else if !errors.Is(err, errResolve) {
+		t.Errorf("resolving %q: got error %v, want %v", badPkgPath, err, errResolve)
+	}
+}
 
 func TestRemote(t *testing.T) {
 	for _, tc := range []struct {

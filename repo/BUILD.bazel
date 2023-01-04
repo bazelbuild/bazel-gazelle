@@ -12,6 +12,7 @@ go_library(
         "//label",
         "//pathtools",
         "//rule",
+        "@org_golang_x_mod//modfile",
         "@org_golang_x_tools//go/vcs",
     ],
 )
