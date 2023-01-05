@@ -70,7 +70,11 @@ go_test(
         "generate_test.go",
         "resolve_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(
+        ["testdata/**"],
+        # Empty when distributed.
+        allow_empty = True,
+    ),
     embed = [":proto"],
     deps = [
         "//config",
