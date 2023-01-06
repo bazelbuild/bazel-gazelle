@@ -57,11 +57,32 @@ type FileSpec struct {
 	NotExist bool
 }
 
+// Use an interface to allow tests to use *testing.T or *testing.B or external libraries like ginkgo.
+type TB interface {
+	Helper()
+	TempDir() string
+
+	FailNow()
+	Failed() bool
+
+	Log(args ...interface{})
+	Logf(format string, args ...interface{})
+	Error(args ...interface{})
+	Errorf(format string, args ...interface{})
+	Fatal(args ...interface{})
+	Fatalf(format string, args ...interface{})
+}
+
+var (
+	_ TB = (*testing.T)(nil)
+	_ TB = (*testing.B)(nil)
+)
+
 // CreateFiles creates a directory of test files. This is a more compact
 // alternative to testdata directories. CreateFiles returns a canonical path
 // to the directory and a function to call to clean up the directory
 // after the test.
-func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
+func CreateFiles(t TB, files []FileSpec) (dir string, cleanup func()) {
 	t.Helper()
 	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "gazelle_test")
 	if err != nil {
@@ -106,7 +127,7 @@ func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 // CheckFiles checks that files in "dir" exist and have the content specified
 // in "files". Files not listed in "files" are not tested, so extra files
 // are allowed.
-func CheckFiles(t *testing.T, dir string, files []FileSpec) {
+func CheckFiles(t TB, dir string, files []FileSpec) {
 	t.Helper()
 	for _, f := range files {
 		path := filepath.Join(dir, f.Path)
@@ -188,191 +209,189 @@ var (
 //            └── sourceFile.foo
 //            └── BUILD.in --> BUILD file prior to running gazelle.
 //            └── BUILD.out --> BUILD file expected after running gazelle.
-func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) {
-	t.Run(args.Name, func(t *testing.T) {
-		t.Helper() // Make the stack trace a little bit more clear.
-		if args.BuildInSuffix == "" {
-			args.BuildInSuffix = ".in"
+func TestGazelleGenerationOnPath(t TB, args *TestGazelleGenerationArgs) {
+	t.Helper() // Make the stack trace a little bit more clear.
+	if args.BuildInSuffix == "" {
+		args.BuildInSuffix = ".in"
+	}
+	if args.BuildOutSuffix == "" {
+		args.BuildOutSuffix = ".out"
+	}
+	var inputs []FileSpec
+	var goldens []FileSpec
+
+	config := &testConfig{}
+	f := func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			t.Fatalf("File walk error on path %q. Error: %v", path, err)
 		}
-		if args.BuildOutSuffix == "" {
-			args.BuildOutSuffix = ".out"
+
+		shortPath := strings.TrimPrefix(path, args.TestDataPathAbsolute)
+
+		info, err := d.Info()
+		if err != nil {
+			t.Fatalf("File info error on path %q. Error: %v", path, err)
 		}
-		var inputs []FileSpec
-		var goldens []FileSpec
 
-		config := &testConfig{}
-		f := func(path string, d fs.DirEntry, err error) error {
+		if info.IsDir() {
+			return nil
+		}
+
+		content, err := ioutil.ReadFile(path)
+		if err != nil {
+			t.Errorf("ioutil.ReadFile(%q) error: %v", path, err)
+		}
+
+		// Read in expected stdout, stderr, and exit code files.
+		if d.Name() == argumentsFilename {
+			config.Args = strings.Split(string(content), "\n")
+			return nil
+		}
+		if d.Name() == expectedStdoutFilename {
+			config.Stdout = string(content)
+			return nil
+		}
+		if d.Name() == expectedStderrFilename {
+			config.Stderr = string(content)
+			return nil
+		}
+		if d.Name() == expectedExitCodeFilename {
+			config.ExitCode, err = strconv.Atoi(string(content))
 			if err != nil {
-				t.Fatalf("File walk error on path %q. Error: %v", path, err)
-			}
-
-			shortPath := strings.TrimPrefix(path, args.TestDataPathAbsolute)
-
-			info, err := d.Info()
-			if err != nil {
-				t.Fatalf("File info error on path %q. Error: %v", path, err)
-			}
-
-			if info.IsDir() {
-				return nil
-			}
-
-			content, err := ioutil.ReadFile(path)
-			if err != nil {
-				t.Errorf("ioutil.ReadFile(%q) error: %v", path, err)
-			}
-
-			// Read in expected stdout, stderr, and exit code files.
-			if d.Name() == argumentsFilename {
-				config.Args = strings.Split(string(content), "\n")
-				return nil
-			}
-			if d.Name() == expectedStdoutFilename {
-				config.Stdout = string(content)
-				return nil
-			}
-			if d.Name() == expectedStderrFilename {
-				config.Stderr = string(content)
-				return nil
-			}
-			if d.Name() == expectedExitCodeFilename {
-				config.ExitCode, err = strconv.Atoi(string(content))
-				if err != nil {
-					// Set the ExitCode to a sentinel value (-1) to ensure that if the caller is updating the files on disk the value is updated.
-					config.ExitCode = -1
-					t.Errorf("Failed to parse expected exit code (%q) error: %v", path, err)
-				}
-				return nil
-			}
-
-			if strings.HasSuffix(shortPath, args.BuildInSuffix) {
-				inputs = append(inputs, FileSpec{
-					Path:    filepath.Join(args.Name, strings.TrimSuffix(shortPath, args.BuildInSuffix)+".bazel"),
-					Content: string(content),
-				})
-			} else if strings.HasSuffix(shortPath, args.BuildOutSuffix) {
-				goldens = append(goldens, FileSpec{
-					Path:    filepath.Join(args.Name, strings.TrimSuffix(shortPath, args.BuildOutSuffix)+".bazel"),
-					Content: string(content),
-				})
-			} else {
-				inputs = append(inputs, FileSpec{
-					Path:    filepath.Join(args.Name, shortPath),
-					Content: string(content),
-				})
-				goldens = append(goldens, FileSpec{
-					Path:    filepath.Join(args.Name, shortPath),
-					Content: string(content),
-				})
+				// Set the ExitCode to a sentinel value (-1) to ensure that if the caller is updating the files on disk the value is updated.
+				config.ExitCode = -1
+				t.Errorf("Failed to parse expected exit code (%q) error: %v", path, err)
 			}
 			return nil
 		}
-		if err := filepath.WalkDir(args.TestDataPathAbsolute, f); err != nil {
-			t.Fatal(err)
+
+		if strings.HasSuffix(shortPath, args.BuildInSuffix) {
+			inputs = append(inputs, FileSpec{
+				Path:    filepath.Join(args.Name, strings.TrimSuffix(shortPath, args.BuildInSuffix)+".bazel"),
+				Content: string(content),
+			})
+		} else if strings.HasSuffix(shortPath, args.BuildOutSuffix) {
+			goldens = append(goldens, FileSpec{
+				Path:    filepath.Join(args.Name, strings.TrimSuffix(shortPath, args.BuildOutSuffix)+".bazel"),
+				Content: string(content),
+			})
+		} else {
+			inputs = append(inputs, FileSpec{
+				Path:    filepath.Join(args.Name, shortPath),
+				Content: string(content),
+			})
+			goldens = append(goldens, FileSpec{
+				Path:    filepath.Join(args.Name, shortPath),
+				Content: string(content),
+			})
 		}
+		return nil
+	}
+	if err := filepath.WalkDir(args.TestDataPathAbsolute, f); err != nil {
+		t.Fatal(err)
+	}
 
-		testdataDir, cleanup := CreateFiles(t, inputs)
-		workspaceRoot := filepath.Join(testdataDir, args.Name)
+	testdataDir, cleanup := CreateFiles(t, inputs)
+	workspaceRoot := filepath.Join(testdataDir, args.Name)
 
-		var stdout, stderr bytes.Buffer
-		var actualExitCode int
-		defer cleanup()
-		defer func() {
-			if t.Failed() {
-				shouldUpdate := os.Getenv("UPDATE_SNAPSHOTS") != ""
-				buildWorkspaceDirectory := os.Getenv("BUILD_WORKSPACE_DIRECTORY")
-				updateCommand := fmt.Sprintf("UPDATE_SNAPSHOTS=true bazel run %s", os.Getenv("TEST_TARGET"))
-				// srcTestDirectory is the directory of the source code of the test case.
-				srcTestDirectory := path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative), args.Name)
-				if shouldUpdate {
-					// Update stdout, stderr, exit code.
-					updateExpectedConfig(t, config.Stdout, redactWorkspacePath(stdout.String(), workspaceRoot), srcTestDirectory, expectedStdoutFilename)
-					updateExpectedConfig(t, config.Stderr, redactWorkspacePath(stderr.String(), workspaceRoot), srcTestDirectory, expectedStderrFilename)
-					updateExpectedConfig(t, fmt.Sprintf("%d", config.ExitCode), fmt.Sprintf("%d", actualExitCode), srcTestDirectory, expectedExitCodeFilename)
+	var stdout, stderr bytes.Buffer
+	var actualExitCode int
+	defer cleanup()
+	defer func() {
+		if t.Failed() {
+			shouldUpdate := os.Getenv("UPDATE_SNAPSHOTS") != ""
+			buildWorkspaceDirectory := os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+			updateCommand := fmt.Sprintf("UPDATE_SNAPSHOTS=true bazel run %s", os.Getenv("TEST_TARGET"))
+			// srcTestDirectory is the directory of the source code of the test case.
+			srcTestDirectory := path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative), args.Name)
+			if shouldUpdate {
+				// Update stdout, stderr, exit code.
+				updateExpectedConfig(t, config.Stdout, redactWorkspacePath(stdout.String(), workspaceRoot), srcTestDirectory, expectedStdoutFilename)
+				updateExpectedConfig(t, config.Stderr, redactWorkspacePath(stderr.String(), workspaceRoot), srcTestDirectory, expectedStderrFilename)
+				updateExpectedConfig(t, fmt.Sprintf("%d", config.ExitCode), fmt.Sprintf("%d", actualExitCode), srcTestDirectory, expectedExitCodeFilename)
 
-					err := filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
-						if err != nil {
-							return err
-						}
-						relativePath := strings.TrimPrefix(walkedPath, testdataDir)
-						if shouldUpdate {
-							if buildWorkspaceDirectory == "" {
-								t.Fatalf("Tried to update snapshots but no BUILD_WORKSPACE_DIRECTORY specified.\n Try %s.", updateCommand)
-							}
-
-							if info.Name() == "BUILD.bazel" {
-								destFile := strings.TrimSuffix(path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative)+relativePath), ".bazel") + args.BuildOutSuffix
-
-								err := copyFile(walkedPath, destFile)
-								if err != nil {
-									t.Fatalf("Failed to copy file %v to %v. Error: %v\n", walkedPath, destFile, err)
-								}
-							}
-
-						}
-						t.Logf("%q exists in %v", relativePath, testdataDir)
-						return nil
-					})
+				err := filepath.Walk(testdataDir, func(walkedPath string, info os.FileInfo, err error) error {
 					if err != nil {
-						t.Fatalf("Failed to walk file: %v", err)
+						return err
 					}
+					relativePath := strings.TrimPrefix(walkedPath, testdataDir)
+					if shouldUpdate {
+						if buildWorkspaceDirectory == "" {
+							t.Fatalf("Tried to update snapshots but no BUILD_WORKSPACE_DIRECTORY specified.\n Try %s.", updateCommand)
+						}
 
-				} else {
-					t.Logf(`
+						if info.Name() == "BUILD.bazel" {
+							destFile := strings.TrimSuffix(path.Join(buildWorkspaceDirectory, path.Dir(args.TestDataPathRelative)+relativePath), ".bazel") + args.BuildOutSuffix
+
+							err := copyFile(walkedPath, destFile)
+							if err != nil {
+								t.Fatalf("Failed to copy file %v to %v. Error: %v\n", walkedPath, destFile, err)
+							}
+						}
+
+					}
+					t.Logf("%q exists in %v", relativePath, testdataDir)
+					return nil
+				})
+				if err != nil {
+					t.Fatalf("Failed to walk file: %v", err)
+				}
+
+			} else {
+				t.Logf(`
 =====================================================================================
 Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
 =====================================================================================
 `, updateCommand)
-				}
-			}
-		}()
-
-		ctx, cancel := context.WithTimeout(context.Background(), args.Timeout)
-		defer cancel()
-		cmd := exec.CommandContext(ctx, args.GazelleBinaryPath, config.Args...)
-		cmd.Stdout = &stdout
-		cmd.Stderr = &stderr
-		cmd.Dir = workspaceRoot
-		cmd.Env = append(os.Environ(), fmt.Sprintf("BUILD_WORKSPACE_DIRECTORY=%v", workspaceRoot))
-		if err := cmd.Run(); err != nil {
-			var e *exec.ExitError
-			if !errors.As(err, &e) {
-				t.Fatal(err)
 			}
 		}
-		errs := make([]error, 0)
-		actualExitCode = cmd.ProcessState.ExitCode()
-		if config.ExitCode != actualExitCode {
-			if actualExitCode == cmdTimeoutOrInterruptExitCode {
-				errs = append(errs, fmt.Errorf("gazelle exceeded the timeout or was interrupted"))
-			} else {
+	}()
 
-				errs = append(errs, fmt.Errorf("expected gazelle exit code: %d\ngot: %d",
-					config.ExitCode, actualExitCode,
-				))
-			}
+	ctx, cancel := context.WithTimeout(context.Background(), args.Timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, args.GazelleBinaryPath, config.Args...)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	cmd.Dir = workspaceRoot
+	cmd.Env = append(os.Environ(), fmt.Sprintf("BUILD_WORKSPACE_DIRECTORY=%v", workspaceRoot))
+	if err := cmd.Run(); err != nil {
+		var e *exec.ExitError
+		if !errors.As(err, &e) {
+			t.Fatal(err)
 		}
-		actualStdout := redactWorkspacePath(stdout.String(), workspaceRoot)
-		if strings.TrimSpace(config.Stdout) != strings.TrimSpace(actualStdout) {
-			errs = append(errs, fmt.Errorf("expected gazelle stdout: %s\ngot: %s",
-				config.Stdout, actualStdout,
+	}
+	errs := make([]error, 0)
+	actualExitCode = cmd.ProcessState.ExitCode()
+	if config.ExitCode != actualExitCode {
+		if actualExitCode == cmdTimeoutOrInterruptExitCode {
+			errs = append(errs, fmt.Errorf("gazelle exceeded the timeout or was interrupted"))
+		} else {
+
+			errs = append(errs, fmt.Errorf("expected gazelle exit code: %d\ngot: %d",
+				config.ExitCode, actualExitCode,
 			))
 		}
-		actualStderr := redactWorkspacePath(stderr.String(), workspaceRoot)
-		if strings.TrimSpace(config.Stderr) != strings.TrimSpace(actualStderr) {
-			errs = append(errs, fmt.Errorf("expected gazelle stderr: %s\ngot: %s",
-				config.Stderr, actualStderr,
-			))
+	}
+	actualStdout := redactWorkspacePath(stdout.String(), workspaceRoot)
+	if strings.TrimSpace(config.Stdout) != strings.TrimSpace(actualStdout) {
+		errs = append(errs, fmt.Errorf("expected gazelle stdout: %s\ngot: %s",
+			config.Stdout, actualStdout,
+		))
+	}
+	actualStderr := redactWorkspacePath(stderr.String(), workspaceRoot)
+	if strings.TrimSpace(config.Stderr) != strings.TrimSpace(actualStderr) {
+		errs = append(errs, fmt.Errorf("expected gazelle stderr: %s\ngot: %s",
+			config.Stderr, actualStderr,
+		))
+	}
+	if len(errs) > 0 {
+		for _, err := range errs {
+			t.Log(err)
 		}
-		if len(errs) > 0 {
-			for _, err := range errs {
-				t.Log(err)
-			}
-			t.FailNow()
-		}
+		t.FailNow()
+	}
 
-		CheckFiles(t, testdataDir, goldens)
-	})
+	CheckFiles(t, testdataDir, goldens)
 }
 
 func copyFile(src string, dest string) error {
@@ -408,7 +427,7 @@ type testConfig struct {
 
 // updateExpectedConfig writes to an expected stdout, stderr, or exit code file
 // with the latest results of a test.
-func updateExpectedConfig(t *testing.T, expected string, actual string, srcTestDirectory string, expectedFilename string) {
+func updateExpectedConfig(t TB, expected string, actual string, srcTestDirectory string, expectedFilename string) {
 	if expected != actual {
 		destFile := path.Join(srcTestDirectory, expectedFilename)
 

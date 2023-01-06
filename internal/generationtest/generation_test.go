@@ -62,6 +62,8 @@ func TestFullGeneration(t *testing.T) {
 	}
 
 	for _, args := range tests {
-		testtools.TestGazelleGenerationOnPath(t, args)
+		t.Run(args.Name, func(t *testing.T) {
+			testtools.TestGazelleGenerationOnPath(t, args)
+		})
 	}
 }
