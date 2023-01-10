@@ -68,12 +68,12 @@ func (g *glob) doGlob(fsys fs.FS, pattern string, m []string, firstSegment, befo
 		// pattern exist?
 		// The pattern may contain escaped wildcard characters for an exact path match.
 		path := unescapeMeta(pattern)
-		_, pathExists, pathErr := g.exists(fsys, path, beforeMeta)
+		pathInfo, pathExists, pathErr := g.exists(fsys, path, beforeMeta)
 		if pathErr != nil {
 			return nil, pathErr
 		}
 
-		if pathExists {
+		if pathExists && (!firstSegment || !g.filesOnly || !pathInfo.IsDir()) {
 			matches = append(matches, path)
 		}
 
@@ -194,15 +194,17 @@ func (g *glob) globDir(fsys fs.FS, dir, pattern string, matches []string, canMat
 	m = matches
 
 	if pattern == "" {
-		// pattern can be an empty string if the original pattern ended in a slash,
-		// in which case, we should just return dir, but only if it actually exists
-		// and it's a directory (or a symlink to a directory)
-		_, isDir, err := g.isPathDir(fsys, dir, beforeMeta)
-		if err != nil {
-			return nil, err
-		}
-		if isDir {
-			m = append(m, dir)
+		if !canMatchFiles || !g.filesOnly {
+			// pattern can be an empty string if the original pattern ended in a
+			// slash, in which case, we should just return dir, but only if it
+			// actually exists and it's a directory (or a symlink to a directory)
+			_, isDir, err := g.isPathDir(fsys, dir, beforeMeta)
+			if err != nil {
+				return nil, err
+			}
+			if isDir {
+				m = append(m, dir)
+			}
 		}
 		return
 	}
@@ -230,10 +232,15 @@ func (g *glob) globDir(fsys fs.FS, dir, pattern string, matches []string, canMat
 		}
 		if matched {
 			matched = canMatchFiles
-			if !matched {
+			if !matched || g.filesOnly {
 				matched, e = g.isDir(fsys, dir, name, info)
 				if e != nil {
 					return
+				}
+				if canMatchFiles {
+					// if we're here, it's because g.filesOnly
+					// is set and we don't want directories
+					matched = !matched
 				}
 			}
 			if matched {
@@ -255,8 +262,11 @@ func (g *glob) globDoubleStar(fsys fs.FS, dir string, matches []string, canMatch
 		}
 	}
 
-	// `**` can match *this* dir, so add it
-	matches = append(matches, dir)
+	if !g.filesOnly {
+		// `**` can match *this* dir, so add it
+		matches = append(matches, dir)
+	}
+
 	for _, info := range dirs {
 		name := info.Name()
 		isDir, err := g.isDir(fsys, dir, name, info)
@@ -379,7 +389,7 @@ func (g *glob) isPathDir(fsys fs.FS, name string, beforeMeta bool) (fs.FileInfo,
 // represents a symbolic link, the link is followed by running fs.Stat() on
 // `path.Join(dir, name)` (if dir is "", name will be used without joining)
 func (g *glob) isDir(fsys fs.FS, dir, name string, info fs.DirEntry) (bool, error) {
-	if (info.Type() & fs.ModeSymlink) > 0 {
+	if !g.noFollow && (info.Type()&fs.ModeSymlink) > 0 {
 		p := name
 		if dir != "" {
 			p = path.Join(dir, name)

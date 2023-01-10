@@ -128,6 +128,7 @@ var rewrites = []struct {
 	{"listsort", sortStringLists, scopeBoth},
 	{"multiplus", fixMultilinePlus, scopeBuild},
 	{"loadsort", sortAllLoadArgs, scopeBoth},
+	{"useRepoPositionalsSort", sortUseRepoPositionals, TypeModule},
 	{"formatdocstrings", formatDocstrings, scopeBoth},
 	{"reorderarguments", reorderArguments, scopeBoth},
 	{"editoctal", editOctals, scopeBoth},
@@ -484,7 +485,7 @@ func sortStringLists(f *File, w *Rewriter) {
 	})
 }
 
-// deduplicateStingList removes duplicates from a list with string expressions
+// deduplicateStringList removes duplicates from a list with string expressions
 // without reordering its elements.
 // Any suffix-comments are lost, any before- and after-comments are preserved.
 func deduplicateStringList(x Expr) {
@@ -493,10 +494,17 @@ func deduplicateStringList(x Expr) {
 		return
 	}
 
+	list.List = deduplicateStringExprs(list.List)
+}
+
+// deduplicateStringExprs removes duplicate string expressions from a slice
+// without reordering its elements.
+// Any suffix-comments are lost, any before- and after-comments are preserved.
+func deduplicateStringExprs(list []Expr) []Expr {
 	var comments []Comment
 	alreadySeen := make(map[string]bool)
 	var deduplicated []Expr
-	for _, value := range list.List {
+	for _, value := range list {
 		str, ok := value.(*StringExpr)
 		if !ok {
 			deduplicated = append(deduplicated, value)
@@ -518,7 +526,7 @@ func deduplicateStringList(x Expr) {
 		}
 		deduplicated = append(deduplicated, value)
 	}
-	list.List = deduplicated
+	return deduplicated
 }
 
 // SortStringList sorts x, a list of strings.
@@ -529,8 +537,9 @@ func SortStringList(x Expr) {
 	if !ok || len(list.List) < 2 {
 		return
 	}
+
 	if doNotSort(list.List[0]) {
-		deduplicateStringList(list)
+		list.List = deduplicateStringExprs(list.List)
 		return
 	}
 
@@ -548,22 +557,30 @@ func SortStringList(x Expr) {
 		}
 	}
 
+	list.List = sortStringExprs(list.List)
+}
+
+func sortStringExprs(list []Expr) []Expr {
+	if len(list) < 2 {
+		return list
+	}
+
 	// Sort chunks of the list with no intervening blank lines or comments.
-	for i := 0; i < len(list.List); {
-		if _, ok := list.List[i].(*StringExpr); !ok {
+	for i := 0; i < len(list); {
+		if _, ok := list[i].(*StringExpr); !ok {
 			i++
 			continue
 		}
 
 		j := i + 1
-		for ; j < len(list.List); j++ {
-			if str, ok := list.List[j].(*StringExpr); !ok || len(str.Before) > 0 {
+		for ; j < len(list); j++ {
+			if str, ok := list[j].(*StringExpr); !ok || len(str.Before) > 0 {
 				break
 			}
 		}
 
 		var chunk []stringSortKey
-		for index, x := range list.List[i:j] {
+		for index, x := range list[i:j] {
 			chunk = append(chunk, makeSortKey(index, x.(*StringExpr)))
 		}
 		if !sort.IsSorted(byStringExpr(chunk)) || !isUniq(chunk) {
@@ -575,13 +592,15 @@ func SortStringList(x Expr) {
 
 			chunk[0].x.Comment().Before = before
 			for offset, key := range chunk {
-				list.List[i+offset] = key.x
+				list[i+offset] = key.x
 			}
-			list.List = append(list.List[:(i+len(chunk))], list.List[j:]...)
+			list = append(list[:(i+len(chunk))], list[j:]...)
 		}
 
 		i = j
 	}
+
+	return list
 }
 
 // uniq removes duplicates from a list, which must already be sorted.
@@ -852,6 +871,27 @@ func sortAllLoadArgs(f *File, _ *Rewriter) {
 	Walk(f, func(v Expr, stk []Expr) {
 		if load, ok := v.(*LoadStmt); ok {
 			SortLoadArgs(load)
+		}
+	})
+}
+
+func sortUseRepoPositionals(f *File, _ *Rewriter) {
+	Walk(f, func(v Expr, stk []Expr) {
+		if call, ok := v.(*CallExpr); ok {
+			// The first argument of a valid use_repo call is always a module extension proxy, so we
+			// do not need to sort calls with less than three arguments.
+			if ident, ok := call.X.(*Ident); !ok || ident.Name != "use_repo" || len(call.List) < 3 {
+				return
+			}
+			// Respect the "do not sort" comment on both the first argument and the first repository
+			// name.
+			if doNotSort(call) || doNotSort(call.List[0]) || doNotSort(call.List[1]) {
+				call.List = deduplicateStringExprs(call.List)
+			} else {
+				// Keyword arguments do not have to be sorted here as this has already been done by
+				// the generic callsort rewriter pass.
+				call.List = sortStringExprs(call.List)
+			}
 		}
 	})
 }

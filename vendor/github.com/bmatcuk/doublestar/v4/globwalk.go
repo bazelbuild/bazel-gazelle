@@ -76,7 +76,7 @@ func (g *glob) doGlobWalk(fsys fs.FS, pattern string, firstSegment, beforeMeta b
 		// The pattern may contain escaped wildcard characters for an exact path match.
 		path := unescapeMeta(pattern)
 		info, pathExists, err := g.exists(fsys, path, beforeMeta)
-		if pathExists {
+		if pathExists && (!firstSegment || !g.filesOnly || !info.IsDir()) {
 			err = fn(path, dirEntryFromFileInfo(info))
 			if err == SkipDir {
 				err = nil
@@ -241,17 +241,19 @@ func (g *glob) doGlobAltsWalk(fsys fs.FS, d, pattern string, startIdx, openingId
 
 func (g *glob) globDirWalk(fsys fs.FS, dir, pattern string, canMatchFiles, beforeMeta bool, fn GlobWalkFunc) (e error) {
 	if pattern == "" {
-		// pattern can be an empty string if the original pattern ended in a slash,
-		// in which case, we should just return dir, but only if it actually exists
-		// and it's a directory (or a symlink to a directory)
-		info, isDir, err := g.isPathDir(fsys, dir, beforeMeta)
-		if err != nil {
-			return err
-		}
-		if isDir {
-			e = fn(dir, dirEntryFromFileInfo(info))
-			if e == SkipDir {
-				e = nil
+		if !canMatchFiles || !g.filesOnly {
+			// pattern can be an empty string if the original pattern ended in a
+			// slash, in which case, we should just return dir, but only if it
+			// actually exists and it's a directory (or a symlink to a directory)
+			info, isDir, err := g.isPathDir(fsys, dir, beforeMeta)
+			if err != nil {
+				return err
+			}
+			if isDir {
+				e = fn(dir, dirEntryFromFileInfo(info))
+				if e == SkipDir {
+					e = nil
+				}
 			}
 		}
 		return
@@ -266,11 +268,13 @@ func (g *glob) globDirWalk(fsys fs.FS, dir, pattern string, canMatchFiles, befor
 		if !dirExists || !info.IsDir() {
 			return nil
 		}
-		if e = fn(dir, dirEntryFromFileInfo(info)); e != nil {
-			if e == SkipDir {
-				e = nil
+		if !canMatchFiles || !g.filesOnly {
+			if e = fn(dir, dirEntryFromFileInfo(info)); e != nil {
+				if e == SkipDir {
+					e = nil
+				}
+				return
 			}
-			return
 		}
 		return g.globDoubleStarWalk(fsys, dir, canMatchFiles, fn)
 	}
@@ -292,10 +296,15 @@ func (g *glob) globDirWalk(fsys fs.FS, dir, pattern string, canMatchFiles, befor
 		}
 		if matched {
 			matched = canMatchFiles
-			if !matched {
+			if !matched || g.filesOnly {
 				matched, e = g.isDir(fsys, dir, name, info)
 				if e != nil {
 					return e
+				}
+				if canMatchFiles {
+					// if we're here, it's because g.filesOnly
+					// is set and we don't want directories
+					matched = !matched
 				}
 			}
 			if matched {
@@ -325,7 +334,6 @@ func (g *glob) globDoubleStarWalk(fsys fs.FS, dir string, canMatchFiles bool, fn
 		return g.forwardErrIfFailOnIOErrors(err)
 	}
 
-	// `**` can match *this* dir, so add it
 	for _, info := range dirs {
 		name := info.Name()
 		isDir, err := g.isDir(fsys, dir, name, info)
@@ -335,12 +343,15 @@ func (g *glob) globDoubleStarWalk(fsys fs.FS, dir string, canMatchFiles bool, fn
 
 		if isDir {
 			p := path.Join(dir, name)
-			if e = fn(p, info); e != nil {
-				if e == SkipDir {
-					e = nil
-					continue
+			if !canMatchFiles || !g.filesOnly {
+				// `**` can match *this* dir, so add it
+				if e = fn(p, info); e != nil {
+					if e == SkipDir {
+						e = nil
+						continue
+					}
+					return
 				}
-				return
 			}
 			if e = g.globDoubleStarWalk(fsys, p, canMatchFiles, fn); e != nil {
 				return

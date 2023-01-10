@@ -165,23 +165,30 @@ var SortableAllowlist = map[string]bool{}
 // will change, perhaps swapping in a separate table for each call,
 // derived from the order used in the Build Encyclopedia.
 var NamePriority = map[string]int{
-	"name":              -99,
-	"gwt_name":          -98,
-	"package_name":      -97,
-	"visible_node_name": -96, // for boq_initial_css_modules and boq_jswire_test_suite
-	"size":              -95,
-	"timeout":           -94,
-	"testonly":          -93,
-	"src":               -92,
-	"srcdir":            -91,
-	"srcs":              -90,
-	"out":               -89,
-	"outs":              -88,
-	"hdrs":              -87,
-	"has_services":      -86, // before api versions, for proto
-	"include":           -85, // before exclude, for glob
-	"of":                -84, // for check_dependencies
-	"baseline":          -83, // for searchbox_library
+	"name":                                  -99,
+	"archive_override.module_name":          -99, // for MODULE.bazel
+	"git_override.module_name":              -99, // for MODULE.bazel
+	"local_path_override.module_name":       -99, // for MODULE.bazel
+	"multiple_version_override.module_name": -99, // for MODULE.bazel
+	"single_version_override.module_name":   -99, // for MODULE.bazel
+	"bazel_dep.version":                     -98, // for MODULE.bazel
+	"module.version":                        -98, // for MODULE.bazel
+	"gwt_name":                              -98,
+	"package_name":                          -97,
+	"visible_node_name":                     -96, // for boq_initial_css_modules and boq_jswire_test_suite
+	"size":                                  -95,
+	"timeout":                               -94,
+	"testonly":                              -93,
+	"src":                                   -92,
+	"srcdir":                                -91,
+	"srcs":                                  -90,
+	"out":                                   -89,
+	"outs":                                  -88,
+	"hdrs":                                  -87,
+	"has_services":                          -86, // before api versions, for proto
+	"include":                               -85, // before exclude, for glob
+	"of":                                    -84, // for check_dependencies
+	"baseline":                              -83, // for searchbox_library
 	// All others sort here, at 0.
 	"destdir":        1,
 	"exports":        2,
@@ -271,6 +278,15 @@ var ProtoNativeSymbols = []string{
 
 // ProtoLoadPath is the load path for the Starlark Proto Rules.
 var ProtoLoadPath = "@rules_proto//proto:defs.bzl"
+
+// IsModuleOverride contains the names of all Bzlmod module overrides available in MODULE.bazel.
+var IsModuleOverride = map[string]bool{
+	"archive_override":          true,
+	"git_override":              true,
+	"local_path_override":       true,
+	"multiple_version_override": true,
+	"single_version_override":   true,
+}
 
 // OverrideTables allows a user of the build package to override the special-case rules. The user-provided tables replace the built-in tables.
 func OverrideTables(labelArg, denylist, listArg, sortableListArg, sortDenylist, sortAllowlist map[string]bool, namePriority map[string]int, stripLabelLeadingSlashes, shortenAbsoluteLabelsToRelative bool) {

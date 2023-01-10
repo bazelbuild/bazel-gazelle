@@ -22,6 +22,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/bazelbuild/buildtools/tables"
 )
 
 const (
@@ -260,6 +262,16 @@ func (p *printer) compactStmt(s1, s2 Expr) bool {
 	} else if p.fileType == TypeModule && isBazelDep(s1) && isBazelDep(s2) {
 		// bazel_dep statements in MODULE files should be compressed
 		return true
+	} else if p.fileType == TypeModule && isBazelDepWithOverride(s1, s2) {
+		// Do not separate an override from the bazel_dep it overrides.
+		return true
+	} else if p.fileType == TypeModule && useSameModuleExtensionProxy(s1, s2) {
+		// Keep statements together that use the same module extension:
+		//
+		//   foo_deps = use_extension("//:foo.bzl", "foo_deps")
+		//   foo_deps.module(path = "github.com/foo/bar")
+		//   use_repo(foo_deps, "com_github_foo_bar")
+		return true
 	} else if isCommentBlock(s1) || isCommentBlock(s2) {
 		// Standalone comment blocks shouldn't be attached to other statements
 		return false
@@ -292,6 +304,104 @@ func isBazelDep(x Expr) bool {
 		return true
 	}
 	return false
+}
+
+func isModuleOverride(x Expr) bool {
+	call, ok := x.(*CallExpr)
+	if !ok {
+		return false
+	}
+	ident, ok := call.X.(*Ident)
+	if !ok {
+		return false
+	}
+	return tables.IsModuleOverride[ident.Name]
+}
+
+func getKeywordArgument(call *CallExpr, param string) Expr {
+	for _, arg := range call.List {
+		kwarg, ok := arg.(*AssignExpr)
+		if !ok {
+			continue
+		}
+		ident, ok := kwarg.LHS.(*Ident)
+		if !ok {
+			continue
+		}
+		if ident.Name == param {
+			return kwarg.RHS
+		}
+	}
+	return nil
+}
+
+func isBazelDepWithOverride(x, y Expr) bool {
+	if !isBazelDep(x) || !isModuleOverride(y) {
+		return false
+	}
+	bazelDepName, ok := getKeywordArgument(x.(*CallExpr), "name").(*StringExpr)
+	if !ok {
+		return false
+	}
+	overrideModuleName, ok := getKeywordArgument(y.(*CallExpr), "module_name").(*StringExpr)
+	if !ok {
+		return false
+	}
+	return bazelDepName.Value == overrideModuleName.Value
+}
+
+func useSameModuleExtensionProxy(x, y Expr) bool {
+	extX := usedModuleExtensionProxy(x)
+	if extX == "" {
+		return false
+	}
+	extY := usedModuleExtensionProxy(y)
+	return extX == extY
+}
+
+func usedModuleExtensionProxy(x Expr) string {
+	if call, ok := x.(*CallExpr); ok {
+		if callee, isIdent := call.X.(*Ident); isIdent && callee.Name == "use_repo" {
+			// Handles:
+			//   use_repo(foo_deps, "com_github_foo_bar")
+			if len(call.List) < 1 {
+				return ""
+			}
+			proxy, isIdent := call.List[0].(*Ident)
+			if !isIdent {
+				return ""
+			}
+			return proxy.Name
+		} else if dot, isDot := call.X.(*DotExpr); isDot {
+			// Handles:
+			//   foo_deps.module(path = "github.com/foo/bar")
+			extension, isIdent := dot.X.(*Ident)
+			if !isIdent {
+				return ""
+			}
+			return extension.Name
+		} else {
+			return ""
+		}
+	} else if assign, ok := x.(*AssignExpr); ok {
+		// Handles:
+		//   foo_deps = use_extension("//:foo.bzl", "foo_deps")
+		assignee, isIdent := assign.LHS.(*Ident)
+		if !isIdent {
+			return ""
+		}
+		call, isCall := assign.RHS.(*CallExpr)
+		if !isCall {
+			return ""
+		}
+		callee, isIdent := call.X.(*Ident)
+		if !isIdent || callee.Name != "use_extension" {
+			return ""
+		}
+		return assignee.Name
+	} else {
+		return ""
+	}
 }
 
 // isCommentBlock reports whether x is a comment block node.

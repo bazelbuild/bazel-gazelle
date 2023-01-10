@@ -1,9 +1,13 @@
 package doublestar
 
+import "strings"
+
 // glob is an internal type to store options during globbing.
 type glob struct {
 	failOnIOErrors        bool
 	failOnPatternNotExist bool
+	filesOnly             bool
+	noFollow              bool
 }
 
 // GlobOption represents a setting that can be passed to Glob, GlobWalk, and
@@ -45,6 +49,40 @@ func WithFailOnPatternNotExist() GlobOption {
 	}
 }
 
+// WithFilesOnly is an option that can be passed to Glob, GlobWalk, or
+// FilepathGlob. If passed, doublestar will only return files that match the
+// pattern, not directories.
+//
+// Note: if combined with the WithNoFollow option, symlinks to directories
+// _will_ be included in the result since no attempt is made to follow the
+// symlink.
+//
+func WithFilesOnly() GlobOption {
+	return func(g *glob) {
+		g.filesOnly = true
+	}
+}
+
+// WithNoFollow is an option that can be passed to Glob, GlobWalk, or
+// FilepathGlob. If passed, doublestar will not follow symlinks while
+// traversing the filesystem. However, due to io/fs's _very_ poor support for
+// querying the filesystem about symlinks, there's a caveat here: if part of
+// the pattern before any meta characters contains a reference to a symlink, it
+// will be followed. For example, a pattern such as `path/to/symlink/*` will be
+// followed assuming it is a valid symlink to a directory. However, from this
+// same example, a pattern such as `path/to/**` will not traverse the
+// `symlink`, nor would `path/*/symlink/*`
+//
+// Note: if combined with the WithFilesOnly option, symlinks to directories
+// _will_ be included in the result since no attempt is made to follow the
+// symlink.
+//
+func WithNoFollow() GlobOption {
+	return func(g *glob) {
+		g.noFollow = true
+	}
+}
+
 // forwardErrIfFailOnIOErrors is used to wrap the return values of I/O
 // functions. When failOnIOErrors is enabled, it will return err; otherwise, it
 // always returns nil.
@@ -69,13 +107,38 @@ func (g *glob) handlePatternNotExist(canFail bool) error {
 
 // Format options for debugging/testing purposes
 func (g *glob) GoString() string {
+	var b strings.Builder
+	b.WriteString("opts: ")
+
+	hasOpts := false
 	if g.failOnIOErrors {
-		if g.failOnPatternNotExist {
-			return "opts: WithFailOnIOErrors, WithFailOnPatternNotExist"
-		}
-		return "opts: WithFailOnIOErrors"
-	} else if g.failOnPatternNotExist {
-		return "opts: WithFailOnPatternNotExist"
+		b.WriteString("WithFailOnIOErrors")
+		hasOpts = true
 	}
-	return "opts: nil"
+	if g.failOnPatternNotExist {
+		if hasOpts {
+			b.WriteString(", ")
+		}
+		b.WriteString("WithFailOnPatternNotExist")
+		hasOpts = true
+	}
+	if g.filesOnly {
+		if hasOpts {
+			b.WriteString(", ")
+		}
+		b.WriteString("WithFilesOnly")
+		hasOpts = true
+	}
+	if g.noFollow {
+		if hasOpts {
+			b.WriteString(", ")
+		}
+		b.WriteString("WithNoFollow")
+		hasOpts = true
+	}
+
+	if !hasOpts {
+		b.WriteString("nil")
+	}
+	return b.String()
 }
