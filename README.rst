@@ -144,7 +144,7 @@ should look like this:
 
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-     http_archive(
+    http_archive(
         name = "io_bazel_rules_go",
         sha256 = "56d8c5a5c91e1af73eca71a6fab2ced959b67c86d12ba37feedb0a2dfea441a6",
         urls = [
