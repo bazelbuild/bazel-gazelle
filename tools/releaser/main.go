@@ -1,4 +1,4 @@
-/* Copyright 2022 The Bazel Authors. All rights reserved.
+/* Copyright 2023 The Bazel Authors. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,6 @@ limitations under the License.
 */
 
 // releaser is a tool for managing part of the process to release a new version of gazelle.
-//
-// This CLI is intended to be run directly with the go toolchain. It is not suitable for
-// running through 'bazel run' because it expectes to be able to mutate local files.
 package main
 
 import (
