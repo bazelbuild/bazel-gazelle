@@ -25,11 +25,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/bazelbuild/bazel-gazelle/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
-	"regexp"
 	"strings"
 )
 
@@ -44,23 +45,21 @@ func main() {
 
 func run(ctx context.Context, stderr *os.File) error {
 	var (
-		help, verbose bool
+		verbose bool
 	)
-
-	flag.BoolVar(&help, "help", false, "print usage / help information")
-	flag.BoolVar(&help, "h", false, "print usage / help information (shorthand)")
 
 	flag.BoolVar(&verbose, "verbose", false, "increase verbosity")
 	flag.BoolVar(&verbose, "v", false, "increase verbosity (shorthand)")
+	flag.Usage = func() {
+		fmt.Fprint(flag.CommandLine.Output(), `usage: bazel run //tools/releaser
+
+This utility is intended to handle many of the steps to release a new version.
+
+`)
+		flag.PrintDefaults()
+	}
 
 	flag.Parse()
-
-	if help {
-		fmt.Println(`usage: bazel run //tools/releaser
-
-This utility is intended to handle many of the steps to release a new version.`)
-		return nil
-	}
 
 	workspacePath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "WORKSPACE")
 	depsPath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "deps.bzl")
@@ -88,18 +87,19 @@ This utility is intended to handle many of the steps to release a new version.`)
 		}
 	}
 
-	workspace, err := os.ReadFile(workspacePath)
+	workspace, err := os.Open(workspacePath)
 	if err != nil {
 		return err
 	}
+	defer workspace.Close()
 
-	workspaceBuffer := bytes.NewBuffer(workspace)
+	workspaceScanner := bufio.NewScanner(workspace)
 	workspaceWithoutDirectives := new(bytes.Buffer)
 
 	if verbose {
 		fmt.Println("Preparing temporary WORKSPACE without gazelle directives.")
 	}
-	if err := getWorkspaceWithouthDirectives(workspaceBuffer, workspaceWithoutDirectives); err != nil {
+	if err := getWorkspaceWithouthDirectives(workspaceScanner, workspaceWithoutDirectives); err != nil {
 		return err
 	}
 
@@ -118,50 +118,20 @@ This utility is intended to handle many of the steps to release a new version.`)
 		return err
 	}
 
-	depsMaybeBuff := new(bytes.Buffer)
-	workspaceDirectivesBuff := new(bytes.Buffer)
 	// parse the resulting tmp.bzl for deps.bzl and WORKSPACE updates
 	if verbose {
 		fmt.Println("Parsing temporary bzl file to prepare deps.bzl and WORKSPACE modifications.")
 	}
-	if err = getBuffsFromTmp(tmpBzlPath, depsMaybeBuff, workspaceDirectivesBuff); err != nil {
+	maybeRules, workspaceDirectivesBuff, err := readFromTmp(tmpBzlPath)
+	if err != nil {
 		return err
 	}
 
 	// update deps
-	depsFile, err := os.Open(depsPath)
-	if err != nil {
-		return err
-	}
-	defer depsFile.Close()
-	existingDepsScanner := bufio.NewScanner(depsFile)
-	newDepsBuffer := new(bytes.Buffer)
-	var afterSkylib bool
-	for existingDepsScanner.Scan() {
-		if bytes.Contains(existingDepsScanner.Bytes(), []byte("skylib")) {
-			afterSkylib = true
-		}
-
-		if afterSkylib && bytes.HasSuffix(existingDepsScanner.Bytes(), []byte("_maybe(")) {
-			break
-		}
-
-		if _, err := newDepsBuffer.Write(existingDepsScanner.Bytes()); err != nil {
-			return err
-		}
-		if _, err := newDepsBuffer.Write([]byte("\n")); err != nil {
-			return err
-		}
-	}
-
-	// just append the rest
 	if verbose {
 		fmt.Println("Writing new deps.bzl")
 	}
-	if _, err := newDepsBuffer.Write(depsMaybeBuff.Bytes()); err != nil {
-		return err
-	}
-	if err := os.WriteFile(depsPath, newDepsBuffer.Bytes(), 0644); err != nil {
+	if err := updateDepsBzlWithRules(depsPath, maybeRules); err != nil {
 		return err
 	}
 
@@ -230,13 +200,13 @@ This utility is intended to handle many of the steps to release a new version.`)
 	return nil
 }
 
-func getWorkspaceWithouthDirectives(workspaceBuffer, workspaceWithoutDirectives *bytes.Buffer) error {
-	workspaceScanner := bufio.NewScanner(workspaceBuffer)
+func getWorkspaceWithouthDirectives(workspaceScanner *bufio.Scanner, workspaceWithoutDirectives *bytes.Buffer) error {
 	for workspaceScanner.Scan() {
-		if strings.HasPrefix(workspaceScanner.Text(), "# gazelle:repository go_repository") {
+		currentLine := workspaceScanner.Text()
+		if strings.HasPrefix(currentLine, "# gazelle:repository go_repository") {
 			continue
 		}
-		_, err := workspaceWithoutDirectives.Write(workspaceScanner.Bytes())
+		_, err := workspaceWithoutDirectives.WriteString(currentLine)
 		if err != nil {
 			return err
 		}
@@ -248,68 +218,56 @@ func getWorkspaceWithouthDirectives(workspaceBuffer, workspaceWithoutDirectives 
 	return nil
 }
 
-func getBuffsFromTmp(tmpBzlPath string, depsMaybeBuff, workspaceDirectivesBuff *bytes.Buffer) error {
-	tmpbzl, err := os.Open(tmpBzlPath)
+func readFromTmp(tmpBzlPath string) ([]*rule.Rule, *bytes.Buffer, error) {
+	workspaceDirectivesBuff := new(bytes.Buffer)
+	var rules []*rule.Rule
+	tmpBzl, err := rule.LoadMacroFile(tmpBzlPath, "tmp" /* pkg */, "gazelle_dependencies" /* DefName */)
+	if err != nil {
+		return rules, workspaceDirectivesBuff, err
+	}
+	for _, r := range tmpBzl.Rules {
+		maybeRule := rule.NewRule("_maybe", r.Name())
+		maybeRule.AddArg(&bzl.Ident{
+			Name: r.Kind(),
+		})
+
+		for _, k := range r.AttrKeys() {
+			maybeRule.SetAttr(k, r.Attr(k))
+		}
+
+		var suffix string
+		if r.Name() == "com_github_bazelbuild_buildtools" {
+			maybeRule.SetAttr("build_naming_convention", "go_default_library")
+			suffix = " build_naming_convention=go_default_library"
+		}
+		rules = append(rules, maybeRule)
+		fmt.Fprintf(workspaceDirectivesBuff, "# gazelle:repository go_repository name=%s importpath=%s%s\n",
+			r.Name(),
+			r.AttrString("importpath"),
+			suffix,
+		)
+	}
+	return rules, workspaceDirectivesBuff, nil
+}
+
+func updateDepsBzlWithRules(depsPath string, maybeRules []*rule.Rule) error {
+	depsBzl, err := rule.LoadMacroFile(depsPath, "deps" /* pkg */, "gazelle_dependencies" /* DefName */)
 	if err != nil {
 		return err
 	}
-	defer tmpbzl.Close()
 
-	attributeRegex := regexp.MustCompile(`^\s+(name|importpath) = "(.+)",$`)
-
-	var foundDef bool
-	var name string
-	tmpscanner := bufio.NewScanner(tmpbzl)
-	for tmpscanner.Scan() {
-		currentLine := tmpscanner.Text()
-		if strings.HasPrefix(currentLine, "def gazelle_dependencies") {
-			foundDef = true
-			continue
-		}
-		if !foundDef {
-			continue
-		}
-
-		if strings.HasPrefix(strings.TrimSpace(currentLine), "go_repository(") {
-			if _, err := depsMaybeBuff.WriteString(`    _maybe(
-        go_repository,
-`); err != nil {
-				return err
-			}
-			continue
-		}
-
-		// all other lines can be copied directly for the new deps.bzl
-		if _, err := depsMaybeBuff.WriteString(currentLine); err != nil {
-			return err
-		}
-		if _, err := depsMaybeBuff.WriteString("\n"); err != nil {
-			return err
-		}
-
-		// check if its a line we care about
-		if m := attributeRegex.FindAllStringSubmatch(currentLine, -1 /* n */); len(m) > 0 {
-			if m[0][1] == "name" {
-				name = string(m[0][2])
-			}
-
-			if m[0][1] == "importpath" {
-				var suffix string
-				if name == "com_github_bazelbuild_buildtools" {
-					suffix = " build_naming_convention=go_default_library"
-				}
-
-				fmt.Fprintf(workspaceDirectivesBuff, "# gazelle:repository go_repository name=%s importpath=%s%s\n", name, m[0][2], suffix)
-			}
-		}
-
-		// if we found com_github_bazelbuild_buildtools it is extra special
-		if strings.Contains(currentLine, "com_github_bazelbuild_buildtools") {
-			if _, err := depsMaybeBuff.WriteString(`        build_naming_convention = "go_default_library",
-`); err != nil {
-				return err
+	for _, r := range depsBzl.Rules {
+		if r.Kind() == "_maybe" && len(r.Args()) == 1 {
+			// We can't actually delete all _maybe's because http_archive uses it too in here!
+			if ident, ok := r.Args()[0].(*bzl.Ident); ok && ident.Name == "go_repository" {
+				r.Delete()
 			}
 		}
 	}
-	return nil
+
+	for _, r := range maybeRules {
+		r.Insert(depsBzl)
+	}
+
+	return depsBzl.Save(depsPath)
 }

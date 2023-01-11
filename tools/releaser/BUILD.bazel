@@ -5,6 +5,10 @@ go_library(
     srcs = ["main.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/tools/releaser",
     visibility = ["//visibility:private"],
+    deps = [
+        "//rule",
+        "@com_github_bazelbuild_buildtools//build:go_default_library",
+    ],
 )
 
 go_binary(
