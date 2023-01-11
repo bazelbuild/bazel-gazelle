@@ -34,6 +34,7 @@ Gazelle build file generator
 .. _stackb/rules_proto: https://github.com/stackb/rules_proto
 .. _Open a PR: https://github.com/bazelbuild/bazel-gazelle/edit/master/README.rst
 .. _Bazel Slack: https://slack.bazel.build
+.. _swift_bazel: https://github.com/cgrindel/swift_bazel
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -119,6 +120,10 @@ Gazelle can generate Bazel BUILD files for many languages:
 * Starlark
 
   `bazel-skylib`_ has an extension for generating ``bzl_library`` rules. See `bazel_skylib//gazelle/bzl`_.
+
+* Swift
+
+  `swift_bazel`_ has an extension for generating ``swift_library``, ``swift_binary``, and ``swift_test`` rules. It also includes facilities for resolving, downloading and building external Swift packages for a Bazel workspace.
 
 If you know of an extension which could be linked here, please `open a PR`_!
 
