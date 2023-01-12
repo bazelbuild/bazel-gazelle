@@ -22,6 +22,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/bazelbuild/buildtools/tables"
 )
 
 const (
@@ -257,8 +259,19 @@ func (p *printer) compactStmt(s1, s2 Expr) bool {
 	} else if isLoad(s1) || isLoad(s2) {
 		// Load statements should be separated from anything else
 		return false
-	} else if p.fileType == TypeModule && isBazelDep(s1) && isBazelDep(s2) {
-		// bazel_dep statements in MODULE files should be compressed
+	} else if p.fileType == TypeModule && areBazelDepsOfSameType(s1, s2) {
+		// bazel_dep statements in MODULE files should be compressed if they are both dev deps or
+		// both non-dev deps.
+		return true
+	} else if p.fileType == TypeModule && isBazelDepWithOverride(s1, s2) {
+		// Do not separate an override from the bazel_dep it overrides.
+		return true
+	} else if p.fileType == TypeModule && useSameModuleExtensionProxy(s1, s2) {
+		// Keep statements together that use the same module extension:
+		//
+		//   foo_deps = use_extension("//:foo.bzl", "foo_deps")
+		//   foo_deps.module(path = "github.com/foo/bar")
+		//   use_repo(foo_deps, "com_github_foo_bar")
 		return true
 	} else if isCommentBlock(s1) || isCommentBlock(s2) {
 		// Standalone comment blocks shouldn't be attached to other statements
@@ -283,6 +296,17 @@ func isLoad(x Expr) bool {
 	return ok
 }
 
+// areBazelDepsOfSameType reports whether x and y are bazel_dep statements that
+// are both dev dependencies or both regular dependencies.
+func areBazelDepsOfSameType(x, y Expr) bool {
+	if !isBazelDep(x) || !isBazelDep(y) {
+		return false
+	}
+	isXDevDep := getKeywordBoolArgument(x.(*CallExpr), "dev_dependency", false)
+	isYDevDep := getKeywordBoolArgument(y.(*CallExpr), "dev_dependency", false)
+	return isXDevDep == isYDevDep
+}
+
 func isBazelDep(x Expr) bool {
 	call, ok := x.(*CallExpr)
 	if !ok {
@@ -292,6 +316,117 @@ func isBazelDep(x Expr) bool {
 		return true
 	}
 	return false
+}
+
+func isModuleOverride(x Expr) bool {
+	call, ok := x.(*CallExpr)
+	if !ok {
+		return false
+	}
+	ident, ok := call.X.(*Ident)
+	if !ok {
+		return false
+	}
+	return tables.IsModuleOverride[ident.Name]
+}
+
+func getKeywordBoolArgument(call *CallExpr, keyword string, defaultValue bool) bool {
+	arg := getKeywordArgument(call, keyword)
+	if arg == nil {
+		return defaultValue
+	}
+	ident, ok := arg.(*Ident)
+	if !ok {
+		// Assume that the specified more complex value does not evaluate to the default.
+		return !defaultValue
+	}
+	return ident.Name == "True"
+}
+
+func getKeywordArgument(call *CallExpr, param string) Expr {
+	for _, arg := range call.List {
+		kwarg, ok := arg.(*AssignExpr)
+		if !ok {
+			continue
+		}
+		ident, ok := kwarg.LHS.(*Ident)
+		if !ok {
+			continue
+		}
+		if ident.Name == param {
+			return kwarg.RHS
+		}
+	}
+	return nil
+}
+
+func isBazelDepWithOverride(x, y Expr) bool {
+	if !isBazelDep(x) || !isModuleOverride(y) {
+		return false
+	}
+	bazelDepName, ok := getKeywordArgument(x.(*CallExpr), "name").(*StringExpr)
+	if !ok {
+		return false
+	}
+	overrideModuleName, ok := getKeywordArgument(y.(*CallExpr), "module_name").(*StringExpr)
+	if !ok {
+		return false
+	}
+	return bazelDepName.Value == overrideModuleName.Value
+}
+
+func useSameModuleExtensionProxy(x, y Expr) bool {
+	extX := usedModuleExtensionProxy(x)
+	if extX == "" {
+		return false
+	}
+	extY := usedModuleExtensionProxy(y)
+	return extX == extY
+}
+
+func usedModuleExtensionProxy(x Expr) string {
+	if call, ok := x.(*CallExpr); ok {
+		if callee, isIdent := call.X.(*Ident); isIdent && callee.Name == "use_repo" {
+			// Handles:
+			//   use_repo(foo_deps, "com_github_foo_bar")
+			if len(call.List) < 1 {
+				return ""
+			}
+			proxy, isIdent := call.List[0].(*Ident)
+			if !isIdent {
+				return ""
+			}
+			return proxy.Name
+		} else if dot, isDot := call.X.(*DotExpr); isDot {
+			// Handles:
+			//   foo_deps.module(path = "github.com/foo/bar")
+			extension, isIdent := dot.X.(*Ident)
+			if !isIdent {
+				return ""
+			}
+			return extension.Name
+		} else {
+			return ""
+		}
+	} else if assign, ok := x.(*AssignExpr); ok {
+		// Handles:
+		//   foo_deps = use_extension("//:foo.bzl", "foo_deps")
+		assignee, isIdent := assign.LHS.(*Ident)
+		if !isIdent {
+			return ""
+		}
+		call, isCall := assign.RHS.(*CallExpr)
+		if !isCall {
+			return ""
+		}
+		callee, isIdent := call.X.(*Ident)
+		if !isIdent || callee.Name != "use_extension" {
+			return ""
+		}
+		return assignee.Name
+	} else {
+		return ""
+	}
 }
 
 // isCommentBlock reports whether x is a comment block node.

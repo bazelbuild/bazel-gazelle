@@ -35,6 +35,22 @@ load("//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
 
+# For API doc generation
+# This is a dev dependency, users should not need to install it
+# so we declare it in the WORKSPACE
+http_archive(
+    name = "io_bazel_stardoc",
+    sha256 = "c9794dcc8026a30ff67cf7cf91ebe245ca294b20b071845d12c192afe243ad72",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
+        "https://github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//lib:unittest.bzl", "register_unittest_toolchains")
+
+register_unittest_toolchains()
+
 # gazelle:repository go_repository name=co_honnef_go_tools importpath=honnef.co/go/tools
 # gazelle:repository go_repository name=com_github_bazelbuild_buildtools importpath=github.com/bazelbuild/buildtools build_naming_convention=go_default_library
 # gazelle:repository go_repository name=com_github_bazelbuild_rules_go importpath=github.com/bazelbuild/rules_go
@@ -73,19 +89,3 @@ gazelle_dependencies()
 # gazelle:repository go_repository name=org_golang_x_text importpath=golang.org/x/text
 # gazelle:repository go_repository name=org_golang_x_tools importpath=golang.org/x/tools
 # gazelle:repository go_repository name=org_golang_x_xerrors importpath=golang.org/x/xerrors
-
-# For API doc generation
-# This is a dev dependency, users should not need to install it
-# so we declare it in the WORKSPACE
-http_archive(
-    name = "io_bazel_stardoc",
-    sha256 = "c9794dcc8026a30ff67cf7cf91ebe245ca294b20b071845d12c192afe243ad72",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
-        "https://github.com/bazelbuild/stardoc/releases/download/0.5.0/stardoc-0.5.0.tar.gz",
-    ],
-)
-
-load("@bazel_skylib//lib:unittest.bzl", "register_unittest_toolchains")
-
-register_unittest_toolchains()
