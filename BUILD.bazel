@@ -1,5 +1,5 @@
-load("@io_bazel_rules_go//go:def.bzl", "nogo")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@io_bazel_rules_go//go:def.bzl", "nogo")
 load("//:def.bzl", "gazelle", "gazelle_binary")
 
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle
@@ -95,6 +95,7 @@ bzl_library(
         "//internal:gazelle_binary",
         "//internal:go_repository",
         "//internal:overlay_repository",
+        "//internal/generationtest",
         "@bazel_skylib//lib:shell",
     ],
 )
