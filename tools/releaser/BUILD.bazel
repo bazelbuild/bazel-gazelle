@@ -1,0 +1,28 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "releaser_lib",
+    srcs = ["main.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/tools/releaser",
+    visibility = ["//visibility:private"],
+    deps = [
+        "//rule",
+        "@com_github_bazelbuild_buildtools//build:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "releaser",
+    embed = [":releaser_lib"],
+    visibility = ["//visibility:public"],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "main.go",
+    ],
+    visibility = ["//visibility:public"],
+)
