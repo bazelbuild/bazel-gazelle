@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -84,24 +85,32 @@ This utility is intended to handle many of the steps to release a new version.
 		}
 	}
 
-	workspace, err := os.Open(workspacePath)
+	workspace, err := os.OpenFile(workspacePath, os.O_RDWR, 0644)
 	if err != nil {
 		return err
 	}
 	defer workspace.Close()
 
-	workspaceScanner := bufio.NewScanner(workspace)
-	workspaceWithoutDirectives := new(bytes.Buffer)
-
 	if verbose {
 		fmt.Println("Preparing temporary WORKSPACE without gazelle directives.")
 	}
-	if err := getWorkspaceWithouthDirectives(workspaceScanner, workspaceWithoutDirectives); err != nil {
+	workspaceWithoutDirectives, err := getWorkspaceWithoutDirectives(workspace)
+	if err != nil {
+		return err
+	}
+
+	// reuse the open workspace file, so first we empty it and rewind
+	err = workspace.Truncate(0)
+	if err != nil {
+		return err
+	}
+	_ /* new offset */, err = workspace.Seek(0, os.SEEK_SET)
+	if err != nil {
 		return err
 	}
 
 	// write the directive-less workspace and update repos
-	if err := os.WriteFile(workspacePath, workspaceWithoutDirectives.Bytes(), 0666); err != nil {
+	if _, err := workspace.Write(workspaceWithoutDirectives); err != nil {
 		return err
 	}
 
@@ -114,12 +123,13 @@ This utility is intended to handle many of the steps to release a new version.
 		fmt.Println(string(out))
 		return err
 	}
+	defer os.Remove(tmpBzlPath)
 
 	// parse the resulting tmp.bzl for deps.bzl and WORKSPACE updates
 	if verbose {
 		fmt.Println("Parsing temporary bzl file to prepare deps.bzl and WORKSPACE modifications.")
 	}
-	maybeRules, workspaceDirectivesBuff, err := readFromTmp(tmpBzlPath)
+	maybeRules, workspaceDirectives, err := readFromTmp(tmpBzlPath)
 	if err != nil {
 		return err
 	}
@@ -132,25 +142,29 @@ This utility is intended to handle many of the steps to release a new version.
 		return err
 	}
 
-	// append WORKSPACE with directives at the end
+	// append WORKSPACE with directives at the end.
+	// except we cannot append directly because the earlier bazel //:gazelle run modified WORKSPACE
+	// so we truncate and seek to the beginning again before writing all of what we want
 	if verbose {
 		fmt.Println("Append WORKSPACE with directives")
 	}
-	file, err := os.OpenFile(workspacePath, os.O_WRONLY, 0644)
+	_ /* new offset */, err = workspace.Seek(0, os.SEEK_SET)
 	if err != nil {
 		return err
 	}
-	if _, err := file.Write(workspaceWithoutDirectives.Bytes()); err != nil {
+
+	// write the directive-less workspace and update repos
+	if _, err := workspace.Write(workspaceWithoutDirectives); err != nil {
 		return err
 	}
-	if _, err := file.Write(workspaceDirectivesBuff.Bytes()); err != nil {
-		return err
-	}
-	if err := file.Close(); err != nil {
+	if _, err := workspace.Write(workspaceDirectives); err != nil {
 		return err
 	}
 
 	// cleanup before final gazelle run
+	//
+	// note that we also have a defer for os.Remove so it gets cleaned up if there are earlier errors.
+	// This defer will throw an error from this point on, but we're swallowing it anyways.
 	if verbose {
 		fmt.Println("Cleaning up temporary files")
 	}
@@ -164,29 +178,31 @@ This utility is intended to handle many of the steps to release a new version.
 	finalizationCommands := []struct {
 		cmd  string
 		args []string
-
-		// I don't love this continue boolean but apparently cp has no way to suppress a "identical file" error
-		continueOnError bool
+		then func() error
 	}{
 		{cmd: "bazel", args: []string{"run", "//:gazelle"}},
-		{cmd: "bazel", args: []string{"build", "//language/proto:known_imports"}},
-		{cmd: "cp", continueOnError: true, args: []string{"-f", path.Join(os.Getenv("BINDIR"), "language/proto/known_imports.go"), "language/proto/known_imports.go"}},
-		{cmd: "bazel", args: []string{"build", "//language/proto:known_proto_imports"}},
-		{cmd: "cp", continueOnError: true, args: []string{"-f", path.Join(os.Getenv("BINDIR"), "language/proto/known_proto_imports.go"), "language/proto/known_proto_imports.go"}},
-		{cmd: "bazel", args: []string{"build", "//language/proto:known_go_imports"}},
-		{cmd: "cp", continueOnError: true, args: []string{"-f", path.Join(os.Getenv("BINDIR"), "language/proto/known_go_imports.go"), "language/proto/known_go_imports.go"}},
+		{cmd: "bazel", args: []string{"build", "//language/proto:known_imports"}, then: copyClosure(
+			path.Join(os.Getenv("BINDIR"), "language/proto/known_imports.go"), /* src */
+			"language/proto/known_imports.go",
+		)},
+		{cmd: "bazel", args: []string{"build", "//language/proto:known_proto_imports"}, then: copyClosure(
+			path.Join(os.Getenv("BINDIR"), "language/proto/known_proto_imports.go"), /* src */
+			"language/proto/known_proto_imports.go",
+		)},
+		{cmd: "bazel", args: []string{"build", "//language/proto:known_go_imports"}, then: copyClosure(
+			path.Join(os.Getenv("BINDIR"), "language/proto/known_go_imports.go"), /* src */
+			"language/proto/known_go_imports.go",
+		)},
 	}
 	for _, c := range finalizationCommands {
 		cmd := exec.CommandContext(ctx, c.cmd, c.args...)
 		cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
 		if out, err := cmd.CombinedOutput(); err != nil {
-			prefix := "ERROR"
-			if c.continueOnError {
-				prefix = "WARNING"
-			}
-			fmt.Printf("%s - %s", prefix, string(out))
-			if !c.continueOnError {
-				return err
+			fmt.Println(string(out))
+			if c.then != nil {
+				if err := c.then(); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -197,30 +213,48 @@ This utility is intended to handle many of the steps to release a new version.
 	return nil
 }
 
-func getWorkspaceWithouthDirectives(workspaceScanner *bufio.Scanner, workspaceWithoutDirectives *bytes.Buffer) error {
+func copyClosure(srcPath, destPath string) func() error {
+	return func() error {
+		src, err := os.Open(srcPath)
+		if err != nil {
+			return err
+		}
+		dest, err := os.OpenFile(destPath, os.O_WRONLY, 0644)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(src, dest)
+		return err
+	}
+}
+
+func getWorkspaceWithoutDirectives(workspace io.Reader) ([]byte, error) {
+	workspaceScanner := bufio.NewScanner(workspace)
+	var workspaceWithoutDirectives bytes.Buffer
 	for workspaceScanner.Scan() {
 		currentLine := workspaceScanner.Text()
 		if strings.HasPrefix(currentLine, "# gazelle:repository go_repository") {
 			continue
 		}
-		_, err := workspaceWithoutDirectives.WriteString(currentLine)
+		_, err := workspaceWithoutDirectives.WriteString(currentLine + "\n")
 		if err != nil {
-			return err
-		}
-		_, err = workspaceWithoutDirectives.Write([]byte("\n"))
-		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	// leave some buffering at the end of the bytes
+	_, err := workspaceWithoutDirectives.WriteString("\n\n")
+	if err != nil {
+		return nil, err
+	}
+	return workspaceWithoutDirectives.Bytes(), workspaceScanner.Err()
 }
 
-func readFromTmp(tmpBzlPath string) ([]*rule.Rule, *bytes.Buffer, error) {
+func readFromTmp(tmpBzlPath string) ([]*rule.Rule, []byte, error) {
 	workspaceDirectivesBuff := new(bytes.Buffer)
 	var rules []*rule.Rule
 	tmpBzl, err := rule.LoadMacroFile(tmpBzlPath, "tmp" /* pkg */, "gazelle_dependencies" /* DefName */)
 	if err != nil {
-		return rules, workspaceDirectivesBuff, err
+		return nil, nil, err
 	}
 	for _, r := range tmpBzl.Rules {
 		maybeRule := rule.NewRule("_maybe", r.Name())
@@ -244,7 +278,7 @@ func readFromTmp(tmpBzlPath string) ([]*rule.Rule, *bytes.Buffer, error) {
 			suffix,
 		)
 	}
-	return rules, workspaceDirectivesBuff, nil
+	return rules, workspaceDirectivesBuff.Bytes(), nil
 }
 
 func updateDepsBzlWithRules(depsPath string, maybeRules []*rule.Rule) error {
