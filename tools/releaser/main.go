@@ -219,11 +219,11 @@ func copyClosure(srcPath, destPath string) func() error {
 		if err != nil {
 			return err
 		}
-		dest, err := os.OpenFile(destPath, os.O_WRONLY, 0644)
+		dest, err := os.Create(destPath)
 		if err != nil {
 			return err
 		}
-		_, err = io.Copy(src, dest)
+		_, err = io.Copy(dest, src)
 		return err
 	}
 }
