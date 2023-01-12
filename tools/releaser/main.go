@@ -175,35 +175,42 @@ This utility is intended to handle many of the steps to release a new version.
 	if verbose {
 		fmt.Println("Running final gazelle run, and copying some language specific build files.")
 	}
-	finalizationCommands := []struct {
-		cmd  string
-		args []string
-		then func() error
-	}{
-		{cmd: "bazel", args: []string{"run", "//:gazelle"}},
-		{cmd: "bazel", args: []string{"build", "//language/proto:known_imports"}, then: copyClosure(
-			path.Join(os.Getenv("BINDIR"), "language/proto/known_imports.go"), /* src */
-			"language/proto/known_imports.go",
-		)},
-		{cmd: "bazel", args: []string{"build", "//language/proto:known_proto_imports"}, then: copyClosure(
-			path.Join(os.Getenv("BINDIR"), "language/proto/known_proto_imports.go"), /* src */
-			"language/proto/known_proto_imports.go",
-		)},
-		{cmd: "bazel", args: []string{"build", "//language/proto:known_go_imports"}, then: copyClosure(
-			path.Join(os.Getenv("BINDIR"), "language/proto/known_go_imports.go"), /* src */
-			"language/proto/known_go_imports.go",
-		)},
+	cmd = exec.CommandContext(ctx, "bazel", "run", "//:gazelle")
+	cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		fmt.Println(string(out))
+		return err
 	}
-	for _, c := range finalizationCommands {
-		cmd := exec.CommandContext(ctx, c.cmd, c.args...)
-		cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			fmt.Println(string(out))
-			if c.then != nil {
-				if err := c.then(); err != nil {
-					return err
-				}
-			}
+
+	cmd = exec.CommandContext(ctx, "bazel", "build", "//language/proto:known_imports", "//language/proto:known_proto_imports", "//language/proto:known_go_imports")
+	cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		fmt.Println(string(out))
+		return err
+	}
+
+	copies := []struct {
+		dest, src string
+	}{
+		{
+			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_imports.go"),
+			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_imports.go"),
+		},
+		{
+			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_proto_imports.go"),
+			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_proto_imports.go"),
+		},
+		{
+			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_go_imports.go"),
+			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_go_imports.go"),
+		},
+	}
+	for _, c := range copies {
+		if err := copyHelper(
+			c.dest,
+			c.src,
+		); err != nil {
+			return err
 		}
 	}
 
@@ -213,19 +220,17 @@ This utility is intended to handle many of the steps to release a new version.
 	return nil
 }
 
-func copyClosure(srcPath, destPath string) func() error {
-	return func() error {
-		src, err := os.Open(srcPath)
-		if err != nil {
-			return err
-		}
-		dest, err := os.Create(destPath)
-		if err != nil {
-			return err
-		}
-		_, err = io.Copy(dest, src)
+func copyHelper(destPath, srcPath string) error {
+	dest, err := os.Create(destPath)
+	if err != nil {
 		return err
 	}
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(dest, src)
+	return err
 }
 
 func getWorkspaceWithoutDirectives(workspace io.Reader) ([]byte, error) {
