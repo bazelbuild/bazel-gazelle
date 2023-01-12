@@ -1,6 +1,7 @@
 package doublestar
 
 import (
+	"errors"
 	"io/fs"
 	"path"
 )
@@ -9,9 +10,12 @@ import (
 // matching file. The syntax of pattern is the same as in Match(). The pattern
 // may describe hierarchical names such as usr/*/bin/ed.
 //
-// Glob ignores file system errors such as I/O errors reading directories.
-// The only possible returned error is ErrBadPattern, reporting that the
-// pattern is malformed.
+// Glob ignores file system errors such as I/O errors reading directories by
+// default. The only possible returned error is ErrBadPattern, reporting that
+// the pattern is malformed.
+//
+// To enable aborting on I/O errors, the WithFailOnIOErrors option can be
+// passed.
 //
 // Note: this is meant as a drop-in replacement for io/fs.Glob(). Like
 // io/fs.Glob(), this function assumes that your pattern uses `/` as the path
@@ -23,27 +27,40 @@ import (
 // will return no results and no errors. You can use SplitPattern to divide a
 // pattern into a base path (to initialize an `FS` object) and pattern.
 //
-func Glob(fsys fs.FS, pattern string) ([]string, error) {
+// Note: users should _not_ count on the returned error,
+// doublestar.ErrBadPattern, being equal to path.ErrBadPattern.
+//
+func Glob(fsys fs.FS, pattern string, opts ...GlobOption) ([]string, error) {
 	if !ValidatePattern(pattern) {
 		return nil, ErrBadPattern
 	}
+
+	g := newGlob(opts...)
+
 	if hasMidDoubleStar(pattern) {
 		// If the pattern has a `**` anywhere but the very end, GlobWalk is more
 		// performant because it can get away with less allocations. If the pattern
 		// ends in a `**`, both methods are pretty much the same, but Glob has a
 		// _very_ slight advantage because of lower function call overhead.
 		var matches []string
-		err := doGlobWalk(fsys, pattern, true, func(p string, d fs.DirEntry) error {
+		err := g.doGlobWalk(fsys, pattern, true, true, func(p string, d fs.DirEntry) error {
 			matches = append(matches, p)
 			return nil
 		})
 		return matches, err
 	}
-	return doGlob(fsys, pattern, nil, true)
+	return g.doGlob(fsys, pattern, nil, true, true)
 }
 
 // Does the actual globbin'
-func doGlob(fsys fs.FS, pattern string, m []string, firstSegment bool) (matches []string, err error) {
+//   - firstSegment is true if we're in the first segment of the pattern, ie,
+//     the right-most part where we can match files. If it's false, we're
+//     somewhere in the middle (or at the beginning) and can only match
+//     directories since there are path segments above us.
+//   - beforeMeta is true if we're exploring segments before any meta
+//     characters, ie, in a pattern such as `path/to/file*.txt`, the `path/to/`
+//     bit does not contain any meta characters.
+func (g *glob) doGlob(fsys fs.FS, pattern string, m []string, firstSegment, beforeMeta bool) (matches []string, err error) {
 	matches = m
 	patternStart := indexMeta(pattern)
 	if patternStart == -1 {
@@ -51,12 +68,16 @@ func doGlob(fsys fs.FS, pattern string, m []string, firstSegment bool) (matches 
 		// pattern exist?
 		// The pattern may contain escaped wildcard characters for an exact path match.
 		path := unescapeMeta(pattern)
-		if exists(fsys, path) {
-			matches = append(matches, path)
-			return
-		} else {
-			return
+		pathInfo, pathExists, pathErr := g.exists(fsys, path, beforeMeta)
+		if pathErr != nil {
+			return nil, pathErr
 		}
+
+		if pathExists && (!firstSegment || !g.filesOnly || !pathInfo.IsDir()) {
+			matches = append(matches, path)
+		}
+
+		return
 	}
 
 	dir := "."
@@ -68,30 +89,34 @@ func doGlob(fsys fs.FS, pattern string, m []string, firstSegment bool) (matches 
 				// if there's no matching opening index, technically Match() will treat
 				// an unmatched `}` as nothing special, so... we will, too!
 				splitIdx = lastIndexSlash(pattern[:splitIdx])
+				if splitIdx != -1 {
+					dir = pattern[:splitIdx]
+					pattern = pattern[splitIdx+1:]
+				}
 			} else {
 				// otherwise, we have to handle the alts:
-				return globAlts(fsys, pattern, openingIdx, splitIdx, matches, firstSegment)
+				return g.globAlts(fsys, pattern, openingIdx, splitIdx, matches, firstSegment, beforeMeta)
 			}
+		} else {
+			dir = pattern[:splitIdx]
+			pattern = pattern[splitIdx+1:]
 		}
-
-		dir = pattern[:splitIdx]
-		pattern = pattern[splitIdx+1:]
 	}
 
 	// if `splitIdx` is less than `patternStart`, we know `dir` has no meta
 	// characters. They would be equal if they are both -1, which means `dir`
 	// will be ".", and we know that doesn't have meta characters either.
 	if splitIdx <= patternStart {
-		return globDir(fsys, dir, pattern, matches, firstSegment)
+		return g.globDir(fsys, dir, pattern, matches, firstSegment, beforeMeta)
 	}
 
 	var dirs []string
-	dirs, err = doGlob(fsys, dir, matches, false)
+	dirs, err = g.doGlob(fsys, dir, matches, false, beforeMeta)
 	if err != nil {
 		return
 	}
 	for _, d := range dirs {
-		matches, err = globDir(fsys, d, pattern, matches, firstSegment)
+		matches, err = g.globDir(fsys, d, pattern, matches, firstSegment, false)
 		if err != nil {
 			return
 		}
@@ -102,7 +127,7 @@ func doGlob(fsys fs.FS, pattern string, m []string, firstSegment bool) (matches 
 
 // handle alts in the glob pattern - `openingIdx` and `closingIdx` are the
 // indexes of `{` and `}`, respectively
-func globAlts(fsys fs.FS, pattern string, openingIdx, closingIdx int, m []string, firstSegment bool) (matches []string, err error) {
+func (g *glob) globAlts(fsys fs.FS, pattern string, openingIdx, closingIdx int, m []string, firstSegment, beforeMeta bool) (matches []string, err error) {
 	matches = m
 
 	var dirs []string
@@ -114,7 +139,7 @@ func globAlts(fsys fs.FS, pattern string, openingIdx, closingIdx int, m []string
 		dirs = []string{""}
 	} else {
 		// our alts have a common prefix that we can process first
-		dirs, err = doGlob(fsys, pattern[:splitIdx], matches, false)
+		dirs, err = g.doGlob(fsys, pattern[:splitIdx], matches, false, beforeMeta)
 		if err != nil {
 			return
 		}
@@ -135,7 +160,7 @@ func globAlts(fsys fs.FS, pattern string, openingIdx, closingIdx int, m []string
 			}
 
 			alt := buildAlt(d, pattern, startIdx, openingIdx, patIdx, nextIdx, afterIdx)
-			matches, err = doGlob(fsys, alt, matches, firstSegment)
+			matches, err = g.doGlob(fsys, alt, matches, firstSegment, beforeMeta)
 			if err != nil {
 				return
 			}
@@ -165,37 +190,58 @@ func globAlts(fsys fs.FS, pattern string, openingIdx, closingIdx int, m []string
 }
 
 // find files/subdirectories in the given `dir` that match `pattern`
-func globDir(fsys fs.FS, dir, pattern string, matches []string, canMatchFiles bool) (m []string, e error) {
+func (g *glob) globDir(fsys fs.FS, dir, pattern string, matches []string, canMatchFiles, beforeMeta bool) (m []string, e error) {
 	m = matches
 
 	if pattern == "" {
-		// pattern can be an empty string if the original pattern ended in a slash,
-		// in which case, we should just return dir, but only if it actually exists
-		// and it's a directory (or a symlink to a directory)
-		if isPathDir(fsys, dir) {
-			m = append(m, dir)
+		if !canMatchFiles || !g.filesOnly {
+			// pattern can be an empty string if the original pattern ended in a
+			// slash, in which case, we should just return dir, but only if it
+			// actually exists and it's a directory (or a symlink to a directory)
+			_, isDir, err := g.isPathDir(fsys, dir, beforeMeta)
+			if err != nil {
+				return nil, err
+			}
+			if isDir {
+				m = append(m, dir)
+			}
 		}
 		return
 	}
 
 	if pattern == "**" {
-		m = globDoubleStar(fsys, dir, m, canMatchFiles)
-		return
+		return g.globDoubleStar(fsys, dir, m, canMatchFiles, beforeMeta)
 	}
 
 	dirs, err := fs.ReadDir(fsys, dir)
 	if err != nil {
-		// ignore IO errors
+		if errors.Is(err, fs.ErrNotExist) {
+			e = g.handlePatternNotExist(beforeMeta)
+		} else {
+			e = g.forwardErrIfFailOnIOErrors(err)
+		}
 		return
 	}
 
 	var matched bool
 	for _, info := range dirs {
 		name := info.Name()
-		if canMatchFiles || isDir(fsys, dir, name, info) {
-			matched, e = matchWithSeparator(pattern, name, '/', false)
-			if e != nil {
-				return
+		matched, e = matchWithSeparator(pattern, name, '/', false)
+		if e != nil {
+			return
+		}
+		if matched {
+			matched = canMatchFiles
+			if !matched || g.filesOnly {
+				matched, e = g.isDir(fsys, dir, name, info)
+				if e != nil {
+					return
+				}
+				if canMatchFiles {
+					// if we're here, it's because g.filesOnly
+					// is set and we don't want directories
+					matched = !matched
+				}
 			}
 			if matched {
 				m = append(m, path.Join(dir, name))
@@ -206,25 +252,38 @@ func globDir(fsys fs.FS, dir, pattern string, matches []string, canMatchFiles bo
 	return
 }
 
-func globDoubleStar(fsys fs.FS, dir string, matches []string, canMatchFiles bool) []string {
+func (g *glob) globDoubleStar(fsys fs.FS, dir string, matches []string, canMatchFiles, beforeMeta bool) ([]string, error) {
 	dirs, err := fs.ReadDir(fsys, dir)
 	if err != nil {
-		// ignore IO errors
-		return matches
+		if errors.Is(err, fs.ErrNotExist) {
+			return matches, g.handlePatternNotExist(beforeMeta)
+		} else {
+			return matches, g.forwardErrIfFailOnIOErrors(err)
+		}
 	}
 
-	// `**` can match *this* dir, so add it
-	matches = append(matches, dir)
+	if !g.filesOnly {
+		// `**` can match *this* dir, so add it
+		matches = append(matches, dir)
+	}
+
 	for _, info := range dirs {
 		name := info.Name()
-		if isDir(fsys, dir, name, info) {
-			matches = globDoubleStar(fsys, path.Join(dir, name), matches, canMatchFiles)
+		isDir, err := g.isDir(fsys, dir, name, info)
+		if err != nil {
+			return nil, err
+		}
+		if isDir {
+			matches, err = g.globDoubleStar(fsys, path.Join(dir, name), matches, canMatchFiles, false)
+			if err != nil {
+				return nil, err
+			}
 		} else if canMatchFiles {
 			matches = append(matches, path.Join(dir, name))
 		}
 	}
 
-	return matches
+	return matches, nil
 }
 
 // Returns true if the pattern has a doublestar in the middle of the pattern.
@@ -302,38 +361,51 @@ func indexMatchedOpeningAlt(s string) int {
 }
 
 // Returns true if the path exists
-func exists(fsys fs.FS, name string) bool {
-	if _, err := fs.Stat(fsys, name); err != nil {
-		return false
+func (g *glob) exists(fsys fs.FS, name string, beforeMeta bool) (fs.FileInfo, bool, error) {
+	// name might end in a slash, but Stat doesn't like that
+	namelen := len(name)
+	if namelen > 1 && name[namelen-1] == '/' {
+		name = name[:namelen-1]
 	}
-	return true
+
+	info, err := fs.Stat(fsys, name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, false, g.handlePatternNotExist(beforeMeta)
+	}
+	return info, err == nil, g.forwardErrIfFailOnIOErrors(err)
 }
 
-// Returns true if the path is a directory, or a symlink to a directory
-func isPathDir(fsys fs.FS, name string) bool {
+// Returns true if the path exists and is a directory or a symlink to a
+// directory
+func (g *glob) isPathDir(fsys fs.FS, name string, beforeMeta bool) (fs.FileInfo, bool, error) {
 	info, err := fs.Stat(fsys, name)
-	if err != nil {
-		return false
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, false, g.handlePatternNotExist(beforeMeta)
 	}
-	return info.IsDir()
+	return info, err == nil && info.IsDir(), g.forwardErrIfFailOnIOErrors(err)
 }
 
 // Returns whether or not the given DirEntry is a directory. If the DirEntry
 // represents a symbolic link, the link is followed by running fs.Stat() on
 // `path.Join(dir, name)` (if dir is "", name will be used without joining)
-func isDir(fsys fs.FS, dir, name string, info fs.DirEntry) bool {
-	if (info.Type() & fs.ModeSymlink) > 0 {
+func (g *glob) isDir(fsys fs.FS, dir, name string, info fs.DirEntry) (bool, error) {
+	if !g.noFollow && (info.Type()&fs.ModeSymlink) > 0 {
 		p := name
 		if dir != "" {
 			p = path.Join(dir, name)
 		}
 		finfo, err := fs.Stat(fsys, p)
 		if err != nil {
-			return false
+			if errors.Is(err, fs.ErrNotExist) {
+				// this function is only ever called while expanding a glob, so it can
+				// never return ErrPatternNotExist
+				return false, nil
+			}
+			return false, g.forwardErrIfFailOnIOErrors(err)
 		}
-		return finfo.IsDir()
+		return finfo.IsDir(), nil
 	}
-	return info.IsDir()
+	return info.IsDir(), nil
 }
 
 // Builds a string from an alt

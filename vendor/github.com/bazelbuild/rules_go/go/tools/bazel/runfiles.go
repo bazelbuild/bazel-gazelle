@@ -40,6 +40,10 @@ const (
 // Runfile may be called from tests invoked with 'bazel test' and
 // binaries invoked with 'bazel run'. On Windows,
 // only tests invoked with 'bazel test' are supported.
+//
+// Deprecated: Use github.com/bazelbuild/rules_go/go/runfiles instead for
+// cross-platform support matching the behavior of the Bazel-provided runfiles
+// libraries.
 func Runfile(path string) (string, error) {
 	// Search in working directory
 	if _, err := os.Stat(path); err == nil {
