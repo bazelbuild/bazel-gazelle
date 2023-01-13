@@ -48,13 +48,15 @@ func run(ctx context.Context, stderr *os.File) error {
 	var (
 		verbose   bool
 		goVersion string
+		repoRoot  string
 	)
 
 	flag.BoolVar(&verbose, "verbose", false, "increase verbosity")
 	flag.BoolVar(&verbose, "v", false, "increase verbosity (shorthand)")
-	flag.StringVar(&goVersion, "go", "", "go version for go.mod")
+	flag.StringVar(&goVersion, "go_version", "", "go version for go.mod")
+	flag.StringVar(&repoRoot, "repo_root", os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "root directory of Gazelle repo")
 	flag.Usage = func() {
-		fmt.Fprint(flag.CommandLine.Output(), `usage: bazel run //tools/releaser -- -go <version>
+		fmt.Fprint(flag.CommandLine.Output(), `usage: bazel run //tools/releaser -- -go_version <version>
 
 This utility is intended to handle many of the steps to release a new version.
 
@@ -75,10 +77,10 @@ This utility is intended to handle many of the steps to release a new version.
 		versionParts[1] = strconv.Itoa(minorVersion - 1)
 	}
 
-	workspacePath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "WORKSPACE")
-	depsPath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "deps.bzl")
+	workspacePath := path.Join(repoRoot, "WORKSPACE")
+	depsPath := path.Join(repoRoot, "deps.bzl")
 	_tmpBzl := "tmp.bzl"
-	tmpBzlPath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), _tmpBzl)
+	tmpBzlPath := path.Join(repoRoot, _tmpBzl)
 
 	if verbose {
 		fmt.Println("Running initial go update commands")
@@ -94,7 +96,7 @@ This utility is intended to handle many of the steps to release a new version.
 	}
 	for _, c := range initialCommands {
 		cmd := exec.CommandContext(ctx, c.cmd, c.args...)
-		cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+		cmd.Dir = workspaceRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
 			fmt.Println(string(out))
 			return err
@@ -192,18 +194,19 @@ This utility is intended to handle many of the steps to release a new version.
 		fmt.Println("Running final gazelle run, and copying some language specific build files.")
 	}
 	cmd = exec.CommandContext(ctx, "bazel", "run", "//:gazelle")
-	cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+	cmd.Dir = repoRoot
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fmt.Println(string(out))
 		return err
 	}
 
 	cmd = exec.CommandContext(ctx, "bazel", "build",
+		"//language/go:std_package_list",
+		"//language/proto:known_go_imports",
 		"//language/proto:known_imports",
 		"//language/proto:known_proto_imports",
-		"//language/proto:known_go_imports",
-		"//language/go:std_package_list")
-	cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+	)
+	cmd.Dir = repoRoot
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fmt.Println(string(out))
 		return err
@@ -231,6 +234,7 @@ This utility is intended to handle many of the steps to release a new version.
 	}
 	for _, c := range copies {
 		if err := copyFile(
+			repoRoot,
 			c.dest,
 			c.src,
 		); err != nil {
@@ -244,16 +248,16 @@ This utility is intended to handle many of the steps to release a new version.
 	return nil
 }
 
-func copyFile(destPath, srcPath string) error {
+func copyFile(repoRoot, destPath, srcPath string) error {
 	if !filepath.IsAbs(destPath) {
-		destPath = path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), destPath)
+		destPath = path.Join(repoRoot, destPath)
 	}
 	dest, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
 	if !filepath.IsAbs(srcPath) {
-		srcPath = path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), srcPath)
+		srcPath = path.Join(repoRoot, srcPath)
 	}
 	src, err := os.Open(srcPath)
 	if err != nil {
