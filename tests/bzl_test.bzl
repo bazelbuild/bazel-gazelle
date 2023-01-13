@@ -3,7 +3,7 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
 
-def bzl_test(name, src, deps):
+def bzl_test(name, src, deps, **kwargs):
     """Provides build-time assurances that `bzl_library` declarations exist and \
     are referenced properly.
 
@@ -36,6 +36,7 @@ def bzl_test(name, src, deps):
         name = macro_lib_name,
         srcs = [src],
         deps = deps,
+        **kwargs
     )
 
     stardoc(
@@ -43,4 +44,5 @@ def bzl_test(name, src, deps):
         out = macro_lib_name + ".md_",
         input = src,
         deps = [macro_lib_name],
+        **kwargs
     )
