@@ -40,5 +40,6 @@ gazelle_binary(
 bzl_test(
     name = "gazelle_bzl_test",
     src = "gazelle_bzl_macro.bzl",
+    visibility = ["//visibility:private"],
     deps = ["//:def"],
 )
