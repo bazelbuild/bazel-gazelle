@@ -96,7 +96,7 @@ This utility is intended to handle many of the steps to release a new version.
 	}
 	for _, c := range initialCommands {
 		cmd := exec.CommandContext(ctx, c.cmd, c.args...)
-		cmd.Dir = workspaceRoot
+		cmd.Dir = repoRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
 			fmt.Println(string(out))
 			return err
