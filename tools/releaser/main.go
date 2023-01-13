@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -29,6 +30,8 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -43,13 +46,15 @@ func main() {
 
 func run(ctx context.Context, stderr *os.File) error {
 	var (
-		verbose bool
+		verbose   bool
+		goVersion string
 	)
 
 	flag.BoolVar(&verbose, "verbose", false, "increase verbosity")
 	flag.BoolVar(&verbose, "v", false, "increase verbosity (shorthand)")
+	flag.StringVar(&goVersion, "go", "", "go version for go.mod")
 	flag.Usage = func() {
-		fmt.Fprint(flag.CommandLine.Output(), `usage: bazel run //tools/releaser
+		fmt.Fprint(flag.CommandLine.Output(), `usage: bazel run //tools/releaser -- -go <version>
 
 This utility is intended to handle many of the steps to release a new version.
 
@@ -58,6 +63,17 @@ This utility is intended to handle many of the steps to release a new version.
 	}
 
 	flag.Parse()
+
+	versionParts := strings.Split(goVersion, ".")
+	if len(versionParts) < 2 {
+		flag.Usage()
+		return errors.New("please provide a valid Go version")
+	}
+	if minorVersion, err := strconv.Atoi(versionParts[1]); err != nil {
+		return fmt.Errorf("%q is not a valid Go version", goVersion)
+	} else if minorVersion > 0 {
+		versionParts[1] = strconv.Itoa(minorVersion - 1)
+	}
 
 	workspacePath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "WORKSPACE")
 	depsPath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "deps.bzl")
@@ -72,7 +88,7 @@ This utility is intended to handle many of the steps to release a new version.
 		args []string
 	}{
 		{cmd: "go", args: []string{"get", "-t", "-u", "./..."}},
-		{cmd: "go", args: []string{"mod", "tidy", "-compat=1.16"}},
+		{cmd: "go", args: []string{"mod", "tidy", "-go", goVersion, "-compat", strings.Join(versionParts, ".")}},
 		{cmd: "go", args: []string{"mod", "vendor"}},
 		{cmd: "find", args: []string{"vendor", "-name", "BUILD.bazel", "-delete"}},
 	}
@@ -182,7 +198,11 @@ This utility is intended to handle many of the steps to release a new version.
 		return err
 	}
 
-	cmd = exec.CommandContext(ctx, "bazel", "build", "//language/proto:known_imports", "//language/proto:known_proto_imports", "//language/proto:known_go_imports")
+	cmd = exec.CommandContext(ctx, "bazel", "build",
+		"//language/proto:known_imports",
+		"//language/proto:known_proto_imports",
+		"//language/proto:known_go_imports",
+		"//language/go:std_package_list")
 	cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fmt.Println(string(out))
@@ -193,20 +213,24 @@ This utility is intended to handle many of the steps to release a new version.
 		dest, src string
 	}{
 		{
-			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_imports.go"),
-			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_imports.go"),
+			dest: "language/proto/known_imports.go",
+			src:  "bazel-bin/language/proto/known_imports.go",
 		},
 		{
-			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_proto_imports.go"),
-			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_proto_imports.go"),
+			dest: "language/proto/known_proto_imports.go",
+			src:  "bazel-bin/language/proto/known_proto_imports.go",
 		},
 		{
-			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_go_imports.go"),
-			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_go_imports.go"),
+			dest: "language/proto/known_go_imports.go",
+			src:  "bazel-bin/language/proto/known_go_imports.go",
+		},
+		{
+			dest: "language/go/std_package_list.go",
+			src:  "bazel-bin/language/go/std_package_list.go",
 		},
 	}
 	for _, c := range copies {
-		if err := copyHelper(
+		if err := copyFile(
 			c.dest,
 			c.src,
 		); err != nil {
@@ -220,10 +244,16 @@ This utility is intended to handle many of the steps to release a new version.
 	return nil
 }
 
-func copyHelper(destPath, srcPath string) error {
+func copyFile(destPath, srcPath string) error {
+	if !filepath.IsAbs(destPath) {
+		destPath = path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), destPath)
+	}
 	dest, err := os.Create(destPath)
 	if err != nil {
 		return err
+	}
+	if !filepath.IsAbs(srcPath) {
+		srcPath = path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), srcPath)
 	}
 	src, err := os.Open(srcPath)
 	if err != nil {
