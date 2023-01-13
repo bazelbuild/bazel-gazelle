@@ -7,6 +7,11 @@ def bzl_test(name, src, deps):
     """Provides build-time assurances that `bzl_library` declarations exist and \
     are referenced properly.
 
+    The `bzl_library` rule does not verify that the load statements in the
+    sources are satisfied by a declared dependency. This macro along with the
+    `gazelle_bzl_macro.bzl` ensure '//:def.bzl' and all of its transitive
+    dependencies are properly declared.
+
     This macro relies upon Stardoc's ability to traverse `bzl_library`
     dependencies. If a Starlark dependency is loaded, but not specified as a
     dependency, the Stardoc utility will fail with a reasonably helpful error
