@@ -65,15 +65,19 @@ This utility is intended to handle many of the steps to release a new version.
 
 	flag.Parse()
 
-	versionParts := strings.Split(goVersion, ".")
-	if len(versionParts) < 2 {
-		flag.Usage()
-		return errors.New("please provide a valid Go version")
-	}
-	if minorVersion, err := strconv.Atoi(versionParts[1]); err != nil {
-		return fmt.Errorf("%q is not a valid Go version", goVersion)
-	} else if minorVersion > 0 {
-		versionParts[1] = strconv.Itoa(minorVersion - 1)
+	var goVersionArgs []string
+	if goVersion != "" {
+		versionParts := strings.Split(goVersion, ".")
+		if len(versionParts) < 2 {
+			flag.Usage()
+			return errors.New("please provide a valid Go version")
+		}
+		if minorVersion, err := strconv.Atoi(versionParts[1]); err != nil {
+			return fmt.Errorf("%q is not a valid Go version", goVersion)
+		} else if minorVersion > 0 {
+			versionParts[1] = strconv.Itoa(minorVersion - 1)
+		}
+		goVersionArgs = append(goVersionArgs, "-go", goVersion, "-compat", strings.Join(versionParts, "."))
 	}
 
 	workspacePath := path.Join(repoRoot, "WORKSPACE")
@@ -89,7 +93,7 @@ This utility is intended to handle many of the steps to release a new version.
 		args []string
 	}{
 		{cmd: "go", args: []string{"get", "-t", "-u", "./..."}},
-		{cmd: "go", args: []string{"mod", "tidy", "-go", goVersion, "-compat", strings.Join(versionParts, ".")}},
+		{cmd: "go", args: append([]string{"mod", "tidy"}, goVersionArgs...)},
 		{cmd: "go", args: []string{"mod", "vendor"}},
 		{cmd: "find", args: []string{"vendor", "-name", "BUILD.bazel", "-delete"}},
 	}
