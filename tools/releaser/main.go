@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -29,6 +30,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -43,13 +45,17 @@ func main() {
 
 func run(ctx context.Context, stderr *os.File) error {
 	var (
-		verbose bool
+		verbose   bool
+		goVersion string
+		repoRoot  string
 	)
 
 	flag.BoolVar(&verbose, "verbose", false, "increase verbosity")
 	flag.BoolVar(&verbose, "v", false, "increase verbosity (shorthand)")
+	flag.StringVar(&goVersion, "go_version", "", "go version for go.mod")
+	flag.StringVar(&repoRoot, "repo_root", os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "root directory of Gazelle repo")
 	flag.Usage = func() {
-		fmt.Fprint(flag.CommandLine.Output(), `usage: bazel run //tools/releaser
+		fmt.Fprint(flag.CommandLine.Output(), `usage: bazel run //tools/releaser -- -go_version <version>
 
 This utility is intended to handle many of the steps to release a new version.
 
@@ -59,10 +65,25 @@ This utility is intended to handle many of the steps to release a new version.
 
 	flag.Parse()
 
-	workspacePath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "WORKSPACE")
-	depsPath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "deps.bzl")
+	var goVersionArgs []string
+	if goVersion != "" {
+		versionParts := strings.Split(goVersion, ".")
+		if len(versionParts) < 2 {
+			flag.Usage()
+			return errors.New("please provide a valid Go version")
+		}
+		if minorVersion, err := strconv.Atoi(versionParts[1]); err != nil {
+			return fmt.Errorf("%q is not a valid Go version", goVersion)
+		} else if minorVersion > 0 {
+			versionParts[1] = strconv.Itoa(minorVersion - 1)
+		}
+		goVersionArgs = append(goVersionArgs, "-go", goVersion, "-compat", strings.Join(versionParts, "."))
+	}
+
+	workspacePath := path.Join(repoRoot, "WORKSPACE")
+	depsPath := path.Join(repoRoot, "deps.bzl")
 	_tmpBzl := "tmp.bzl"
-	tmpBzlPath := path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), _tmpBzl)
+	tmpBzlPath := path.Join(repoRoot, _tmpBzl)
 
 	if verbose {
 		fmt.Println("Running initial go update commands")
@@ -72,13 +93,13 @@ This utility is intended to handle many of the steps to release a new version.
 		args []string
 	}{
 		{cmd: "go", args: []string{"get", "-t", "-u", "./..."}},
-		{cmd: "go", args: []string{"mod", "tidy", "-compat=1.16"}},
+		{cmd: "go", args: append([]string{"mod", "tidy"}, goVersionArgs...)},
 		{cmd: "go", args: []string{"mod", "vendor"}},
 		{cmd: "find", args: []string{"vendor", "-name", "BUILD.bazel", "-delete"}},
 	}
 	for _, c := range initialCommands {
 		cmd := exec.CommandContext(ctx, c.cmd, c.args...)
-		cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+		cmd.Dir = repoRoot
 		if out, err := cmd.CombinedOutput(); err != nil {
 			fmt.Println(string(out))
 			return err
@@ -176,40 +197,32 @@ This utility is intended to handle many of the steps to release a new version.
 		fmt.Println("Running final gazelle run, and copying some language specific build files.")
 	}
 	cmd = exec.CommandContext(ctx, "bazel", "run", "//:gazelle")
-	cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+	cmd.Dir = repoRoot
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fmt.Println(string(out))
 		return err
 	}
 
-	cmd = exec.CommandContext(ctx, "bazel", "build", "//language/proto:known_imports", "//language/proto:known_proto_imports", "//language/proto:known_go_imports")
-	cmd.Dir = os.Getenv("BUILD_WORKSPACE_DIRECTORY")
+	cmd = exec.CommandContext(ctx, "bazel", "build",
+		"//language/go:std_package_list",
+		"//language/proto:known_go_imports",
+		"//language/proto:known_imports",
+		"//language/proto:known_proto_imports",
+	)
+	cmd.Dir = repoRoot
 	if out, err := cmd.CombinedOutput(); err != nil {
 		fmt.Println(string(out))
 		return err
 	}
 
-	copies := []struct {
-		dest, src string
-	}{
-		{
-			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_imports.go"),
-			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_imports.go"),
-		},
-		{
-			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_proto_imports.go"),
-			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_proto_imports.go"),
-		},
-		{
-			dest: path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "language/proto/known_go_imports.go"),
-			src:  path.Join(os.Getenv("BUILD_WORKSPACE_DIRECTORY"), "bazel-bin/language/proto/known_go_imports.go"),
-		},
+	generatedFiles := []string{
+		"language/go/std_package_list.go",
+		"language/proto/known_go_imports.go",
+		"language/proto/known_imports.go",
+		"language/proto/known_proto_imports.go",
 	}
-	for _, c := range copies {
-		if err := copyHelper(
-			c.dest,
-			c.src,
-		); err != nil {
+	for _, f := range generatedFiles {
+		if err := updateFile(repoRoot, f); err != nil {
 			return err
 		}
 	}
@@ -220,11 +233,13 @@ This utility is intended to handle many of the steps to release a new version.
 	return nil
 }
 
-func copyHelper(destPath, srcPath string) error {
+func updateFile(repoRoot, filePath string) error {
+	destPath := path.Join(repoRoot, filePath)
 	dest, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
+	srcPath := path.Join(repoRoot, "bazel-bin", filePath)
 	src, err := os.Open(srcPath)
 	if err != nil {
 		return err
