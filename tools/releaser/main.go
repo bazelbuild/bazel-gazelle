@@ -30,7 +30,6 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -212,32 +211,14 @@ This utility is intended to handle many of the steps to release a new version.
 		return err
 	}
 
-	copies := []struct {
-		dest, src string
-	}{
-		{
-			dest: "language/proto/known_imports.go",
-			src:  "bazel-bin/language/proto/known_imports.go",
-		},
-		{
-			dest: "language/proto/known_proto_imports.go",
-			src:  "bazel-bin/language/proto/known_proto_imports.go",
-		},
-		{
-			dest: "language/proto/known_go_imports.go",
-			src:  "bazel-bin/language/proto/known_go_imports.go",
-		},
-		{
-			dest: "language/go/std_package_list.go",
-			src:  "bazel-bin/language/go/std_package_list.go",
-		},
+	generatedFiles := []string{
+		"language/go/std_package_list.go",
+		"language/proto/known_go_imports.go",
+		"language/proto/known_imports.go",
+		"language/proto/known_proto_imports.go",
 	}
-	for _, c := range copies {
-		if err := copyFile(
-			repoRoot,
-			c.dest,
-			c.src,
-		); err != nil {
+	for _, f := range generatedFiles {
+		if err := updateFile(repoRoot, f); err != nil {
 			return err
 		}
 	}
@@ -248,17 +229,13 @@ This utility is intended to handle many of the steps to release a new version.
 	return nil
 }
 
-func copyFile(repoRoot, destPath, srcPath string) error {
-	if !filepath.IsAbs(destPath) {
-		destPath = path.Join(repoRoot, destPath)
-	}
+func updateFile(repoRoot, filePath string) error {
+	destPath := path.Join(repoRoot, filePath)
 	dest, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
-	if !filepath.IsAbs(srcPath) {
-		srcPath = path.Join(repoRoot, srcPath)
-	}
+	srcPath := path.Join(repoRoot, "bazel-bin", filePath)
 	src, err := os.Open(srcPath)
 	if err != nil {
 		return err
