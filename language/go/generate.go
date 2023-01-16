@@ -656,6 +656,10 @@ func (g *generator) setImportAttrs(r *rule.Rule, importPath string) {
 			r.SetAttr("importmap", importMap)
 		}
 	}
+
+	if gc.stackPathPrefix != "" {
+		r.SetAttr("stackpath", path.Join(gc.stackPathPrefix, g.rel))
+	}
 }
 
 func (g *generator) commonVisibility(importPath string) []string {

@@ -266,6 +266,8 @@ def _go_repository_impl(ctx):
             "-repo_config",
             ctx.path(ctx.attr.build_config),
         ]
+        if ctx.attr.stackpath:
+            cmd.extend(["-stack_path_prefix", ctx.attr.stackpath])
         if ctx.attr.version:
             cmd.append("-go_repository_module_mode")
         if ctx.attr.build_file_name:
@@ -309,6 +311,11 @@ go_repository = repository_rule(
             If build files are generated for this repository, libraries will have their
             `importpath` attributes prefixed with this `importpath` string.  """,
             mandatory = True,
+        ),
+        "stackpath": attr.string(
+            doc = """
+            Base stacktrace path for this packages. By default, this is path relative to `bazel-out` directory.
+            """,
         ),
 
         # Attributes for a repository that should be checked out from VCS
