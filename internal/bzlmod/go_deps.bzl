@@ -15,6 +15,26 @@ def _repo_name(importpath):
     candidate_name = "_".join(segments).replace("-", "_")
     return "".join([c.lower() if c.isalnum() else "_" for c in candidate_name.elems()])
 
+_GO_DEPS_HELPER_DEFS_BZL = """load("@bazel_gazelle//internal/bzlmod:go_helper.bzl", "go_helper")
+
+def go(import_path):
+    return go_helper(import_path, _GO_DEPS)
+
+_GO_DEPS = {}
+"""
+
+def _go_deps_helper_impl(ctx):
+    ctx.file("def.bzl", _GO_DEPS_HELPER_DEFS_BZL.format(ctx.attr.go_deps))
+    ctx.file("WORKSPACE")
+    ctx.file("BUILD.bazel")
+
+_go_deps_helper = repository_rule(
+    implementation = _go_deps_helper_impl,
+    attrs = {
+        "go_deps": attr.string_dict(),
+    },
+)
+
 def _go_repository_directives_impl(ctx):
     directives = [
         "# gazelle:repository go_repository name={name} {directives}".format(
@@ -23,6 +43,9 @@ def _go_repository_directives_impl(ctx):
         )
         for name, attrs in ctx.attr.directives.items()
     ]
+    # Needed by the go_deps go macro to reliably transform an import path into a
+    # Bazel label.
+    directives.append("# gazelle:go_naming_convention_external import_alias")
     ctx.file("WORKSPACE", "\n".join(directives))
     ctx.file("BUILD.bazel")
 
@@ -35,6 +58,19 @@ _go_repository_directives = repository_rule(
 
 def _noop(s):
     pass
+
+def _to_canonical(repo_name):
+    """Converts the apparent name of a repository defined by the go_deps
+    extension to the canonical name of the repository, including the leading @.
+
+    WARNING: This is a wild hack and should not be committed as is.
+    """
+
+    # Only repos that are use_repo-ed by gazelle itself can be canonicalized in
+    # this way.
+    go_deps_canonical = Label("@bazel_gazelle_go_repository_directives//foo").workspace_name
+    base_canonical = go_deps_canonical[:go_deps_canonical.rfind("~") + 1]
+    return "@" + base_canonical + repo_name
 
 def _go_deps_impl(module_ctx):
     module_resolutions = {}
@@ -136,6 +172,14 @@ def _go_deps_impl(module_ctx):
     _go_repository_directives(
         name = "bazel_gazelle_go_repository_directives",
         directives = directives,
+    )
+
+    _go_deps_helper(
+        name = "go_deps",
+        go_deps = {
+            path: _to_canonical(module.repo_name)
+            for path, module in module_resolutions.items()
+        },
     )
 
 _config_tag = tag_class(
