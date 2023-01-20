@@ -18,14 +18,14 @@ def _lib_name_from_import_path(import_path):
             name = unversioned_import_path[i + 1:]
     return name.replace(".", "_")
 
-def go_helper(import_path, module_path_to_repo):
+def go_helper(import_path, module_path_to_repo, canonicalize):
     split_pos = len(import_path)
     for i in range(import_path.count("/") + 1):
         module_path = import_path[:split_pos]
         module_repo = module_path_to_repo.get(module_path, None)
         if module_repo:
             package_path = import_path[split_pos:].removeprefix("/")
-            return "@{}//{}:{}".format(module_repo, package_path, _lib_name_from_import_path(import_path))
+            return canonicalize("@{}//{}:{}".format(module_repo, package_path, _lib_name_from_import_path(import_path)))
         split_pos = module_path.rfind("/", 0, split_pos)
 
     fail("""
