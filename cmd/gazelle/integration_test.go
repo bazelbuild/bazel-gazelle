@@ -3389,6 +3389,45 @@ go_library(
 				},
 			},
 		},
+		"transitive remappings are applied": {
+			before: []testtools.FileSpec{
+				{
+					Path: "WORKSPACE",
+				},
+				{
+					Path: "BUILD.bazel",
+					Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library custom_go_library //custom:def.bzl
+		`,
+				},
+				{
+					Path:    "dir/file.go",
+					Content: "package dir",
+				},
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `# gazelle:map_kind custom_go_library other_custom_go_library //another/custom:def.bzl
+`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "dir/BUILD.bazel",
+					Content: `load("//another/custom:def.bzl", "other_custom_go_library")
+
+# gazelle:map_kind custom_go_library other_custom_go_library //another/custom:def.bzl
+
+other_custom_go_library(
+    name = "go_default_library",
+    srcs = ["file.go"],
+    importpath = "example.com/mapkind/dir",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir, cleanup := testtools.CreateFiles(t, tc.before)
@@ -3398,6 +3437,39 @@ go_library(
 			}
 			testtools.CheckFiles(t, dir, tc.after)
 		})
+	}
+}
+
+func TestMapKindLoop(t *testing.T) {
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{
+			Path: "WORKSPACE",
+		},
+		{
+			Path: "BUILD.bazel",
+			Content: `# gazelle:prefix example.com/mapkind
+# gazelle:go_naming_convention go_default_library
+# gazelle:map_kind go_library custom_go_library //custom:def.bzl
+		`,
+		},
+		{
+			Path:    "dir/file.go",
+			Content: "package dir",
+		},
+		{
+			Path: "dir/BUILD.bazel",
+			Content: `# gazelle:map_kind custom_go_library go_library @io_bazel_rules_go//go:def.bzl
+`,
+		},
+	})
+	t.Cleanup(cleanup)
+	err := runGazelle(dir, []string{"-external=vendored"})
+	if err == nil {
+		t.Fatal("Expected error running gazelle with map_kind loop")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "couldn't handle loop in map_kinds: found loop of map_kind replacements: go_library -> custom_go_library -> go_library") {
+		t.Fatalf("Expected error to contain useful descriptors but was %q", msg)
 	}
 }
 

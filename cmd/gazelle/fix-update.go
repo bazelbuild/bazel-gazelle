@@ -272,6 +272,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	// Visit all directories in the repository.
 	var visits []visitRecord
 	uc := getUpdateConfig(c)
+	var errorsFromWalk []error
 	walk.Walk(c, cexts, uc.dirs, uc.walkMode, func(dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string) {
 		// If this file is ignored or if Gazelle was not asked to update this
 		// directory, just index the build file and move on.
@@ -329,10 +330,15 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 			allRules = append(allRules, f.Rules...)
 		}
 		for _, r := range allRules {
-			if repl, ok := c.KindMap[r.Kind()]; ok {
+			repl, ok, err := lookupMapKindReplacement(c.KindMap, r.Kind())
+			if err != nil {
+				errorsFromWalk = append(errorsFromWalk, fmt.Errorf("couldn't handle loop in map_kinds: %w", err))
+				continue
+			}
+			if ok {
 				mappedKindInfo[repl.KindName] = kinds[r.Kind()]
-				mappedKinds = append(mappedKinds, repl)
-				mrslv.MappedKind(rel, repl)
+				mappedKinds = append(mappedKinds, *repl)
+				mrslv.MappedKind(rel, *repl)
 				r.SetKind(repl.KindName)
 			}
 		}
@@ -370,6 +376,17 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		if finishable, ok := lang.(language.FinishableLanguage); ok {
 			finishable.DoneGeneratingRules()
 		}
+	}
+
+	if len(errorsFromWalk) > 0 {
+		if len(errorsFromWalk) == 1 {
+			return errorsFromWalk[0]
+		}
+		var additionalErrors []string
+		for _, error := range errorsFromWalk[1:] {
+			additionalErrors = append(additionalErrors, error.Error())
+		}
+		return fmt.Errorf("encountered multiple errors: %w, %v", errorsFromWalk[0], strings.Join(additionalErrors, ", "))
 	}
 
 	// Finish building the index for dependency resolution.
@@ -415,6 +432,32 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	}
 
 	return exit
+}
+
+func lookupMapKindReplacement(kindMap map[string]config.MappedKind, kind string) (*config.MappedKind, bool, error) {
+	var mapped *config.MappedKind
+	seenKinds := make(map[string]struct{})
+	seenKindPath := []string{kind}
+	for {
+		if replacement, ok := kindMap[kind]; ok {
+			seenKindPath = append(seenKindPath, replacement.KindName)
+			if _, alreadySeen := seenKinds[replacement.KindName]; alreadySeen {
+				return nil, false, fmt.Errorf("found loop of map_kind replacements: %s", strings.Join(seenKindPath, " -> "))
+			}
+			seenKinds[replacement.KindName] = struct{}{}
+			mapped = &replacement
+			if kind == replacement.KindName {
+				break
+			}
+			kind = replacement.KindName
+		} else {
+			break
+		}
+	}
+	if mapped != nil {
+		return mapped, true, nil
+	}
+	return nil, false, nil
 }
 
 func newFixUpdateConfiguration(wd string, cmd command, args []string, cexts []config.Configurer) (*config.Config, error) {
