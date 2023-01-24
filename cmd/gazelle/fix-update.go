@@ -322,7 +322,13 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 			mappedKinds    []config.MappedKind
 			mappedKindInfo = make(map[string]rule.KindInfo)
 		)
-		for _, r := range gen {
+		// We apply map_kind to all rules, including pre-existing ones.
+		var allRules []*rule.Rule
+		allRules = append(allRules, gen...)
+		if f != nil {
+			allRules = append(allRules, f.Rules...)
+		}
+		for _, r := range allRules {
 			if repl, ok := c.KindMap[r.Kind()]; ok {
 				mappedKindInfo[repl.KindName] = kinds[r.Kind()]
 				mappedKinds = append(mappedKinds, repl)

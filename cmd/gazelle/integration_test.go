@@ -2755,7 +2755,7 @@ my_library(
 			Content: `
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-# An existing rule with an unmapped type is preserved
+# An existing rule with an unmapped type is updated
 go_library(
     name = "go_default_library",
     srcs = ["unmapped_lib.go"],
@@ -2910,10 +2910,10 @@ my_library(
 		{
 			Path: "enabled/existing_rules/unmapped/BUILD.bazel",
 			Content: `
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//tools/go:def.bzl", "my_library")
 
-# An existing rule with an unmapped type is preserved
-go_library(
+# An existing rule with an unmapped type is updated
+my_library(
     name = "go_default_library",
     srcs = ["unmapped_lib.go"],
     importpath = "example.com/mapkind/enabled/existing_rules/unmapped",
@@ -3104,7 +3104,7 @@ go_library(
 				},
 			},
 		},
-		"existing generated rule without renaming mapping applied doesn't apply map_kind": {
+		"existing generated rule without renaming mapping applied applies map_kind": {
 			before: []testtools.FileSpec{
 				{
 					Path: "WORKSPACE",
@@ -3136,9 +3136,9 @@ go_library(
 			after: []testtools.FileSpec{
 				{
 					Path: "dir/BUILD.bazel",
-					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+					Content: `load("//custom:def.bzl", "custom_go_library")
 
-go_library(
+custom_go_library(
     name = "go_default_library",
     srcs = ["file.go"],
     importpath = "example.com/mapkind/dir",
@@ -3286,7 +3286,7 @@ go_library(
 				},
 			},
 		},
-		"unrelated non-generated non-renaming map_kind'd rule un-applies map_kind if other generated rule is newly generated": {
+		"unrelated non-generated non-renaming map_kind'd rule keeps map_kind if other generated rule is newly generated": {
 			before: []testtools.FileSpec{
 				{
 					Path: "WORKSPACE",
@@ -3317,8 +3317,7 @@ go_test(
 			after: []testtools.FileSpec{
 				{
 					Path: "dir/BUILD.bazel",
-					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
-load("//custom:def.bzl", "go_library")
+					Content: `load("//custom:def.bzl", "go_library", "go_test")
 
 go_test(
     name = "custom_test",
@@ -3335,7 +3334,7 @@ go_library(
 				},
 			},
 		},
-		"unrelated non-generated non-renaming map_kind'd rule un-applies map_kind if other generated rule already existed": {
+		"unrelated non-generated non-renaming map_kind'd rule keeps map_kind if other generated rule already existed": {
 			before: []testtools.FileSpec{
 				{
 					Path: "WORKSPACE",
@@ -3373,8 +3372,7 @@ go_library(
 			after: []testtools.FileSpec{
 				{
 					Path: "dir/BUILD.bazel",
-					Content: `load("@io_bazel_rules_go//go:def.bzl", "go_test")
-load("//custom:def.bzl", "go_library")
+					Content: `load("//custom:def.bzl", "go_library", "go_test")
 
 go_test(
     name = "custom_test",
