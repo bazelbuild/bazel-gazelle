@@ -330,12 +330,12 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 			allRules = append(allRules, f.Rules...)
 		}
 		for _, r := range allRules {
-			repl, ok, err := lookupMapKindReplacement(c.KindMap, r.Kind())
+			repl, err := lookupMapKindReplacement(c.KindMap, r.Kind())
 			if err != nil {
 				errorsFromWalk = append(errorsFromWalk, fmt.Errorf("couldn't handle loop in map_kinds: %w", err))
 				continue
 			}
-			if ok {
+			if repl != nil {
 				mappedKindInfo[repl.KindName] = kinds[r.Kind()]
 				mappedKinds = append(mappedKinds, *repl)
 				mrslv.MappedKind(rel, *repl)
@@ -434,7 +434,11 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	return exit
 }
 
-func lookupMapKindReplacement(kindMap map[string]config.MappedKind, kind string) (*config.MappedKind, bool, error) {
+// lookupMapKindReplacement finds a mapped replacement for rule kind `kind`, resolving transitively.
+// i.e. if go_library is mapped to custom_go_library, and custom_go_library is mapped to other_go_library,
+// looking up go_library will return other_go_library.
+// It returns an error on a loop, and may return nil if no remapping should be performed.
+func lookupMapKindReplacement(kindMap map[string]config.MappedKind, kind string) (*config.MappedKind, error) {
 	var mapped *config.MappedKind
 	seenKinds := make(map[string]struct{})
 	seenKindPath := []string{kind}
@@ -442,7 +446,7 @@ func lookupMapKindReplacement(kindMap map[string]config.MappedKind, kind string)
 		if replacement, ok := kindMap[kind]; ok {
 			seenKindPath = append(seenKindPath, replacement.KindName)
 			if _, alreadySeen := seenKinds[replacement.KindName]; alreadySeen {
-				return nil, false, fmt.Errorf("found loop of map_kind replacements: %s", strings.Join(seenKindPath, " -> "))
+				return nil, fmt.Errorf("found loop of map_kind replacements: %s", strings.Join(seenKindPath, " -> "))
 			}
 			seenKinds[replacement.KindName] = struct{}{}
 			mapped = &replacement
@@ -454,10 +458,7 @@ func lookupMapKindReplacement(kindMap map[string]config.MappedKind, kind string)
 			break
 		}
 	}
-	if mapped != nil {
-		return mapped, true, nil
-	}
-	return nil, false, nil
+	return mapped, nil
 }
 
 func newFixUpdateConfiguration(wd string, cmd command, args []string, cexts []config.Configurer) (*config.Config, error) {
