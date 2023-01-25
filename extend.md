@@ -109,7 +109,7 @@ includes the proto package name, as well as source names, imports, and options.
 [proto.Package]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#Package
 
 
-<a id="#gazelle_binary"></a>
+<a id="gazelle_binary"></a>
 
 ## gazelle_binary
 
@@ -135,11 +135,11 @@ proto extension stores metadata in hidden attributes of generated
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
-| <a id="gazelle_binary-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/docs/build-ref.html#name">Name</a> | required |  |
-| <a id="gazelle_binary-languages"></a>languages |  A list of language extensions the Gazelle binary will use.<br><br>            Each extension must be a [go_library] or something compatible. Each extension             must export a function named <code>NewLanguage</code> with no parameters that returns             a value assignable to [Language].   | <a href="https://bazel.build/docs/build-ref.html#labels">List of labels</a> | required |  |
+| <a id="gazelle_binary-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
+| <a id="gazelle_binary-languages"></a>languages |  A list of language extensions the Gazelle binary will use.<br><br>            Each extension must be a [go_library] or something compatible. Each extension             must export a function named <code>NewLanguage</code> with no parameters that returns             a value assignable to [Language].   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
 
 
-<a id="#gazelle_generation_test"></a>
+<a id="gazelle_generation_test"></a>
 
 ## gazelle_generation_test
 
@@ -153,17 +153,17 @@ gazelle_generation_test(<a href="#gazelle_generation_test-name">name</a>, <a hre
 The generation test expects a file structure like the following:
 
 ```
-|-- <testDataPath>
+|-- &lt;testDataPath&gt;
     |-- some_test
         |-- WORKSPACE
-        |-- README.md --> README describing what the test does.
-        |-- expectedStdout.txt --> Expected stdout for this test.
-        |-- expectedStderr.txt --> Expected stderr for this test.
-        |-- expectedExitCode.txt --> Expected exit code for this test.
+        |-- README.md --&gt; README describing what the test does.
+        |-- expectedStdout.txt --&gt; Expected stdout for this test.
+        |-- expectedStderr.txt --&gt; Expected stderr for this test.
+        |-- expectedExitCode.txt --&gt; Expected exit code for this test.
         |-- app
             |-- sourceFile.foo
-            |-- BUILD.in --> BUILD file prior to running gazelle.
-            |-- BUILD.out --> BUILD file expected after running gazelle.
+            |-- BUILD.in --&gt; BUILD file prior to running gazelle.
+            |-- BUILD.out --&gt; BUILD file expected after running gazelle.
 ```
 
 To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the_test_target`.
