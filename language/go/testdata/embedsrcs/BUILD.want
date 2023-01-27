@@ -10,6 +10,7 @@ go_library(
         "m_gen.txt",
         "m_static.txt",
         "n_/static.txt",
+        "o_dir/_hidden.txt",
     ],
     importpath = "example.com/repo/embedsrcs",
     visibility = ["//visibility:public"],
