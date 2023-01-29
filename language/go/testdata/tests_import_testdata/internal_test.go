@@ -18,7 +18,7 @@ package tests_import_testdata
 import (
 	"testing"
 
-	_ "example.com/repo/tests_import_testdata/testdata/sub"
+	_ "example.com/repo/tests_import_testdata/testdata/pkg/sub"
 )
 
 func TestStuff(t *testing.T) {}

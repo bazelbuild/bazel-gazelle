@@ -300,7 +300,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		gl.goPkgRels[args.Rel] = true
 	} else {
 		for _, sub := range args.Subdirs {
-			if gl.goPkgRels[path.Join(args.Rel, sub)] {
+			if _, ok := gl.goPkgRels[path.Join(args.Rel, sub)]; ok {
 				gl.goPkgRels[args.Rel] = false
 				break
 			}
