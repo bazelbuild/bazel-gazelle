@@ -378,14 +378,16 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 	}
 
-	if len(errorsFromWalk) > 0 {
-		if len(errorsFromWalk) == 1 {
-			return errorsFromWalk[0]
-		}
+	if len(errorsFromWalk) == 1 {
+		return errorsFromWalk[0]
+	}
+
+	if len(errorsFromWalk) > 1 {
 		var additionalErrors []string
 		for _, error := range errorsFromWalk[1:] {
 			additionalErrors = append(additionalErrors, error.Error())
 		}
+
 		return fmt.Errorf("encountered multiple errors: %w, %v", errorsFromWalk[0], strings.Join(additionalErrors, ", "))
 	}
 
