@@ -445,21 +445,25 @@ func lookupMapKindReplacement(kindMap map[string]config.MappedKind, kind string)
 	seenKinds := make(map[string]struct{})
 	seenKindPath := []string{kind}
 	for {
-		if replacement, ok := kindMap[kind]; ok {
-			seenKindPath = append(seenKindPath, replacement.KindName)
-			if _, alreadySeen := seenKinds[replacement.KindName]; alreadySeen {
-				return nil, fmt.Errorf("found loop of map_kind replacements: %s", strings.Join(seenKindPath, " -> "))
-			}
-			seenKinds[replacement.KindName] = struct{}{}
-			mapped = &replacement
-			if kind == replacement.KindName {
-				break
-			}
-			kind = replacement.KindName
-		} else {
+		replacement, ok := kindMap[kind]
+		if !ok {
 			break
 		}
+
+		seenKindPath = append(seenKindPath, replacement.KindName)
+		if _, alreadySeen := seenKinds[replacement.KindName]; alreadySeen {
+			return nil, fmt.Errorf("found loop of map_kind replacements: %s", strings.Join(seenKindPath, " -> "))
+		}
+
+		seenKinds[replacement.KindName] = struct{}{}
+		mapped = &replacement
+		if kind == replacement.KindName {
+			break
+		}
+
+		kind = replacement.KindName
 	}
+
 	return mapped, nil
 }
 
