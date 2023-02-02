@@ -57,6 +57,8 @@ def _gazelle_runner_impl(ctx):
         args.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
     args.extend([ctx.expand_location(arg, ctx.attr.data) for arg in ctx.attr.extra_args])
 
+    env = "\n".join([ "export %s='%s'" % (x, y) for (x, y) in ctx.attr.env.items() ])
+
     out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
     go_tool = ctx.toolchains["@io_bazel_rules_go//go:toolchain"].sdk.go
     substitutions = {
@@ -69,6 +71,7 @@ def _gazelle_runner_impl(ctx):
 """.format(label = str(ctx.label)),
         "@@RUNNER_LABEL@@": shell.quote(str(ctx.label)),
         "@@GOTOOL@@": shell.quote(go_tool.short_path),
+        "@@ENV@@": env,
     }
     ctx.actions.expand_template(
         template = ctx.file._template,
@@ -118,6 +121,7 @@ _gazelle_runner = rule(
         "prefix": attr.string(),
         "extra_args": attr.string_list(),
         "data": attr.label_list(allow_files = True),
+        "env": attr.string_dict(),
         "_template": attr.label(
             default = "//internal:gazelle.bash.in",
             allow_single_file = True,

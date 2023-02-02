@@ -15,6 +15,9 @@ gazelle(
     name = "gazelle",
     command = "fix",
     gazelle = ":gazelle_local",
+    env = {
+        "FOO": "bar",
+    },
 )
 
 # gazelle_ci is called from CI to verify the repo is up-to-date, see: .bazelci/presubmit.yml
