@@ -3468,7 +3468,7 @@ func TestMapKindLoop(t *testing.T) {
 		t.Fatal("Expected error running gazelle with map_kind loop")
 	}
 	msg := err.Error()
-	if !strings.Contains(msg, "couldn't handle loop in map_kinds: found loop of map_kind replacements: go_library -> custom_go_library -> go_library") {
+	if !strings.Contains(msg, "looking up mapped kind: found loop of map_kind replacements: go_library -> custom_go_library -> go_library") {
 		t.Fatalf("Expected error to contain useful descriptors but was %q", msg)
 	}
 }

@@ -332,7 +332,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		for _, r := range allRules {
 			repl, err := lookupMapKindReplacement(c.KindMap, r.Kind())
 			if err != nil {
-				errorsFromWalk = append(errorsFromWalk, fmt.Errorf("couldn't handle loop in map_kinds: %w", err))
+				errorsFromWalk = append(errorsFromWalk, fmt.Errorf("looking up mapped kind: %w", err))
 				continue
 			}
 			if repl != nil {
