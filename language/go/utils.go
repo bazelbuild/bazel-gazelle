@@ -62,10 +62,6 @@ type moduleError struct {
 	Err string
 }
 
-type downloadError struct {
-	Err string
-}
-
 // moduleFromDownload is an abstraction to preserve the output of `go mod download`.
 // The output schema is documented at https://go.dev/ref/mod#go-mod-download
 type moduleFromDownload struct {
@@ -74,7 +70,7 @@ type moduleFromDownload struct {
 	Replace            *struct {
 		Path, Version string
 	}
-	Error *downloadError
+	Error string
 }
 
 // extractModules lists all modules except for the main module,
@@ -136,8 +132,8 @@ func fillMissingSums(pathToModule map[string]*moduleFromList) (map[string]*modul
 					err = fmt.Errorf("%w\nError parsing module for more error information: %v", err, decodeErr)
 					break
 				}
-				if dl.Error != nil {
-					err = fmt.Errorf("%w\nError downloading %v: %v", err, dl.Path, dl.Error.Err)
+				if dl.Error != "" {
+					err = fmt.Errorf("%w\nError downloading %v: %v", err, dl.Path, dl.Error)
 				}
 			}
 			err = fmt.Errorf("error from go mod download: %w", err)

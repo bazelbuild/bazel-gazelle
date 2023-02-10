@@ -253,9 +253,7 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
 				return []byte(`{
 "Path": "definitely.doesnotexist/ever",
 "Version": "0.1.0",
-"Error": {
-    "Err": "Did not exist"
-}
+"Error": "Did not exist"
 }`), fmt.Errorf("failed to download")
 			},
 		}, {
