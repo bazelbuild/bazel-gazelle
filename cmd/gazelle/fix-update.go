@@ -375,6 +375,14 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 				r.SetKind(repl.KindName)
 			}
 		}
+		for _, r := range empty {
+			if repl, ok := c.KindMap[r.Kind()]; ok {
+				mappedKindInfo[repl.KindName] = kinds[r.Kind()]
+				mappedKinds = append(mappedKinds, repl)
+				mrslv.MappedKind(rel, repl)
+				r.SetKind(repl.KindName)
+			}
+		}
 
 		// Insert or merge rules into the build file.
 		if f == nil {

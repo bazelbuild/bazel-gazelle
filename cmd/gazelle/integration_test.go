@@ -1971,6 +1971,47 @@ go_library(
 			Content: `package unmapped`,
 		},
 		{
+			Path: "enabled/existing_rules/clean/BUILD.bazel",
+			Content: `load("//tools/go:def.bzl", "my_go_library")
+
+# gazelle:go_naming_convention import
+# gazelle:map_kind go_library my_go_library //tools/go:def.bzl
+
+my_go_library(
+    name = "clean",
+    srcs = [
+        "foo.go",
+        "bar.go",
+        "buz.go",
+    ],
+    importpath = "example.com/mapkind/enabled/existing_rules/clean",
+    visibility = ["//visibility:private"],
+)
+`,
+		},
+		{
+			Path: "enabled/existing_rules/clean_binary/BUILD.bazel",
+			Content: `load("//tools/go:def.bzl", "my_go_binary", "my_go_library")
+
+# gazelle:go_naming_convention import
+# gazelle:map_kind go_binary my_go_binary //tools/go:def.bzl
+# gazelle:map_kind go_library my_go_library //tools/go:def.bzl
+
+my_go_library(
+    name = "clean_binary_lib",
+    srcs = ["main.go"],
+    importpath = "example.com/mapkind/enabled/existing_rules/clean_binary",
+    visibility = ["//visibility:private"],
+)
+
+my_go_binary(
+    name = "clean_binary",
+    embed = [":clean_binary_lib"],
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+		{
 			Path:    "enabled/existing_rules/nobuild/nobuild_lib.go",
 			Content: `package nobuild`,
 		},
@@ -2124,6 +2165,21 @@ my_library(
     importpath = "example.com/mapkind/enabled/existing_rules/unmapped",
     visibility = ["//visibility:public"],
 )
+`,
+		},
+		{
+			Path: "enabled/existing_rules/clean/BUILD.bazel",
+			Content: `
+# gazelle:go_naming_convention import
+# gazelle:map_kind go_library my_go_library //tools/go:def.bzl
+`,
+		},
+		{
+			Path: "enabled/existing_rules/clean_binary/BUILD.bazel",
+			Content: `
+# gazelle:go_naming_convention import
+# gazelle:map_kind go_binary my_go_binary //tools/go:def.bzl
+# gazelle:map_kind go_library my_go_library //tools/go:def.bzl
 `,
 		},
 		{
