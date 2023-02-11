@@ -372,12 +372,6 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 	})
 
-	for _, lang := range languages {
-		if finishable, ok := lang.(language.FinishableLanguage); ok {
-			finishable.DoneGeneratingRules()
-		}
-	}
-
 	if len(errorsFromWalk) == 1 {
 		return errorsFromWalk[0]
 	}
@@ -413,6 +407,12 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve,
 			unionKindInfoMaps(kinds, v.mappedKindInfo))
+	}
+
+	for _, lang := range languages {
+		if finishable, ok := lang.(language.FinishableLanguage); ok {
+			finishable.DoneGeneratingRules()
+		}
 	}
 
 	// Emit merged files.
