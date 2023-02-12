@@ -18,10 +18,13 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
 	"os"
+	"runtime"
+	"runtime/pprof"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -55,9 +58,56 @@ func (cmd command) String() string {
 	return nameFromCommand[cmd]
 }
 
+func mayStartCPUProfile() (func(), []string) {
+	profileFs := flag.NewFlagSet("profiling", flag.ContinueOnError)
+
+	// silent all outputs if flag parse error
+	var empty bytes.Buffer
+	profileFs.SetOutput(&empty)
+	profileFs.Usage = func() {}
+
+	cpuProfilePath := profileFs.String("cpu_profile_path", "", "path to store CPU profile")
+	cpuProfileRate := profileFs.Int("cpu_profile_rate", 4096, "rate of sampling when profile CPU")
+
+	args := os.Args[1:]
+	var newArgs []string
+	for {
+		if len(args) == 0 {
+			break
+		}
+
+		err := profileFs.Parse(args)
+		if err == nil {
+			newArgs = append(newArgs, profileFs.Args()...)
+			break
+		}
+
+		newArgs = append(newArgs, args[0])
+		args = profileFs.Args()
+	}
+
+	if *cpuProfilePath != "" {
+		runtime.SetCPUProfileRate(*cpuProfileRate)
+		f, err := os.Create(*cpuProfilePath)
+		if err != nil {
+			log.Fatal("could not create pprof output", err)
+		}
+
+		pprof.StartCPUProfile(f)
+		return pprof.StopCPUProfile, newArgs
+	}
+
+	return nil, os.Args[1:]
+}
+
 func main() {
 	log.SetPrefix("gazelle: ")
 	log.SetFlags(0) // don't print timestamps
+
+	stop, newArgs := mayStartCPUProfile()
+	if stop != nil {
+		defer stop()
+	}
 
 	var wd string
 	if wsDir := os.Getenv("BUILD_WORKSPACE_DIRECTORY"); wsDir != "" {
@@ -69,7 +119,7 @@ func main() {
 		}
 	}
 
-	if err := run(wd, os.Args[1:]); err != nil && err != flag.ErrHelp {
+	if err := run(wd, newArgs); err != nil && err != flag.ErrHelp {
 		if err == errExit {
 			os.Exit(1)
 		} else {
