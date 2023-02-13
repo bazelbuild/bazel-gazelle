@@ -97,11 +97,11 @@ func (l *testFilegroupLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc 
 	if !l.RulesGenerated {
 		panic("Expected a call to DoneGeneratingRules before Resolve")
 	}
-	l.DepsResolved = true
+	if l.DepsResolved {
+		panic("Resolve must be called before calling DoneResolvingDeps")
+	}
 }
 
 func (l *testFilegroupLang) DoneResolvingDeps() {
-	if !l.DepsResolved {
-		panic("Expected calls to Resolve before DoneResolvingDeps")
-	}
+	l.DepsResolved = true
 }
