@@ -39,7 +39,7 @@ import (
 // state may be stored in this instance, but stateless behavior is encouraged,
 // especially since some operations may be concurrent in the future.
 //
-// Tasks languages are used for
+// # Tasks languages are used for
 //
 // * Configuration (embedded interface config.Configurer). Languages may
 // define command line flags and alter the configuration in a directory
@@ -53,7 +53,7 @@ import (
 // example, import strings like "github.com/foo/bar" in Go can be resolved
 // into Bazel labels like "@com_github_foo_bar//:go_default_library".
 //
-// Tasks languages support
+// # Tasks languages support
 //
 // * Generating load statements: languages list files and symbols that may
 // be loaded.
@@ -99,6 +99,10 @@ type Language interface {
 // FinishableLanguage allows a Language to be notified when Generate is finished
 // being called.
 type FinishableLanguage interface {
+	// BeforeGeneratingRules is called before any calls to GenerateRules
+	// This allows for hooks to be called, for instance to starting a background
+	// server process.
+	BeforeGeneratingRules()
 	// DoneGeneratingRules is called when all calls to GenerateRules have been
 	// completed.
 	// This allows for hooks to be called, for instance to release resources
@@ -106,6 +110,10 @@ type FinishableLanguage interface {
 	// No further calls will be made to GenerateRules on this Language instance
 	// after this method has been called.
 	DoneGeneratingRules()
+	// DoneResolvingDeps is called when all calls to Resolve have been completed
+	// No further calls will be made to Resolve on this Language instance after
+	// this method has been called
+	DoneResolvingDeps()
 }
 
 // GenerateArgs contains arguments for language.GenerateRules. Arguments are

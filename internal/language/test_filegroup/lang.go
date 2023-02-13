@@ -39,7 +39,7 @@ const testFilegroupName = "test_filegroup"
 type testFilegroupLang struct {
 	language.BaseLang
 
-	sawDone bool
+	Initialized, RulesGenerated, DepsResolved bool
 }
 
 func NewLanguage() language.Language {
@@ -59,8 +59,15 @@ var kinds = map[string]rule.KindInfo{
 	},
 }
 
+func (l *testFilegroupLang) BeforeGeneratingRules() {
+	l.Initialized = true
+}
+
 func (l *testFilegroupLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
-	if l.sawDone {
+	if !l.Initialized {
+		panic("GenerateRules must not be called before BeforeGeneratingRules")
+	}
+	if l.RulesGenerated {
 		panic("GenerateRules must not be called after DoneGeneratingRules")
 	}
 
@@ -83,11 +90,18 @@ func (l *testFilegroupLang) GenerateRules(args language.GenerateArgs) language.G
 }
 
 func (l *testFilegroupLang) DoneGeneratingRules() {
-	l.sawDone = true
+	l.RulesGenerated = true
 }
 
 func (l *testFilegroupLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
-	if !l.sawDone {
+	if !l.RulesGenerated {
 		panic("Expected a call to DoneGeneratingRules before Resolve")
+	}
+	l.DepsResolved = true
+}
+
+func (l *testFilegroupLang) DoneResolvingDeps() {
+	if !l.DepsResolved {
+		panic("Expected calls to Resolve before DoneResolvingDeps")
 	}
 }
