@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/pathtools"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
@@ -75,7 +74,7 @@ const (
 // including excluded files.
 //
 // regularFiles is a list of base names of regular files within dir, not
-// including excluded files.
+// including excluded files or symlinks.
 //
 // genFiles is a list of names of generated files, found by reading
 // "out" and "outs" attributes of rules in f.
@@ -116,8 +115,6 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		}
 	}
 
-	symlinks := symlinkResolver{visited: []string{c.RepoRoot}}
-
 	updateRels := buildUpdateRelMap(c.RepoRoot, dirs)
 
 	var visit func(*config.Config, string, string, bool)
@@ -155,10 +152,10 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		for _, fi := range files {
 			base := fi.Name()
 			switch {
-			case base == "" || wc.isExcluded(rel, base):
+			case base == "" || wc.isExcluded(rel, base) || fi.Mode()&os.ModeSymlink != 0:
 				continue
 
-			case fi.IsDir() || fi.Mode()&os.ModeSymlink != 0 && symlinks.follow(c, dir, rel, base):
+			case fi.IsDir():
 				subdirs = append(subdirs, base)
 
 			default:
@@ -316,69 +313,4 @@ func findGenFiles(wc *walkConfig, f *rule.File) []string {
 		}
 	}
 	return genFiles
-}
-
-type symlinkResolver struct {
-	visited []string
-}
-
-// Decide if symlink dir/base should be followed.
-func (r *symlinkResolver) follow(c *config.Config, dir, rel, base string) bool {
-	// See if the user has explicitly directed us to follow the link.
-	wc := getWalkConfig(c)
-	linkRel := path.Join(rel, base)
-	for _, follow := range wc.follow {
-		if linkRel == follow {
-			return true
-		}
-	}
-
-	// Get canonical path as dest
-	fullpath := filepath.Join(dir, base)
-	dest, err := filepath.EvalSymlinks(fullpath)
-	if err != nil {
-		return false
-	}
-	if !filepath.IsAbs(dest) {
-		dest, err = filepath.Abs(filepath.Join(dir, dest))
-		if err != nil {
-			return false
-		}
-	}
-
-	// Ignore symlinks into Bazel's output.
-	// This includes the bazel-* convenience symlinks and any created for IDEs.
-	// Start by getting a canonical path to Bazel's output base.
-	// Note that we expect the bazel-out symlink in the workspace root directory to point to
-	// <output-base>/execroot/<workspace-name>/bazel-out
-	// See https://docs.bazel.build/versions/master/output_directories.html
-	// for documentation on Bazel directory layout.
-	bazelOut, err := filepath.EvalSymlinks(filepath.Join(c.RepoRoot, "bazel-out"))
-	if err == nil {
-		if !filepath.IsAbs(bazelOut) {
-			absBazelOut, err := filepath.Abs(bazelOut)
-			if err == nil {
-				bazelOut = absBazelOut
-			}
-		}
-		if err == nil {
-			outputBase := filepath.Dir(filepath.Dir(filepath.Dir(bazelOut)))
-			if pathtools.HasPrefix(dest, outputBase) {
-				return false
-			}
-		}
-	}
-
-	// See if the symlink points to a tree that has been already visited.
-	for _, p := range r.visited {
-		if pathtools.HasPrefix(dest, p) || pathtools.HasPrefix(p, dest) {
-			return false
-		}
-	}
-	r.visited = append(r.visited, dest)
-	stat, err := os.Stat(fullpath)
-	if err != nil {
-		return false
-	}
-	return stat.IsDir()
 }
