@@ -1,0 +1,3 @@
+load(":env_variables_test.bzl", "env_variables_test_suite")
+
+env_variables_test_suite()
