@@ -305,6 +305,13 @@ x_library(name = "x")
 `,
 			want: true,
 		}, {
+			desc: "prefix",
+			src: `
+# keep because of ticket #42
+x_library(name = "x")
+`,
+			want: true,
+		}, {
 			desc: "compact_suffix",
 			src: `
 x_library(name = "x") # keep
@@ -357,6 +364,13 @@ func TestShouldKeepExpr(t *testing.T) {
 			desc: "before",
 			src: `
 # keep
+"s"
+`,
+			want: true,
+		}, {
+			desc: "before",
+			src: `
+# keep because we need it for the ninja feature
 "s"
 `,
 			want: true,
