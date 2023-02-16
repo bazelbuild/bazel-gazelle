@@ -5,6 +5,7 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
+        "directives.bzl",
         "go_deps.bzl",
         "go_mod.bzl",
         "non_module_deps.bzl",
@@ -14,10 +15,17 @@ filegroup(
 )
 
 bzl_library(
+    name = "directives",
+    srcs = ["directives.bzl"],
+    visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
     name = "go_deps",
     srcs = ["go_deps.bzl"],
     visibility = ["//:__subpackages__"],
     deps = [
+        ":directives",
         ":semver",
         "//internal:go_repository",
     ],
