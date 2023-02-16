@@ -64,6 +64,15 @@ go_repository(
     strip_prefix = "errors-816c9085562cd7ee03e7f8188a1cfd942858cded",
     type = "zip",
 )
+
+# Download major version suffixed via git
+go_repository(
+    name = "com_github_thediveo_enumflag_v2",
+    commit = "0217df583bf3d37b92798602e5061b36556bcd38",
+    importpath = "github.com/thediveo/enumflag/v2",
+    remote = "https://github.com/thediveo/enumflag",
+    vcs = "git",
+)
 ```
 
 """
