@@ -24,6 +24,8 @@ GAZELLE_LABEL=@@GAZELLE_LABEL@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
 
+@@ENV@@
+
 # find_runfile prints the location of a runfile in the source workspace,
 # either by reading the symbolic link or reading the runfiles manifest.
 function find_runfile {
