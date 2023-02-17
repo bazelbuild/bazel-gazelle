@@ -926,6 +926,16 @@ The following directives are recognized:
 | Sets the language selection flag for this and descendent packages, which causes gazelle to |
 | index and generate rules for only the languages named in this directive.                   |
 +---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:default_visibility visibility`  | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Comma-separated list of visibility specifications.                                         |
+| This directive adds the visibility specifications for this and descendant packages.        |
+| For example:                                                                               |
+|                                                                                            |
+| .. code:: bzl                                                                              |
+|                                                                                            |
+|   # gazelle:default_visibility //foo:__subpackages__,//src:__subpackages__                 |                                         |
++---------------------------------------------------+----------------------------------------+
 
 Gazelle also reads directives from the WORKSPACE file. They may be used to
 discover custom repository names and known prefixes. The ``fix`` and ``update``
