@@ -315,6 +315,17 @@ func (f *File) Sync() {
 	for r, w = 0, 0; r < len(f.Rules); r++ {
 		s := f.Rules[r]
 		s.sync()
+
+		// package() rules are special in that they are REQUIRED to occur
+		// after all load()s and before any other rules. Therefore we
+		// manually update the index of any Rule{name:"package"} we
+		// find to the index of the last load(). This is safe because
+		// "statements at the same index will occur in order" and rules
+		// always occur after load()s in the call to updateStmt below.
+		if s.Kind() == "package" {
+			s.index = len(f.Loads)
+		}
+
 		if s.deleted {
 			ruleDeletes = append(ruleDeletes, &s.stmt)
 			continue
