@@ -323,7 +323,7 @@ func (f *File) Sync() {
 		// "statements at the same index will occur in order" and rules
 		// always occur after load()s in the call to updateStmt below.
 		if s.Kind() == "package" {
-			s.index = len(f.Loads)
+			s.index = len(f.Loads) - 1
 		}
 
 		if s.deleted {
