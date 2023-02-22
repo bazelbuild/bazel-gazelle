@@ -2,6 +2,8 @@ load("//internal:go_repository.bzl", "go_repository")
 load(":go_mod.bzl", "deps_from_go_mod")
 load(":semver.bzl", "semver")
 
+visibility("//")
+
 # These Go modules are imported as Bazel modules via bazel_dep, not as
 # go_repository.
 IGNORED_MODULE_PATHS = [

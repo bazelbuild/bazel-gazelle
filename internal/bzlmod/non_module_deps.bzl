@@ -11,6 +11,8 @@ load(
     "go_repository_config",
 )
 
+visibility("//")
+
 def _non_module_deps_impl(module_ctx):
     go_repository_cache(
         name = "bazel_gazelle_go_repository_cache",
