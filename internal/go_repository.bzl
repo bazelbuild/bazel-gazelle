@@ -207,7 +207,13 @@ def _go_repository_impl(ctx):
         "GIT_SSL_CAINFO",
         "GIT_SSH",
         "GIT_SSH_COMMAND",
+        "GIT_CONFIG_COUNT"
     ]
+    if 'GIT_CONFIG_COUNT' in ctx.os.environ:
+        count = ctx.os.environ['GIT_CONFIG_COUNT']
+        if count and count.isdigit() and int(count) > 0:
+            for i in range(int(count)):
+                env_keys = env_keys + ['GIT_CONFIG_KEY_%d' % i, 'GIT_CONFIG_VALUE_%d' % i]
     env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
     if fetch_repo_args:
