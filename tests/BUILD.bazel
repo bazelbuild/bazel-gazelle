@@ -1,5 +1,8 @@
-load("//:def.bzl", "gazelle_binary")
-load("//:def.bzl", "gazelle_generation_test")
+load(
+    "//:def.bzl",
+    "gazelle_binary",
+    "gazelle_generation_test",
+)
 
 # Exclude this entire directly from having anything gnerated by Gazelle. That
 # way the test cases won't be fixed by `bazel run //:gazelle` when run in this
