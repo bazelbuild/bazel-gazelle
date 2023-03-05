@@ -99,10 +99,10 @@ type Language interface {
 // FinishableLanguage allows a Language to be notified when Generate is finished
 // being called.
 type FinishableLanguage interface {
-	// BeforeGeneratingRules is called before any calls to GenerateRules
+	// Init is called before any calls to GenerateRules
 	// This allows for hooks to be called, for instance to starting a background
 	// server process.
-	BeforeGeneratingRules()
+	Init()
 	// DoneGeneratingRules is called when all calls to GenerateRules have been
 	// completed.
 	// This allows for hooks to be called, for instance to release resources

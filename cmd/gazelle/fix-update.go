@@ -271,7 +271,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 
 	for _, lang := range languages {
 		if finishable, ok := lang.(language.FinishableLanguage); ok {
-			finishable.BeforeGeneratingRules()
+			finishable.Init()
 		}
 	}
 

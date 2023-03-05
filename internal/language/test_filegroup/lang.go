@@ -59,13 +59,13 @@ var kinds = map[string]rule.KindInfo{
 	},
 }
 
-func (l *testFilegroupLang) BeforeGeneratingRules() {
+func (l *testFilegroupLang) Init() {
 	l.Initialized = true
 }
 
 func (l *testFilegroupLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	if !l.Initialized {
-		panic("GenerateRules must not be called before BeforeGeneratingRules")
+		panic("GenerateRules must not be called before Init")
 	}
 	if l.RulesGenerated {
 		panic("GenerateRules must not be called after DoneGeneratingRules")
