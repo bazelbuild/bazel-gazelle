@@ -996,7 +996,7 @@ func (r *Rule) sync() {
 func ShouldKeep(e bzl.Expr) bool {
 	for _, c := range append(e.Comment().Before, e.Comment().Suffix...) {
 		text := strings.TrimSpace(strings.TrimPrefix(c.Token, "#"))
-		if strings.HasPrefix(text, "keep") {
+		if text == "keep" || strings.HasPrefix(text, "keep: ") {
 			return true
 		}
 	}
