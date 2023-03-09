@@ -11,11 +11,11 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-// BaseLang implements the minimum of language.Language interface.
-// This is not meant to be used directly by Gazelle, but to be used by
-// a downstream struct through composition. End users could use this to
-// write an extensions iteratively without having to implement every
-// functions in the interface right away.
+// BaseLang implements the minimum of language.Language and FinishableLanguage
+// interfaces. This is not meant to be used directly by Gazelle, but to be
+// used by a downstream struct through composition. End users could use this to
+// write an extensions iteratively without having to implement every function
+// in the interface right away.
 //
 // Example usage:
 //
@@ -27,6 +27,11 @@ import (
 //		return &MyLang{}
 //	}
 type BaseLang struct{}
+
+var (
+	_ Language           = (*BaseLang)(nil)
+	_ FinishableLanguage = (*BaseLang)(nil)
+)
 
 func (b *BaseLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {}
 

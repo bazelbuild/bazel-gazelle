@@ -110,11 +110,11 @@ type FinishableLanguage interface {
 	// such as shutting down a background server.
 	// No further calls will be made to GenerateRules on this Language instance
 	// after this method has been called.
-	DoneGeneratingRules(ctx context.Context)
+	DoneGeneratingRules()
 	// DoneResolvingDeps is called when all calls to Resolve have been completed
 	// No further calls will be made to Resolve on this Language instance after
 	// this method has been called
-	DoneResolvingDeps(ctx context.Context)
+	DoneResolvingDeps()
 }
 
 // GenerateArgs contains arguments for language.GenerateRules. Arguments are

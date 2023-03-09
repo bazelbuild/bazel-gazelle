@@ -24,6 +24,7 @@ limitations under the License.
 package test_filegroup
 
 import (
+	"context"
 	"path"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -42,6 +43,11 @@ type testFilegroupLang struct {
 	Initialized, RulesGenerated, DepsResolved bool
 }
 
+var (
+	_ language.Language           = (*testFilegroupLang)(nil)
+	_ language.FinishableLanguage = (*testFilegroupLang)(nil)
+)
+
 func NewLanguage() language.Language {
 	return &testFilegroupLang{}
 }
@@ -59,7 +65,7 @@ var kinds = map[string]rule.KindInfo{
 	},
 }
 
-func (l *testFilegroupLang) Init() {
+func (l *testFilegroupLang) Init(ctx context.Context) {
 	l.Initialized = true
 }
 
