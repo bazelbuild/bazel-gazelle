@@ -385,7 +385,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 
 	for _, lang := range languages {
 		if finishable, ok := lang.(language.FinishableLanguage); ok {
-			finishable.DoneGeneratingRules(ctx)
+			finishable.DoneGeneratingRules()
 		}
 	}
 
@@ -427,7 +427,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	}
 	for _, lang := range languages {
 		if finishable, ok := lang.(language.FinishableLanguage); ok {
-			finishable.DoneResolvingDeps(ctx)
+			finishable.DoneResolvingDeps()
 		}
 	}
 
