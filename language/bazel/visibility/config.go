@@ -50,14 +50,21 @@ func (*visibilityExtension) Configure(c *config.Config, _ string, f *rule.File) 
 		return
 	}
 
+	var newVisTargets []string
 	for _, d := range f.Directives {
 		switch d.Key {
 		case _directiveName:
 			for _, target := range strings.Split(d.Value, ",") {
-				cfg.visibilityTargets = append(cfg.visibilityTargets, target)
+				newVisTargets = append(newVisTargets, target)
 			}
 		}
 	}
+
+	// if visibility targets were specified, overwrite the config
+	if len(newVisTargets) != 0 {
+		cfg.visibilityTargets = newVisTargets
+	}
+
 	c.Exts[_extName] = cfg
 }
 

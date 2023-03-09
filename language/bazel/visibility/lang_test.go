@@ -213,3 +213,64 @@ func Test_NoRuleIfNoBuildFile(t *testing.T) {
 		t.Fatal("expected array of length 0")
 	}
 }
+
+func Test_MultipleDirectivesAcrossFilesSupercede(t *testing.T) {
+	testVis1 := "//src:__subpackages__"
+	testVis2 := "//src2:__subpackages__"
+	file1, err := rule.LoadData("path", "pkg", []byte(fmt.Sprintf(`
+# gazelle:default_visibility %s
+`, testVis1)))
+	if err != nil {
+		t.Fatalf("expected not nil - %+v", err)
+	}
+	file2, err := rule.LoadData("path/path", "pkg", []byte(fmt.Sprintf(`
+# gazelle:default_visibility %s
+`, testVis2)))
+	if err != nil {
+		t.Fatalf("expected not nil - %+v", err)
+	}
+
+	cfg := config.New()
+	ext := visibility.NewLanguage()
+	ext.Configure(cfg, "path", file1)
+
+	// clone the config as if we were decending through Walk
+	cfg2 := cfg.Clone()
+	ext.Configure(cfg2, "path/path", file2)
+
+	res2 := ext.GenerateRules(language.GenerateArgs{
+		Config: cfg2,
+		File:   rule.EmptyFile("path/path/file", "pkg"),
+	})
+
+	if len(res2.Gen) != 1 {
+		t.Fatal("expected array of length 1")
+	}
+	if len(res2.Imports) != 1 {
+		t.Fatal("expected array of length 1")
+	}
+	if len(res2.Gen[0].AttrStrings("default_visibility")) != 1 {
+		t.Fatal("expected array of length 1")
+	}
+	if testVis2 != res2.Gen[0].AttrStrings("default_visibility")[0] {
+		t.Fatal("expected returned visibility to match '//src2:__subpackages__'")
+	}
+
+	res1 := ext.GenerateRules(language.GenerateArgs{
+		Config: cfg,
+		File:   rule.EmptyFile("path/file", "pkg"),
+	})
+
+	if len(res1.Gen) != 1 {
+		t.Fatal("expected array of length 1")
+	}
+	if len(res1.Imports) != 1 {
+		t.Fatal("expected array of length 1")
+	}
+	if len(res1.Gen[0].AttrStrings("default_visibility")) != 1 {
+		t.Fatal("expected array of length 1")
+	}
+	if testVis1 != res1.Gen[0].AttrStrings("default_visibility")[0] {
+		t.Fatal("expected returned visibility to match '//src:__subpackages__'")
+	}
+}
