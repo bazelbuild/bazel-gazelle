@@ -72,7 +72,7 @@ func TestGenerateRules(t *testing.T) {
 
 	var loads []rule.LoadInfo
 	for _, lang := range langs {
-		loads = append(loads, lang.Loads()...)
+		loads = append(loads, lang.(language.ModuleAwareLanguage).ApparentLoads(func(string) string { return "" })...)
 	}
 	walk.Walk(c, cexts, []string{testdataDir}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
 		t.Run(rel, func(t *testing.T) {

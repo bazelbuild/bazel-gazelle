@@ -76,7 +76,7 @@ func TestGenerateRules(t *testing.T) {
 				r.Insert(f)
 			}
 			convertImportsAttrs(f)
-			merger.FixLoads(f, lang.Loads())
+			merger.FixLoads(f, lang.(language.ModuleAwareLanguage).ApparentLoads(func(string) string { return "" }))
 			f.Sync()
 			got := string(bzl.Format(f.File))
 			wantPath := filepath.Join(dir, "BUILD.want")

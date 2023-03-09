@@ -25,8 +25,12 @@ func (*visibilityExtension) Kinds() map[string]rule.KindInfo {
 	}
 }
 
-// Loads noops because there are no imports to add
 func (*visibilityExtension) Loads() []rule.LoadInfo {
+	panic("ApparentLoads should be called instead")
+}
+
+// ApparentLoads noops because there are no imports to add
+func (*visibilityExtension) ApparentLoads(func(string) string) []rule.LoadInfo {
 	return nil
 }
 

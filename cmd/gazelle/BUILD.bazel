@@ -25,6 +25,7 @@ go_library(
     deps = [
         "//config",
         "//flag",
+        "//internal/module",
         "//internal/wspace",
         "//label",
         "//language",

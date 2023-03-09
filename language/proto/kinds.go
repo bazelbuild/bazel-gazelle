@@ -15,7 +15,11 @@ limitations under the License.
 
 package proto
 
-import "github.com/bazelbuild/bazel-gazelle/rule"
+import (
+	"fmt"
+
+	"github.com/bazelbuild/bazel-gazelle/rule"
+)
 
 var protoKinds = map[string]rule.KindInfo{
 	"proto_library": {
@@ -30,14 +34,23 @@ var protoKinds = map[string]rule.KindInfo{
 	},
 }
 
-var protoLoads = []rule.LoadInfo{
-	{
-		Name: "@rules_proto//proto:defs.bzl",
-		Symbols: []string{
-			"proto_library",
-		},
-	},
+func (*protoLang) Kinds() map[string]rule.KindInfo { return protoKinds }
+
+func (pl *protoLang) Loads() []rule.LoadInfo {
+	panic("ApparentLoads should be called instead")
 }
 
-func (*protoLang) Kinds() map[string]rule.KindInfo { return protoKinds }
-func (*protoLang) Loads() []rule.LoadInfo          { return protoLoads }
+func (*protoLang) ApparentLoads(moduleToApparentName func(string) string) []rule.LoadInfo {
+	rulesProto := moduleToApparentName("rules_proto")
+	if rulesProto == "" {
+		rulesProto = "rules_proto"
+	}
+	return []rule.LoadInfo{
+		{
+			Name: fmt.Sprintf("@%s//proto:defs.bzl", rulesProto),
+			Symbols: []string{
+				"proto_library",
+			},
+		},
+	}
+}
