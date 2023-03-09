@@ -22,6 +22,7 @@ limitations under the License.
 package language
 
 import (
+	"context"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -102,7 +103,7 @@ type FinishableLanguage interface {
 	// Init is called before any calls to GenerateRules
 	// This allows for hooks to be called, for instance to starting a background
 	// server process.
-	Init()
+	Init(ctx context.Context)
 	// DoneGeneratingRules is called when all calls to GenerateRules have been
 	// completed.
 	// This allows for hooks to be called, for instance to release resources

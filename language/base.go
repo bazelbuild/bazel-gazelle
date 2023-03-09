@@ -1,6 +1,7 @@
 package language
 
 import (
+	"context"
 	"flag"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -66,7 +67,7 @@ func (b *BaseLang) GenerateRules(args GenerateArgs) GenerateResult {
 	return GenerateResult{}
 }
 
-func (b *BaseLang) Init() {}
+func (b *BaseLang) Init(ctx context.Context) {}
 
 func (b *BaseLang) DoneGeneratingRules() {}
 
