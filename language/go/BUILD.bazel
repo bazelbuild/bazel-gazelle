@@ -40,7 +40,6 @@ go_library(
     deps = [
         "//config",
         "//flag",
-        "//internal/version",
         "//label",
         "//language",
         "//language/proto",

@@ -16,7 +16,6 @@ limitations under the License.
 package golang
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"go/build"
@@ -25,27 +24,18 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
-	"github.com/bazelbuild/bazel-gazelle/internal/version"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
-	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
-var minimumRulesGoVersion = version.Version{0, 29, 0}
-
 // goConfig contains configuration values related to Go rules.
 type goConfig struct {
-	// rulesGoVersion is the version of io_bazel_rules_go being used. Determined
-	// by reading go/def.bzl. May be unset if the version can't be read.
-	rulesGoVersion version.Version
-
 	// genericTags is a set of tags that Gazelle considers to be true. Set with
 	// -build_tags or # gazelle:build_tags. Some tags, like gc, are always on.
 	genericTags map[string]bool
@@ -463,22 +453,6 @@ func (*goLang) Configure(c *config.Config, rel string, f *rule.File) {
 	c.Exts[goName] = gc
 
 	if rel == "" {
-		const message = `Gazelle may not be compatible with this version of rules_go.
-Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
-		var err error
-		gc.rulesGoVersion, err = findRulesGoVersion(c)
-		if c.ShouldFix {
-			// Only check the version when "fix" is run. Generated build files
-			// frequently work with older version of rules_go, and we don't want to
-			// nag too much since there's no way to disable this warning.
-			// Also, don't print a warning if the rules_go repo hasn't been fetched,
-			// since that's a common issue when Gazelle is run as a separate binary.
-			if err != nil && err != errRulesGoRepoNotFound && c.ShouldFix {
-				log.Printf("%v\n%s", err, message)
-			} else if err == nil && gc.rulesGoVersion.Compare(minimumRulesGoVersion) < 0 {
-				log.Printf("Found RULES_GO_VERSION %s. Minimum compatible version is %s.\n%s", gc.rulesGoVersion, minimumRulesGoVersion, message)
-			}
-		}
 		repoNamingConvention := map[string]namingConvention{}
 		for _, repo := range c.Repos {
 			if repo.Kind() == "go_repository" {
@@ -636,56 +610,6 @@ func splitValue(value string) []string {
 	}
 	return values
 }
-
-// findRulesGoVersion attempts to infer the version of io_bazel_rules_go.
-// It can read the external directory (if bazel has fetched it), or it can
-// read WORKSPACE. Neither method is completely reliable.
-func findRulesGoVersion(c *config.Config) (version.Version, error) {
-	const message = `Gazelle may not be compatible with this version of rules_go.
-Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
-
-	var vstr string
-	if rulesGoPath, err := repo.FindExternalRepo(c.RepoRoot, config.RulesGoRepoName); err == nil {
-		// Bazel has already fetched io_bazel_rules_go. We can read its version
-		// from //go:def.bzl.
-		defBzlPath := filepath.Join(rulesGoPath, "go", "def.bzl")
-		defBzlContent, err := ioutil.ReadFile(defBzlPath)
-		if err != nil {
-			return nil, err
-		}
-		versionRe := regexp.MustCompile(`(?m)^RULES_GO_VERSION = ['"]([0-9.]*)['"]`)
-		match := versionRe.FindSubmatch(defBzlContent)
-		if match == nil {
-			return nil, fmt.Errorf("RULES_GO_VERSION not found in @%s//go:def.bzl.\n%s", config.RulesGoRepoName, message)
-		}
-		vstr = string(match[1])
-	} else {
-		// Bazel has not fetched io_bazel_rules_go. Maybe we can find it in the
-		// WORKSPACE file.
-		re := regexp.MustCompile(`github\.com/bazelbuild/rules_go/releases/download/v([0-9.]+)/`)
-	RepoLoop:
-		for _, r := range c.Repos {
-			if r.Kind() == "http_archive" && r.Name() == "io_bazel_rules_go" {
-				for _, u := range r.AttrStrings("urls") {
-					if m := re.FindStringSubmatch(u); m != nil {
-						vstr = m[1]
-						break RepoLoop
-					}
-				}
-			}
-		}
-	}
-
-	if vstr == "" {
-		// Couldn't find a version. We return a specific value since this is not
-		// usually a useful error to report.
-		return nil, errRulesGoRepoNotFound
-	}
-
-	return version.ParseVersion(vstr)
-}
-
-var errRulesGoRepoNotFound = errors.New(config.RulesGoRepoName + " external repository not found")
 
 // detectNamingConvention attempts to detect the naming convention in use by
 // reading build files in subdirectories of the repository root directory.

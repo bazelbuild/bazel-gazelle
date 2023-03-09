@@ -330,7 +330,6 @@ func (t *protoTarget) addFile(info fileInfo) {
 // performance optimization to avoid evaluating constraints repeatedly.
 func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgoTagsAndOpts) func(sb *platformStringsBuilder, ss ...string) {
 	isOSSpecific, isArchSpecific := isOSArchSpecific(info, cgoTags)
-	v := getGoConfig(c).rulesGoVersion
 
 	switch {
 	case !isOSSpecific && !isArchSpecific:
@@ -345,8 +344,7 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgo
 	case isOSSpecific && !isArchSpecific:
 		var osMatch []string
 		for _, os := range rule.KnownOSs {
-			if rulesGoSupportsOS(v, os) &&
-				checkConstraints(c, os, "", info.goos, info.goarch, info.tags, cgoTags) {
+			if checkConstraints(c, os, "", info.goos, info.goarch, info.tags, cgoTags) {
 				osMatch = append(osMatch, os)
 			}
 		}
@@ -361,8 +359,7 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgo
 	case !isOSSpecific && isArchSpecific:
 		var archMatch []string
 		for _, arch := range rule.KnownArchs {
-			if rulesGoSupportsArch(v, arch) &&
-				checkConstraints(c, "", arch, info.goos, info.goarch, info.tags, cgoTags) {
+			if checkConstraints(c, "", arch, info.goos, info.goarch, info.tags, cgoTags) {
 				archMatch = append(archMatch, arch)
 			}
 		}
@@ -377,8 +374,7 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgo
 	default:
 		var platformMatch []rule.Platform
 		for _, platform := range rule.KnownPlatforms {
-			if rulesGoSupportsPlatform(v, platform) &&
-				checkConstraints(c, platform.OS, platform.Arch, info.goos, info.goarch, info.tags, cgoTags) {
+			if checkConstraints(c, platform.OS, platform.Arch, info.goos, info.goarch, info.tags, cgoTags) {
 				platformMatch = append(platformMatch, platform)
 			}
 		}

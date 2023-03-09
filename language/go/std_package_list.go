@@ -166,7 +166,6 @@ var stdPackages = map[string]bool{
 	"cmd/go/internal/tool": true,
 	"cmd/go/internal/trace": true,
 	"cmd/go/internal/vcs": true,
-	"cmd/go/internal/version": true,
 	"cmd/go/internal/vet": true,
 	"cmd/go/internal/web": true,
 	"cmd/go/internal/work": true,
