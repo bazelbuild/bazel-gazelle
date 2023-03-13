@@ -305,9 +305,9 @@ x_library(name = "x")
 `,
 			want: true,
 		}, {
-			desc: "prefix",
+			desc: "prefix with description",
 			src: `
-# keep because of ticket #42
+# keep: hack, see more in ticket #42
 x_library(name = "x")
 `,
 			want: true,
@@ -368,9 +368,9 @@ func TestShouldKeepExpr(t *testing.T) {
 `,
 			want: true,
 		}, {
-			desc: "before",
+			desc: "before with description",
 			src: `
-# keep because we need it for the ninja feature
+# keep: we need it for the ninja feature
 "s"
 `,
 			want: true,
