@@ -375,6 +375,20 @@ func TestShouldKeepExpr(t *testing.T) {
 `,
 			want: true,
 		}, {
+			desc: "before but not the correct prefix (keeping)",
+			src: `
+			# keeping this for now
+"s"
+`,
+			want: false,
+		}, {
+			desc: "before but not the correct prefix (no colon)",
+			src: `
+			# keep this around for the time being
+"s"
+`,
+			want: false,
+		}, {
 			desc: "suffix",
 			src: `
 "s" # keep
