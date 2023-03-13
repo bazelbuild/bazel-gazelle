@@ -979,6 +979,9 @@ In addition to directives, Gazelle supports ``# keep`` comments that protect
 parts of build files from being modified. ``# keep`` may be written before
 a rule, before an attribute, or after a string within a list.
 
+``# keep`` comments might take one of 2 forms; the ``# keep`` literal or a
+description prefixed by ``# keep: ``.
+
 Example
 ^^^^^^^
 
@@ -1003,6 +1006,7 @@ know what imports to resolve, so you may need to add dependencies manually with
       visibility = ["//visibility:public"],
       deps = [
           "@com_github_example_gen//:go_default_library",  # keep
+          "@com_github_example_gen//a/b/c:go_default_library",  # keep: this is also important
       ],
   )
 
