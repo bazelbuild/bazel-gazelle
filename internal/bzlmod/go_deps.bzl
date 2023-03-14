@@ -1,5 +1,5 @@
 load("//internal:go_repository.bzl", "go_repository")
-load(":go_mod.bzl", "deps_from_go_mod")
+load(":go_mod.bzl", "deps_from_go_mod", "sums_from_go_mod")
 load(":directives.bzl", "DEFAULT_DIRECTIVES_BY_PATH")
 load(":semver.bzl", "semver")
 load(
@@ -140,6 +140,7 @@ def _go_deps_impl(module_ctx):
     gazelle_overrides = {}
     root_versions = {}
     root_fixups = []
+    sums = {}
 
     outdated_direct_dep_printer = print
     for module in module_ctx.modules:
@@ -176,7 +177,17 @@ def _go_deps_impl(module_ctx):
             )
         additional_module_tags = []
         for from_file_tag in module.tags.from_file:
+
+            # Load all sums from transitively resolved `go.sum` files.
+            # Only use these after version resolution is completed.
+            for entry, new_sum in sums_from_go_mod(module_ctx, from_file_tag.go_mod).items():
+                _safe_insert_sum(sums, entry, new_sum)
             additional_module_tags += deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+
+        # Load sums from manually specified modules separately.
+        for module_tag in module.tags.module:
+            sum_version = _canonicalize_raw_version(module_tag.version)
+            _safe_insert_sum(sums, (module_tag.path, sum_version), module_tag.sum)
 
         _fail_on_non_root_overrides(module, "module", "build_naming_convention")
         _fail_on_non_root_overrides(module, "module", "build_file_proto_mode")
@@ -199,9 +210,7 @@ def _go_deps_impl(module_ctx):
             if module_tag.path in IGNORED_MODULE_PATHS:
                 continue
             paths[module_tag.path] = None
-            raw_version = module_tag.version
-            if raw_version.startswith("v"):
-                raw_version = raw_version[1:]
+            raw_version = _canonicalize_raw_version(module_tag.version)
 
             # Note: While we still have overrides in rules_go, those will take precedence over the
             # ones defined in the root module.
@@ -220,7 +229,6 @@ def _go_deps_impl(module_ctx):
                     repo_name = _repo_name(module_tag.path),
                     version = version,
                     raw_version = raw_version,
-                    sum = module_tag.sum,
                 )
 
     unmatched_gazelle_overrides = []
@@ -242,10 +250,14 @@ def _go_deps_impl(module_ctx):
             )
 
     for path, module in module_resolutions.items():
+        entry = (path, module.raw_version)
+        if entry not in sums:
+            fail("No sum for {}@{} found".format(path, module.raw_version))
+
         go_repository(
             name = module.repo_name,
             importpath = path,
-            sum = module.sum,
+            sum = sums[entry],
             version = "v" + module.raw_version,
             build_directives = _get_directives(path, gazelle_overrides),
         )
@@ -287,6 +299,16 @@ one of these attributes and add "gazelle:go_naming_convention <value>" (for \
 build_naming_convention) or "gazelle:proto <value>" (for build_proto_file_mode) \
 to its 'directives' attribute.
 """ + format_module_file_fixup(root_fixups))
+
+def _safe_insert_sum(sums, entry, new_sum):
+    if entry in sums and new_sum != sums[entry]:
+        fail("Multiple mismatching sums for {}@{} found.".format(entry[0], entry[1]))
+    sums[entry] = new_sum
+
+def _canonicalize_raw_version(raw_version):
+    if raw_version.startswith("v"):
+        return raw_version[1:]
+    return raw_version
 
 _config_tag = tag_class(
     attrs = {

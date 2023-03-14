@@ -50,8 +50,8 @@ github.com/bazelbuild/rules_go v0.33.0/go.mod h1:MC23Dc/wkXEyk3Wpq6lCqz0ZAYOZDw2
 """
 
 _EXPECTED_GO_SUM_PARSE_RESULT = {
-    ("github.com/bazelbuild/buildtools", "v0.0.0-20220531122519-a43aed7014c8"): "h1:fmdo+fvvWlhldUcqkhAMpKndSxMN3vH5l7yow5cEaiQ=",
-    ("github.com/bazelbuild/rules_go", "v0.33.0"): "h1:WW9CHmFxbE+Lm4qiLOFAPogmiAUzZtvQsWxUcm4wwaU=",
+    ("github.com/bazelbuild/buildtools", "0.0.0-20220531122519-a43aed7014c8"): "h1:fmdo+fvvWlhldUcqkhAMpKndSxMN3vH5l7yow5cEaiQ=",
+    ("github.com/bazelbuild/rules_go", "0.33.0"): "h1:WW9CHmFxbE+Lm4qiLOFAPogmiAUzZtvQsWxUcm4wwaU=",
 }
 
 def _go_sum_test_impl(ctx):
