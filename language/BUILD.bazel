@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "base.go",
         "lang.go",
+        "lifecycle.go",
         "update.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/language",

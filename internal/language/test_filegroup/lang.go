@@ -24,6 +24,7 @@ limitations under the License.
 package test_filegroup
 
 import (
+	"context"
 	"path"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -39,8 +40,13 @@ const testFilegroupName = "test_filegroup"
 type testFilegroupLang struct {
 	language.BaseLang
 
-	sawDone bool
+	Initialized, RulesGenerated, DepsResolved bool
 }
+
+var (
+	_ language.Language         = (*testFilegroupLang)(nil)
+	_ language.LifecycleManager = (*testFilegroupLang)(nil)
+)
 
 func NewLanguage() language.Language {
 	return &testFilegroupLang{}
@@ -59,8 +65,15 @@ var kinds = map[string]rule.KindInfo{
 	},
 }
 
+func (l *testFilegroupLang) Init(ctx context.Context) {
+	l.Initialized = true
+}
+
 func (l *testFilegroupLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
-	if l.sawDone {
+	if !l.Initialized {
+		panic("GenerateRules must not be called before Init")
+	}
+	if l.RulesGenerated {
 		panic("GenerateRules must not be called after DoneGeneratingRules")
 	}
 
@@ -83,11 +96,18 @@ func (l *testFilegroupLang) GenerateRules(args language.GenerateArgs) language.G
 }
 
 func (l *testFilegroupLang) DoneGeneratingRules() {
-	l.sawDone = true
+	l.RulesGenerated = true
 }
 
 func (l *testFilegroupLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, r *rule.Rule, imports interface{}, from label.Label) {
-	if !l.sawDone {
+	if !l.RulesGenerated {
 		panic("Expected a call to DoneGeneratingRules before Resolve")
 	}
+	if l.DepsResolved {
+		panic("Resolve must be called before calling DoneResolvingDeps")
+	}
+}
+
+func (l *testFilegroupLang) DoneResolvingDeps() {
+	l.DepsResolved = true
 }
