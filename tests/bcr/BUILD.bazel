@@ -2,6 +2,7 @@
 
 load("@rules_go//go:def.bzl", "go_test")
 load("@gazelle//:def.bzl", "gazelle")
+load("@go_deps//:def.bzl", "go")
 
 gazelle(name = "gazelle")
 
@@ -10,6 +11,6 @@ go_test(
     srcs = ["mvs_test.go"],
     deps = [
         "@com_github_pelletier_go_toml//:go-toml",
-        "@com_github_stretchr_testify//require",
+        go("github.com/stretchr/testify/require"),
     ],
 )
