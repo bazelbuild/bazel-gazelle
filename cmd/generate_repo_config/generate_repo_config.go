@@ -40,8 +40,7 @@ import (
 )
 
 const (
-	goRepoRuleKind      = "go_repository"
-	httpArchiveRuleKind = "http_archive"
+	goRepoRuleKind = "go_repository"
 )
 
 var (
@@ -109,20 +108,16 @@ func generateRepoConfig(configDest, configSource string) ([]string, error) {
 
 	destFile := rule.EmptyFile(configDest, "")
 	for _, rsrc := range repos {
-		var rdst *rule.Rule
-		if rsrc.Kind() == goRepoRuleKind {
-			rdst = rule.NewRule(goRepoRuleKind, rsrc.Name())
-			rdst.SetAttr("importpath", rsrc.AttrString("importpath"))
-			if namingConvention := rsrc.AttrString("build_naming_convention"); namingConvention != "" {
-				rdst.SetAttr("build_naming_convention", namingConvention)
-			}
-		} else if rsrc.Kind() == httpArchiveRuleKind && rsrc.Name() == "io_bazel_rules_go" {
-			rdst = rule.NewRule(httpArchiveRuleKind, "io_bazel_rules_go")
-			rdst.SetAttr("urls", rsrc.AttrStrings("urls"))
+		if rsrc.Kind() != goRepoRuleKind {
+			continue
 		}
-		if rdst != nil {
-			rdst.Insert(destFile)
+
+		rdst := rule.NewRule(goRepoRuleKind, rsrc.Name())
+		rdst.SetAttr("importpath", rsrc.AttrString("importpath"))
+		if namingConvention := rsrc.AttrString("build_naming_convention"); namingConvention != "" {
+			rdst.SetAttr("build_naming_convention", namingConvention)
 		}
+		rdst.Insert(destFile)
 	}
 
 	buf.WriteString("\n")
