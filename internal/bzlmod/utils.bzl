@@ -71,3 +71,31 @@ def get_directive_value(directives, key):
             value = directive[len(prefix):]
 
     return value
+
+def buildozer_cmd(*args, name = "all"):
+    return struct(
+        args = args,
+        name = name,
+    )
+
+def format_module_file_fixup(commands):
+    """Format a fixup suggestion for a MODULE.bazel file.
+
+    Args:
+        commands: A list of return values of buildozer_cmd.
+
+    Returns:
+        A buildozer script performing the fixup.
+    """
+    script_lines = [_format_buildozer_command(cmd) for cmd in commands]
+    return """
+To migrate automatically, paste the following lines into a file and run it with \
+'buildozer -f <file>', using at least buildozer 6.0.0:
+
+""" + "\n".join(script_lines) + "\n\n"
+
+def _format_buildozer_command(cmd):
+    return "{args}|//MODULE.bazel:{name}".format(
+        args = " ".join([arg.replace(" ", "\\ ") for arg in cmd.args]),
+        name = cmd.name,
+    )

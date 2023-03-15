@@ -2,7 +2,14 @@ load("//internal:go_repository.bzl", "go_repository")
 load(":go_mod.bzl", "deps_from_go_mod")
 load(":directives.bzl", "DEFAULT_DIRECTIVES_BY_PATH")
 load(":semver.bzl", "semver")
-load(":utils.bzl", "drop_nones", "format_rule_call", "get_directive_value")
+load(
+    ":utils.bzl",
+    "buildozer_cmd",
+    "drop_nones",
+    "format_module_file_fixup",
+    "format_rule_call",
+    "get_directive_value",
+)
 
 visibility("//")
 
@@ -67,7 +74,7 @@ def _check_directive(directive):
         return
     fail("Invalid Gazelle directive: \"{}\". Gazelle directives must be of the form \"gazelle:key value\".".format(directive))
 
-def _synthesize_gazelle_override(module, gazelle_overrides):
+def _synthesize_gazelle_override(module, gazelle_overrides, fixups):
     """Translate deprecated override attributes to directives for a transition period."""
     directives = []
 
@@ -85,6 +92,11 @@ def _synthesize_gazelle_override(module, gazelle_overrides):
         gazelle_overrides[module.path] = struct(
             directives = directives,
         )
+        fixups.extend([
+            buildozer_cmd("new", "go_deps.gazelle_override", module.path),
+            buildozer_cmd("add", "directives", name = module.path, *directives),
+            buildozer_cmd("rename", "name", "path", name = module.path),
+        ])
 
 def _get_directives(path, gazelle_overrides):
     override = gazelle_overrides.get(path)
@@ -127,6 +139,7 @@ def _go_deps_impl(module_ctx):
     module_resolutions = {}
     gazelle_overrides = {}
     root_versions = {}
+    root_fixups = []
 
     outdated_direct_dep_printer = print
     for module in module_ctx.modules:
@@ -192,7 +205,7 @@ def _go_deps_impl(module_ctx):
 
             # Note: While we still have overrides in rules_go, those will take precedence over the
             #  ones defined in the root module.
-            _synthesize_gazelle_override(module_tag, gazelle_overrides)
+            _synthesize_gazelle_override(module_tag, gazelle_overrides, root_fixups if module.is_root else [])
 
             # For modules imported from a go.sum, we know which ones are direct
             # dependencies and can thus only report implicit version upgrades
@@ -256,6 +269,24 @@ def _go_deps_impl(module_ctx):
             for path, module in module_resolutions.items()
         }),
     )
+
+    if root_fixups:
+        root_fixups.extend([
+            buildozer_cmd("remove", "build_naming_convention", name = "%go_deps.module"),
+            buildozer_cmd("remove", "build_file_proto_mode", name = "%go_deps.module"),
+        ])
+
+        print("""
+
+The 'build_naming_convention' and 'build_proto_file_mode' attributes of \
+go_deps.module have been replaced with the more general go_deps.gazelle_override \
+tag and will be removed in the next release of rules_go.
+
+To migrate manually, add a gazelle_override tag for all Go module paths that set \
+one of these attributes and add "gazelle:go_naming_convention <value>" (for \
+build_naming_convention) or "gazelle:proto <value>" (for build_proto_file_mode) \
+to its 'directives' attribute.
+""" + format_module_file_fixup(root_fixups))
 
 _config_tag = tag_class(
     attrs = {
