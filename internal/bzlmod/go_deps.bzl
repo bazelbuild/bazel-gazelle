@@ -2,6 +2,7 @@ load("//internal:go_repository.bzl", "go_repository")
 load(":go_mod.bzl", "deps_from_go_mod")
 load(":directives.bzl", "DEFAULT_DIRECTIVES_BY_PATH")
 load(":semver.bzl", "semver")
+load(":utils.bzl", "drop_nones", "format_rule_call", "get_directive_value")
 
 visibility("//")
 
@@ -26,32 +27,24 @@ def _repo_name(importpath):
     candidate_name = "_".join(segments).replace("-", "_")
     return "".join([c.lower() if c.isalnum() else "_" for c in candidate_name.elems()])
 
-def _go_repository_directives_impl(ctx):
-    def make_target(name, importpath, build_directives):
-        target = """\
-go_repository(
-    name = "{}",
-""".format(name)
-        if build_directives:
-            target += """\
-    build_directives = {},
-""".format(build_directives)
-        return target + """\
-    importpath = "{}",
-)""".format(importpath)
+def _go_repository_config_impl(ctx):
+    repos = []
+    for name, importpath in sorted(ctx.attr.importpaths.items()):
+        repos.append(format_rule_call(
+            "go_repository",
+            name = name,
+            importpath = importpath,
+            build_naming_convention = ctx.attr.build_naming_conventions.get(importpath),
+        ))
 
-    targets = [
-        make_target(name, importpath, ctx.attr.build_directives_by_name.get(name, None))
-        for name, importpath in ctx.attr.importpaths_by_name.items()
-    ]
-    ctx.file("WORKSPACE.bazel", "\n\n".join(targets))
+    ctx.file("WORKSPACE", "\n".join(repos))
     ctx.file("BUILD.bazel")
 
-_go_repository_directives = repository_rule(
-    implementation = _go_repository_directives_impl,
+_go_repository_config = repository_rule(
+    implementation = _go_repository_config_impl,
     attrs = {
-        "importpaths_by_name": attr.string_dict(mandatory = True),
-        "build_directives_by_name": attr.string_list_dict(),
+        "importpaths": attr.string_dict(mandatory = True),
+        "build_naming_conventions": attr.string_dict(mandatory = True),
     },
 )
 
@@ -195,22 +188,21 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directiv
             build_directives = module.build_directives,
         )
 
-    # With transitive dependencies, Gazelle would no longer have to
-    # consume just a single top-level WORKSPACE/MODULE.bazel file, but
-    # those of all modules that use the go_dep tag. Instead, emit a
-    # synthetic WORKSPACE file with Gazelle-related targets for all of
-    # those modules here.
-    _go_repository_directives(
-        name = "bazel_gazelle_go_repositories",
-        importpaths_by_name = {
+    # Create a synthetic WORKSPACE file that lists all Go repositories created
+    # above and contains all the information required by Gazelle's -repo_config
+    # to generate BUILD files for external Go modules. This skips the need to
+    # run generate_repo_config. Only 'importpath' and 'build_naming_convention'
+    # are relevant.
+    _go_repository_config(
+        name = "bazel_gazelle_go_repository_config",
+        importpaths = {
             module.repo_name: path
             for path, module in module_resolutions.items()
         },
-        build_directives_by_name = {
-            module.repo_name: module.build_directives
-            for module in module_resolutions.values()
-            if len(module.build_directives) > 0
-        },
+        build_naming_conventions = drop_nones({
+            module.repo_name: get_directive_value(module.build_directives, "go_naming_convention")
+            for path, module in module_resolutions.items()
+        }),
     )
 
 _config_tag = tag_class(
