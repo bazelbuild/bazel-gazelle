@@ -103,7 +103,6 @@ Authorization: Bearer RANDOM-TOKEN
 </pre>
 """
 
-
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
 
@@ -396,7 +395,7 @@ go_repository = repository_rule(
             `replace` will be downloaded at `version` and verified with `sum`.
 
             NOTE: There is no `go_repository` equivalent to file path `replace`
-            directives. Use `local_repository` instead."""
+            directives. Use `local_repository` instead.""",
         ),
 
         # Attributes for a repository that needs automatic build file generation
@@ -520,7 +519,7 @@ go_repository = repository_rule(
             so this defaults to `False`. However, setting to `True` can be useful for debugging build failures and
             unexpected behavior for the given rule.
             """,
-        )
+        ),
     },
 )
 """See repository.md#go-repository for full documentation."""

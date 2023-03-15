@@ -54,9 +54,10 @@ $ gazelle update-repos github.com/pkg/errors
 """
 
 load("go_repository.bzl", _go_repository = "go_repository")
-load("overlay_repository.bzl",
-    _http_archive = "http_archive",
+load(
+    "overlay_repository.bzl",
     _git_repository = "git_repository",
+    _http_archive = "http_archive",
 )
 
 go_repository = _go_repository
