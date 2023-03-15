@@ -93,7 +93,7 @@ func main() {
 	fmt.Fprintln(buf, "# regenerate with `go run internal/list_repository_tools_srcs.go -dir $PWD -generate internal/go_repository_tools_srcs.bzl`")
 	fmt.Fprintln(buf, "GO_REPOSITORY_TOOLS_SRCS = [")
 	for _, label := range labels {
-		fmt.Fprintf(buf, "\t%s,\n", label)
+		fmt.Fprintf(buf, "    %s,\n", label)
 	}
 	fmt.Fprintln(buf, "]")
 
