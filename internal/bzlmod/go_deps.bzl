@@ -13,18 +13,85 @@ IGNORED_MODULE_PATHS = [
     "github.com/bazelbuild/rules_go",
 ]
 
-def _tolerate_overrides_in_module(module):
-    return module.name in [
-        # NB: Gazelle and the "rules_go" module depend on each other
-        # circularly. Tolerate overrides in the latter module until we
-        # can update it to no longer need them.
-        "rules_go",
-    ]
+_FORBIDDEN_OVERRIDE_TAG = """\
+Using the "go_deps.{tag_class}" tag in a non-root Bazel module is forbidden, \
+but module "{module_name}" requests it.
+"""
+
+_FORBIDDEN_OVERRIDE_ATTRIBUTE = """\
+Using the "{attribute}" attribute in a "go_deps.{tag_class}" tag is forbidden \
+in non-root Bazel modules, but module "{module_name}" requests it.
+"""
+
+_DIRECTIVES_CALL_TO_ACTION = """\
+
+If you need this override for a Bazel module that will be available in a public \
+registry (such as the Bazel Central Registry), please file an issue at \
+https://github.com/bazelbuild/bazel-gazelle/issues/new or submit a PR adding \
+the required directives to the "directives.bzl" file at \
+https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directives.bzl.
+"""
+
+def _report_forbidden_override(module, tag_class, attribute = None):
+    if attribute:
+        message = _FORBIDDEN_OVERRIDE_ATTRIBUTE.format(
+            attribute = attribute,
+            tag_class = tag_class,
+            module_name = module.name,
+        )
+    else:
+        message = _FORBIDDEN_OVERRIDE_TAG.format(
+            tag_class = tag_class,
+            module_name = module.name,
+        )
+
+    return message + _DIRECTIVES_CALL_TO_ACTION
+
+def _fail_on_non_root_overrides(module, tag_class, attribute = None):
+    # TODO: Gazelle and the "rules_go" module depend on each other circularly.
+    #  Tolerate overrides in the latter module until we can update it to no
+    #  longer need them.
+    if module.is_root or module.name == "rules_go":
+        return
+
+    tags = getattr(module.tags, tag_class)
+    for tag in tags:
+        if attribute:
+            if getattr(tag, attribute):
+                fail(_report_forbidden_override(module, tag_class, attribute))
+        else:
+            fail(_report_forbidden_override(module, tag_class))
 
 def _check_directive(directive):
     if directive.startswith("gazelle:") and " " in directive:
         return
     fail("Invalid Gazelle directive: \"{}\". Gazelle directives must be of the form \"gazelle:key value\".".format(directive))
+
+def _synthesize_gazelle_override(module, gazelle_overrides):
+    """Translate deprecated override attributes to directives for a transition period."""
+    directives = []
+
+    build_naming_convention = getattr(module, "build_naming_convention", "")
+    if build_naming_convention:
+        directive = "gazelle:go_naming_convention " + build_naming_convention
+        directives.append(directive)
+
+    build_file_proto_mode = getattr(module, "build_file_proto_mode", "")
+    if build_file_proto_mode:
+        directive = "gazelle:proto " + build_file_proto_mode
+        directives.append(directive)
+
+    if directives:
+        gazelle_overrides[module.path] = struct(
+            directives = directives,
+        )
+
+def _get_directives(path, gazelle_overrides):
+    override = gazelle_overrides.get(path)
+    if override:
+        return override.directives
+
+    return DEFAULT_DIRECTIVES_BY_PATH.get(path, [])
 
 def _repo_name(importpath):
     path_segments = importpath.split("/")
@@ -39,7 +106,7 @@ def _go_repository_config_impl(ctx):
             "go_repository",
             name = name,
             importpath = importpath,
-            build_naming_convention = ctx.attr.build_naming_conventions.get(importpath),
+            build_naming_convention = ctx.attr.build_naming_conventions.get(name),
         ))
 
     ctx.file("WORKSPACE", "\n".join(repos))
@@ -58,29 +125,11 @@ def _noop(_):
 
 def _go_deps_impl(module_ctx):
     module_resolutions = {}
+    gazelle_overrides = {}
     root_versions = {}
 
     outdated_direct_dep_printer = print
     for module in module_ctx.modules:
-        def fail_unless_overriding_tolerated(attribute_name, tag_class):
-            if not (module.is_root or _tolerate_overrides_in_module(module)):
-                fail("""\
-Overriding the "{attribute_name}" attribute in a "go_deps.{tag_class}" tag
-is forbidden in non-root Bazel modules, but module "{module_name}" requests it.
-
-If you need this override for a Bazel module that will be available in a public
-registry (such as the Bazel Central Registry), please file an issue at
-https://github.com/bazelbuild/bazel-gazelle/issues/new or submit a PR adding
-the required directives to the "directives.bzl" file at
-https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directives.bzl.""".format(
-                    attribute_name = attribute_name,
-                    module_name = module.name,
-                    tag_class = tag_class,
-                ))
-
-        if len(module.tags.gazelle_override) > 0:
-            fail_unless_overriding_tolerated("build_directives", "gazelle_override")
-
         # Parse the go_deps.config tag of the root module only.
         for mod_config in module.tags.config:
             if not module.is_root:
@@ -93,12 +142,14 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directiv
             elif check_direct_deps == "error":
                 outdated_direct_dep_printer = fail
 
-        gazelle_overrides = {}
+        _fail_on_non_root_overrides(module, "gazelle_override")
+
         for override_tag in module.tags.gazelle_override:
             if override_tag.path in gazelle_overrides:
                 fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(override_tag.path, module.name))
             for directive in override_tag.directives:
                 _check_directive(directive)
+
             gazelle_overrides[override_tag.path] = struct(
                 directives = override_tag.directives,
             )
@@ -113,6 +164,9 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directiv
         additional_module_tags = []
         for from_file_tag in module.tags.from_file:
             additional_module_tags += deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+
+        _fail_on_non_root_overrides(module, "module", "build_naming_convention")
+        _fail_on_non_root_overrides(module, "module", "build_file_proto_mode")
 
         # Parse the go_dep.module tags of all transitive dependencies and apply
         # Minimum Version Selection to resolve importpaths to Go module versions
@@ -136,6 +190,10 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directiv
             if raw_version.startswith("v"):
                 raw_version = raw_version[1:]
 
+            # Note: While we still have overrides in rules_go, those will take precedence over the
+            #  ones defined in the root module.
+            _synthesize_gazelle_override(module_tag, gazelle_overrides)
+
             # For modules imported from a go.sum, we know which ones are direct
             # dependencies and can thus only report implicit version upgrades
             # for direct dependencies. For manually specified go_deps.module
@@ -144,37 +202,21 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directiv
                 root_versions[module_tag.path] = raw_version
             version = semver.to_comparable(raw_version)
             if module_tag.path not in module_resolutions or version > module_resolutions[module_tag.path].version:
-                # See file "go_repository.bzl" for the default values' definition.
-                build_directives = []
-                override = gazelle_overrides.pop(module_tag.path, None)
-                if override:
-                    build_directives = override.directives
-                else:
-                    # Translate deprecated attributes for now, but only in the root module.
-                    synthesized_override = False
-                    build_naming_convention_override = getattr(module_tag, "build_naming_convention", "")
-                    if build_naming_convention_override:
-                        fail_unless_overriding_tolerated("build_naming_convention", "module")
-                        build_directives.append("gazelle:go_naming_convention {}".format(build_naming_convention_override))
-                        synthesized_override = True
-                    build_file_proto_mode_override = getattr(module_tag, "build_file_proto_mode", "")
-                    if build_file_proto_mode_override:
-                        fail_unless_overriding_tolerated("build_file_proto_mode", "module")
-                        build_directives.append("gazelle:proto {}".format(build_file_proto_mode_override))
-                    elif not synthesized_override:
-                        build_directives = DEFAULT_DIRECTIVES_BY_PATH.get(module_tag.path, [])
                 module_resolutions[module_tag.path] = struct(
                     module = module.name,
                     repo_name = _repo_name(module_tag.path),
                     version = version,
                     raw_version = raw_version,
                     sum = module_tag.sum,
-                    build_directives = build_directives,
                 )
 
-        if gazelle_overrides:
-            fail("Some module overrides did not target a required Go module with a matching path: {}"
-                .format(", ".join(sorted(gazelle_overrides.keys()))))
+    unmatched_gazelle_overrides = []
+    for path in gazelle_overrides.keys():
+        if path not in module_resolutions:
+            unmatched_gazelle_overrides.append(path)
+    if unmatched_gazelle_overrides:
+        fail("Some gazelle_overrides did not target a Go module with a matching path: {}"
+            .format(", ".join(unmatched_gazelle_overrides)))
 
     for path, root_version in root_versions.items():
         if semver.to_comparable(root_version) < module_resolutions[path].version:
@@ -192,7 +234,7 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directiv
             importpath = path,
             sum = module.sum,
             version = "v" + module.raw_version,
-            build_directives = module.build_directives,
+            build_directives = _get_directives(path, gazelle_overrides),
         )
 
     # Create a synthetic WORKSPACE file that lists all Go repositories created
@@ -207,7 +249,10 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directiv
             for path, module in module_resolutions.items()
         },
         build_naming_conventions = drop_nones({
-            module.repo_name: get_directive_value(module.build_directives, "go_naming_convention")
+            module.repo_name: get_directive_value(
+                _get_directives(path, gazelle_overrides),
+                "go_naming_convention",
+            )
             for path, module in module_resolutions.items()
         }),
     )
@@ -284,7 +329,7 @@ _gazelle_override_tag = tag_class(
             whitespace.""",
         ),
     },
-    doc = "Override characteristics of a given Go module defined by other tags in this extension.",
+    doc = "Override Gazelle's behavior on a given Go module defined by other tags in this extension.",
 )
 
 go_deps = module_extension(
