@@ -70,7 +70,7 @@ def _fail_on_non_root_overrides(module, tag_class, attribute = None):
             fail(_report_forbidden_override(module, tag_class))
 
 def _check_directive(directive):
-    if directive.startswith("gazelle:") and " " in directive:
+    if directive.startswith("gazelle:") and " " in directive and not directive[len("gazelle:"):][0].isspace():
         return
     fail("Invalid Gazelle directive: \"{}\". Gazelle directives must be of the form \"gazelle:key value\".".format(directive))
 

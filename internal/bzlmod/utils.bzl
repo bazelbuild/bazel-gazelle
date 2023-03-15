@@ -68,7 +68,8 @@ def get_directive_value(directives, key):
     value = None
     for directive in directives:
         if directive.startswith(prefix):
-            value = directive[len(prefix):]
+            # Treat "gazelle:key    value" the same as "gazelle:key value".
+            value = directive[len(prefix):].lstrip()
 
     return value
 
