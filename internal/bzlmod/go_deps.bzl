@@ -21,6 +21,11 @@ def _tolerate_overrides_in_module(module):
         "rules_go",
     ]
 
+def _check_directive(directive):
+    if directive.startswith("gazelle:") and " " in directive:
+        return
+    fail("Invalid Gazelle directive: \"{}\". Gazelle directives must be of the form \"gazelle:key value\".".format(directive))
+
 def _repo_name(importpath):
     path_segments = importpath.split("/")
     segments = reversed(path_segments[0].split(".")) + path_segments[1:]
@@ -92,6 +97,8 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directiv
         for override_tag in module.tags.gazelle_override:
             if override_tag.path in gazelle_overrides:
                 fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(override_tag.path, module.name))
+            for directive in override_tag.directives:
+                _check_directive(directive)
             gazelle_overrides[override_tag.path] = struct(
                 directives = override_tag.directives,
             )
