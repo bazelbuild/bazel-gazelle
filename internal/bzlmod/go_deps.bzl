@@ -122,7 +122,7 @@ def _go_repository_config_impl(ctx):
         ))
 
     ctx.file("WORKSPACE", "\n".join(repos))
-    ctx.file("BUILD.bazel")
+    ctx.file("BUILD.bazel", "exports_files(['WORKSPACE'])")
 
 _go_repository_config = repository_rule(
     implementation = _go_repository_config_impl,

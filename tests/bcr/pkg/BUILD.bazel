@@ -5,6 +5,6 @@ go_test(
     srcs = ["mvs_test.go"],
     deps = [
         "@com_github_pelletier_go_toml//:go-toml",
-        "@com_github_stretchr_testify//require",
+        "@com_github_stretchr_testify//require:go_default_library",
     ],
 )

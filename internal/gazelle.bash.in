@@ -23,6 +23,7 @@ GAZELLE_SHORT_PATH=@@GAZELLE_SHORT_PATH@@
 GAZELLE_LABEL=@@GAZELLE_LABEL@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
+REPO_CONFIG_SHORT_PATH=@@REPO_CONFIG_SHORT_PATH@@
 
 @@ENV@@
 
@@ -82,4 +83,12 @@ if [ -z "${BUILD_WORKSPACE_DIRECTORY-}" ]; then
   echo "error: BUILD_WORKSPACE_DIRECTORY not set" >&2
   exit 1
 fi
+
+# When running with Bzlmod, there is no WORKSPACE file for Gazelle to read
+# the definitions of go_repository rules from. Instead, we pass the path to
+# the repo config file as a flag.
+if [[ -n $REPO_CONFIG_SHORT_PATH ]]; then
+  ARGS+=("-repo_config" "$(find_runfile "$REPO_CONFIG_SHORT_PATH")")
+fi
+
 "$gazelle_short_path" "${ARGS[@]}"
