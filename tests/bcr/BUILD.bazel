@@ -1,4 +1,6 @@
 load("@gazelle//:def.bzl", "gazelle")
 
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle/tests/bcr
+# gazelle:go_naming_convention import
+# gazelle:go_naming_convention_external import
 gazelle(name = "gazelle")

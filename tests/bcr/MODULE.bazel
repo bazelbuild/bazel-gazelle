@@ -19,14 +19,26 @@ go_deps.module(
     sum = "h1:7utD74fnzVc/cpcyy8sjrlFr5vYpypUixARcHIMIGuI=",
     version = "v1.7.0",
 )
+
+# Verify that the gazelle:go_naming_convention directive in an override is
+# respected.
 go_deps.module(
     path = "github.com/stretchr/testify",
     sum = "h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=",
     version = "v1.8.0",
 )
+go_deps.gazelle_override(
+    directives = [
+        "gazelle:go_naming_convention go_default_library",
+    ],
+    path = "github.com/stretchr/testify",
+)
 
 # Transitive dependencies have to be listed here explicitly.
 go_deps.module(
+    # Verify that the build naming convention is picked up by Gazelle when it
+    # emits references to this repo.
+    build_naming_convention = "go_default_library",
     path = "gopkg.in/yaml.v3",
     sum = "h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=",
     version = "v3.0.1",
