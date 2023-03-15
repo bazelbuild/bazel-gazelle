@@ -24,6 +24,7 @@ go_deps.module(
     sum = "h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=",
     version = "v1.8.0",
 )
+
 # Transitive dependencies have to be listed here explicitly.
 go_deps.module(
     path = "gopkg.in/yaml.v3",
@@ -37,8 +38,8 @@ go_deps.module(
 )
 use_repo(
     go_deps,
-     "com_github_pelletier_go_toml",
-     "com_github_stretchr_testify",
-     # It is not necessary to list transitive dependencies here, only direct ones.
-     # "in_gopkg_yaml_v3",
+    "com_github_pelletier_go_toml",
+    "com_github_stretchr_testify",
+    # It is not necessary to list transitive dependencies here, only direct ones.
+    # "in_gopkg_yaml_v3",
 )

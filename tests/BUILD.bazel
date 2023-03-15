@@ -9,18 +9,18 @@ load("//:def.bzl", "gazelle_generation_test")
 # This test Gazelle binary only has the "test_filegroup" plugin installed.
 gazelle_binary(
     name = "gazelle",
-    visibility = ["//visibility:private"],
     languages = [
         "//internal/language/test_filegroup",
     ],
+    visibility = ["//visibility:private"],
 )
 
 gazelle_binary(
     name = "gazelle_with_language_loads_from_flag",
-    visibility = ["//visibility:private"],
     languages = [
         "//internal/language/test_loads_from_flag",
     ],
+    visibility = ["//visibility:private"],
 )
 
 [gazelle_generation_test(
@@ -31,7 +31,7 @@ gazelle_binary(
     # gazelle_generation_test accepts setting common test attributes.
     local = False,
     test_data = glob(
-    	include = [file[0:-len("/WORKSPACE")] + "/**"],
+        include = [file[0:-len("/WORKSPACE")] + "/**"],
     ),
 ) for file in glob(
     include = ["**/WORKSPACE"],
