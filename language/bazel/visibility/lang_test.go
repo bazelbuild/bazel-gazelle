@@ -26,9 +26,6 @@ func TestNoopsBecauseILoveCoverage(t *testing.T) {
 	if ext.Embeds(nil /* rule */, label.New("repo", "pkg", "name")) != nil {
 		t.Fatal("expected nil")
 	}
-	if ext.Loads() != nil {
-		t.Fatal("expected nil")
-	}
 	if ext.KnownDirectives() == nil {
 		t.Fatal("expected not nil")
 	}

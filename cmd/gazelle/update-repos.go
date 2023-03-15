@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
+	"github.com/bazelbuild/bazel-gazelle/internal/module"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -136,10 +137,19 @@ func updateRepos(wd string, args []string) (err error) {
 	}
 	uc := getUpdateReposConfig(c)
 
+	moduleToApparentName, err := module.ExtractModuleToApparentNameMapping(c.RepoRoot)
+	if err != nil {
+		return err
+	}
+
 	kinds := make(map[string]rule.KindInfo)
 	loads := []rule.LoadInfo{}
 	for _, lang := range languages {
-		loads = append(loads, lang.Loads()...)
+		if moduleAwareLang, ok := lang.(language.ModuleAwareLanguage); ok {
+			loads = append(loads, moduleAwareLang.ApparentLoads(moduleToApparentName)...)
+		} else {
+			loads = append(loads, lang.Loads()...)
+		}
 		for kind, info := range lang.Kinds() {
 			kinds[kind] = info
 		}
