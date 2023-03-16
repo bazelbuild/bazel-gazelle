@@ -1,4 +1,11 @@
-visibility("private")
+visibility([
+    "//tests/bzlmod/...",
+])
+
+# structs have certain built-in methods or attributes that should not
+# be overwritten. Load these by calling `dir` on an empty struct.
+# e.g. ["to_proto", "to_json"]
+_STRUCT_PROTECTED_ATTRIBUTES = dir(struct())
 
 def drop_nones(dict):
     """Drop entries with None values from a dictionary.
@@ -100,3 +107,26 @@ def _format_buildozer_command(cmd):
         args = " ".join([arg.replace(" ", "\\ ") for arg in cmd.args]),
         name = cmd.name,
     )
+
+def with_replaced_or_new_fields(_struct, **replacements):
+    """Provides a shallow copy of a structure with replacements and/or new fields
+
+    Args:
+        _struct: structure to shallow copy.
+        **replacements: kwargs for fields to either replace or add to the new struct.
+
+    Returns:
+        The resulting updated structure.
+    """
+
+    new_struct_assignments = {
+        key: getattr(_struct, key)
+        for key in dir(_struct)
+        if key not in _STRUCT_PROTECTED_ATTRIBUTES
+    }
+
+    # Overwrite existing fields and add new ones.
+    for key, value in replacements.items():
+        new_struct_assignments[key] = value
+
+    return struct(**new_struct_assignments)

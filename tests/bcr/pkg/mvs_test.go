@@ -3,6 +3,7 @@ package pkg
 import (
 	"testing"
 
+	"github.com/bmatcuk/doublestar/v4"
 	toml "github.com/pelletier/go-toml"
 	"github.com/stretchr/testify/require"
 )
@@ -16,4 +17,12 @@ func TestMvs(t *testing.T) {
 deps = ["gazelle", "rules_go"]`)
 	require.NoError(t, err)
 	require.Equal(t, []string{"gazelle", "rules_go"}, tree.GetArray("modules.deps"))
+}
+
+func TestReplace(t *testing.T) {
+	// doublestar.StandardOS does NOT exist in doublestar/v4
+	// See: https://pkg.go.dev/github.com/bmatcuk/doublestar#OS
+	// If we are able to initialize this variable, it validates that the dependency is properly
+	// being replaced with github.com/bmatcuk/doublestar@v1.3.4
+	_ = doublestar.StandardOS
 }

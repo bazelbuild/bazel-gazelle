@@ -9,7 +9,10 @@ require (
 github.com/bmatcuk/doublestar/v4 v4.0.2 // indirect
 	// some comment
 	`golang.org/x/tools` "v0.1.11" // foobar
+	github.com/go-fsnotify/fsnotify v1.5.4
 )
+
+replace github.com/go-fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.2
 
 module github.com/bazelbuild/bazel-gazelle
 
@@ -25,11 +28,13 @@ require golang.org/x/sys v0.0.0-20220624220833-87e55d714810 // indirect
 _EXPECTED_GO_MOD_PARSE_RESULT = struct(
     go = (1, 18),
     module = "github.com/bazelbuild/bazel-gazelle",
+    replace_map = {"github.com/go-fsnotify/fsnotify": struct(to_path = "github.com/fsnotify/fsnotify", version = "1.4.2")},
     require = (
         struct(direct = True, path = "github.com/bazelbuild/buildtools", version = "v0.0.0-20220531122519-a43aed7014c8"),
         struct(direct = True, path = "github.com/bazelbuild/rules_go", version = "v0.n\\\"33.0"),
         struct(direct = False, path = "github.com/bmatcuk/doublestar/v4", version = "v4.0.2"),
         struct(direct = True, path = "golang.org/x/tools", version = "v0.1.11"),
+        struct(direct = True, path = "github.com/go-fsnotify/fsnotify", version = "v1.5.4"),
         struct(direct = False, path = "golang.org/x/sys", version = "v0.0.0-20220624220833-87e55d714810"),
     ),
 )

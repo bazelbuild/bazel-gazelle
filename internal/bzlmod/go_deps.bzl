@@ -9,6 +9,7 @@ load(
     "format_module_file_fixup",
     "format_rule_call",
     "get_directive_value",
+    "with_replaced_or_new_fields",
 )
 
 visibility("//")
@@ -141,6 +142,7 @@ def _go_deps_impl(module_ctx):
     root_versions = {}
     root_fixups = []
     sums = {}
+    replace_map = {}
 
     outdated_direct_dep_printer = print
     for module in module_ctx.modules:
@@ -177,14 +179,16 @@ def _go_deps_impl(module_ctx):
             )
         additional_module_tags = []
         for from_file_tag in module.tags.from_file:
-            module_tags_from_go_mod = deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+            module_tags_from_go_mod, go_mod_replace_map = deps_from_go_mod(module_ctx, from_file_tag.go_mod)
             additional_module_tags += module_tags_from_go_mod
+
+            if module.is_root:
+                replace_map.update(go_mod_replace_map)
 
             # Load all sums from transitively resolved `go.sum` files that have modules.
             if len(module_tags_from_go_mod) > 0:
                 for entry, new_sum in sums_from_go_mod(module_ctx, from_file_tag.go_mod).items():
                     _safe_insert_sum(sums, entry, new_sum)
-
 
         # Load sums from manually specified modules separately.
         for module_tag in module.tags.module:
@@ -251,15 +255,23 @@ def _go_deps_impl(module_ctx):
                 ),
             )
 
-    for path, module in module_resolutions.items():
-        entry = (path, module.raw_version)
-        if entry not in sums:
-            fail("No sum for {}@{} found".format(path, module.raw_version))
+    # All `replace` directives are applied after version resolution.
+    # We can simply do this by checking the replace paths' existence
+    # in the module resolutions and swapping out the entry.
+    for path, replace in replace_map.items():
+        if path in module_resolutions:
+            module_resolutions[path] = with_replaced_or_new_fields(module_resolutions[path],
+                replace = replace.to_path,
+                version = semver.to_comparable(replace.version),
+                raw_version = replace.version,
+            )
 
+    for path, module in module_resolutions.items():
         go_repository(
             name = module.repo_name,
             importpath = path,
-            sum = sums[entry],
+            sum = _get_sum_from_module(path, module, sums),
+            replace = getattr(module, "replace", None),
             version = "v" + module.raw_version,
             build_directives = _get_directives(path, gazelle_overrides),
         )
@@ -301,6 +313,16 @@ one of these attributes and add "gazelle:go_naming_convention <value>" (for \
 build_naming_convention) or "gazelle:proto <value>" (for build_proto_file_mode) \
 to its 'directives' attribute.
 """ + format_module_file_fixup(root_fixups))
+
+def _get_sum_from_module(path, module, sums):
+    entry = (path, module.raw_version)
+    if hasattr(module, "replace"):
+        entry = (module.replace, module.raw_version)
+
+    if entry not in sums:
+        fail("No sum for {}@{} found".format(path, module.raw_version))
+
+    return sums[entry]
 
 def _safe_insert_sum(sums, entry, new_sum):
     if entry in sums and new_sum != sums[entry]:
