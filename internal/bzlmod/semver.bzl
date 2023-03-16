@@ -1,3 +1,7 @@
+visibility([
+    "//tests/bzlmod/...",
+])
+
 # Compares lower than any non-numeric identifier.
 _COMPARES_LOWEST_SENTINEL = ""
 

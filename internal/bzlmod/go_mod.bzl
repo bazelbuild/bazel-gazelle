@@ -1,3 +1,7 @@
+visibility([
+    "//tests/bzlmod/...",
+])
+
 def deps_from_go_mod(module_ctx, go_mod_label):
     go_mod_path = module_ctx.path(go_mod_label)
     go_mod_content = module_ctx.read(go_mod_path)
@@ -35,8 +39,6 @@ def deps_from_go_mod(module_ctx, go_mod_label):
             version = require.version,
             sum = go_sum[entry],
             direct = require.direct,
-            build_naming_convention = "import_alias",
-            build_file_proto_mode = "default",
         ))
 
     return deps
