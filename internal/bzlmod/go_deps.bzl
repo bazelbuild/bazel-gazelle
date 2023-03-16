@@ -204,7 +204,7 @@ def _go_deps_impl(module_ctx):
                 raw_version = raw_version[1:]
 
             # Note: While we still have overrides in rules_go, those will take precedence over the
-            #  ones defined in the root module.
+            # ones defined in the root module.
             _synthesize_gazelle_override(module_tag, gazelle_overrides, root_fixups if module.is_root else [])
 
             # For modules imported from a go.sum, we know which ones are direct
@@ -253,7 +253,7 @@ def _go_deps_impl(module_ctx):
     # Create a synthetic WORKSPACE file that lists all Go repositories created
     # above and contains all the information required by Gazelle's -repo_config
     # to generate BUILD files for external Go modules. This skips the need to
-    # run generate_repo_config. Only 'importpath' and 'build_naming_convention'
+    # run generate_repo_config. Only "importpath" and "build_naming_convention"
     # are relevant.
     _go_repository_config(
         name = "bazel_gazelle_go_repository_config",
