@@ -184,4 +184,5 @@ def gazelle(name, **kwargs):
         srcs = [runner_name],
         tags = tags,
         visibility = visibility,
+        data = kwargs["data"] if "data" in kwargs else [],
     )
