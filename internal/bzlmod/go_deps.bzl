@@ -177,12 +177,14 @@ def _go_deps_impl(module_ctx):
             )
         additional_module_tags = []
         for from_file_tag in module.tags.from_file:
+            module_tags_from_go_mod = deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+            additional_module_tags += module_tags_from_go_mod
 
-            # Load all sums from transitively resolved `go.sum` files.
-            # Only use these after version resolution is completed.
-            for entry, new_sum in sums_from_go_mod(module_ctx, from_file_tag.go_mod).items():
-                _safe_insert_sum(sums, entry, new_sum)
-            additional_module_tags += deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+            # Load all sums from transitively resolved `go.sum` files that have modules.
+            if len(module_tags_from_go_mod) > 0:
+                for entry, new_sum in sums_from_go_mod(module_ctx, from_file_tag.go_mod).items():
+                    _safe_insert_sum(sums, entry, new_sum)
+
 
         # Load sums from manually specified modules separately.
         for module_tag in module.tags.module:
