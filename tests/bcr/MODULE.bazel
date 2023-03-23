@@ -12,6 +12,9 @@ bazel_dep(name = "rules_go", version = "0.38.1")
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 
+# Read the empty go.mod file in this test module.
+go_deps.from_file(go_mod = "//:go.mod")
+
 # Using an older version than a transitive dependency (in this case, gazelle itself) emits a warning for the root
 # module, but still fetches the most recent version due to Minimum Version Selection (MVS).
 go_deps.module(
