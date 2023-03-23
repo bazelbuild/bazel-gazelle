@@ -33,7 +33,7 @@ def deps_from_go_mod(module_ctx, go_mod_label):
             direct = require.direct,
         ))
 
-    return deps
+    return deps, go_mod.replace_map
 
 def parse_go_mod(content, path):
     # See https://go.dev/ref/mod#go-mod-file.
@@ -47,6 +47,7 @@ def parse_go_mod(content, path):
         "module": None,
         "go": None,
         "require": [],
+        "replace": {},
     }
 
     current_directive = None
@@ -103,6 +104,7 @@ def parse_go_mod(content, path):
         module = module,
         go = (int(major), int(minor)),
         require = tuple(state["require"]),
+        replace_map = state["replace"],
     )
 
 def _parse_directive(state, directive, tokens, comment, path, line_no):
@@ -120,8 +122,21 @@ def _parse_directive(state, directive, tokens, comment, path, line_no):
             version = tokens[1],
             direct = comment != "indirect",
         ))
+    elif directive == "replace":
+        # A replace directive might use a local file path beginning with ./ or ../
+        # These are not supported with gazelle~go_deps.
+        if len(tokens) == 3 and tokens[2][0] == ".":
+            fail("{}:{}: local file path not supported in replace directive: '{}'".format(path, line_no, tokens[2]))
 
-    # TODO: Handle exclude and replace.
+        if len(tokens) != 4 or tokens[1] != "=>":
+            fail("{}:{}: replace directive must follow pattern: 'replace from_path => to_path version' ".format(path, line_no))
+        from_path = tokens[0]
+        state["replace"][from_path] = struct(
+            to_path = tokens[2],
+            version = _canonicalize_raw_version(tokens[3]),
+        )
+
+    # TODO: Handle exclude.
 
 def _tokenize_line(line, path, line_no):
     tokens = []
