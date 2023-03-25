@@ -15,10 +15,10 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "19ef30b21eae581177e0028f6f4b1f54c66467017be33d211ab6fc81da01ea4d",
+    strip_prefix = "rules_go-72ae58f6df3f1f75c8f9dcc29415dc72555aae24",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.38.0/rules_go-v0.38.0.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.38.0/rules_go-v0.38.0.zip",
+        # test verbose failures from https://github.com/bazelbuild/rules_go/pull/3489
+        "https://github.com/bazelbuild/rules_go/archive/72ae58f6df3f1f75c8f9dcc29415dc72555aae24.zip",
     ],
 )
 
@@ -28,7 +28,7 @@ go_rules_dependencies()
 
 go_register_toolchains(
     nogo = "@bazel_gazelle//:nogo",
-    version = "1.19.5",
+    version = "1.20.2",
 )
 
 load("//:deps.bzl", "gazelle_dependencies")
