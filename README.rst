@@ -31,6 +31,7 @@ Gazelle build file generator
 .. _bazel-skylib: https://github.com/bazelbuild/bazel-skylib
 .. _bazel_skylib/gazelle/bzl: https://github.com/bazelbuild/bazel-skylib/tree/master/gazelle/bzl
 .. _gazelle_cabal: https://github.com/tweag/gazelle_cabal
+.. _gazelle_haskell_modules: https://github.com/tweag/gazelle_haskell_modules
 .. _stackb/rules_proto: https://github.com/stackb/rules_proto
 .. _Open a PR: https://github.com/bazelbuild/bazel-gazelle/edit/master/README.rst
 .. _Bazel Slack: https://slack.bazel.build
@@ -91,7 +92,8 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Haskell
 
-  Tweag's `rules_haskell`_ has an extension, `gazelle_cabal`_, for generating rules from Cabal files.
+  Tweag's `rules_haskell`_ has two extensions: `gazelle_cabal`_, for generating rules from Cabal files
+  and `gazelle_haskell_modules`_ for even more fine-grained build definitions.
 
 * Java
 
