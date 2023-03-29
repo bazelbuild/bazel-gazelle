@@ -245,6 +245,25 @@ def _go_deps_impl(module_ctx):
         fail("Some gazelle_overrides did not target a Go module with a matching path: {}"
             .format(", ".join(unmatched_gazelle_overrides)))
 
+    # All `replace` directives are applied after version resolution.
+    # We can simply do this by checking the replace paths' existence
+    # in the module resolutions and swapping out the entry.
+    for path, replace in replace_map.items():
+        if path in module_resolutions:
+            new_version = semver.to_comparable(replace.version)
+            module_resolutions[path] = with_replaced_or_new_fields(module_resolutions[path],
+                replace = replace.to_path,
+                version = new_version,
+                raw_version = replace.version,
+            )
+            if path in root_versions:
+                if replace != replace.to_path:
+                    # If the root module replaces a Go module with a completely different one, do
+                    # not ever report an implicit version upgrade.
+                    root_versions.pop(path)
+                else:
+                    root_versions[path] = new_version
+
     for path, root_version in root_versions.items():
         if semver.to_comparable(root_version) < module_resolutions[path].version:
             outdated_direct_dep_printer(
@@ -253,17 +272,6 @@ def _go_deps_impl(module_ctx):
                     root_version = root_version,
                     resolved_version = module_resolutions[path].raw_version,
                 ),
-            )
-
-    # All `replace` directives are applied after version resolution.
-    # We can simply do this by checking the replace paths' existence
-    # in the module resolutions and swapping out the entry.
-    for path, replace in replace_map.items():
-        if path in module_resolutions:
-            module_resolutions[path] = with_replaced_or_new_fields(module_resolutions[path],
-                replace = replace.to_path,
-                version = semver.to_comparable(replace.version),
-                raw_version = replace.version,
             )
 
     for path, module in module_resolutions.items():
