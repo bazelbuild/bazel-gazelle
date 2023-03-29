@@ -245,16 +245,6 @@ def _go_deps_impl(module_ctx):
         fail("Some gazelle_overrides did not target a Go module with a matching path: {}"
             .format(", ".join(unmatched_gazelle_overrides)))
 
-    for path, root_version in root_versions.items():
-        if semver.to_comparable(root_version) < module_resolutions[path].version:
-            outdated_direct_dep_printer(
-                "For Go module \"{path}\", the root module requires module version v{root_version}, but got v{resolved_version} in the resolved dependency graph.".format(
-                    path = path,
-                    root_version = root_version,
-                    resolved_version = module_resolutions[path].raw_version,
-                ),
-            )
-
     # All `replace` directives are applied after version resolution.
     # We can simply do this by checking the replace paths' existence
     # in the module resolutions and swapping out the entry.
@@ -265,6 +255,16 @@ def _go_deps_impl(module_ctx):
                 version = semver.to_comparable(replace.version),
                 raw_version = replace.version,
             )
+            
+    for path, root_version in root_versions.items():
+        if semver.to_comparable(root_version) < module_resolutions[path].version:
+            outdated_direct_dep_printer(
+                "For Go module \"{path}\", the root module requires module version v{root_version}, but got v{resolved_version} in the resolved dependency graph.".format(
+                    path = path,
+                    root_version = root_version,
+                    resolved_version = module_resolutions[path].raw_version,
+                ),
+            )            
 
     for path, module in module_resolutions.items():
         go_repository(
