@@ -31,6 +31,8 @@ GO_REPOSITORY_TOOLS_SRCS = [
     Label("//flag:flag.go"),
     Label("//internal:BUILD.bazel"),
     Label("//internal/bzlmod:BUILD.bazel"),
+    Label("//internal/bzlmod/tidy:BUILD.bazel"),
+    Label("//internal/bzlmod/tidy:tidy.go"),
     Label("//internal/gazellebinarytest:BUILD.bazel"),
     Label("//internal/gazellebinarytest:xlang.go"),
     Label("//internal/generationtest:BUILD.bazel"),

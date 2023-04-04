@@ -59,10 +59,9 @@ def _go_repository_config_impl(ctx):
             False,
         )
 
-    # add an empty build file so Bazel recognizes the config
     ctx.file(
         "BUILD.bazel",
-        "",
+        "exports_files([\"WORKSPACE\"])",
         False,
     )
 
