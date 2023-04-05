@@ -40,6 +40,12 @@ func TestFind(t *testing.T) {
 		{filepath.Join(tmp, "WORKSPACE"), tmp, true},
 		{filepath.Join(tmp, "WORKSPACE.bazel"), tmp, true},
 		{filepath.Join(tmp, "WORKSPACE.bazel"), filepath.Join(tmp, "dir1"), true},
+		// Test within a directory name WORKSPACE
+		{filepath.Join(tmp, "WORKSPACE"), filepath.Join(tmp, "dir1", "WORKSPACE", "dir2"), true},
+		{filepath.Join(tmp, "WORKSPACE.bazel"), filepath.Join(tmp, "dir1", "WORKSPACE", "dir2"), true},
+		// Test outside a workspace but within a directory named WORKSPACE
+		{filepath.Join(tmp, "WORKSPACE", "file.txt"), filepath.Join(tmp, "dir1"), false},
+		{filepath.Join(tmp, "WORKSPACE", "file.txt"), filepath.Join(tmp, "WORKSPACE", "dir1"), false},
 	} {
 		t.Run(tc.file, func(t *testing.T) {
 			if err := os.RemoveAll(tmp); err != nil {
@@ -55,6 +61,11 @@ func TestFind(t *testing.T) {
 				if err := ioutil.WriteFile(tc.file, nil, 0o755); err != nil {
 					t.Fatal(err)
 				}
+			}
+
+			// Create the testdir dir
+			if err := os.MkdirAll(tc.testdir, 0o755); err != nil {
+				t.Fatal(err)
 			}
 
 			// Look for the file
