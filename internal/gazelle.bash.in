@@ -99,7 +99,7 @@ fi
 # When running with Bzlmod, there is no WORKSPACE file for Gazelle to read
 # the definitions of go_repository rules from. Instead, we pass the path to
 # the repo config file as a flag.
-if [[ "${is_fix_or_update}" == "true"  ]] && [[ -n $REPO_CONFIG_SHORT_PATH ]]; then
+if [[ "${is_fix_or_update:-}" == "true"  ]] && [[ -n $REPO_CONFIG_SHORT_PATH ]]; then
   ARGS+=("-repo_config" "$(find_runfile "$REPO_CONFIG_SHORT_PATH")")
 fi
 
