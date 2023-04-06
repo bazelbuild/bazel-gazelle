@@ -84,10 +84,22 @@ if [ -z "${BUILD_WORKSPACE_DIRECTORY-}" ]; then
   exit 1
 fi
 
+# Determine if we are running the fix/update command
+if [[ ${#ARGS[@]} -gt 0 ]]; then
+  case "${ARGS[0]}" in
+    "fix" | "update")
+      is_fix_or_update="true"
+      ;;
+    *)
+      is_fix_or_update="false"
+      ;;
+  esac
+fi
+
 # When running with Bzlmod, there is no WORKSPACE file for Gazelle to read
 # the definitions of go_repository rules from. Instead, we pass the path to
 # the repo config file as a flag.
-if [[ -n $REPO_CONFIG_SHORT_PATH ]]; then
+if [[ "${is_fix_or_update}" == "true"  ]] && [[ -n $REPO_CONFIG_SHORT_PATH ]]; then
   ARGS+=("-repo_config" "$(find_runfile "$REPO_CONFIG_SHORT_PATH")")
 fi
 
