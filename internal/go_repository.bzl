@@ -207,7 +207,25 @@ def _go_repository_impl(ctx):
         "GIT_SSL_CAINFO",
         "GIT_SSH",
         "GIT_SSH_COMMAND",
+        "GIT_CONFIG_COUNT",
     ]
+
+    # Git allows passing configuration through environmental variables, this will be picked
+    # by go get properly: https://www.git-scm.com/docs/git-config/#Documentation/git-config.txt-GITCONFIGCOUNT
+    if "GIT_CONFIG_COUNT" in ctx.os.environ:
+        count = ctx.os.environ["GIT_CONFIG_COUNT"]
+        if count:
+            if not count.isdigit or int(count) < 1:
+                fail("GIT_CONFIG_COUNT has to be a positive integer")
+            count = int(count)
+            for i in range(count):
+                key = "GIT_CONFIG_KEY_%d" % i
+                value = "GIT_CONFIG_VALUE_%d" % i
+                for j in [key, value]:
+                    if j not in ctx.os.environ:
+                        fail("%s is not defined as an environment variable, but you asked for GIT_COUNT_COUNT=%d" % (j, count))
+                env_keys = env_keys + [key, value]
+
     env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
     if fetch_repo_args:
