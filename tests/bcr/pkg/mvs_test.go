@@ -26,3 +26,8 @@ func TestReplace(t *testing.T) {
 	// being replaced with github.com/bmatcuk/doublestar@v1.3.4
 	_ = doublestar.StandardOS
 }
+
+func TestPatch(t *testing.T) {
+	// a patch is used to add this constant.
+	require.Equal(t, "hello", require.Hello)
+}
