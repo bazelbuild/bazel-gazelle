@@ -29,6 +29,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
+	"github.com/bazelbuild/bazel-gazelle/internal/module"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -252,6 +253,11 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		return err
 	}
 
+	moduleToApparentName, err := module.ExtractModuleToApparentNameMapping(c.RepoRoot)
+	if err != nil {
+		return err
+	}
+
 	mrslv := newMetaResolver()
 	kinds := make(map[string]rule.KindInfo)
 	loads := genericLoads
@@ -261,7 +267,11 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 			mrslv.AddBuiltin(kind, lang)
 			kinds[kind] = info
 		}
-		loads = append(loads, lang.Loads()...)
+		if moduleAwareLang, ok := lang.(language.ModuleAwareLanguage); ok {
+			loads = append(loads, moduleAwareLang.ApparentLoads(moduleToApparentName)...)
+		} else {
+			loads = append(loads, lang.Loads()...)
+		}
 		exts = append(exts, lang)
 	}
 	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)

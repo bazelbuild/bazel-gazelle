@@ -2,17 +2,23 @@ bcr_test_module:
   module_path: tests/bcr
   matrix:
     platform:
-    - centos7
-    - debian10
-    - ubuntu2004
-    - macos
-    - windows
+      - centos7
+      - debian10
+      - ubuntu2004
+      - macos
+      - windows
   tasks:
     run_test_module:
       name: Run test module
       platform: ${{ platform }}
+      shell_commands:
+      # Regenerate the BUILD file for the test module using Gazelle.
+      - rm pkg/BUILD.bazel
+      - bazel run //:gazelle
       build_targets:
       - //...
       - //:gazelle
       test_targets:
-      - //...
+      # Specify this target explicitly to verify that Gazelle generated it correctly.
+      - "//pkg:pkg_test"
+      - "//..."

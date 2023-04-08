@@ -262,6 +262,33 @@ func fixLabels(f *File, w *Rewriter) {
 		}
 	}
 
+	// Join and shorten labels within a container of labels (which can be a single
+	// label, e.g. a single string expression or a concatenation of them).
+	// Gracefully finish if the argument is of a different type.
+	fixLabelsWithinAContainer := func(e *Expr) {
+		if list, ok := (*e).(*ListExpr); ok {
+			for i := range list.List {
+				if leaveAlone1(list.List[i]) {
+					continue
+				}
+				joinLabel(&list.List[i])
+				shortenLabel(list.List[i])
+			}
+		}
+		if set, ok := (*e).(*SetExpr); ok {
+			for i := range set.List {
+				if leaveAlone1(set.List[i]) {
+					continue
+				}
+				joinLabel(&set.List[i])
+				shortenLabel(set.List[i])
+			}
+		} else {
+			joinLabel(e)
+			shortenLabel(*e)
+		}
+	}
+
 	Walk(f, func(v Expr, stk []Expr) {
 		switch v := v.(type) {
 		case *CallExpr:
@@ -283,27 +310,8 @@ func fixLabels(f *File, w *Rewriter) {
 				if leaveAlone1(as.RHS) {
 					continue
 				}
-				if list, ok := as.RHS.(*ListExpr); ok {
-					for i := range list.List {
-						if leaveAlone1(list.List[i]) {
-							continue
-						}
-						joinLabel(&list.List[i])
-						shortenLabel(list.List[i])
-					}
-				}
-				if set, ok := as.RHS.(*SetExpr); ok {
-					for i := range set.List {
-						if leaveAlone1(set.List[i]) {
-							continue
-						}
-						joinLabel(&set.List[i])
-						shortenLabel(set.List[i])
-					}
-				} else {
-					joinLabel(&as.RHS)
-					shortenLabel(as.RHS)
-				}
+
+				findAndModifyStrings(&as.RHS, fixLabelsWithinAContainer)
 			}
 		}
 	})
@@ -420,8 +428,12 @@ func (x namedArgs) Less(i, j int) bool {
 
 // sortStringLists sorts lists of string literals used as specific rule arguments.
 func sortStringLists(f *File, w *Rewriter) {
-	Walk(f, func(v Expr, stk []Expr) {
-		switch v := v.(type) {
+	sortStringList := func(x *Expr) {
+		SortStringList(*x)
+	}
+
+	Walk(f, func(e Expr, stk []Expr) {
+		switch v := e.(type) {
 		case *CallExpr:
 			if f.Type == TypeDefault || f.Type == TypeBzl {
 				// Rule parameters, not applicable to .bzl or default file types
@@ -448,12 +460,12 @@ func sortStringLists(f *File, w *Rewriter) {
 					continue
 				}
 				if w.IsSortableListArg[key.Name] ||
-					w.SortableAllowlist[context] ||
-					(!disabled("unsafesort") && allowedSort(context)) {
+						w.SortableAllowlist[context] ||
+						(!disabled("unsafesort") && allowedSort(context)) {
 					if doNotSort(as) {
 						deduplicateStringList(as.RHS)
 					} else {
-						SortStringList(as.RHS)
+						findAndModifyStrings(&as.RHS, sortStringList)
 					}
 				}
 			}
@@ -463,7 +475,7 @@ func sortStringLists(f *File, w *Rewriter) {
 			}
 			// "keep sorted" comment on x = list forces sorting of list.
 			if keepSorted(v) {
-				SortStringList(v.RHS)
+				findAndModifyStrings(&v.RHS, sortStringList)
 			}
 		case *KeyValueExpr:
 			if disabled("unsafesort") {
@@ -471,7 +483,7 @@ func sortStringLists(f *File, w *Rewriter) {
 			}
 			// "keep sorted" before key: list also forces sorting of list.
 			if keepSorted(v) {
-				SortStringList(v.Value)
+				findAndModifyStrings(&v.Value, sortStringList)
 			}
 		case *ListExpr:
 			if disabled("unsafesort") {
@@ -479,7 +491,7 @@ func sortStringLists(f *File, w *Rewriter) {
 			}
 			// "keep sorted" comment above first list element also forces sorting of list.
 			if len(v.List) > 0 && (keepSorted(v) || keepSorted(v.List[0])) {
-				SortStringList(v)
+				findAndModifyStrings(&e, sortStringList)
 			}
 		}
 	})
@@ -558,6 +570,39 @@ func SortStringList(x Expr) {
 	}
 
 	list.List = sortStringExprs(list.List)
+}
+
+// findAndModifyStrings finds and modifies string lists with a callback
+// function recursively within  the given expression. It doesn't touch all
+// string lists it can find, but only top-level lists, lists that are parts of
+// concatenated expressions and lists within select statements.
+// It calls the callback on the root node and on all relevant inner lists.
+// The callback function should gracefully return if called with not appropriate
+// arguments.
+func findAndModifyStrings(x *Expr, callback func(*Expr)) {
+	callback(x)
+	switch x := (*x).(type) {
+	case *BinaryExpr:
+		if x.Op != "+" {
+			return
+		}
+		findAndModifyStrings(&x.X, callback)
+		findAndModifyStrings(&x.Y, callback)
+	case *CallExpr:
+		if ident, ok := x.X.(*Ident); !ok || ident.Name != "select" {
+			return
+		}
+		if len(x.List) == 0 {
+			return
+		}
+		dict, ok := x.List[0].(*DictExpr)
+		if !ok {
+			return
+		}
+		for _, kv := range dict.List {
+			findAndModifyStrings(&kv.Value, callback)
+		}
+	}
 }
 
 func sortStringExprs(list []Expr) []Expr {

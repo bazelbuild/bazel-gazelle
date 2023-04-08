@@ -92,6 +92,17 @@ func (f *File) RuleAt(linenum int) *Rule {
 	return all[0]
 }
 
+// RuleNamed returns the rule in the file that has the specified name, or null if no such rule.
+func (f *File) RuleNamed(name string) *Rule {
+	all := f.rules(func(rule *Rule) bool {
+		return rule.Name() == name
+	})
+	if len(all) != 1 {
+		return nil
+	}
+	return all[0]
+}
+
 // DelRules removes rules with the given kind and name from the file.
 // An empty kind matches all kinds; an empty name matches all names.
 // It returns the number of rules that were deleted.

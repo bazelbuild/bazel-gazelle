@@ -1092,7 +1092,7 @@ go_repository(name = "foo")
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
 			testFix(t, tc, func(f *rule.File) {
-				merger.FixLoads(f, goLoads)
+				merger.FixLoads(f, goLoadsForTesting)
 			})
 		})
 	}

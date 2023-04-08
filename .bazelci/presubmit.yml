@@ -1,4 +1,10 @@
 ---
+matrix:
+  platform:
+    - ubuntu2004
+    - macos
+    - windows
+
 tasks:
   ubuntu1804:
     platform: ubuntu1804
@@ -10,19 +16,25 @@ tasks:
     - "//:gazelle_ci"
     test_targets:
     - "..."
-  ubuntu1804_bcr_tests:
+  bcr_tests:
     name: BCR test module
-    platform: ubuntu1804
+    platform: ${{ platform }}
     working_directory: tests/bcr
+    shell_commands:
+    # Regenerate the BUILD file for the test module using Gazelle.
+    - rm pkg/BUILD.bazel
+    - bazel run //:gazelle
     build_flags:
-      - "--allow_yanked_versions=all"
+    - "--allow_yanked_versions=all"
     test_flags:
-      - "--allow_yanked_versions=all"
+    - "--allow_yanked_versions=all"
     build_targets:
-      - "//..."
-      - "//:gazelle"
+    - "//..."
+    - "//:gazelle"
     test_targets:
-      - "//..."
+    # Specify this target explicitly to verify that Gazelle generated it correctly.
+    - "//pkg:pkg_test"
+    - "//..."
   ubuntu1604:
     platform: ubuntu1604
     build_targets:

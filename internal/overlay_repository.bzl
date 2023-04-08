@@ -72,7 +72,6 @@ http_archive(
 
             The file format of the repository archive. This is normally inferred from
             the downloaded file name.""",
-
         ),
         "overlay": attr.label_keyed_string_dict(
             allow_files = True,
@@ -84,7 +83,7 @@ http_archive(
             where the overlay files should be written.
 
             It's convenient to store the overlay dictionaries for all repositories in
-            a separate .bzl file. See Gazelle's `manifest.bzl`_ for an example."""
+            a separate .bzl file. See Gazelle's `manifest.bzl`_ for an example.""",
         ),
     },
 )

@@ -17,6 +17,10 @@ load(
     "shell",
 )
 load(
+    "//internal:common.bzl",
+    "IS_BZLMOD_ENABLED",
+)
+load(
     "//internal:go_repository.bzl",
     _go_repository = "go_repository",
 )
@@ -45,6 +49,20 @@ DEFAULT_LANGUAGES = [
     Label("//language/go:go_default_library"),
 ]
 
+def _valid_env_variable_name(name):
+    """ Returns if a string is in the regex [a-zA-Z_][a-zA-Z0-9_]*
+
+    Given that bazel lacks support of regex, we need to implement
+    a poor man validation
+    """
+    if not name:
+        return False
+    for i, c in enumerate(name.elems()):
+        if c.isalpha() or c == "_" or (i > 0 and c.isdigit()):
+            continue
+        return False
+    return True
+
 def _gazelle_runner_impl(ctx):
     args = [ctx.attr.command]
     if ctx.attr.mode:
@@ -57,8 +75,15 @@ def _gazelle_runner_impl(ctx):
         args.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
     args.extend([ctx.expand_location(arg, ctx.attr.data) for arg in ctx.attr.extra_args])
 
+    for key in ctx.attr.env:
+        if not _valid_env_variable_name(key):
+            fail("Invalid environmental variable name: '%s'" % key)
+
+    env = "\n".join(["export %s=%s" % (x, shell.quote(y)) for (x, y) in ctx.attr.env.items()])
+
     out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
     go_tool = ctx.toolchains["@io_bazel_rules_go//go:toolchain"].sdk.go
+    repo_config = ctx.file._repo_config
     substitutions = {
         "@@ARGS@@": shell.array_literal(args),
         "@@GAZELLE_LABEL@@": shell.quote(str(ctx.attr.gazelle.label)),
@@ -68,7 +93,9 @@ def _gazelle_runner_impl(ctx):
 # DO NOT EDIT
 """.format(label = str(ctx.label)),
         "@@RUNNER_LABEL@@": shell.quote(str(ctx.label)),
-        "@@GOTOOL@@": shell.quote(go_tool.path),
+        "@@GOTOOL@@": shell.quote(go_tool.short_path),
+        "@@ENV@@": env,
+        "@@REPO_CONFIG_SHORT_PATH@@": shell.quote(repo_config.short_path) if repo_config else "",
     }
     ctx.actions.expand_template(
         template = ctx.file._template,
@@ -79,7 +106,7 @@ def _gazelle_runner_impl(ctx):
     runfiles = ctx.runfiles(files = [
         ctx.executable.gazelle,
         go_tool,
-    ]).merge(
+    ] + ([repo_config] if repo_config else [])).merge(
         ctx.attr.gazelle[DefaultInfo].default_runfiles,
     )
     for d in ctx.attr.data:
@@ -118,6 +145,11 @@ _gazelle_runner = rule(
         "prefix": attr.string(),
         "extra_args": attr.string_list(),
         "data": attr.label_list(allow_files = True),
+        "env": attr.string_dict(),
+        "_repo_config": attr.label(
+            default = "@bazel_gazelle_go_repository_config//:WORKSPACE" if IS_BZLMOD_ENABLED else None,
+            allow_single_file = True,
+        ),
         "_template": attr.label(
             default = "//internal:gazelle.bash.in",
             allow_single_file = True,

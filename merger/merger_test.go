@@ -940,7 +940,10 @@ func init() {
 		for kind, info := range lang.Kinds() {
 			testKinds[kind] = info
 		}
-		testLoads = append(testLoads, lang.Loads()...)
+		loads := lang.(language.ModuleAwareLanguage).ApparentLoads(func(s string) string {
+			return ""
+		})
+		testLoads = append(testLoads, loads...)
 	}
 }
 

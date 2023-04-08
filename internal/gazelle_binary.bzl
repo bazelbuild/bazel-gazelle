@@ -126,4 +126,4 @@ def format_import(importpath):
     return '{} "{}"'.format(_import_alias(importpath), importpath)
 
 def format_call(importpath):
-    return _import_alias(importpath)+".NewLanguage()"
+    return _import_alias(importpath) + ".NewLanguage()"
