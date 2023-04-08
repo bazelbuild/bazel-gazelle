@@ -335,13 +335,13 @@ def _go_deps_impl(module_ctx):
 
         print("""
 
-The 'build_naming_convention' and 'build_proto_file_mode' attributes of \
+The 'build_naming_convention' and 'build_file_proto_mode' attributes of \
 go_deps.module have been replaced with the more general go_deps.gazelle_override \
 tag and will be removed in the next release of rules_go.
 
 To migrate manually, add a gazelle_override tag for all Go module paths that set \
 one of these attributes and add "gazelle:go_naming_convention <value>" (for \
-build_naming_convention) or "gazelle:proto <value>" (for build_proto_file_mode) \
+build_naming_convention) or "gazelle:proto <value>" (for build_file_proto_mode) \
 to its 'directives' attribute.
 """ + format_module_file_fixup(root_fixups))
 
