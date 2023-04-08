@@ -7,5 +7,6 @@ go_test(
         "@com_github_bmatcuk_doublestar_v4//:doublestar",
         "@com_github_pelletier_go_toml//:go-toml",
         "@com_github_stretchr_testify//require:go_default_library",
+        "@com_github_gogo_protobuf//proto",
     ],
 )
