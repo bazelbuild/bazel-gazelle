@@ -106,6 +106,18 @@ def _get_directives(path, gazelle_overrides):
 
     return DEFAULT_DIRECTIVES_BY_PATH.get(path, [])
 
+def _get_patches(path, module_overrides):
+    override = module_overrides.get(path)
+    if override:
+        return override.patches
+    return []
+
+def _get_patch_args(path, module_overrides):
+    override = module_overrides.get(path)
+    if override:
+        return ["-p{}".format(override.patch_strip)]
+    return []
+
 def _repo_name(importpath):
     path_segments = importpath.split("/")
     segments = reversed(path_segments[0].split(".")) + path_segments[1:]
@@ -139,6 +151,7 @@ def _noop(_):
 def _go_deps_impl(module_ctx):
     module_resolutions = {}
     gazelle_overrides = {}
+    module_overrides = {}
     root_versions = {}
     root_fixups = []
     sums = {}
@@ -159,15 +172,23 @@ def _go_deps_impl(module_ctx):
                 outdated_direct_dep_printer = fail
 
         _fail_on_non_root_overrides(module, "gazelle_override")
-
-        for override_tag in module.tags.gazelle_override:
-            if override_tag.path in gazelle_overrides:
-                fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(override_tag.path, module.name))
-            for directive in override_tag.directives:
+        for gazelle_override_tag in module.tags.gazelle_override:
+            if gazelle_override_tag.path in gazelle_overrides:
+                fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(gazelle_override_tag.path, module.name))
+            for directive in gazelle_override_tag.directives:
                 _check_directive(directive)
 
-            gazelle_overrides[override_tag.path] = struct(
-                directives = override_tag.directives,
+            gazelle_overrides[gazelle_override_tag.path] = struct(
+                directives = gazelle_override_tag.directives,
+            )
+
+        _fail_on_non_root_overrides(module, "module_override")
+        for module_override_tag in module.tags.module_override:
+            if module_override_tag.path in module_overrides:
+                fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(module_override_tag.path, module.name))
+            module_overrides[module_override_tag.path] = struct(
+                patches = module_override_tag.patches,
+                patch_strip = module_override_tag.patch_strip,
             )
 
         if len(module.tags.from_file) > 1:
@@ -282,6 +303,8 @@ def _go_deps_impl(module_ctx):
             replace = getattr(module, "replace", None),
             version = "v" + module.raw_version,
             build_directives = _get_directives(path, gazelle_overrides),
+            patches = _get_patches(path, module_overrides),
+            patch_args = _get_patch_args(path, module_overrides),
         )
 
     # Create a synthetic WORKSPACE file that lists all Go repositories created
@@ -312,13 +335,13 @@ def _go_deps_impl(module_ctx):
 
         print("""
 
-The 'build_naming_convention' and 'build_proto_file_mode' attributes of \
+The 'build_naming_convention' and 'build_file_proto_mode' attributes of \
 go_deps.module have been replaced with the more general go_deps.gazelle_override \
 tag and will be removed in the next release of rules_go.
 
 To migrate manually, add a gazelle_override tag for all Go module paths that set \
 one of these attributes and add "gazelle:go_naming_convention <value>" (for \
-build_naming_convention) or "gazelle:proto <value>" (for build_proto_file_mode) \
+build_naming_convention) or "gazelle:proto <value>" (for build_file_proto_mode) \
 to its 'directives' attribute.
 """ + format_module_file_fixup(root_fixups))
 
@@ -417,6 +440,26 @@ _gazelle_override_tag = tag_class(
     doc = "Override Gazelle's behavior on a given Go module defined by other tags in this extension.",
 )
 
+_module_override_tag = tag_class(
+    attrs = {
+        "path": attr.string(
+            doc = """The Go module path for the repository to be overridden.
+
+            This module path must be defined by other tags in this
+            extension within this Bazel module.""",
+            mandatory = True,
+        ),
+        "patches": attr.label_list(
+            doc = "A list of patches to apply to the repository *after* gazelle runs.",
+        ),
+        "patch_strip": attr.int(
+            default = 0,
+            doc = "The number of leading path segments to be stripped from the file name in the patches.",
+        ),
+    },
+    doc = "Apply patches to a given Go module defined by other tags in this extension.",
+)
+
 go_deps = module_extension(
     _go_deps_impl,
     tag_classes = {
@@ -424,5 +467,6 @@ go_deps = module_extension(
         "from_file": _from_file_tag,
         "gazelle_override": _gazelle_override_tag,
         "module": _module_tag,
+        "module_override": _module_override_tag,
     },
 )
