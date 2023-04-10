@@ -36,6 +36,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	bzl "github.com/bazelbuild/buildtools/build"
+	"golang.org/x/mod/modfile"
 )
 
 var minimumRulesGoVersion = version.Version{0, 29, 0}
@@ -606,6 +607,22 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 					if prefix := r.AttrString("prefix"); prefix != "" {
 						setPrefix(prefix)
 					}
+				}
+			}
+		}
+		if !gc.prefixSet {
+			// Parse the module directive out of the go.mod file, if present.
+			goModPath := filepath.Join(c.RepoRoot, filepath.FromSlash(rel), "go.mod")
+			goMod, err := os.ReadFile(goModPath)
+			// Reading the go.mod file is best-effort and may fail for various reasons, such as
+			// the file not existing or being a directory. Do not report errors.
+			if err == nil {
+				goModFile, err := modfile.ParseLax(goModPath, goMod, nil)
+				// If the go.mod file exists but is malformed, report the error.
+				if err != nil {
+					log.Printf("parsing %s: %s", goModPath, err)
+				} else {
+					setPrefix(goModFile.Module.Mod.Path)
 				}
 			}
 		}
