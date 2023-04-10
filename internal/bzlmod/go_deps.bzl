@@ -90,14 +90,21 @@ def _synthesize_gazelle_override(module, gazelle_overrides, fixups):
         directives.append(directive)
 
     if directives:
-        gazelle_overrides[module.path] = struct(
-            directives = directives,
-        )
+        _safe_append_directives(module, gazelle_overrides, directives)
         fixups.extend([
             buildozer_cmd("new", "go_deps.gazelle_override", module.path),
             buildozer_cmd("add", "directives", name = module.path, *directives),
             buildozer_cmd("rename", "name", "path", name = module.path),
         ])
+
+def _safe_append_directives(module, gazelle_overrides, directives):
+    if module.path in gazelle_overrides:
+        existing = gazelle_overrides[module.path].directives
+    else:
+        existing = []
+    gazelle_overrides[module.path] = struct(
+        directives = existing + directives
+    )
 
 def _get_directives(path, gazelle_overrides):
     override = gazelle_overrides.get(path)
