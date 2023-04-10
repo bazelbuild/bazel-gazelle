@@ -621,7 +621,8 @@ func rulesGoSupportsPlatform(v version.Version, p rule.Platform) bool {
 			p.OS == "linux" && p.Arch == "riscv64" ||
 			p.OS == "netbsd" && p.Arch == "arm64" ||
 			p.OS == "openbsd" && p.Arch == "arm64" ||
-			p.OS == "windows" && p.Arch == "arm") {
+			p.OS == "windows" && p.Arch == "arm" ||
+			p.OS == "windows" && p.Arch == "arm64") {
 		return false
 	}
 	return true
