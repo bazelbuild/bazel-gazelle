@@ -63,9 +63,15 @@ var NoLabel = Label{}
 
 var (
 	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z.-][A-Za-z0-9_.-]*$`)
-	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9 !\\\"#$%&'()*+,\-./;<=>?[\]^_\x60{|}~'@]*$`)
 	// This was taken from https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/build/lib/cmdline/LabelValidator.java
-	labelNameRegexp = regexp.MustCompile("^[A-Za-z0-9!%-@^_` \"#$&'()*-+,;<=>?\\[\\]{|}~/.]*$")
+	// Package names may contain all 7-bit ASCII characters except:
+	// 0-31 (control characters)
+	// 58 ':' (colon) - target name separator
+	// 92 '\' (backslash) - directory separator (on Windows); may be allowed in the future
+  	// 127 (delete)
+	// Target names may contain the same characters
+	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9 !\"#$%&'()*+,\-./;<=>?[\]^_\x60{|}~'@]*$`)
+	labelNameRegexp = regexp.MustCompile(`^[A-Za-z0-9 !\"#$%&'()*+,\-./;<=>?[\]^_\x60{|}~'@]*$`)
 )
 
 // Parse reads a label from a string.
