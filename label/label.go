@@ -63,8 +63,8 @@ var NoLabel = Label{}
 
 var (
 	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z.-][A-Za-z0-9_.-]*$`)
-	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._@-]*$`)
-	// This was taken from https://docs.bazel.build/versions/main/build-ref.html#name
+	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9 !\\\"#$%&'()*+,\-./;<=>?[\]^_\x60{|}~'@]*$`)
+	// This was taken from https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/build/lib/cmdline/LabelValidator.java
 	labelNameRegexp = regexp.MustCompile("^[A-Za-z0-9!%-@^_` \"#$&'()*-+,;<=>?\\[\\]{|}~/.]*$")
 )
 
