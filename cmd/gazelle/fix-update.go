@@ -284,7 +284,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	defer cancel()
 	for _, lang := range languages {
 		if life, ok := lang.(language.LifecycleManager); ok {
-			life.Init(ctx)
+			life.Before(ctx)
 		}
 	}
 
@@ -435,7 +435,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	}
 	for _, lang := range languages {
 		if life, ok := lang.(language.LifecycleManager); ok {
-			life.DoneResolvingDeps()
+			life.AfterResolvingDeps()
 		}
 	}
 

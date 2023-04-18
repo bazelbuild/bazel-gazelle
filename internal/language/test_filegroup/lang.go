@@ -65,13 +65,13 @@ var kinds = map[string]rule.KindInfo{
 	},
 }
 
-func (l *testFilegroupLang) Init(ctx context.Context) {
+func (l *testFilegroupLang) Before(ctx context.Context) {
 	l.Initialized = true
 }
 
 func (l *testFilegroupLang) GenerateRules(args language.GenerateArgs) language.GenerateResult {
 	if !l.Initialized {
-		panic("GenerateRules must not be called before Init")
+		panic("GenerateRules must not be called before Before")
 	}
 	if l.RulesGenerated {
 		panic("GenerateRules must not be called after DoneGeneratingRules")
@@ -104,10 +104,10 @@ func (l *testFilegroupLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc 
 		panic("Expected a call to DoneGeneratingRules before Resolve")
 	}
 	if l.DepsResolved {
-		panic("Resolve must be called before calling DoneResolvingDeps")
+		panic("Resolve must be called before calling AfterResolvingDeps")
 	}
 }
 
-func (l *testFilegroupLang) DoneResolvingDeps() {
+func (l *testFilegroupLang) AfterResolvingDeps(ctx context.Context) {
 	l.DepsResolved = true
 }

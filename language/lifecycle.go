@@ -8,16 +8,16 @@ import "context"
 // interface directly.
 type LifecycleManager interface {
 	FinishableLanguage
-	Init(ctx context.Context)
-	DoneResolvingDeps()
+	Before(ctx context.Context)
+	AfterResolvingDeps(ctx context.Context)
 }
 
 var _ LifecycleManager = (*BaseLifecycleManager)(nil)
 
 type BaseLifecycleManager struct{}
 
-func (m *BaseLifecycleManager) Init(ctx context.Context) {}
+func (m *BaseLifecycleManager) Before(ctx context.Context) {}
 
 func (m *BaseLifecycleManager) DoneGeneratingRules() {}
 
-func (m *BaseLifecycleManager) DoneResolvingDeps() {}
+func (m *BaseLifecycleManager) AfterResolvingDeps(ctx context.Context) {}
