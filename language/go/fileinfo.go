@@ -559,8 +559,7 @@ func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, t
 		if isIgnoredTag(tag) {
 			return true
 		}
-
-		if _, ok := rule.KnownOSSet[tag]; ok {
+		if _, ok := rule.KnownOSSet[tag]; ok || tag == "unix" {
 			if os == "" {
 				return false
 			}

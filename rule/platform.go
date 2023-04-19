@@ -150,8 +150,6 @@ func init() {
 		KnownOSArchs[p.OS] = append(KnownOSArchs[p.OS], p.Arch)
 		KnownArchOSs[p.Arch] = append(KnownArchOSs[p.Arch], p.OS)
 	}
-	// unix is a pseudo os
-	KnownOSSet["unix"] = true
 	KnownOSs = make([]string, 0, len(KnownOSSet))
 	KnownArchs = make([]string, 0, len(KnownArchSet))
 	for os := range KnownOSSet {
