@@ -1,6 +1,7 @@
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 load("@io_bazel_rules_go//go:def.bzl", "nogo")
 load("//:def.bzl", "gazelle", "gazelle_binary")
+load("//internal:common.bzl", "IS_BZLMOD_ENABLED")
 
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle
 # gazelle:exclude vendor
@@ -31,7 +32,7 @@ gazelle_binary(
         "//language/proto",
         "//language/go",
         "//internal/language/test_filegroup",
-        "@bazel_skylib//gazelle/bzl",
+        "@bazel_skylib_gazelle_plugin//bzl" if IS_BZLMOD_ENABLED else "@bazel_skylib//gazelle/bzl",
     ],
 )
 
