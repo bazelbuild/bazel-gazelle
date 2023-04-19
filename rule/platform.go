@@ -94,6 +94,7 @@ var KnownPlatforms = []Platform{
 	{"windows", "386"},
 	{"windows", "amd64"},
 	{"windows", "arm"},
+	{"windows", "arm64"},
 }
 
 var OSAliases = map[string][]string{
