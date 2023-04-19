@@ -525,6 +525,9 @@ func matchesOS(os, value string) bool {
 	if os == value {
 		return true
 	}
+	if value == "unix" {
+		return rule.UnixOS[os]
+	}
 	for _, alias := range rule.OSAliases[os] {
 		if alias == value {
 			return true
