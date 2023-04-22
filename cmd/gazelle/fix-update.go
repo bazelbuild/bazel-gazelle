@@ -17,6 +17,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -279,6 +280,14 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		return err
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	for _, lang := range languages {
+		if life, ok := lang.(language.LifecycleManager); ok {
+			life.Before(ctx)
+		}
+	}
+
 	// Visit all directories in the repository.
 	var visits []visitRecord
 	uc := getUpdateConfig(c)
@@ -423,6 +432,11 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 		merger.MergeFile(v.file, v.empty, v.rules, merger.PostResolve,
 			unionKindInfoMaps(kinds, v.mappedKindInfo))
+	}
+	for _, lang := range languages {
+		if life, ok := lang.(language.LifecycleManager); ok {
+			life.AfterResolvingDeps(ctx)
+		}
 	}
 
 	// Emit merged files.
