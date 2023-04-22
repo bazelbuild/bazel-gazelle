@@ -90,14 +90,21 @@ def _synthesize_gazelle_override(module, gazelle_overrides, fixups):
         directives.append(directive)
 
     if directives:
-        gazelle_overrides[module.path] = struct(
-            directives = directives,
-        )
+        _safe_append_directives(module, gazelle_overrides, directives)
         fixups.extend([
             buildozer_cmd("new", "go_deps.gazelle_override", module.path),
             buildozer_cmd("add", "directives", name = module.path, *directives),
             buildozer_cmd("rename", "name", "path", name = module.path),
         ])
+
+def _safe_append_directives(module, gazelle_overrides, directives):
+    if module.path in gazelle_overrides:
+        existing = gazelle_overrides[module.path].directives
+    else:
+        existing = []
+    gazelle_overrides[module.path] = struct(
+        directives = existing + directives
+    )
 
 def _get_directives(path, gazelle_overrides):
     override = gazelle_overrides.get(path)
@@ -335,13 +342,13 @@ def _go_deps_impl(module_ctx):
 
         print("""
 
-The 'build_naming_convention' and 'build_proto_file_mode' attributes of \
+The 'build_naming_convention' and 'build_file_proto_mode' attributes of \
 go_deps.module have been replaced with the more general go_deps.gazelle_override \
 tag and will be removed in the next release of rules_go.
 
 To migrate manually, add a gazelle_override tag for all Go module paths that set \
 one of these attributes and add "gazelle:go_naming_convention <value>" (for \
-build_naming_convention) or "gazelle:proto <value>" (for build_proto_file_mode) \
+build_naming_convention) or "gazelle:proto <value>" (for build_file_proto_mode) \
 to its 'directives' attribute.
 """ + format_module_file_fixup(root_fixups))
 

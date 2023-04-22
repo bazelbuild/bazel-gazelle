@@ -21,7 +21,7 @@ import (
 
 var workspaceFiles = []string{"WORKSPACE.bazel", "WORKSPACE"}
 
-// IsWORKSPACE checks whether path is a WORKSPACE or WORKSPACE.bazel file
+// IsWORKSPACE checks whether path is named WORKSPACE or WORKSPACE.bazel
 func IsWORKSPACE(path string) bool {
 	base := filepath.Base(path)
 	for _, workspaceFile := range workspaceFiles {
@@ -38,7 +38,7 @@ func IsWORKSPACE(path string) bool {
 func FindWORKSPACEFile(root string) string {
 	for _, workspaceFile := range workspaceFiles {
 		path := filepath.Join(root, workspaceFile)
-		if _, err := os.Stat(path); err == nil {
+		if fileInfo, err := os.Stat(path); err == nil && !fileInfo.IsDir() {
 			return path
 		}
 	}
@@ -56,11 +56,11 @@ func FindRepoRoot(dir string) (string, error) {
 	for {
 		for _, workspaceFile := range workspaceFiles {
 			filepath := filepath.Join(dir, workspaceFile)
-			_, err = os.Stat(filepath)
-			if err == nil {
+			info, err := os.Stat(filepath)
+			if err == nil && !info.IsDir() {
 				return dir, nil
 			}
-			if !os.IsNotExist(err) {
+			if err != nil && !os.IsNotExist(err) {
 				return "", err
 			}
 		}

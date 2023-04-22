@@ -12,7 +12,7 @@ bazel_dep(name = "rules_proto", version = "4.0.0")
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 
 # Known to exist since it is instantiated by rules_go itself.
-use_repo(go_sdk, "go_default_sdk")
+use_repo(go_sdk, go_sdk = "go_default_sdk")
 
 non_module_deps = use_extension("//internal/bzlmod:non_module_deps.bzl", "non_module_deps")
 use_repo(
@@ -43,3 +43,6 @@ use_repo(
     # Read by go_repository rules.
     "bazel_gazelle_go_repository_config",
 )
+
+bazel_dep(name = "bazel_skylib_gazelle_plugin", version = "1.4.1", dev_dependency = True)
+bazel_dep(name = "stardoc", version = "0.5.1", dev_dependency = True, repo_name = "io_bazel_stardoc")
