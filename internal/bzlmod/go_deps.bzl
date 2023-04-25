@@ -397,7 +397,7 @@ _module_tag = tag_class(
             repository.
 
             Deprecated: Use the "gazelle:build_file_names" directive
-            via gazelle_override tag's "directive" attribute
+            via gazelle_override tag's "directives" attribute
             instead.""",
             default = "",
             values = [
@@ -412,7 +412,7 @@ _module_tag = tag_class(
             repository.
 
             Deprecated: Use the "gazelle:proto" directive via
-            gazelle_override tag's "build_file_proto_mode" attribute
+            gazelle_override tag's "directives" attribute
             instead.""",
             default = "",
             values = [
