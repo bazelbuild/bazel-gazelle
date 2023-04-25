@@ -103,7 +103,7 @@ def _safe_append_directives(module, gazelle_overrides, directives):
     else:
         existing = []
     gazelle_overrides[module.path] = struct(
-        directives = existing + directives
+        directives = existing + directives,
     )
 
 def _get_directives(path, gazelle_overrides):
@@ -279,7 +279,8 @@ def _go_deps_impl(module_ctx):
     for path, replace in replace_map.items():
         if path in module_resolutions:
             new_version = semver.to_comparable(replace.version)
-            module_resolutions[path] = with_replaced_or_new_fields(module_resolutions[path],
+            module_resolutions[path] = with_replaced_or_new_fields(
+                module_resolutions[path],
                 replace = replace.to_path,
                 version = new_version,
                 raw_version = replace.version,
@@ -397,7 +398,7 @@ _module_tag = tag_class(
             repository.
 
             Deprecated: Use the "gazelle:build_file_names" directive
-            via gazelle_override tag's "directive" attribute
+            via gazelle_override tag's "directives" attribute
             instead.""",
             default = "",
             values = [
@@ -412,7 +413,7 @@ _module_tag = tag_class(
             repository.
 
             Deprecated: Use the "gazelle:proto" directive via
-            gazelle_override tag's "build_file_proto_mode" attribute
+            gazelle_override tag's "directives" attribute
             instead.""",
             default = "",
             values = [

@@ -19,6 +19,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "k8s.io/api": [
         "gazelle:proto disable",
     ],
+    "k8s.io/apiextensions-apiserver": [
+        "gazelle:proto disable",
+    ],
     "k8s.io/apimachinery": [
         "gazelle:proto disable",
     ],
