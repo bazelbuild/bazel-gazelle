@@ -56,10 +56,7 @@ def _report_forbidden_override(module, tag_class, attribute = None):
     return message + _DIRECTIVES_CALL_TO_ACTION
 
 def _fail_on_non_root_overrides(module, tag_class, attribute = None):
-    # TODO: Gazelle and the "rules_go" module depend on each other circularly.
-    #  Tolerate overrides in the latter module until we can update it to no
-    #  longer need them.
-    if module.is_root or module.name == "rules_go":
+    if module.is_root:
         return
 
     tags = getattr(module.tags, tag_class)
