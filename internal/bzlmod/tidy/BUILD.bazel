@@ -1,0 +1,27 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+go_library(
+    name = "tidy_lib",
+    srcs = ["tidy.go"],
+    data = [
+        "@bazel_gazelle_go_repository_config//:WORKSPACE",
+        "@io_bazel_rules_go//go",
+    ],
+    importpath = "github.com/bazelbuild/bazel-gazelle/internal/bzlmod/tidy",
+    visibility = ["//visibility:private"],
+    x_defs = {
+        "goToolRlocationPath": "$(rlocationpath @io_bazel_rules_go//go)",
+        "repoConfigRlocationPath": "$(rlocationpath @bazel_gazelle_go_repository_config//:WORKSPACE)",
+    },
+    deps = [
+        "//repo",
+        "//rule",
+        "@io_bazel_rules_go//go/runfiles:go_default_library",
+    ],
+)
+
+go_binary(
+    name = "tidy",
+    embed = [":tidy_lib"],
+    visibility = ["//:__subpackages__"],
+)

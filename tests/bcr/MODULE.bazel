@@ -8,7 +8,12 @@ local_path_override(
     path = "../..",
 )
 
-bazel_dep(name = "rules_go", version = "0.38.1")
+bazel_dep(name = "rules_go", version = "0.39.1")
+git_override(
+    module_name = "rules_go",
+    remote = "https://github.com/bazelbuild/rules_go",
+    commit = "ec5a27c34e823bde591704ca44b3c0b2b7d0090f",
+)
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 
