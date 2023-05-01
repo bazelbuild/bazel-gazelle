@@ -525,6 +525,9 @@ func matchesOS(os, value string) bool {
 	if os == value {
 		return true
 	}
+	if value == "unix" {
+		return rule.UnixOS[os]
+	}
 	for _, alias := range rule.OSAliases[os] {
 		if alias == value {
 			return true
@@ -556,8 +559,7 @@ func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, t
 		if isIgnoredTag(tag) {
 			return true
 		}
-
-		if _, ok := rule.KnownOSSet[tag]; ok {
+		if _, ok := rule.KnownOSSet[tag]; ok || tag == "unix" {
 			if os == "" {
 				return false
 			}

@@ -102,6 +102,23 @@ var OSAliases = map[string][]string{
 	"ios":     {"darwin"},
 }
 
+// UnixOS is the set of GOOS values matched by the "unix" build tag.
+// This list is from go/src/cmd/dist/build.go.
+var UnixOS = map[string]bool{
+	"aix":       true,
+	"android":   true,
+	"darwin":    true,
+	"dragonfly": true,
+	"freebsd":   true,
+	"hurd":      true,
+	"illumos":   true,
+	"ios":       true,
+	"linux":     true,
+	"netbsd":    true,
+	"openbsd":   true,
+	"solaris":   true,
+}
+
 var (
 	// KnownOSs is the sorted list of operating systems that Go supports.
 	KnownOSs []string
