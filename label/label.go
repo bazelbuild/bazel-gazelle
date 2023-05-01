@@ -62,7 +62,8 @@ func New(repo, pkg, name string) Label {
 var NoLabel = Label{}
 
 var (
-	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z.-][A-Za-z0-9_.-]*$`)
+	// This was taken from https://github.com/bazelbuild/bazel/blob/71fb1e4188b01e582a308cfe4bcbf1c730eded1b/src/main/java/com/google/devtools/build/lib/cmdline/RepositoryName.java#L159C1-L164
+	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z0-9_.-][A-Za-z0-9_.~-]*$`)
 	labelPkgRegexp  = regexp.MustCompile(`^[A-Za-z0-9/._@-]*$`)
 	// This was taken from https://docs.bazel.build/versions/main/build-ref.html#name
 	labelNameRegexp = regexp.MustCompile("^[A-Za-z0-9!%-@^_` \"#$&'()*-+,;<=>?\\[\\]{|}~/.]*$")
