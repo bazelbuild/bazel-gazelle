@@ -62,15 +62,16 @@ func New(repo, pkg, name string) Label {
 var NoLabel = Label{}
 
 var (
-	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z.-][A-Za-z0-9_.-]*$`)
+	// This was taken from https://github.com/bazelbuild/bazel/blob/71fb1e4188b01e582a308cfe4bcbf1c730eded1b/src/main/java/com/google/devtools/build/lib/cmdline/RepositoryName.java#L159C1-L164
+	labelRepoRegexp = regexp.MustCompile(`^@$|^[A-Za-z0-9_.-][A-Za-z0-9_.~-]*$`)
 	// This was taken from https://github.com/bazelbuild/bazel/blob/master/src/main/java/com/google/devtools/build/lib/cmdline/LabelValidator.java
 	// Package names may contain all 7-bit ASCII characters except:
 	// 0-31 (control characters)
 	// 58 ':' (colon) - target name separator
 	// 92 '\' (backslash) - directory separator (on Windows); may be allowed in the future
-  	// 127 (delete)
+	// 127 (delete)
 	// Target names may contain the same characters
-	labelPkgRegexp = regexp.MustCompile(`^[\x20-\x39\x3B-\x5B\x5D-\x7E]*$`)
+	labelPkgRegexp  = regexp.MustCompile(`^[\x20-\x39\x3B-\x5B\x5D-\x7E]*$`)
 	labelNameRegexp = labelPkgRegexp
 )
 

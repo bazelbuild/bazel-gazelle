@@ -25,7 +25,6 @@ import (
 //	func NewLanguage() language.Language {
 //		return &MyLang{}
 //	}
-//
 type BaseLang struct{}
 
 func (b *BaseLang) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {}
@@ -66,7 +65,5 @@ func (b *BaseLang) Loads() []rule.LoadInfo {
 func (b *BaseLang) GenerateRules(args GenerateArgs) GenerateResult {
 	return GenerateResult{}
 }
-
-func (b *BaseLang) DoneGeneratingRules() {}
 
 func (b *BaseLang) Fix(c *config.Config, f *rule.File) {}

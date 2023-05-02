@@ -85,6 +85,8 @@ func TestParse(t *testing.T) {
 		{str: "//some/pkg/[someId]:someId", want: Label{Pkg: "some/pkg/[someId]", Name: "someId"}},
 		{str: "//some/pkg/[someId]:[someId]", want: Label{Pkg: "some/pkg/[someId]", Name: "[someId]"}},
 		{str: "@a//some/pkg/[someId]:[someId]", want: Label{Repo: "a", Pkg: "some/pkg/[someId]", Name: "[someId]"}},
+		{str: "@rules_python~0.0.0~pip~name_dep//:_pkg", want: Label{Repo: "rules_python~0.0.0~pip~name_dep", Name: "_pkg"}},
+		{str: "@rules_python~0.0.0~pip~name//:dep_pkg", want: Label{Repo: "rules_python~0.0.0~pip~name", Name: "dep_pkg"}},
 	} {
 		got, err := Parse(tc.str)
 		if err != nil && !tc.wantErr {
