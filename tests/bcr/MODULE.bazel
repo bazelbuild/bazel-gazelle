@@ -63,6 +63,7 @@ go_deps.module(
 use_repo(
     go_deps,
     "com_github_bmatcuk_doublestar_v4",
+    "com_github_google_safetext",
     "com_github_pelletier_go_toml",
     "com_github_stretchr_testify",
     # It is not necessary to list transitive dependencies here, only direct ones.

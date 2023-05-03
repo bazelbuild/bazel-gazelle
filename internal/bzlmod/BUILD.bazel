@@ -5,7 +5,7 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
-        "directives.bzl",
+        "default_gazelle_overrides.bzl",
         "go_deps.bzl",
         "go_mod.bzl",
         "non_module_deps.bzl",
@@ -17,7 +17,7 @@ filegroup(
 
 bzl_library(
     name = "directives",
-    srcs = ["directives.bzl"],
+    srcs = ["default_gazelle_overrides.bzl"],
     visibility = ["//:__subpackages__"],
 )
 
@@ -58,5 +58,11 @@ bzl_library(
 bzl_library(
     name = "utils",
     srcs = ["utils.bzl"],
+    visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "default_gazelle_overrides",
+    srcs = ["default_gazelle_overrides.bzl"],
     visibility = ["//:__subpackages__"],
 )

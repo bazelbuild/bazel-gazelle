@@ -1,5 +1,9 @@
 visibility("private")
 
+DEFAULT_BUILD_FILE_GENERATION_BY_PATH = {
+    "github.com/google/safetext": "on",
+}
+
 DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/census-instrumentation/opencensus-proto": [
         "gazelle:proto disable",
@@ -9,6 +13,10 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     ],
     "github.com/google/gnostic": [
         "gazelle:proto disable",
+    ],
+    "github.com/google/safetext": [
+        "gazelle:build_file_name BUILD.bazel",
+        "gazelle:build_file_proto_mode disable_global",
     ],
     "github.com/googleapis/gnostic": [
         "gazelle:proto disable",

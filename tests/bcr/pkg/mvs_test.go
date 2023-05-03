@@ -4,7 +4,8 @@ import (
 	"testing"
 
 	"github.com/bmatcuk/doublestar/v4"
-	toml "github.com/pelletier/go-toml"
+	"github.com/google/safetext/yamltemplate"
+	"github.com/pelletier/go-toml"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,4 +31,10 @@ func TestReplace(t *testing.T) {
 func TestPatch(t *testing.T) {
 	// a patch is used to add this constant.
 	require.Equal(t, "hello", require.Hello)
+}
+
+func TestBuildFileGeneration(t *testing.T) {
+	// github.com/google/safetext@v0.0.0-20220905092116-b49f7bc46da2 requires overwriting the BUILD
+	// files it provides as well as directives.
+	yamltemplate.HTMLEscapeString("<b>foo</b>")
 }
