@@ -91,14 +91,14 @@ def _synthesize_gazelle_override(module, gazelle_overrides, fixups):
         directives.append(directive)
 
     if directives:
-        _safe_append_directives(module, gazelle_overrides, directives)
+        _safe_update_overrides(module, gazelle_overrides, directives)
         fixups.extend([
             buildozer_cmd("new", "go_deps.gazelle_override", module.path),
             buildozer_cmd("add", "directives", name = module.path, *directives),
             buildozer_cmd("rename", "name", "path", name = module.path),
         ])
 
-def _safe_append_directives(module, gazelle_overrides, directives):
+def _safe_update_overrides(module, gazelle_overrides, directives):
     if module.path in gazelle_overrides:
         existing = gazelle_overrides[module.path].directives
         build_file_generation = gazelle_overrides[module.path].build_file_generation
@@ -458,9 +458,9 @@ _gazelle_override_tag = tag_class(
             `"auto"` mode, Gazelle will run if there is no build file in the Go
             module's root directory.""",
             values = [
-                "on",
                 "auto",
                 "off",
+                "on",
             ],
         ),
         "directives": attr.string_list(

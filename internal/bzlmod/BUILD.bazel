@@ -16,17 +16,11 @@ filegroup(
 )
 
 bzl_library(
-    name = "directives",
-    srcs = ["default_gazelle_overrides.bzl"],
-    visibility = ["//:__subpackages__"],
-)
-
-bzl_library(
     name = "go_deps",
     srcs = ["go_deps.bzl"],
     visibility = ["//:__subpackages__"],
     deps = [
-        ":directives",
+        ":default_gazelle_overrides",
         ":semver",
         "//internal:go_repository",
     ],
