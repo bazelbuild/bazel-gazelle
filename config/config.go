@@ -104,6 +104,9 @@ type Config struct {
 	// extensions as well. Values in here may be populated by command line
 	// arguments, directives in build files, or other mechanisms.
 	Exts map[string]interface{}
+
+	// Whether Gazelle is loaded as a Bzlmod 'bazel_dep'.
+	Bzlmod bool
 }
 
 // MappedKind describes a replacement to use for a built-in kind.
@@ -192,6 +195,7 @@ type CommonConfigurer struct {
 	repoRoot, buildFileNames, readBuildFilesDir, writeBuildFilesDir string
 	indexLibraries, strict                                          bool
 	langCsv                                                         string
+	bzlmod                                                          bool
 }
 
 func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Config) {
@@ -202,6 +206,7 @@ func (cc *CommonConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *Confi
 	fs.StringVar(&cc.readBuildFilesDir, "experimental_read_build_files_dir", "", "path to a directory where build files should be read from (instead of -repo_root)")
 	fs.StringVar(&cc.writeBuildFilesDir, "experimental_write_build_files_dir", "", "path to a directory where build files should be written to (instead of -repo_root)")
 	fs.StringVar(&cc.langCsv, "lang", "", "if non-empty, process only these languages (e.g. \"go,proto\")")
+	fs.BoolVar(&cc.bzlmod, "bzlmod", false, "for internal usage only")
 }
 
 func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
@@ -244,6 +249,7 @@ func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 	if len(cc.langCsv) > 0 {
 		c.Langs = strings.Split(cc.langCsv, ",")
 	}
+	c.Bzlmod = cc.bzlmod
 	return nil
 }
 

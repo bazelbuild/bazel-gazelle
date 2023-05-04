@@ -156,10 +156,22 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 			GoPrefix: imp,
 		})
 	}
+
+	moduleToApparentName, err := module.ExtractModuleToApparentNameMapping(c.RepoRoot)
+	if err != nil {
+		return err
+	}
+
 	for _, r := range c.Repos {
 		if r.Kind() == "go_repository" {
+			var name string
+			if apparentName := moduleToApparentName(r.AttrString("module_name")); apparentName != "" {
+				name = apparentName
+			} else {
+				name = r.Name()
+			}
 			uc.repos = append(uc.repos, repo.Repo{
-				Name:     r.Name(),
+				Name:     name,
 				GoPrefix: r.AttrString("importpath"),
 			})
 		}

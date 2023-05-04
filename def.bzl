@@ -73,6 +73,8 @@ def _gazelle_runner_impl(ctx):
         args.extend(["-go_prefix", ctx.attr.prefix])
     if ctx.attr.build_tags:
         args.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
+    if IS_BZLMOD_ENABLED:
+        args.append("-bzlmod")
     args.extend([ctx.expand_location(arg, ctx.attr.data) for arg in ctx.attr.extra_args])
 
     for key in ctx.attr.env:

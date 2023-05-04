@@ -145,12 +145,14 @@ func ResolveGo(c *config.Config, ix *resolve.RuleIndex, rc *repo.RemoteCache, im
 	// These have names that don't following conventions and they're
 	// typeically declared with http_archive, not go_repository, so Gazelle
 	// won't recognize them.
-	if pathtools.HasPrefix(imp, "github.com/bazelbuild/rules_go") {
-		pkg := pathtools.TrimPrefix(imp, "github.com/bazelbuild/rules_go")
-		return label.New("io_bazel_rules_go", pkg, "go_default_library"), nil
-	} else if pathtools.HasPrefix(imp, "github.com/bazelbuild/bazel-gazelle") {
-		pkg := pathtools.TrimPrefix(imp, "github.com/bazelbuild/bazel-gazelle")
-		return label.New("bazel_gazelle", pkg, "go_default_library"), nil
+	if !c.Bzlmod {
+		if pathtools.HasPrefix(imp, "github.com/bazelbuild/rules_go") {
+			pkg := pathtools.TrimPrefix(imp, "github.com/bazelbuild/rules_go")
+			return label.New("io_bazel_rules_go", pkg, "go_default_library"), nil
+		} else if pathtools.HasPrefix(imp, "github.com/bazelbuild/bazel-gazelle") {
+			pkg := pathtools.TrimPrefix(imp, "github.com/bazelbuild/bazel-gazelle")
+			return label.New("bazel_gazelle", pkg, "go_default_library"), nil
+		}
 	}
 
 	if !c.IndexLibraries {

@@ -1,10 +1,14 @@
 package pkg
 
 import (
+	"os"
 	"testing"
 
 	"github.com/DataDog/sketches-go/ddsketch"
+	"github.com/bazelbuild/bazel-gazelle/tests/bcr/pkg/data"
+	"github.com/bazelbuild/rules_go/go/runfiles"
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/fmeum/dep_on_gazelle"
 	"github.com/google/safetext/yamltemplate"
 	"github.com/stretchr/testify/require"
 
@@ -36,4 +40,21 @@ func TestGeneratedFilesPreferredOverProtos(t *testing.T) {
 
 func TestPlatformDependentDep(t *testing.T) {
 	PlatformDependentFunction()
+}
+
+func TestNoGoRepositoryForRulesGoAndGazelle(t *testing.T) {
+	path, err := runfiles.Rlocation(data.RepoConfigRlocationPath)
+	require.NoError(t, err)
+	config, err := os.ReadFile(path)
+	require.NoError(t, err)
+
+	content := string(config)
+	require.NotContains(t, content, "com_github_bazelbuild_rules_go")
+	require.NotContains(t, content, "com_github_bazelbuild_bazel_gazelle")
+	require.Contains(t, content, "module_name = \"rules_go\"")
+	require.Contains(t, content, "module_name = \"gazelle\"")
+}
+
+func TestIndirectlyUseGazelle(t *testing.T) {
+	dep_on_gazelle.MakeLabel("foo", "bar", "baz")
 }

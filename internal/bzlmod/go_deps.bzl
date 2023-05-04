@@ -16,12 +16,7 @@ load(
 
 visibility("//")
 
-# These Go modules are imported as Bazel modules via bazel_dep, not as
-# go_repository.
-_IGNORED_MODULE_PATHS = [
-    "github.com/bazelbuild/bazel-gazelle",
-    "github.com/bazelbuild/rules_go",
-]
+_HIGHEST_VERSION_SENTINEL = semver.to_comparable("999999.999999.999999")
 
 _FORBIDDEN_OVERRIDE_TAG = """\
 Using the "go_deps.{tag_class}" tag in a non-root Bazel module is forbidden, \
@@ -106,6 +101,7 @@ def _go_repository_config_impl(ctx):
             "go_repository",
             name = name,
             importpath = importpath,
+            module_name = ctx.attr.module_names.get(name),
             build_naming_convention = ctx.attr.build_naming_conventions.get(name),
         ))
 
@@ -116,6 +112,7 @@ _go_repository_config = repository_rule(
     implementation = _go_repository_config_impl,
     attrs = {
         "importpaths": attr.string_dict(mandatory = True),
+        "module_names": attr.string_dict(mandatory = True),
         "build_naming_conventions": attr.string_dict(mandatory = True),
     },
 )
@@ -127,6 +124,7 @@ def _go_deps_impl(module_ctx):
     module_resolutions = {}
     sums = {}
     replace_map = {}
+    bazel_deps = {}
 
     gazelle_overrides = {}
     module_overrides = {}
@@ -183,7 +181,7 @@ def _go_deps_impl(module_ctx):
             )
         additional_module_tags = []
         for from_file_tag in module.tags.from_file:
-            module_tags_from_go_mod, go_mod_replace_map = deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+            module_path, module_tags_from_go_mod, go_mod_replace_map = deps_from_go_mod(module_ctx, from_file_tag.go_mod)
             is_dev_dependency = _is_dev_dependency(module_ctx, from_file_tag)
             additional_module_tags += [
                 with_replaced_or_new_fields(tag, _is_dev_dependency = is_dev_dependency)
@@ -192,6 +190,21 @@ def _go_deps_impl(module_ctx):
 
             if module.is_root:
                 replace_map.update(go_mod_replace_map)
+            else:
+                # Register this Bazel module as providing the specified Go module. It participates
+                # in version resolution using its registry version, which is assumed to be an
+                # actual semver. An empty version string signals an override, which is assumed to
+                # be newer than any other version.
+                # TODO: Decide whether and how to handle non-semver versions.
+                raw_version = _canonicalize_raw_version(module.version)
+                version = semver.to_comparable(raw_version) if raw_version else _HIGHEST_VERSION_SENTINEL
+                if module_path not in bazel_deps or version > bazel_deps[module_path].version:
+                    bazel_deps[module_path] = struct(
+                        module_name = module.name,
+                        repo_name = "@" + from_file_tag.go_mod.workspace_name,
+                        version = version,
+                        raw_version = raw_version,
+                    )
 
             # Load all sums from transitively resolved `go.sum` files that have modules.
             if len(module_tags_from_go_mod) > 0:
@@ -222,7 +235,7 @@ def _go_deps_impl(module_ctx):
         for module_tag in module.tags.module + additional_module_tags:
             if module_tag.path in paths:
                 fail("Duplicate Go module path \"{}\" in module \"{}\".".format(module_tag.path, module.name))
-            if module_tag.path in _IGNORED_MODULE_PATHS:
+            if module_tag.path in bazel_deps:
                 continue
             paths[module_tag.path] = None
             raw_version = _canonicalize_raw_version(module_tag.version)
@@ -242,7 +255,6 @@ def _go_deps_impl(module_ctx):
             version = semver.to_comparable(raw_version)
             if module_tag.path not in module_resolutions or version > module_resolutions[module_tag.path].version:
                 module_resolutions[module_tag.path] = struct(
-                    module = module.name,
                     repo_name = _repo_name(module_tag.path),
                     version = version,
                     raw_version = raw_version,
@@ -274,7 +286,20 @@ def _go_deps_impl(module_ctx):
                     # not ever report an implicit version upgrade.
                     root_versions.pop(path)
                 else:
-                    root_versions[path] = new_version
+                    root_versions[path] = replace.version
+
+    for path, bazel_dep in bazel_deps.items():
+        # We can't apply overrides to Bazel dependencies and thus fall back to using the Go module.
+        if path in gazelle_overrides or path in module_overrides or path in replace_map:
+            continue
+
+        # Only use the Bazel module if it is at least as the high as the required Go module version.
+        if path in module_resolutions and bazel_dep.version < module_resolutions[path].version:
+            continue
+
+        # TODO: We should update root_versions if the bazel_dep is a direct dependency of the root
+        #   module. However, we currently don't have a way to determine that.
+        module_resolutions[path] = bazel_dep
 
     for path, root_version in root_versions.items():
         if semver.to_comparable(root_version) < module_resolutions[path].version:
@@ -287,6 +312,12 @@ def _go_deps_impl(module_ctx):
             )
 
     for path, module in module_resolutions.items():
+        if hasattr(module, "module_name"):
+            # Do not create a go_repository for a Go module provided by a bazel_dep.
+            root_module_direct_deps.pop(_repo_name(path), default = None)
+            root_module_direct_dev_deps.pop(_repo_name(path), default = None)
+            continue
+
         go_repository(
             name = module.repo_name,
             importpath = path,
@@ -309,6 +340,10 @@ def _go_deps_impl(module_ctx):
         importpaths = {
             module.repo_name: path
             for path, module in module_resolutions.items()
+        },
+        module_names = {
+            info.repo_name: info.module_name
+            for path, info in bazel_deps.items()
         },
         build_naming_conventions = drop_nones({
             module.repo_name: get_directive_value(
