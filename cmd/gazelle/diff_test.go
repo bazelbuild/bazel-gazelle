@@ -178,3 +178,59 @@ func TestDiffReadWriteDir(t *testing.T) {
 	want := append(files, testtools.FileSpec{Path: "p", Content: wantPatch})
 	testtools.CheckFiles(t, dir, want)
 }
+
+func TestDiffHeaderLine(t *testing.T) {
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{
+			Path:    "hello.go",
+			Content: `package hello`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	testCases := []struct {
+		headerStyle string
+		line        string
+	}{
+		{
+			"",
+			``,
+		},
+		{
+			"git",
+			`diff --git "/dev/null" "BUILD.bazel"`,
+		},
+		{
+			"diff",
+			`diff --unified=3 "/dev/null" "BUILD.bazel"`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		wantError := "encountered changes while running diff"
+		if err := runGazelle(dir, []string{"-go_prefix=example.com/hello", "-mode=diff", "-patch=p", "-diff-header=" + testCase.headerStyle}); err.Error() != wantError {
+			t.Fatalf("got %q; want %q", err, wantError)
+		}
+
+		want := append(files, testtools.FileSpec{
+			Path: "p",
+			Content: testCase.line + `
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ BUILD.bazel	1970-01-01 00:00:00.000000000 +0000
+@@ -0,0 +1,9 @@
++load("@io_bazel_rules_go//go:def.bzl", "go_library")
++
++go_library(
++    name = "hello",
++    srcs = ["hello.go"],
++    importpath = "example.com/hello",
++    visibility = ["//visibility:public"],
++)
++
+`,
+		})
+		testtools.CheckFiles(t, dir, want)
+	}
+}

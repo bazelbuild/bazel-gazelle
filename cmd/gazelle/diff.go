@@ -76,6 +76,11 @@ func diffFile(c *config.Config, f *rule.File) error {
 	if uc.patchPath != "" {
 		out = &uc.patchBuffer
 	}
+	if header, err := diffHeaderLine(uc.diffHeader, diff.FromFile, diff.ToFile, diff.Context); err != nil {
+		return fmt.Errorf("error writing diff header for %s: %w", f.Path, err)
+	} else if header != "" {
+		fmt.Fprintln(out, header)
+	}
 	if err := difflib.WriteUnifiedDiff(out, diff); err != nil {
 		return fmt.Errorf("error diffing %s: %v", f.Path, err)
 	}
@@ -84,4 +89,17 @@ func diffFile(c *config.Config, f *rule.File) error {
 	}
 
 	return nil
+}
+
+func diffHeaderLine(style, fromFile, toFile string, context int) (string, error) {
+	switch style {
+	case "":
+		return "", nil
+	case "git":
+		return fmt.Sprintf("diff --git %q %q", fromFile, toFile), nil
+	case "diff":
+		return fmt.Sprintf("diff --unified=%d %q %q", context, fromFile, toFile), nil
+	default:
+		return "", fmt.Errorf("invalid diff header style: %q", style)
+	}
 }
