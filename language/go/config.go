@@ -188,6 +188,13 @@ func getProtoMode(c *config.Config) proto.Mode {
 	if gc := getGoConfig(c); !gc.goGenerateProto {
 		return proto.DisableMode
 	} else if pc := proto.GetProtoConfig(c); pc != nil {
+		// External non-Bazel-aware dependencies need to contain checked in .pb.go files for protos
+		// or they wouldn't support regular Go builds. Since the generated files are the source of
+		// truth in these cases, disable go_proto_library generation by default to prevent ambiguous
+		// imports when `.pb.go` and `.proto` files are contained in separate directories.
+		if !pc.ModeExplicit && pc.Mode == proto.DefaultMode && getGoConfig(c).goRepositoryMode {
+			return proto.DisableGlobalMode
+		}
 		return pc.Mode
 	} else {
 		return proto.DisableGlobalMode
