@@ -78,7 +78,7 @@ func main() {
 			if i := strings.LastIndexByte(label, '/'); i >= 0 {
 				label = fmt.Sprintf(`Label("//%s:%s")`, label[:i], label[i+1:])
 			} else {
-				label = fmt.Sprintf(`Label("//%s")`, label)
+				label = fmt.Sprintf(`Label("//:%s")`, label)
 			}
 			labels = append(labels, label)
 		}
