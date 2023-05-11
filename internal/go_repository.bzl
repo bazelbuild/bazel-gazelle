@@ -269,6 +269,13 @@ def _go_repository_impl(ctx):
     generate = generate or (not existing_build_file and ctx.attr.build_file_generation == "auto")
 
     if generate:
+        # Remove the original build files
+        workspace_path = str(ctx.path(""))
+        cmd_rm = "rm -rf {}/WORKSPACE `find {} -name 'BUILD.bazel'` {}.bazel* `find {} -name 'BUILD'`".format(workspace_path, workspace_path, workspace_path, workspace_path)
+        result = ctx.execute(["/bin/bash", "-c", cmd_rm])
+        if result.return_code != 0:
+            fail("Failed to execute command: " + result.stderr)
+            
         # Build file generation is needed. Populate Gazelle directive at root build file
         build_file_name = existing_build_file or build_file_names[0]
         if len(ctx.attr.build_directives) > 0:
