@@ -47,6 +47,12 @@ func TestFixLoads(t *testing.T) {
 				"maybe",
 			},
 		},
+		{
+			Name: "@bazel_skylib//lib:selects.bzl",
+			Symbols: []string{
+				"selects",
+			},
+		},
 	}
 
 	type testCase struct {
@@ -127,7 +133,7 @@ foo_library(
 		"unused macro": {
 			input: `load("@bar", "magic")
 			load("@foo", "foo_binary")
-	
+
 foo_binary(name = "a")
 `,
 			want: `load("@foo", "foo_binary")
@@ -188,6 +194,26 @@ foo_library(name = "a_lib")
 foo_binary(name = "a")
 
 foo_library(name = "a_lib")
+`,
+		},
+		"struct macro": {
+			input: `selects.config_setting_group(
+    name = "a",
+    match_any = [
+        "//:config_a",
+        "//:config_b",
+    ],
+)
+`,
+			want: `load("@bazel_skylib//lib:selects.bzl", "selects")
+
+selects.config_setting_group(
+    name = "a",
+    match_any = [
+        "//:config_a",
+        "//:config_b",
+    ],
+)
 `,
 		},
 	} {

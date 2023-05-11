@@ -65,7 +65,15 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 			return
 		}
 
-		functionIdent, ok := ce.X.(*bzl.Ident)
+		var functionIdent *bzl.Ident
+
+		d, ok := ce.X.(*bzl.DotExpr)
+		if ok {
+			functionIdent, ok = d.X.(*bzl.Ident)
+		} else {
+			functionIdent, ok = ce.X.(*bzl.Ident)
+		}
+
 		if !ok {
 			return
 		}
