@@ -3,6 +3,7 @@ package pkg
 import (
 	"testing"
 
+	"github.com/DataDog/sketches-go/ddsketch"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/google/safetext/yamltemplate"
 	"github.com/pelletier/go-toml"
@@ -37,4 +38,8 @@ func TestBuildFileGeneration(t *testing.T) {
 	// github.com/google/safetext@v0.0.0-20220905092116-b49f7bc46da2 requires overwriting the BUILD
 	// files it provides as well as directives.
 	yamltemplate.HTMLEscapeString("<b>foo</b>")
+}
+
+func TestGeneratedFilesPreferredOverProtos(t *testing.T) {
+	_, _ = ddsketch.NewDefaultDDSketch(0.01)
 }

@@ -206,7 +206,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		rules = append(rules, rs...)
 	}
 	for _, name := range emptyProtoRuleNames {
-		goProtoName := strings.TrimSuffix(name, "_proto") + "_go_proto"
+		goProtoName := strings.TrimSuffix(name, "_proto") + goProtoSuffix
 		res.Empty = append(res.Empty, rule.NewRule("go_proto_library", goProtoName))
 	}
 	if pkg != nil && pcMode == proto.PackageMode && pkg.firstGoFile() == "" {
@@ -433,7 +433,7 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 		importPath := InferImportPath(g.c, g.rel)
 		protoName = proto.RuleName(importPath)
 	}
-	goProtoName := strings.TrimSuffix(protoName, "_proto") + "_go_proto"
+	goProtoName := strings.TrimSuffix(protoName, "_proto") + goProtoSuffix
 	visibility := g.commonVisibility(importPath)
 
 	if mode == proto.LegacyMode {
