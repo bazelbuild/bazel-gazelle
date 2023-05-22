@@ -515,8 +515,6 @@ github.com/bazelbuild/buildtools/build
 github.com/bazelbuild/rules_go
   Used to build and test Gazelle through Bazel. Gazelle can aslo be built on its
   own with the Go SDK.
-github.com/pelletier/go-toml
-  Used to import dependencies from dep Gopkg.lock files.
 golang.org/x/tools/vcs
   Used during dependency resolution to determine the repository prefix for a
   given import path. This uses the network.

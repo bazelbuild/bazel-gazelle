@@ -68,7 +68,6 @@ register_unittest_toolchains()
 # gazelle:repository go_repository name=com_github_golang_mock importpath=github.com/golang/mock
 # gazelle:repository go_repository name=com_github_golang_protobuf importpath=github.com/golang/protobuf
 # gazelle:repository go_repository name=com_github_google_go_cmp importpath=github.com/google/go-cmp
-# gazelle:repository go_repository name=com_github_pelletier_go_toml importpath=github.com/pelletier/go-toml
 # gazelle:repository go_repository name=com_github_pmezard_go_difflib importpath=github.com/pmezard/go-difflib
 # gazelle:repository go_repository name=com_github_prometheus_client_model importpath=github.com/prometheus/client_model
 # gazelle:repository go_repository name=com_github_yuin_goldmark importpath=github.com/yuin/goldmark
