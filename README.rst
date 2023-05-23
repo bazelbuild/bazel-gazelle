@@ -921,6 +921,30 @@ The following directives are recognized:
 |   # gazelle:resolve proto go foo/foo.proto //foo:foo_go_proto                              |
 |                                                                                            |
 +---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:resolve_regexp ...`                    | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Specifies an explicit mapping from an import regex to a label for                         |
+| `Dependency resolution`_. The format for a resolve directive is:                           |
+|                                                                                            |
+| ``# gazelle:resolve source-lang import-lang import-string-regex label``                          |
+|                                                                                            |
+| * ``source-lang`` is the language of the source code being imported.                       |
+| * ``import-lang`` is the language importing the library. This is usually                   |
+|   the same as ``source-lang`` but may differ with generated code. For                      |
+|   example, when resolving dependencies for a ``go_proto_library``,                         |
+|   ``source-lang`` would be ``"proto"`` and ``import-lang`` would be ``"go"``.              |
+|   ``import-lang`` may be omitted if it is the same as ``source-lang``.                     |
+| * ``import-string-regex`` is the regex used in source code to import a library.                 |
+| * ``label`` is the Bazel label that Gazelle should write in ``deps``.                      |
+|                                                                                            |
+| For example:                                                                               |
+|                                                                                            |
+| .. code:: bzl                                                                              |
+|                                                                                            |
+|   # gazelle:resolve_regexp go example.com/.* //foo:go_default_library                            |
+|   # gazelle:resolve_regexp proto go foo/.*\.proto //foo:foo_go_proto                              |
+|                                                                                            |
++---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:go_visibility label`            | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
 | By default, internal packages are only visible to its siblings. This directive adds a label|
