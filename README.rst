@@ -564,8 +564,8 @@ The following flags are accepted:
 The ``update-repos`` command updates repository rules.  It can write the rules
 to either the WORKSPACE (by default) or a .bzl file macro function.  It can be
 used to add new repository rules or update existing rules to the specified
-version. It can also import repository rules from a ``go.mod``, ``go.work`` or a
-``Gopkg.lock`` file.
+version. It can also import repository rules from a ``go.mod`` or a ``go.work``
+file.
 
 .. code:: bash
 
@@ -596,7 +596,7 @@ The following flags are accepted:
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Import repositories from a file as `go_repository`_ rules. These rules will be added to the bottom of the WORKSPACE file or merged with existing rules. |
 |                                                                                                                                                         |
-| The lock file format is inferred from the file name. ``go.mod``, ``go.work` and, ``Gopkg.lock`` (the dep lock format) are all supported.                |
+| The lock file format is inferred from the file name. ``go.mod`` and ``go.work` are all supported.                                                       |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-repo_root dir`                                                                                   |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
@@ -612,7 +612,7 @@ The following flags are accepted:
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-prune true|false`                                                                                | :value:`false`                               |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
-| When true, Gazelle will remove `go_repository`_ rules that no longer have equivalent repos in the ``Gopkg.lock``/``go.mod`` file.                       |
+| When true, Gazelle will remove `go_repository`_ rules that no longer have equivalent repos in the ``go.mod`` file.                                      |
 |                                                                                                                                                         |
 | This flag can only be used with ``-from_file``.                                                                                                         |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
