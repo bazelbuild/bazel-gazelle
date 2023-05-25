@@ -66,6 +66,10 @@ case "${1-}" in
   "fix" | "update" | "help" | "update-repos")
     ARGS=("$@")
     ;;
+  "-args")
+    shift
+    ARGS+=("$@")
+    ;;
   *)
     ARGS+=("$@")
     ;;
