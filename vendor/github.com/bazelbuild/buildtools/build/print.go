@@ -318,6 +318,17 @@ func isBazelDep(x Expr) bool {
 	return false
 }
 
+func isUseRepoOrUseExtension(x Expr) bool {
+	call, ok := x.(*CallExpr)
+	if !ok {
+		return false
+	}
+	if ident, ok := call.X.(*Ident); ok && (ident.Name == "use_repo" || ident.Name == "use_extension") {
+		return true
+	}
+	return false
+}
+
 func isModuleOverride(x Expr) bool {
 	call, ok := x.(*CallExpr)
 	if !ok {
@@ -751,7 +762,7 @@ func (p *printer) expr(v Expr, outerPrec int) {
 
 	case *CallExpr:
 		forceCompact := v.ForceCompact
-		if p.fileType == TypeModule && isBazelDep(v) {
+		if p.fileType == TypeModule && (isBazelDep(v) || isUseRepoOrUseExtension(v)) {
 			start, end := v.Span()
 			forceCompact = start.Line == end.Line
 		}

@@ -96,15 +96,15 @@ def gazelle_dependencies(
         name = "com_github_bazelbuild_buildtools",
         build_naming_convention = "go_default_library",
         importpath = "github.com/bazelbuild/buildtools",
-        sum = "h1:XmPu4mXICgdGnC5dXGjUGbwUD/kUmS0l5Aop3LaevBM=",
-        version = "v0.0.0-20230317132445-9c3c1fc0106e",
+        sum = "h1:Fl1FfItZp34QIQmmDTbZXHB5XA6JfbNNfH7tRRGWvQo=",
+        version = "v0.0.0-20230510134650-37bd1811516d",
     )
     _maybe(
         go_repository,
         name = "com_github_bazelbuild_rules_go",
         importpath = "github.com/bazelbuild/rules_go",
-        sum = "h1:YWJ+hbwEOB/PtIFCRMDnvWVSpwPFFGEpdIB6E3bt8X4=",
-        version = "v0.39.0",
+        sum = "h1:wkJLUDx59dntWMghuL8++GteoU1To6sRoKJXuyFtmf8=",
+        version = "v0.39.1",
     )
     _maybe(
         go_repository,
@@ -292,15 +292,15 @@ def gazelle_dependencies(
         go_repository,
         name = "org_golang_x_mod",
         importpath = "golang.org/x/mod",
-        sum = "h1:KENHtAZL2y3NLMYZeHY9DW8HW8V+kQyJsY/V9JlKvCs=",
-        version = "v0.9.0",
+        sum = "h1:lFO9qtOdlre5W1jxS3r/4szv2/6iXxScdzjoBMXNhYk=",
+        version = "v0.10.0",
     )
     _maybe(
         go_repository,
         name = "org_golang_x_net",
         importpath = "golang.org/x/net",
-        sum = "h1:Zrh2ngAOFYneWTAIAPethzeaQLuHwhuBkuV6ZiRnUaQ=",
-        version = "v0.8.0",
+        sum = "h1:X2//UzNDwYmtCLn7To6G58Wr6f5ahEAQgKNzv9Y951M=",
+        version = "v0.10.0",
     )
     _maybe(
         go_repository,
@@ -313,15 +313,15 @@ def gazelle_dependencies(
         go_repository,
         name = "org_golang_x_sync",
         importpath = "golang.org/x/sync",
-        sum = "h1:wsuoTGHzEhffawBOhz5CYhcrV4IdKZbEyZjBMuTp12o=",
-        version = "v0.1.0",
+        sum = "h1:PUR+T4wwASmuSTYdKjYHI5TD22Wy5ogLU5qZCOLxBrI=",
+        version = "v0.2.0",
     )
     _maybe(
         go_repository,
         name = "org_golang_x_sys",
         importpath = "golang.org/x/sys",
-        sum = "h1:MVltZSvRTcU2ljQOhs94SXPftV6DCNnZViHeQps87pQ=",
-        version = "v0.6.0",
+        sum = "h1:EBmGv8NaZBZTWvrbjNoL6HVt+IVy3QDQpJs7VRIw3tU=",
+        version = "v0.8.0",
     )
     _maybe(
         go_repository,
@@ -334,8 +334,8 @@ def gazelle_dependencies(
         go_repository,
         name = "org_golang_x_tools",
         importpath = "golang.org/x/tools",
-        sum = "h1:W4OVu8VVOaIO0yzWMNdepAulS7YfoS3Zabrm8DOXXU4=",
-        version = "v0.7.0",
+        sum = "h1:8WMNJAz3zrtPmnYC7ISf5dEn3MT0gY7jBJfw27yrrLo=",
+        version = "v0.9.1",
     )
     _maybe(
         go_repository,
