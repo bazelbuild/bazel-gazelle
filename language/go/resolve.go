@@ -187,13 +187,20 @@ func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, fro
 	var bestMatch resolve.FindResult
 	var bestMatchIsVendored bool
 	var bestMatchVendorRoot string
+	var bestMatchEmbedsProtos bool
 	var matchError error
+	goRepositoryMode := getGoConfig(c).goRepositoryMode
 
 	for _, m := range matches {
 		// Apply vendoring logic for Go libraries. A library in a vendor directory
 		// is only visible in the parent tree. Vendored libraries supercede
 		// non-vendored libraries, and libraries closer to from.Pkg supercede
 		// those further up the tree.
+		//
+		// Also, in external repositories, prefer go_proto_library targets to checked-in .go files
+		// pregenerated from .proto files over go_proto_library targets. Ideally, the two should be
+		// in sync. If not, users can choose between the two by using the go_generate_proto
+		// directive.
 		isVendored := false
 		vendorRoot := ""
 		parts := strings.Split(m.Label.Pkg, "/")
@@ -208,13 +215,26 @@ func resolveWithIndexGo(c *config.Config, ix *resolve.RuleIndex, imp string, fro
 			// vendor directory not visible
 			continue
 		}
-		if bestMatch.Label.Equal(label.NoLabel) || isVendored && (!bestMatchIsVendored || len(vendorRoot) > len(bestMatchVendorRoot)) {
+
+		embedsProtos := false
+		for _, embed := range m.Embeds {
+			if strings.HasSuffix(embed.Name, goProtoSuffix) {
+				embedsProtos = true
+			}
+		}
+
+		if bestMatch.Label.Equal(label.NoLabel) ||
+			(isVendored && (!bestMatchIsVendored || len(vendorRoot) > len(bestMatchVendorRoot))) ||
+			(goRepositoryMode && !bestMatchEmbedsProtos && embedsProtos) {
 			// Current match is better
 			bestMatch = m
 			bestMatchIsVendored = isVendored
 			bestMatchVendorRoot = vendorRoot
+			bestMatchEmbedsProtos = embedsProtos
 			matchError = nil
-		} else if (!isVendored && bestMatchIsVendored) || (isVendored && len(vendorRoot) < len(bestMatchVendorRoot)) {
+		} else if (!isVendored && bestMatchIsVendored) ||
+			(isVendored && len(vendorRoot) < len(bestMatchVendorRoot)) ||
+			(goRepositoryMode && bestMatchEmbedsProtos && !embedsProtos) {
 			// Current match is worse
 		} else {
 			// Match is ambiguous

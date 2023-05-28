@@ -1,6 +1,6 @@
 module(
     name = "gazelle",
-    version = "0.30.0",
+    version = "0.31.0",
     repo_name = "bazel_gazelle",
 )
 
@@ -12,7 +12,10 @@ bazel_dep(name = "rules_proto", version = "4.0.0")
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 
 # Known to exist since it is instantiated by rules_go itself.
-use_repo(go_sdk, go_sdk = "go_default_sdk")
+use_repo(
+    go_sdk,
+    go_sdk = "go_default_sdk",
+)
 
 non_module_deps = use_extension("//internal/bzlmod:non_module_deps.bzl", "non_module_deps")
 use_repo(
@@ -35,7 +38,6 @@ use_repo(
     "com_github_bmatcuk_doublestar_v4",
     "com_github_fsnotify_fsnotify",
     "com_github_google_go_cmp",
-    "com_github_pelletier_go_toml",
     "com_github_pmezard_go_difflib",
     "org_golang_x_mod",
     "org_golang_x_sync",

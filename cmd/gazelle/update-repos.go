@@ -80,7 +80,7 @@ func (*updateReposConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *con
 	c.Exts[updateReposName] = uc
 	fs.StringVar(&uc.repoFilePath, "from_file", "", "Gazelle will translate repositories listed in this file into repository rules in WORKSPACE or a .bzl macro function. Gopkg.lock and go.mod files are supported")
 	fs.Var(macroFlag{macroFileName: &uc.macroFileName, macroDefName: &uc.macroDefName}, "to_macro", "Tells Gazelle to write repository rules into a .bzl macro function rather than the WORKSPACE file. . The expected format is: macroFile%defName")
-	fs.BoolVar(&uc.pruneRules, "prune", false, "When enabled, Gazelle will remove rules that no longer have equivalent repos in the Gopkg.lock/go.mod file. Can only used with -from_file.")
+	fs.BoolVar(&uc.pruneRules, "prune", false, "When enabled, Gazelle will remove rules that no longer have equivalent repos in the go.mod file. Can only used with -from_file.")
 }
 
 func (*updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {

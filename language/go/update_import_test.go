@@ -37,76 +37,6 @@ func TestImports(t *testing.T) {
 		files             []testtools.FileSpec
 	}{
 		{
-			desc: "dep",
-			files: []testtools.FileSpec{{
-				Path: "Gopkg.lock",
-				Content: `
-# This is an abbreviated version of dep's Gopkg.lock
-# Retrieved 2017-12-20
-
-[[projects]]
-  branch = "parse-constraints-with-dash-in-pre"
-  name = "github.com/Masterminds/semver"
-  packages = ["."]
-  revision = "a93e51b5a57ef416dac8bb02d11407b6f55d8929"
-  source = "https://github.com/carolynvs/semver.git"
-
-[[projects]]
-  name = "github.com/Masterminds/vcs"
-  packages = ["."]
-  revision = "3084677c2c188840777bff30054f2b553729d329"
-  version = "v1.11.1"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/armon/go-radix"
-  packages = ["."]
-  revision = "4239b77079c7b5d1243b7b4736304ce8ddb6f0f2"
-
-[[projects]]
-  branch = "master"
-  name = "golang.org/x/net"
-  packages = ["context"]
-  revision = "66aacef3dd8a676686c7ae3716979581e8b03c47"
-
-[solve-meta]
-  analyzer-name = "dep"
-  analyzer-version = 1
-  inputs-digest = "05c1cd69be2c917c0cc4b32942830c2acfa044d8200fdc94716aae48a8083702"
-  solver-name = "gps-cdcl"
-  solver-version = 1
-`,
-			}},
-			want: `
-go_repository(
-    name = "com_github_armon_go_radix",
-    commit = "4239b77079c7b5d1243b7b4736304ce8ddb6f0f2",
-    importpath = "github.com/armon/go-radix",
-)
-
-go_repository(
-    name = "com_github_masterminds_semver",
-    commit = "a93e51b5a57ef416dac8bb02d11407b6f55d8929",
-    importpath = "github.com/Masterminds/semver",
-    remote = "https://github.com/carolynvs/semver.git",
-    vcs = "git",
-)
-
-go_repository(
-    name = "com_github_masterminds_vcs",
-    commit = "3084677c2c188840777bff30054f2b553729d329",
-    importpath = "github.com/Masterminds/vcs",
-)
-
-go_repository(
-    name = "org_golang_x_net",
-    commit = "66aacef3dd8a676686c7ae3716979581e8b03c47",
-    importpath = "golang.org/x/net",
-)
-`,
-			wantErr:           "",
-			stubGoModDownload: nil,
-		}, {
 			desc: "modules",
 			files: []testtools.FileSpec{
 				{
@@ -228,7 +158,8 @@ go_repository(
 `,
 			wantErr:           "",
 			stubGoModDownload: nil,
-		}, {
+		},
+		{
 			desc: "modules-download-error",
 			files: []testtools.FileSpec{
 				{
@@ -256,7 +187,8 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
 "Error": "Did not exist"
 }`), fmt.Errorf("failed to download")
 			},
-		}, {
+		},
+		{
 			desc: "modules-download-bad-json",
 			files: []testtools.FileSpec{
 				{
@@ -286,7 +218,8 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
 }
 }`), fmt.Errorf("failed to download")
 			},
-		}, {
+		},
+		{
 			desc: "list-modules-error",
 			files: []testtools.FileSpec{
 				{
@@ -314,7 +247,8 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
 "Error": {"Err": "Did not exist"}
 }`), fmt.Errorf("failed to download")
 			},
-		}, {
+		},
+		{
 			desc: "list-modules-bad-json",
 			files: []testtools.FileSpec{
 				{
@@ -342,92 +276,6 @@ definitely.doesnotexist/ever v0.1.0/go.mod h1:HI93XBmqTisBFMUTm0b8Fm+jr3Dg1NNxqw
     "Error" not valid json
 }`), fmt.Errorf("failed to download")
 			},
-		}, {
-			desc: "godep",
-			files: []testtools.FileSpec{{
-				Path: "Godeps.json",
-				Content: `
-{
-  "ImportPath": "github.com/nordstrom/kubelogin",
-  "GoVersion": "go1.8",
-  "GodepVersion": "v79",
-  "Packages": [
-    "./..."
-  ],
-  "Deps": [
-    {
-      "ImportPath": "github.com/beorn7/perks/quantile",
-      "Rev": "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
-    },
-    {
-      "ImportPath": "github.com/coreos/go-oidc",
-      "Rev": "d68c0e2fef598f5bbf15edd34905f4bf551a54ec"
-    },
-    {
-      "ImportPath": "github.com/go-redis/redis",
-      "Comment": "v6.5.6-2-g7a034e1",
-      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
-    },
-    {
-      "ImportPath": "github.com/go-redis/redis/internal",
-      "Comment": "v6.5.6-2-g7a034e1",
-      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
-    },
-    {
-      "ImportPath": "github.com/go-redis/redis/internal/consistenthash",
-      "Comment": "v6.5.6-2-g7a034e1",
-      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
-    },
-    {
-      "ImportPath": "github.com/go-redis/redis/internal/hashtag",
-      "Comment": "v6.5.6-2-g7a034e1",
-      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
-    },
-    {
-      "ImportPath": "github.com/go-redis/redis/internal/pool",
-      "Comment": "v6.5.6-2-g7a034e1",
-      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
-    },
-    {
-      "ImportPath": "github.com/go-redis/redis/internal/proto",
-      "Comment": "v6.5.6-2-g7a034e1",
-      "Rev": "7a034e1609674d5eb847c3885e5058c54e79a1df"
-    },
-		{
-      "ImportPath": "github.com/golang/protobuf/proto",
-      "Rev": "748d386b5c1ea99658fd69fe9f03991ce86a90c1"
-    }
-	]
-}
-`,
-			}},
-			want: `
-go_repository(
-    name = "com_github_beorn7_perks",
-    commit = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9",
-    importpath = "github.com/beorn7/perks",
-)
-
-go_repository(
-    name = "com_github_coreos_go_oidc",
-    commit = "d68c0e2fef598f5bbf15edd34905f4bf551a54ec",
-    importpath = "github.com/coreos/go-oidc",
-)
-
-go_repository(
-    name = "com_github_go_redis_redis",
-    commit = "7a034e1609674d5eb847c3885e5058c54e79a1df",
-    importpath = "github.com/go-redis/redis",
-)
-
-go_repository(
-    name = "com_github_golang_protobuf",
-    commit = "748d386b5c1ea99658fd69fe9f03991ce86a90c1",
-    importpath = "github.com/golang/protobuf",
-)
-`,
-			wantErr:           "",
-			stubGoModDownload: nil,
 		},
 		{
 			desc: "work",

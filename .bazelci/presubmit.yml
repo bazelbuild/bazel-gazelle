@@ -22,8 +22,10 @@ tasks:
     working_directory: tests/bcr
     shell_commands:
     # Regenerate the BUILD file for the test module using Gazelle.
+    # Also verify -repo_config are generated correctly in gazelle.bash
     - rm pkg/BUILD.bazel
-    - bazel run //:gazelle
+    - bazel run //:gazelle -- update pkg
+    - bazel run //:gazelle -- pkg
     build_flags:
     - "--allow_yanked_versions=all"
     test_flags:

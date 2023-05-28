@@ -153,19 +153,19 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "6b65cb7917b4d1709f9410ffe00ecf3e160edf674b78c54a894471320862184f",
+        sha256 = "6dc2da7ab4cf5d7bfc7c949776b1b7c733f05e56edc4bcd9022bb249d2e2a996",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.39.0/rules_go-v0.39.0.zip",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.39.0/rules_go-v0.39.0.zip",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.39.1/rules_go-v0.39.1.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.39.1/rules_go-v0.39.1.zip",
         ],
     )
 
     http_archive(
         name = "bazel_gazelle",
-        sha256 = "ecba0f04f96b4960a5b250c8e8eeec42281035970aa8852dda73098274d14a1d",
+        sha256 = "727f3e4edd96ea20c29e8c2ca9e8d2af724d8c7778e7923a854b2c80952bc405",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.29.0/bazel-gazelle-v0.29.0.tar.gz",
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.29.0/bazel-gazelle-v0.29.0.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.30.0/bazel-gazelle-v0.30.0.tar.gz",
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.30.0/bazel-gazelle-v0.30.0.tar.gz",
         ],
     )
 
@@ -181,7 +181,7 @@ should look like this:
 
     go_rules_dependencies()
 
-    go_register_toolchains(version = "1.19.5")
+    go_register_toolchains(version = "1.20.4")
 
     gazelle_dependencies()
 
@@ -564,8 +564,8 @@ The following flags are accepted:
 The ``update-repos`` command updates repository rules.  It can write the rules
 to either the WORKSPACE (by default) or a .bzl file macro function.  It can be
 used to add new repository rules or update existing rules to the specified
-version. It can also import repository rules from a ``go.mod``, ``go.work`` or a
-``Gopkg.lock`` file.
+version. It can also import repository rules from a ``go.mod`` or a ``go.work``
+file.
 
 .. code:: bash
 
@@ -596,7 +596,7 @@ The following flags are accepted:
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Import repositories from a file as `go_repository`_ rules. These rules will be added to the bottom of the WORKSPACE file or merged with existing rules. |
 |                                                                                                                                                         |
-| The lock file format is inferred from the file name. ``go.mod``, ``go.work` and, ``Gopkg.lock`` (the dep lock format) are all supported.                |
+| The lock file format is inferred from the file name. ``go.mod`` and ``go.work` are all supported.                                                       |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-repo_root dir`                                                                                   |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
@@ -612,7 +612,7 @@ The following flags are accepted:
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-prune true|false`                                                                                | :value:`false`                               |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
-| When true, Gazelle will remove `go_repository`_ rules that no longer have equivalent repos in the ``Gopkg.lock``/``go.mod`` file.                       |
+| When true, Gazelle will remove `go_repository`_ rules that no longer have equivalent repos in the ``go.mod`` file.                                      |
 |                                                                                                                                                         |
 | This flag can only be used with ``-from_file``.                                                                                                         |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
