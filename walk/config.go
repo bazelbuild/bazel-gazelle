@@ -42,7 +42,7 @@ type walkConfig struct {
 	excludes []string
 	ignore   bool
 	follow   []string
-	loadOnce sync.Once
+	loadOnce *sync.Once
 }
 
 const walkName = "_walk"
@@ -75,7 +75,7 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 type Configurer struct{}
 
 func (*Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
-	wc := &walkConfig{}
+	wc := &walkConfig{loadOnce: &sync.Once{}}
 	c.Exts[walkName] = wc
 	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "pattern that should be ignored (may be repeated)")
 }
