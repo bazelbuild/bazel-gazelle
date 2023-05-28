@@ -30,7 +30,7 @@ def deps_from_go_mod(module_ctx, go_mod_label):
         deps.append(struct(
             path = require.path,
             version = require.version,
-            direct = require.direct,
+            indirect = require.indirect,
         ))
 
     return deps, go_mod.replace_map
@@ -120,7 +120,7 @@ def _parse_directive(state, directive, tokens, comment, path, line_no):
         state["require"].append(struct(
             path = tokens[0],
             version = tokens[1],
-            direct = comment != "indirect",
+            indirect = comment == "indirect",
         ))
     elif directive == "replace":
         # A replace directive might use a local file path beginning with ./ or ../

@@ -15,10 +15,10 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_go",
-    sha256 = "6b65cb7917b4d1709f9410ffe00ecf3e160edf674b78c54a894471320862184f",
+    sha256 = "6dc2da7ab4cf5d7bfc7c949776b1b7c733f05e56edc4bcd9022bb249d2e2a996",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.39.0/rules_go-v0.39.0.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.39.0/rules_go-v0.39.0.zip",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.39.1/rules_go-v0.39.1.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.39.1/rules_go-v0.39.1.zip",
     ],
 )
 
@@ -28,7 +28,7 @@ go_rules_dependencies()
 
 go_register_toolchains(
     nogo = "@bazel_gazelle//:nogo",
-    version = "1.20.2",
+    version = "1.20.4",
 )
 
 load("//:deps.bzl", "gazelle_dependencies")
@@ -68,7 +68,6 @@ register_unittest_toolchains()
 # gazelle:repository go_repository name=com_github_golang_mock importpath=github.com/golang/mock
 # gazelle:repository go_repository name=com_github_golang_protobuf importpath=github.com/golang/protobuf
 # gazelle:repository go_repository name=com_github_google_go_cmp importpath=github.com/google/go-cmp
-# gazelle:repository go_repository name=com_github_pelletier_go_toml importpath=github.com/pelletier/go-toml
 # gazelle:repository go_repository name=com_github_pmezard_go_difflib importpath=github.com/pmezard/go-difflib
 # gazelle:repository go_repository name=com_github_prometheus_client_model importpath=github.com/prometheus/client_model
 # gazelle:repository go_repository name=com_github_yuin_goldmark importpath=github.com/yuin/goldmark

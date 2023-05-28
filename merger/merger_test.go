@@ -895,6 +895,38 @@ go_proto_library(
     proto = ":foo_proto",
 )
 `,
+	}, {
+		desc: "struct macro",
+		previous: `load("@bazel_skylib//lib:selects.bzl", "selects")
+
+selects.config_setting_group(
+    name = "a",
+    match_any = [
+        "//:config_a",
+        "//:config_b",
+    ],
+)
+`,
+		current: `load("@bazel_skylib//lib:selects.bzl", "selects")
+
+selects.config_setting_group(
+    name = "a",
+    match_any = [
+        "//:config_c",
+        "//:config_d",
+    ],
+)
+`,
+		expected: `load("@bazel_skylib//lib:selects.bzl", "selects")
+
+selects.config_setting_group(
+    name = "a",
+    match_any = [
+        "//:config_c",
+        "//:config_d",
+    ],
+)
+`,
 	},
 }
 
@@ -944,6 +976,21 @@ func init() {
 			return ""
 		})
 		testLoads = append(testLoads, loads...)
+	}
+
+	// add skylib defs
+	testLoads = append(testLoads, rule.LoadInfo{
+		Name: "@bazel_skylib//lib:selects.bzl",
+		Symbols: []string{
+			"selects",
+		},
+	})
+
+	testKinds["selects.config_setting_group"] = rule.KindInfo{
+		MergeableAttrs: map[string]bool{
+			"match_all": true,
+			"match_any": true,
+		},
 	}
 }
 
@@ -1002,6 +1049,11 @@ go_binary(name = "z")
 			desc: "importpath match",
 			gen:  `go_proto_library(name = "go_proto1", importpath="example.com/foo")`,
 			old:  `go_proto_library(name = "go_proto2", importpath="example.com/foo")`,
+		}, {
+			desc:      "struct macro match",
+			gen:       `selects.config_setting_group(name = "conf_group_1", match_any = ["//:config_a", "//:config_b"])`,
+			old:       `selects.config_setting_group(name = "conf_group_1", match_any = ["//:config_c", "//:config_d"])`,
+			wantIndex: 0,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {

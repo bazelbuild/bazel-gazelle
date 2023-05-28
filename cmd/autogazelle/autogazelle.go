@@ -101,8 +101,7 @@ func runGazelle(mode mode, dirs []string) error {
 		return nil
 	}
 
-	args := []string{os.Getenv("BAZEL_REAL"), "run", *gazelleLabel, "--", "-args"}
-	args = append(args, "-index=false")
+	args := []string{os.Getenv("BAZEL_REAL"), "run", *gazelleLabel, "--", "-index=false"}
 	if mode == fastMode {
 		args = append(args, "-r=false")
 		args = append(args, dirs...)

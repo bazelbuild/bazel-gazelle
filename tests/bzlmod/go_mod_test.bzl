@@ -30,12 +30,12 @@ _EXPECTED_GO_MOD_PARSE_RESULT = struct(
     module = "github.com/bazelbuild/bazel-gazelle",
     replace_map = {"github.com/go-fsnotify/fsnotify": struct(to_path = "github.com/fsnotify/fsnotify", version = "1.4.2")},
     require = (
-        struct(direct = True, path = "github.com/bazelbuild/buildtools", version = "v0.0.0-20220531122519-a43aed7014c8"),
-        struct(direct = True, path = "github.com/bazelbuild/rules_go", version = "v0.n\\\"33.0"),
-        struct(direct = False, path = "github.com/bmatcuk/doublestar/v4", version = "v4.0.2"),
-        struct(direct = True, path = "golang.org/x/tools", version = "v0.1.11"),
-        struct(direct = True, path = "github.com/go-fsnotify/fsnotify", version = "v1.5.4"),
-        struct(direct = False, path = "golang.org/x/sys", version = "v0.0.0-20220624220833-87e55d714810"),
+        struct(indirect = False, path = "github.com/bazelbuild/buildtools", version = "v0.0.0-20220531122519-a43aed7014c8"),
+        struct(indirect = False, path = "github.com/bazelbuild/rules_go", version = "v0.n\\\"33.0"),
+        struct(indirect = True, path = "github.com/bmatcuk/doublestar/v4", version = "v4.0.2"),
+        struct(indirect = False, path = "golang.org/x/tools", version = "v0.1.11"),
+        struct(indirect = False, path = "github.com/go-fsnotify/fsnotify", version = "v1.5.4"),
+        struct(indirect = True, path = "golang.org/x/sys", version = "v0.0.0-20220624220833-87e55d714810"),
     ),
 )
 

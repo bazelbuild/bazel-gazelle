@@ -62,12 +62,14 @@ function set_goroot {
 
 # If arguments were provided on the command line, either replace or augment
 # the generated args.
-if [ "${1-}" = "-args" ]; then
-  shift
-  ARGS+=("$@")
-elif [ $# -ne 0 ]; then
-  ARGS=("$@")
-fi
+case "${1-}" in
+  "fix" | "update" | "help" | "update-repos")
+    ARGS=("$@")
+    ;;
+  *)
+    ARGS+=("$@")
+    ;;
+esac
 
 # Invoke Gazelle.
 # Note that we don't change directories first; if we did, Gazelle wouldn't be
@@ -100,7 +102,7 @@ fi
 # the definitions of go_repository rules from. Instead, we pass the path to
 # the repo config file as a flag.
 if [[ "${is_fix_or_update:-}" == "true"  ]] && [[ -n $REPO_CONFIG_SHORT_PATH ]]; then
-  ARGS+=("-repo_config" "$(find_runfile "$REPO_CONFIG_SHORT_PATH")")
+  ARGS=("${ARGS[0]}" "-repo_config" "$(find_runfile "$REPO_CONFIG_SHORT_PATH")" "${ARGS[@]:1}")
 fi
 
 "$gazelle_short_path" "${ARGS[@]}"

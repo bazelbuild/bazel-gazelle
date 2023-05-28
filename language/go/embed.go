@@ -130,7 +130,7 @@ func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map
 				return filepath.SkipDir
 			}
 			for _, name := range validBuildFileNames {
-				if _, err := os.Stat(filepath.Join(p, name)); err == nil {
+				if bFileInfo, err := os.Stat(filepath.Join(p, name)); err == nil && !bFileInfo.IsDir() {
 					// Directory already contains a build file.
 					return filepath.SkipDir
 				}

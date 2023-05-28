@@ -713,7 +713,7 @@ func (l *Load) sync() {
 // Rule represents a rule statement within a build file.
 type Rule struct {
 	stmt
-	kind    string
+	kind    bzl.Expr
 	args    []bzl.Expr
 	attrs   map[string]*bzl.AssignExpr
 	private map[string]interface{}
@@ -721,10 +721,11 @@ type Rule struct {
 
 // NewRule creates a new, empty rule with the given kind and name.
 func NewRule(kind, name string) *Rule {
-	call := &bzl.CallExpr{X: &bzl.Ident{Name: kind}}
+	kindIdent := &bzl.Ident{Name: kind}
+	call := &bzl.CallExpr{X: kindIdent}
 	r := &Rule{
 		stmt:    stmt{expr: call},
-		kind:    kind,
+		kind:    kindIdent,
 		attrs:   map[string]*bzl.AssignExpr{},
 		private: map[string]interface{}{},
 	}
@@ -740,16 +741,30 @@ func NewRule(kind, name string) *Rule {
 	return r
 }
 
+func isNestedDotOrIdent(expr bzl.Expr) bool {
+	if _, ok := expr.(*bzl.Ident); ok {
+		return true
+	}
+
+	dot, ok := expr.(*bzl.DotExpr)
+	if !ok {
+		return false
+	}
+
+	return isNestedDotOrIdent(dot.X)
+}
+
 func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 	call, ok := expr.(*bzl.CallExpr)
 	if !ok {
 		return nil
 	}
-	x, ok := call.X.(*bzl.Ident)
-	if !ok {
+
+	kind := call.X
+	if !isNestedDotOrIdent(kind) {
 		return nil
 	}
-	kind := x.Name
+
 	var args []bzl.Expr
 	attrs := make(map[string]*bzl.AssignExpr)
 	for _, arg := range call.List {
@@ -782,12 +797,12 @@ func (r *Rule) ShouldKeep() bool {
 
 // Kind returns the kind of rule this is (for example, "go_library").
 func (r *Rule) Kind() string {
-	return r.kind
+	return bzl.FormatString(r.kind)
 }
 
 // SetKind changes the kind of rule this is.
 func (r *Rule) SetKind(kind string) {
-	r.kind = kind
+	r.kind = &bzl.Ident{Name: kind}
 	r.updated = true
 }
 
@@ -966,7 +981,8 @@ func (r *Rule) sync() {
 	}
 
 	call := r.expr.(*bzl.CallExpr)
-	call.X.(*bzl.Ident).Name = r.kind
+	call.X = r.kind
+
 	if len(r.attrs) > 1 {
 		call.ForceMultiLine = true
 	}
