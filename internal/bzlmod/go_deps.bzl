@@ -293,8 +293,16 @@ def _go_deps_impl(module_ctx):
         if path in gazelle_overrides or path in module_overrides or path in replace_map:
             continue
 
-        # Only use the Bazel module if it is at least as the high as the required Go module version.
+        # Only use the Bazel module if it is at least as high as the required Go module version.
         if path in module_resolutions and bazel_dep.version < module_resolutions[path].version:
+            outdated_direct_dep_printer(
+                "Go module \"{path}\" is provided by Bazel module \"{bazel_module}\" in version {bazel_dep_version}, but requested at higher version {go_version} via Go requirements. Consider adding or updating an appropriate \"bazel_dep\" to ensure that the Bazel module is used to provide the Go module.".format(
+                    path = path,
+                    bazel_module = bazel_dep.module_name,
+                    bazel_dep_version = bazel_dep.raw_version,
+                    go_version = module_resolutions[path].raw_version,
+                ),
+            )
             continue
 
         # TODO: We should update root_versions if the bazel_dep is a direct dependency of the root
