@@ -40,13 +40,18 @@ go_deps.module_override(
 
 # Transitive dependencies have to be listed here explicitly.
 go_deps.module(
-    # Verify that the build naming convention is picked up by Gazelle when it
-    # emits references to this repo.
-    build_naming_convention = "go_default_library",
     indirect = True,
     path = "gopkg.in/yaml.v3",
     sum = "h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=",
     version = "v3.0.1",
+)
+go_deps.gazelle_override(
+    path = "gopkg.in/yaml.v3",
+    directives = [
+        # Verify that the build naming convention is picked up by Gazelle when it
+        # emits references to this repo.
+        "gazelle:go_naming_convention go_default_library",
+    ],
 )
 go_deps.module(
     indirect = True,

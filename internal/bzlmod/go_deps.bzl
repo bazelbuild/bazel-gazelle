@@ -8,9 +8,7 @@ load(
 load(":semver.bzl", "semver")
 load(
     ":utils.bzl",
-    "buildozer_cmd",
     "drop_nones",
-    "format_module_file_fixup",
     "format_rule_call",
     "get_directive_value",
     "with_replaced_or_new_fields",
@@ -28,88 +26,28 @@ _IGNORED_MODULE_PATHS = [
 _FORBIDDEN_OVERRIDE_TAG = """\
 Using the "go_deps.{tag_class}" tag in a non-root Bazel module is forbidden, \
 but module "{module_name}" requests it.
-"""
-
-_FORBIDDEN_OVERRIDE_ATTRIBUTE = """\
-Using the "{attribute}" attribute in a "go_deps.{tag_class}" tag is forbidden \
-in non-root Bazel modules, but module "{module_name}" requests it.
-"""
-
-_DIRECTIVES_CALL_TO_ACTION = """\
 
 If you need this override for a Bazel module that will be available in a public \
 registry (such as the Bazel Central Registry), please file an issue at \
 https://github.com/bazelbuild/bazel-gazelle/issues/new or submit a PR adding \
-the required directives to the "directives.bzl" file at \
-https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/directives.bzl.
+the required directives to the "default_gazelle_overrides.bzl" file at \
+https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/default_gazelle_overrides.bzl.
 """
 
-def _report_forbidden_override(module, tag_class, attribute = None):
-    if attribute:
-        message = _FORBIDDEN_OVERRIDE_ATTRIBUTE.format(
-            attribute = attribute,
-            tag_class = tag_class,
-            module_name = module.name,
-        )
-    else:
-        message = _FORBIDDEN_OVERRIDE_TAG.format(
-            tag_class = tag_class,
-            module_name = module.name,
-        )
-
-    return message + _DIRECTIVES_CALL_TO_ACTION
-
-def _fail_on_non_root_overrides(module, tag_class, attribute = None):
+def _fail_on_non_root_overrides(module, tag_class):
     if module.is_root:
         return
 
-    tags = getattr(module.tags, tag_class)
-    for tag in tags:
-        if attribute:
-            if getattr(tag, attribute):
-                fail(_report_forbidden_override(module, tag_class, attribute))
-        else:
-            fail(_report_forbidden_override(module, tag_class))
+    if getattr(module.tags, tag_class):
+        fail(_FORBIDDEN_OVERRIDE_TAG.format(
+            tag_class = tag_class,
+            module_name = module.name,
+        ))
 
 def _check_directive(directive):
     if directive.startswith("gazelle:") and " " in directive and not directive[len("gazelle:"):][0].isspace():
         return
     fail("Invalid Gazelle directive: \"{}\". Gazelle directives must be of the form \"gazelle:key value\".".format(directive))
-
-def _synthesize_gazelle_override(module, gazelle_overrides, fixups):
-    """Translate deprecated override attributes to directives for a transition period."""
-    directives = []
-
-    build_naming_convention = getattr(module, "build_naming_convention", "")
-    if build_naming_convention:
-        directive = "gazelle:go_naming_convention " + build_naming_convention
-        directives.append(directive)
-
-    build_file_proto_mode = getattr(module, "build_file_proto_mode", "")
-    if build_file_proto_mode:
-        directive = "gazelle:proto " + build_file_proto_mode
-        directives.append(directive)
-
-    if directives:
-        _safe_update_overrides(module, gazelle_overrides, directives)
-        fixups.extend([
-            buildozer_cmd("new", "go_deps.gazelle_override", module.path),
-            buildozer_cmd("add", "directives", name = module.path, *directives),
-            buildozer_cmd("rename", "name", "path", name = module.path),
-        ])
-
-def _safe_update_overrides(module, gazelle_overrides, directives):
-    if module.path in gazelle_overrides:
-        existing = gazelle_overrides[module.path].directives
-        build_file_generation = gazelle_overrides[module.path].build_file_generation
-    else:
-        existing = []
-        build_file_generation = "auto"
-
-    gazelle_overrides[module.path] = struct(
-        directives = existing + directives,
-        build_file_generation = build_file_generation,
-    )
 
 def _get_build_file_generation(path, gazelle_overrides):
     override = gazelle_overrides.get(path)
@@ -262,11 +200,12 @@ def _go_deps_impl(module_ctx):
 
         # Load sums from manually specified modules separately.
         for module_tag in module.tags.module:
+            if module_tag.build_naming_convention:
+                fail("""The "build_naming_convention" attribute is no longer supported for "go_deps.module" tags. Use a "gazelle:go_naming_convention" directive via the "gazelle_override" tag's "directives" attribute instead.""")
+            if module_tag.build_file_proto_mode:
+                fail("""The "build_file_proto_mode" attribute is no longer supported for "go_deps.module" tags. Use a "gazelle:proto" directive via the "gazelle_override" tag's "directives" attribute instead.""")
             sum_version = _canonicalize_raw_version(module_tag.version)
             _safe_insert_sum(sums, (module_tag.path, sum_version), module_tag.sum)
-
-        _fail_on_non_root_overrides(module, "module", "build_naming_convention")
-        _fail_on_non_root_overrides(module, "module", "build_file_proto_mode")
 
         # Parse the go_dep.module tags of all transitive dependencies and apply
         # Minimum Version Selection to resolve importpaths to Go module versions
@@ -287,10 +226,6 @@ def _go_deps_impl(module_ctx):
                 continue
             paths[module_tag.path] = None
             raw_version = _canonicalize_raw_version(module_tag.version)
-
-            # Note: While we still have overrides in rules_go, those will take precedence over the
-            # ones defined in the root module.
-            _synthesize_gazelle_override(module_tag, gazelle_overrides, root_fixups if module.is_root else [])
 
             # For modules imported from a go.sum, we know which ones are direct
             # dependencies and can thus only report implicit version upgrades
@@ -384,24 +319,6 @@ def _go_deps_impl(module_ctx):
         }),
     )
 
-    if root_fixups:
-        root_fixups.extend([
-            buildozer_cmd("remove", "build_naming_convention", name = "%go_deps.module"),
-            buildozer_cmd("remove", "build_file_proto_mode", name = "%go_deps.module"),
-        ])
-
-        print("""
-
-The 'build_naming_convention' and 'build_file_proto_mode' attributes of \
-go_deps.module have been replaced with the more general go_deps.gazelle_override \
-tag and will be removed in the next release of rules_go.
-
-To migrate manually, add a gazelle_override tag for all Go module paths that set \
-one of these attributes and add "gazelle:go_naming_convention <value>" (for \
-build_naming_convention) or "gazelle:proto <value>" (for build_file_proto_mode) \
-to its 'directives' attribute.
-""" + format_module_file_fixup(root_fixups))
-
     return _extension_metadata(
         module_ctx,
         root_module_direct_deps = root_module_direct_deps.keys(),
@@ -453,42 +370,12 @@ _module_tag = tag_class(
         "path": attr.string(mandatory = True),
         "version": attr.string(mandatory = True),
         "sum": attr.string(),
-        "build_naming_convention": attr.string(
-            doc = """The library naming convention to use when
-            resolving dependencies against this Go module's external
-            repository.
-
-            Deprecated: Use the "gazelle:build_file_names" directive
-            via gazelle_override tag's "directives" attribute
-            instead.""",
-            default = "",
-            values = [
-                "go_default_library",
-                "import",
-                "import_alias",
-            ],
-        ),
-        "build_file_proto_mode": attr.string(
-            doc = """The mode to use when generating rules for
-            Protocol Buffers files for this Go module's external
-            repository.
-
-            Deprecated: Use the "gazelle:proto" directive via
-            gazelle_override tag's "directives" attribute
-            instead.""",
-            default = "",
-            values = [
-                "default",
-                "disable",
-                "disable_global",
-                "legacy",
-                "package",
-            ],
-        ),
         "indirect": attr.bool(
             doc = """Whether this Go module is an indirect dependency.""",
             default = False,
         ),
+        "build_naming_convention": attr.string(doc = """Removed, do not use""", default = ""),
+        "build_file_proto_mode": attr.string(doc = """Removed, do not use""", default = ""),
     },
 )
 
