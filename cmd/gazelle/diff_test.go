@@ -48,8 +48,8 @@ func TestDiffExisting(t *testing.T) {
 	want := append(files, testtools.FileSpec{
 		Path: "p",
 		Content: `
---- BUILD.bazel	1970-01-01 00:00:00.000000000 +0000
-+++ BUILD.bazel	1970-01-01 00:00:00.000000000 +0000
+--- BUILD.bazel	1970-01-01 00:00:00.000000001 +0000
++++ BUILD.bazel	1970-01-01 00:00:00.000000001 +0000
 @@ -1,3 +1,11 @@
 +load("@io_bazel_rules_go//go:def.bzl", "go_library")
  
@@ -86,8 +86,8 @@ func TestDiffNew(t *testing.T) {
 	want := append(files, testtools.FileSpec{
 		Path: "p",
 		Content: `
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ BUILD.bazel	1970-01-01 00:00:00.000000000 +0000
+--- /dev/null	1970-01-01 00:00:00.000000001 +0000
++++ BUILD.bazel	1970-01-01 00:00:00.000000001 +0000
 @@ -0,0 +1,9 @@
 +load("@io_bazel_rules_go//go:def.bzl", "go_library")
 +
@@ -158,8 +158,8 @@ func TestDiffReadWriteDir(t *testing.T) {
 	}
 
 	wantPatch := fmt.Sprintf(`
---- %s	1970-01-01 00:00:00.000000000 +0000
-+++ %s	1970-01-01 00:00:00.000000000 +0000
+--- %s	1970-01-01 00:00:00.000000001 +0000
++++ %s	1970-01-01 00:00:00.000000001 +0000
 @@ -1 +1,11 @@
 +load("@io_bazel_rules_go//go:def.bzl", "go_library")
 +
