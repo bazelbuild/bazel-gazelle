@@ -36,7 +36,8 @@ func diffFile(c *config.Config, f *rule.File) error {
 	}
 	rel = filepath.ToSlash(rel)
 
-	// Use a dummy timestamp that is not the epoch, so use one ns past the epoch.
+	// The epoch timestamp is assumed to represent file creation/deletion events
+	// by some tools, so use a dummy timestamp that is one ns past the epoch.
 	// See https://github.com/bazelbuild/bazel-gazelle/issues/1528.
 	date := "1970-01-01 00:00:00.000000001 +0000"
 
