@@ -1,12 +1,16 @@
 visibility("private")
 
 DEFAULT_BUILD_FILE_GENERATION_BY_PATH = {
+    "github.com/envoyproxy/protoc-gen-validate": "on",
     "github.com/google/safetext": "on",
 }
 
 DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/census-instrumentation/opencensus-proto": [
         "gazelle:proto disable",
+    ],
+    "github.com/envoyproxy/protoc-gen-validate": [
+        "gazelle:build_file_name BUILD.bazel",
     ],
     "github.com/gogo/protobuf": [
         "gazelle:proto disable",

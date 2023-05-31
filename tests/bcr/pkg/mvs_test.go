@@ -7,6 +7,8 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/google/safetext/yamltemplate"
 	"github.com/stretchr/testify/require"
+
+	_ "github.com/envoyproxy/protoc-gen-validate/validate"
 )
 
 func TestReplace(t *testing.T) {
