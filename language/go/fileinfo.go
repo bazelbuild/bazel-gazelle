@@ -501,7 +501,7 @@ func isOSArchSpecific(info fileInfo, cgoTags *cgoTagsAndOpts) (osSpecific, archS
 	checkTags := func(tags []string) {
 		for _, tag := range tags {
 			_, osOk := rule.KnownOSSet[tag]
-			if osOk {
+			if osOk || tag == "unix" {
 				osSpecific = true
 			}
 			_, archOk := rule.KnownArchSet[tag]
@@ -564,7 +564,6 @@ func checkConstraints(c *config.Config, os, arch, osSuffix, archSuffix string, t
 				return false
 			}
 			return matchesOS(os, tag)
-
 		}
 
 		if _, ok := rule.KnownArchSet[tag]; ok {

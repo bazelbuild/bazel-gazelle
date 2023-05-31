@@ -62,7 +62,6 @@ func TestOtherFileInfo(t *testing.T) {
 			if diff := cmp.Diff(tc.wantTags, got.tags, fileInfoCmpOption); diff != "" {
 				t.Errorf("(-want, +got): %s", diff)
 			}
-
 		})
 	}
 }
@@ -428,6 +427,40 @@ func TestCheckConstraints(t *testing.T) {
 			arch:     "amd64",
 			want:     false,
 		}, {
+			desc:     "unix filename on darwin",
+			filename: "foo_unix.go",
+			os:       "darwin",
+			want:     true,
+		}, {
+			desc:     "unix filename on windows",
+			filename: "foo_unix.go",
+			os:       "windows",
+			want:     true,
+		}, {
+			desc:     "non-unix tag on linux",
+			filename: "foo_bar.go",
+			os:       "darwin",
+			content:  "//go:build !unix\n\npackage foo",
+			want:     false,
+		}, {
+			desc:     "non-unix tag on windows",
+			filename: "foo_bar.go",
+			os:       "windows",
+			content:  "//go:build !unix\n\npackage foo",
+			want:     true,
+		}, {
+			desc:     "unix tag on windows",
+			filename: "foo_bar.go",
+			os:       "windows",
+			content:  "//go:build unix\n\npackage foo",
+			want:     false,
+		}, {
+			desc:     "unix tag on linux",
+			filename: "foo_bar.go",
+			os:       "linux",
+			content:  "//go:build unix\n\npackage foo",
+			want:     true,
+		}, {
 			desc:     "goos unsatisfied tags satisfied",
 			filename: "foo_linux.go",
 			content:  "// +build foo\n\npackage foo",
@@ -575,6 +608,108 @@ import "C"
 
 			got := checkConstraints(c, tc.os, tc.arch, fi.goos, fi.goarch, fi.tags, cgoTags)
 			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
+			}
+		})
+	}
+}
+
+func TestIsOSArchSpecific(t *testing.T) {
+	for _, tc := range []struct {
+		desc              string
+		filename, content string
+
+		expectOSSpecific   bool
+		expectArchSpecific bool
+	}{
+		{
+			desc:               "normal",
+			filename:           "foo.go",
+			content:            "package foo",
+			expectOSSpecific:   false,
+			expectArchSpecific: false,
+		},
+		{
+			desc:               "unix directive",
+			filename:           "foo.go",
+			content:            "//go:build unix\n\npackage foo",
+			expectOSSpecific:   true,
+			expectArchSpecific: false,
+		},
+		{
+			desc:               "exclude-unix directive",
+			filename:           "foo.go",
+			content:            "//go:build !unix\n\npackage foo",
+			expectOSSpecific:   true,
+			expectArchSpecific: false,
+		},
+		{
+			desc:               "arch directive",
+			filename:           "foo.go",
+			content:            "//go:build arm64\n\npackage foo",
+			expectOSSpecific:   false,
+			expectArchSpecific: true,
+		},
+		{
+			desc:               "exclude-arch directive",
+			filename:           "foo.go",
+			content:            "//go:build !arm64\n\npackage foo",
+			expectOSSpecific:   false,
+			expectArchSpecific: true,
+		},
+		{
+			desc:               "os directive",
+			filename:           "foo.go",
+			content:            "//go:build linux\n\npackage foo",
+			expectOSSpecific:   true,
+			expectArchSpecific: false,
+		},
+		{
+			desc:               "exclude-os directive",
+			filename:           "foo.go",
+			content:            "//go:build !linux\n\npackage foo",
+			expectOSSpecific:   true,
+			expectArchSpecific: false,
+		},
+		{
+			desc:               "os and arch directive",
+			filename:           "foo.go",
+			content:            "//go:build linux && amd64\n\npackage foo",
+			expectOSSpecific:   true,
+			expectArchSpecific: true,
+		},
+		{
+			desc:               "unix and arch directive",
+			filename:           "foo.go",
+			content:            "//go:build unix && amd64\n\npackage foo",
+			expectOSSpecific:   true,
+			expectArchSpecific: true,
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			tmpDir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "TestIsOSSpecific_*")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				os.RemoveAll(tmpDir)
+			})
+
+			path := filepath.Join(tmpDir, tc.filename)
+			if err := ioutil.WriteFile(path, []byte(tc.content), 0o666); err != nil {
+				t.Fatal(err)
+			}
+			fi := goFileInfo(path, "")
+			var cgoTags *cgoTagsAndOpts
+			if len(fi.copts) > 0 {
+				cgoTags = fi.copts[0]
+			}
+
+			gotOSSpecific, gotArchSpecific := isOSArchSpecific(fi, cgoTags)
+			if diff := cmp.Diff(tc.expectOSSpecific, gotOSSpecific); diff != "" {
+				t.Errorf("(-want, +got): %s", diff)
+			}
+			if diff := cmp.Diff(tc.expectArchSpecific, gotArchSpecific); diff != "" {
 				t.Errorf("(-want, +got): %s", diff)
 			}
 		})

@@ -314,7 +314,8 @@ def _go_repository_impl(ctx):
                 result.stderr,
             ))
         if ctx.attr.debug_mode and result.stderr:
-            print("%s: %s" % (ctx.name, result.stderr))
+            print("%s gazelle.stdout: %s" % (ctx.name, result.stdout))
+            print("%s gazelle.stderr: %s" % (ctx.name, result.stderr))
 
     # Apply patches if necessary.
     patch(ctx)
