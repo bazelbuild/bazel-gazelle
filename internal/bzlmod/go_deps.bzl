@@ -192,12 +192,12 @@ def _go_deps_impl(module_ctx):
                 replace_map.update(go_mod_replace_map)
             else:
                 # Register this Bazel module as providing the specified Go module. It participates
-                # in version resolution using its registry version, which is assumed to be an
-                # actual semver. An empty version string signals an override, which is assumed to
-                # be newer than any other version.
-                # TODO: Decide whether and how to handle non-semver versions.
+                # in version resolution using its registry version, which uses a relaxed variant of
+                # semver that can however still be compared to strict semvers.
+                # An empty version string signals an override, which is assumed to be newer than any
+                # other version.
                 raw_version = _canonicalize_raw_version(module.version)
-                version = semver.to_comparable(raw_version) if raw_version else _HIGHEST_VERSION_SENTINEL
+                version = semver.to_comparable(raw_version, relaxed = True) if raw_version else _HIGHEST_VERSION_SENTINEL
                 if module_path not in bazel_deps or version > bazel_deps[module_path].version:
                     bazel_deps[module_path] = struct(
                         module_name = module.name,
