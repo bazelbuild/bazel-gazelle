@@ -65,10 +65,10 @@ type platformStringsBuilder struct {
 // platformStringInfo contains information about a single string (source,
 // import, or option).
 type platformStringInfo struct {
-	set       platformStringSet
-	oss       map[string]bool
-	archs     map[string]bool
-	platforms map[rule.Platform]bool
+	set                 platformStringSet
+	osConstraints       map[string]bool
+	archConstraints     map[string]bool
+	platformConstraints map[rule.PlatformConstraint]bool
 }
 
 type platformStringSet int
@@ -331,6 +331,7 @@ func (t *protoTarget) addFile(info fileInfo) {
 func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgoTagsAndOpts) func(sb *platformStringsBuilder, ss ...string) {
 	isOSSpecific, isArchSpecific := isOSArchSpecific(info, cgoTags)
 	v := getGoConfig(c).rulesGoVersion
+	constraintPrefix := "@" + getGoConfig(c).rulesGoRepoName + "//go/platform:"
 
 	switch {
 	case !isOSSpecific && !isArchSpecific:
@@ -353,7 +354,7 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgo
 		if len(osMatch) > 0 {
 			return func(sb *platformStringsBuilder, ss ...string) {
 				for _, s := range ss {
-					sb.addOSString(s, osMatch)
+					sb.addOSString(s, osMatch, constraintPrefix)
 				}
 			}
 		}
@@ -369,7 +370,7 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgo
 		if len(archMatch) > 0 {
 			return func(sb *platformStringsBuilder, ss ...string) {
 				for _, s := range ss {
-					sb.addArchString(s, archMatch)
+					sb.addArchString(s, archMatch, constraintPrefix)
 				}
 			}
 		}
@@ -385,7 +386,7 @@ func getPlatformStringsAddFunction(c *config.Config, info fileInfo, cgoTags *cgo
 		if len(platformMatch) > 0 {
 			return func(sb *platformStringsBuilder, ss ...string) {
 				for _, s := range ss {
-					sb.addPlatformString(s, platformMatch)
+					sb.addPlatformString(s, platformMatch, constraintPrefix)
 				}
 			}
 		}
@@ -414,76 +415,83 @@ func (sb *platformStringsBuilder) addGenericString(s string) {
 	sb.strs[s] = platformStringInfo{set: genericSet}
 }
 
-func (sb *platformStringsBuilder) addOSString(s string, oss []string) {
+func (sb *platformStringsBuilder) addOSString(s string, oss []string, constraintPrefix string) {
 	if sb.strs == nil {
 		sb.strs = make(map[string]platformStringInfo)
 	}
 	si, ok := sb.strs[s]
 	if !ok {
 		si.set = osSet
-		si.oss = make(map[string]bool)
+		si.osConstraints = make(map[string]bool)
 	}
 	switch si.set {
 	case genericSet:
 		return
 	case osSet:
 		for _, os := range oss {
-			si.oss[os] = true
+			si.osConstraints[constraintPrefix+os] = true
 		}
 	default:
-		si.convertToPlatforms()
+		si.convertToPlatforms(constraintPrefix)
 		for _, os := range oss {
 			for _, arch := range rule.KnownOSArchs[os] {
-				si.platforms[rule.Platform{OS: os, Arch: arch}] = true
+				si.platformConstraints[rule.PlatformConstraint{
+					Platform:         rule.Platform{OS: os, Arch: arch},
+					ConstraintPrefix: constraintPrefix,
+				}] = true
 			}
 		}
 	}
 	sb.strs[s] = si
 }
 
-func (sb *platformStringsBuilder) addArchString(s string, archs []string) {
+func (sb *platformStringsBuilder) addArchString(s string, archs []string, constraintPrefix string) {
 	if sb.strs == nil {
 		sb.strs = make(map[string]platformStringInfo)
 	}
 	si, ok := sb.strs[s]
 	if !ok {
 		si.set = archSet
-		si.archs = make(map[string]bool)
+		si.archConstraints = make(map[string]bool)
 	}
 	switch si.set {
 	case genericSet:
 		return
 	case archSet:
 		for _, arch := range archs {
-			si.archs[arch] = true
+			si.archConstraints[constraintPrefix+arch] = true
 		}
 	default:
-		si.convertToPlatforms()
+		si.convertToPlatforms(constraintPrefix)
 		for _, arch := range archs {
 			for _, os := range rule.KnownArchOSs[arch] {
-				si.platforms[rule.Platform{OS: os, Arch: arch}] = true
+				si.platformConstraints[rule.PlatformConstraint{
+					Platform:         rule.Platform{OS: os, Arch: arch},
+					ConstraintPrefix: constraintPrefix,
+				}] = true
 			}
 		}
 	}
 	sb.strs[s] = si
 }
 
-func (sb *platformStringsBuilder) addPlatformString(s string, platforms []rule.Platform) {
+func (sb *platformStringsBuilder) addPlatformString(s string, platforms []rule.Platform, constraintPrefix string) {
 	if sb.strs == nil {
 		sb.strs = make(map[string]platformStringInfo)
 	}
 	si, ok := sb.strs[s]
 	if !ok {
 		si.set = platformSet
-		si.platforms = make(map[rule.Platform]bool)
+		si.platformConstraints = make(map[rule.PlatformConstraint]bool)
 	}
 	switch si.set {
 	case genericSet:
 		return
 	default:
-		si.convertToPlatforms()
+		si.convertToPlatforms(constraintPrefix)
 		for _, p := range platforms {
-			si.platforms[p] = true
+			pConstraint := rule.PlatformConstraint{Platform: rule.Platform{OS: p.OS, Arch: p.Arch}, ConstraintPrefix: constraintPrefix}
+			si.platformConstraints[pConstraint] = true
 		}
 	}
 	sb.strs[s] = si
@@ -499,21 +507,21 @@ func (sb *platformStringsBuilder) build() rule.PlatformStrings {
 			if ps.OS == nil {
 				ps.OS = make(map[string][]string)
 			}
-			for os := range si.oss {
+			for os := range si.osConstraints {
 				ps.OS[os] = append(ps.OS[os], s)
 			}
 		case archSet:
 			if ps.Arch == nil {
 				ps.Arch = make(map[string][]string)
 			}
-			for arch := range si.archs {
+			for arch := range si.archConstraints {
 				ps.Arch[arch] = append(ps.Arch[arch], s)
 			}
 		case platformSet:
 			if ps.Platform == nil {
-				ps.Platform = make(map[rule.Platform][]string)
+				ps.Platform = make(map[rule.PlatformConstraint][]string)
 			}
-			for p := range si.platforms {
+			for p := range si.platformConstraints {
 				ps.Platform[p] = append(ps.Platform[p], s)
 			}
 		}
@@ -546,30 +554,38 @@ func (sb *platformStringsBuilder) buildFlat() []string {
 	return strs
 }
 
-func (si *platformStringInfo) convertToPlatforms() {
+func (si *platformStringInfo) convertToPlatforms(constraintPrefix string) {
 	switch si.set {
 	case genericSet:
-		log.Panic("cannot convert generic string to platforms")
+		log.Panic("cannot convert generic string to platformConstraints")
 	case platformSet:
 		return
 	case osSet:
 		si.set = platformSet
-		si.platforms = make(map[rule.Platform]bool)
-		for os := range si.oss {
+		si.platformConstraints = make(map[rule.PlatformConstraint]bool)
+		for osConstraint := range si.osConstraints {
+			os := strings.TrimPrefix(osConstraint, constraintPrefix)
 			for _, arch := range rule.KnownOSArchs[os] {
-				si.platforms[rule.Platform{OS: os, Arch: arch}] = true
+				si.platformConstraints[rule.PlatformConstraint{
+					Platform:         rule.Platform{OS: os, Arch: arch},
+					ConstraintPrefix: constraintPrefix,
+				}] = true
 			}
 		}
-		si.oss = nil
+		si.osConstraints = nil
 	case archSet:
 		si.set = platformSet
-		si.platforms = make(map[rule.Platform]bool)
-		for arch := range si.archs {
+		si.platformConstraints = make(map[rule.PlatformConstraint]bool)
+		for archConstraint := range si.archConstraints {
+			arch := strings.TrimPrefix(archConstraint, constraintPrefix)
 			for _, os := range rule.KnownArchOSs[arch] {
-				si.platforms[rule.Platform{OS: os, Arch: arch}] = true
+				si.platformConstraints[rule.PlatformConstraint{
+					Platform:         rule.Platform{OS: os, Arch: arch},
+					ConstraintPrefix: constraintPrefix,
+				}] = true
 			}
 		}
-		si.archs = nil
+		si.archConstraints = nil
 	}
 }
 

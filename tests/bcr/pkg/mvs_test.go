@@ -33,3 +33,7 @@ func TestBuildFileGeneration(t *testing.T) {
 func TestGeneratedFilesPreferredOverProtos(t *testing.T) {
 	_, _ = ddsketch.NewDefaultDDSketch(0.01)
 }
+
+func TestPlatformDependentDep(t *testing.T) {
+	PlatformDependentFunction()
+}

@@ -66,6 +66,7 @@ use_repo(
     "com_github_envoyproxy_protoc_gen_validate",
     "com_github_google_safetext",
     "com_github_stretchr_testify",
+    "org_golang_x_sys",
     # It is not necessary to list transitive dependencies here, only direct ones.
     # "in_gopkg_yaml_v3",
 )

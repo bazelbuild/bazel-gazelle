@@ -22,6 +22,23 @@ import (
 	bzl "github.com/bazelbuild/buildtools/build"
 )
 
+// PlatformConstraint represents a constraint_setting target for a particular
+// OS/arch combination.
+//
+// DEPRECATED: do not use outside language/go.
+type PlatformConstraint struct {
+	Platform
+	ConstraintPrefix string
+}
+
+func (p PlatformConstraint) String() string {
+	pStr := p.Platform.String()
+	if pStr == "" {
+		return ""
+	}
+	return p.ConstraintPrefix + pStr
+}
+
 // PlatformStrings contains a set of strings associated with a buildable
 // target in a package. This is used to store source file names,
 // import paths, and flags.
@@ -39,16 +56,16 @@ type PlatformStrings struct {
 	// Generic is a list of strings not specific to any platform.
 	Generic []string
 
-	// OS is a map from OS name (anything in KnownOSs) to
-	// OS-specific strings.
+	// OS is a map from an OS constraint to OS-specific strings.
 	OS map[string][]string
 
-	// Arch is a map from architecture name (anything in KnownArchs) to
+	// Arch is a map from an architecture constraint to
 	// architecture-specific strings.
 	Arch map[string][]string
 
-	// Platform is a map from platforms to OS and architecture-specific strings.
-	Platform map[Platform][]string
+	// Platform is a map from platform constraints to OS and
+	// architecture-specific strings.
+	Platform map[PlatformConstraint][]string
 }
 
 // HasExt returns whether this set contains a file with the given extension.
@@ -170,11 +187,11 @@ func (ps *PlatformStrings) MapSlice(f func([]string) ([]string, error)) (Platfor
 		return rm
 	}
 
-	mapPlatformMap := func(m map[Platform][]string) map[Platform][]string {
+	mapPlatformMap := func(m map[PlatformConstraint][]string) map[PlatformConstraint][]string {
 		if m == nil {
 			return nil
 		}
-		rm := make(map[Platform][]string)
+		rm := make(map[PlatformConstraint][]string)
 		for k, ss := range m {
 			ss = mapSlice(ss)
 			if len(ss) > 0 {
@@ -229,16 +246,16 @@ func (ps PlatformStrings) BzlExpr() bzl.Expr {
 func platformStringsOSArchDictExpr(m map[string][]string) bzl.Expr {
 	s := make(SelectStringListValue)
 	for key, value := range m {
-		s["@io_bazel_rules_go//go/platform:"+key] = value
+		s[key] = value
 	}
 	s["//conditions:default"] = nil
 	return s.BzlExpr()
 }
 
-func platformStringsPlatformDictExpr(m map[Platform][]string) bzl.Expr {
+func platformStringsPlatformDictExpr(m map[PlatformConstraint][]string) bzl.Expr {
 	s := make(SelectStringListValue)
 	for key, value := range m {
-		s["@io_bazel_rules_go//go/platform:"+key.String()] = value
+		s[key.String()] = value
 	}
 	s["//conditions:default"] = nil
 	return s.BzlExpr()
