@@ -1,0 +1,9 @@
+load("@my_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "data",
+    srcs = ["data.go"],
+    data = ["@bazel_gazelle_go_repository_config//:WORKSPACE"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/tests/bcr/pkg/data",
+    visibility = ["//visibility:public"],
+)

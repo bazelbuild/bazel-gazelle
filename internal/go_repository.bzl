@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//internal:common.bzl", "env_execute", "executable_extension")
+load("//internal:common.bzl", "IS_BZLMOD_ENABLED", "env_execute", "executable_extension")
 load("//internal:go_repository_cache.bzl", "read_cache_env")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "patch", "read_user_netrc", "use_netrc")
 
@@ -304,6 +304,8 @@ def _go_repository_impl(ctx):
             cmd.extend(["-proto", ctx.attr.build_file_proto_mode])
         if ctx.attr.build_naming_convention:
             cmd.extend(["-go_naming_convention", ctx.attr.build_naming_convention])
+        if IS_BZLMOD_ENABLED:
+            cmd.append("-bzlmod")
         cmd.extend(ctx.attr.build_extra_args)
         cmd.append(ctx.path(""))
         ctx.report_progress("running Gazelle")
