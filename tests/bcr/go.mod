@@ -10,6 +10,7 @@ require (
 	github.com/DataDog/sketches-go v1.4.1
 	github.com/bazelbuild/rules_go v0.39.1
 	github.com/bmatcuk/doublestar/v4 v4.0.0
+	github.com/cloudflare/circl v1.3.3
 	github.com/envoyproxy/protoc-gen-validate v1.0.1
 	github.com/fmeum/dep_on_gazelle v1.0.0
 	github.com/google/safetext v0.0.0-20220905092116-b49f7bc46da2

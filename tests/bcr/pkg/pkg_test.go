@@ -1,6 +1,7 @@
 package pkg
 
 import (
+	"crypto/rand"
 	"os"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/tests/bcr/pkg/data"
 	"github.com/bazelbuild/rules_go/go/runfiles"
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/cloudflare/circl/dh/x25519"
 	"github.com/fmeum/dep_on_gazelle"
 	"github.com/google/safetext/yamltemplate"
 	"github.com/stretchr/testify/require"
@@ -57,4 +59,11 @@ func TestNoGoRepositoryForRulesGoAndGazelle(t *testing.T) {
 
 func TestIndirectlyUseGazelle(t *testing.T) {
 	dep_on_gazelle.MakeLabel("foo", "bar", "baz")
+}
+
+func TestBazelDepUsedAsGoDep(t *testing.T) {
+	var public, secret x25519.Key
+	_, err := rand.Read(secret[:])
+	require.NoError(t, err)
+	x25519.KeyGen(&public, &secret)
 }
