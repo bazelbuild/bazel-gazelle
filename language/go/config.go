@@ -19,6 +19,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/bazelbuild/bazel-gazelle/internal/module"
 	"go/build"
 	"io/ioutil"
 	"log"
@@ -43,6 +44,10 @@ var minimumRulesGoVersion = version.Version{0, 29, 0}
 
 // goConfig contains configuration values related to Go rules.
 type goConfig struct {
+	// The name under which the rules_go repository can be referenced from the
+	// repository in which Gazelle is running.
+	rulesGoRepoName string
+
 	// rulesGoVersion is the version of io_bazel_rules_go being used. Determined
 	// by reading go/def.bzl. May be unset if the version can't be read.
 	rulesGoVersion version.Version
@@ -464,9 +469,19 @@ func (*goLang) Configure(c *config.Config, rel string, f *rule.File) {
 	c.Exts[goName] = gc
 
 	if rel == "" {
+		moduleToApparentName, err := module.ExtractModuleToApparentNameMapping(c.RepoRoot)
+		if err != nil {
+			log.Print(err)
+		} else {
+			gc.rulesGoRepoName = moduleToApparentName("rules_go")
+		}
+		if gc.rulesGoRepoName == "" {
+			// The legacy name used in WORKSPACE.
+			gc.rulesGoRepoName = "io_bazel_rules_go"
+		}
+
 		const message = `Gazelle may not be compatible with this version of rules_go.
 Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
-		var err error
 		gc.rulesGoVersion, err = findRulesGoVersion(c)
 		if c.ShouldFix {
 			// Only check the version when "fix" is run. Generated build files

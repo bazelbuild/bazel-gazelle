@@ -33,6 +33,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	"github.com/bazelbuild/bazel-gazelle/testtools"
+	"github.com/google/go-cmp/cmp"
 )
 
 // skipIfWorkspaceVisible skips the test if the WORKSPACE file for the
@@ -4234,4 +4235,132 @@ go_library(
 `,
 		},
 	})
+}
+
+func TestMigrateSelectFromWorkspaceToBzlmod(t *testing.T) {
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{
+			Path:    "MODULE.bazel",
+			Content: `bazel_dep(name = "rules_go", version = "0.39.1", repo_name = "my_rules_go")`,
+		},
+		{
+			Path: "BUILD",
+			Content: `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "foo",
+    srcs = [
+        "bar.go",
+        "foo.go",
+        "foo_android.go",
+        "foo_android_build_tag.go",
+    ],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+    deps = select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "//outer",
+            "//outer/inner",
+            "//outer_android_build_tag",
+            "//outer_android_suffix",
+            "@com_github_jr_hacker_tools//:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:linux": [
+            "//outer",
+            "//outer/inner",
+            "@com_github_jr_hacker_tools//:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
+)
+`,
+		},
+		{
+			Path: "foo.go",
+			Content: `
+// +build linux
+
+package foo
+
+import (
+    _ "example.com/foo/outer"
+    _ "example.com/foo/outer/inner"
+    _ "github.com/jr_hacker/tools"
+)
+`,
+		},
+		{
+			Path: "foo_android_build_tag.go",
+			Content: `
+// +build android
+
+package foo
+
+import (
+    _ "example.com/foo/outer_android_build_tag"
+)
+`,
+		},
+		{
+			Path: "foo_android.go",
+			Content: `
+package foo
+
+import (
+    _ "example.com/foo/outer_android_suffix"
+)
+`,
+		},
+		{
+			Path: "bar.go",
+			Content: `// +build linux
+
+package foo
+`,
+		},
+		{Path: "outer/outer.go", Content: "package outer"},
+		{Path: "outer_android_build_tag/outer.go", Content: "package outer_android_build_tag"},
+		{Path: "outer_android_suffix/outer.go", Content: "package outer_android_suffix"},
+		{Path: "outer/inner/inner.go", Content: "package inner"},
+	})
+	want := `load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "foo",
+    srcs = [
+        "bar.go",
+        "foo.go",
+        "foo_android.go",
+        "foo_android_build_tag.go",
+    ],
+    importpath = "example.com/foo",
+    visibility = ["//visibility:public"],
+    deps = select({
+        "@my_rules_go//go/platform:android": [
+            "//outer",
+            "//outer/inner",
+            "//outer_android_build_tag",
+            "//outer_android_suffix",
+            "@com_github_jr_hacker_tools//:go_default_library",
+        ],
+        "@my_rules_go//go/platform:linux": [
+            "//outer",
+            "//outer/inner",
+            "@com_github_jr_hacker_tools//:go_default_library",
+        ],
+        "//conditions:default": [],
+    }),
+)
+`
+	defer cleanup()
+
+	if err := runGazelle(dir, []string{"-go_prefix", "example.com/foo"}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := ioutil.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
+		t.Fatal(err)
+	} else if string(got) != want {
+		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
+	}
 }

@@ -11,4 +11,5 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.0.0
 	github.com/envoyproxy/protoc-gen-validate v1.0.1
 	github.com/google/safetext v0.0.0-20220905092116-b49f7bc46da2
+	golang.org/x/sys v0.8.0
 )

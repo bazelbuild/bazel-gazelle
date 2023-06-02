@@ -382,11 +382,11 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 //
 // For example, the following string:
 //
-//     a b:"c d" 'e''f'  "g\""
+//	a b:"c d" 'e''f'  "g\""
 //
 // Would be parsed as:
 //
-//     []string{"a", "b:c d", "ef", `g"`}
+//	[]string{"a", "b:c d", "ef", `g"`}
 //
 // Copied from go/build.splitQuoted
 func splitQuoted(s string) (r []string, err error) {
@@ -540,7 +540,7 @@ func matchesOS(os, value string) bool {
 // a given platform.
 //
 // The first few arguments describe the platform. genericTags is the set
-// of build tags that are true on all platforms. os and arch are the platform
+// of build tags that are true on all platformConstraints. os and arch are the platform
 // GOOS and GOARCH strings. If os or arch is empty, checkConstraints will
 // return false in the presence of OS and architecture constraints, even
 // if they are negated.
