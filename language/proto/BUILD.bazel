@@ -10,7 +10,7 @@ known_imports(
     key = 0,
     package = "proto",
     value = 1,
-    var = "knownImports",
+    var = "KnownImports",
 )
 
 known_imports(
@@ -20,7 +20,7 @@ known_imports(
     key = 0,
     package = "proto",
     value = 3,
-    var = "knownProtoImports",
+    var = "KnownProtoImports",
 )
 
 known_imports(
@@ -30,7 +30,7 @@ known_imports(
     key = 2,
     package = "proto",
     value = 3,
-    var = "knownGoProtoImports",
+    var = "KnownGoProtoImports",
 )
 
 go_library(
