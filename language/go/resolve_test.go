@@ -763,9 +763,6 @@ go_proto_library(
         "google/protobuf/timestamp.proto",
         "google/protobuf/type.proto",
         "google/protobuf/wrappers.proto",
-        "google/api/http.proto",
-        "google/rpc/status.proto",
-        "google/type/latlng.proto",
    ],
 )
 
@@ -784,28 +781,15 @@ go_library(
         "github.com/golang/protobuf/ptypes/wrappers",
         "github.com/golang/protobuf/protoc-gen-go/plugin",
         "google.golang.org/genproto/protobuf/ptype",
-        "google.golang.org/genproto/googleapis/api/annotations",
-        "google.golang.org/genproto/googleapis/rpc/status",
-        "google.golang.org/genproto/googleapis/type/latlng",
    ],
 )
 `},
 			want: `
-go_proto_library(
-    name = "wkts_go_proto",
-    deps = [
-        "@go_googleapis//google/api:annotations_go_proto",
-        "@go_googleapis//google/rpc:status_go_proto",
-        "@go_googleapis//google/type:latlng_go_proto",
-    ],
-)
+go_proto_library(name = "wkts_go_proto")
 
 go_library(
     name = "wkts_go_lib",
     deps = [
-        "@go_googleapis//google/api:annotations_go_proto",
-        "@go_googleapis//google/rpc:status_go_proto",
-        "@go_googleapis//google/type:latlng_go_proto",
         "@io_bazel_rules_go//proto/wkt:any_go_proto",
         "@io_bazel_rules_go//proto/wkt:api_go_proto",
         "@io_bazel_rules_go//proto/wkt:compiler_plugin_go_proto",
