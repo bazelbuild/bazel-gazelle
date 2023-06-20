@@ -6,4 +6,5 @@ build:ci --sandbox_debug
 build:ci --spawn_strategy=standalone
 build:ci --genrule_strategy=standalone
 test:ci --test_strategy=standalone
-test:ci --test_output=errors
+
+test --test_output=errors
