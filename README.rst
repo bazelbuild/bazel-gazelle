@@ -934,7 +934,8 @@ The following directives are recognized:
 |   example, when resolving dependencies for a ``go_proto_library``,                         |
 |   ``source-lang`` would be ``"proto"`` and ``import-lang`` would be ``"go"``.              |
 |   ``import-lang`` may be omitted if it is the same as ``source-lang``.                     |
-| * ``import-string-regex`` is the regex used in source code to import a library.                 |
+| * ``import-string-regex`` is the regex applied to the import in the source code.           |
+|   If it matches, that import will be resolved to the label specified below.
 | * ``label`` is the Bazel label that Gazelle should write in ``deps``.                      |
 |                                                                                            |
 | For example:                                                                               |
