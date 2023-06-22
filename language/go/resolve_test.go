@@ -616,6 +616,46 @@ go_proto_library(
 )
 `,
 		}, {
+			desc: "proto_override_regexp",
+			index: []buildFile{{
+				rel: "",
+				content: `
+# gazelle:resolve_regexp proto go google/rpc/.*\.proto :good
+
+proto_library(
+    name = "bad_proto",
+    srcs = ["google/rpc/status.proto"],
+)
+
+go_proto_library(
+    name = "bad_go_proto",
+    proto = ":bad_proto",
+    importpath = "bad",
+)
+`,
+			}},
+			old: buildFile{
+				rel: "test",
+				content: `
+go_proto_library(
+    name = "dep_go_proto",
+    importpath = "test",
+    _imports = [
+		"google/rpc/status.proto",
+		"google/rpc/status1.proto",
+		"google/rpc/status2.proto",
+	],
+)
+`,
+			},
+			want: `
+go_proto_library(
+    name = "dep_go_proto",
+    importpath = "test",
+    deps = ["//:good"],
+)
+`,
+		}, {
 			desc: "proto_index",
 			index: []buildFile{{
 				rel: "sub",
