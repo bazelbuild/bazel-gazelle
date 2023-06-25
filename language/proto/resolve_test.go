@@ -53,10 +53,8 @@ proto_library(
 proto_library(
     name = "dep_proto",
     _imports = [
-        "google/api/http.proto",
         "google/protobuf/any.proto",
-        "google/rpc/status.proto",
-        "google/type/latlng.proto",
+        "google/protobuf/timestamp.proto",
     ],
 )
 `,
@@ -65,33 +63,8 @@ proto_library(
     name = "dep_proto",
     deps = [
         "@com_google_protobuf//:any_proto",
-        "@go_googleapis//google/api:annotations_proto",
-        "@go_googleapis//google/rpc:status_proto",
-        "@go_googleapis//google/type:latlng_proto",
+        "@com_google_protobuf//:timestamp_proto",
     ],
-)
-`,
-		}, {
-			desc: "known",
-			index: []buildFile{{
-				rel: "google/rpc",
-				content: `
-proto_library(
-    name = "bad_proto",
-    srcs = ["status.proto"],
-)
-`,
-			}},
-			old: `
-proto_library(
-    name = "dep_proto",
-    _imports = ["google/rpc/status.proto"],
-)
-`,
-			want: `
-proto_library(
-    name = "dep_proto",
-    deps = ["@go_googleapis//google/rpc:status_proto"],
 )
 `,
 		}, {

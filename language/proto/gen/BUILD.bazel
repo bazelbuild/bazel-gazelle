@@ -22,7 +22,6 @@ filegroup(
         "BUILD.bazel",
         "def.bzl",
         "gen_known_imports.go",
-        "update_proto_csv.go",
     ],
     visibility = ["//visibility:public"],
 )

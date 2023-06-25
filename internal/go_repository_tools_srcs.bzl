@@ -84,7 +84,6 @@ GO_REPOSITORY_TOOLS_SRCS = [
     Label("//language/proto:fix.go"),
     Label("//language/proto/gen:BUILD.bazel"),
     Label("//language/proto/gen:gen_known_imports.go"),
-    Label("//language/proto/gen:update_proto_csv.go"),
     Label("//language/proto:generate.go"),
     Label("//language/proto:kinds.go"),
     Label("//language/proto:known_go_imports.go"),
