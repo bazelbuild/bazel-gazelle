@@ -7,16 +7,16 @@ import "github.com/bazelbuild/bazel-gazelle/label"
 
 var knownGoProtoImports = map[string]label.Label{
 
-	"github.com/golang/protobuf/ptypes/any":               label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "any_go_proto"},
-	"google.golang.org/genproto/protobuf/api":             label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "api_go_proto"},
-	"github.com/golang/protobuf/protoc-gen-go/plugin":     label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "compiler_plugin_go_proto"},
-	"github.com/golang/protobuf/protoc-gen-go/descriptor": label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "descriptor_go_proto"},
-	"github.com/golang/protobuf/ptypes/duration":          label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "duration_go_proto"},
-	"github.com/golang/protobuf/ptypes/empty":             label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "empty_go_proto"},
-	"google.golang.org/genproto/protobuf/field_mask":      label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "field_mask_go_proto"},
-	"google.golang.org/genproto/protobuf/source_context":  label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "source_context_go_proto"},
-	"github.com/golang/protobuf/ptypes/struct":            label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "struct_go_proto"},
-	"github.com/golang/protobuf/ptypes/timestamp":         label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "timestamp_go_proto"},
-	"google.golang.org/genproto/protobuf/ptype":           label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "type_go_proto"},
-	"github.com/golang/protobuf/ptypes/wrappers":          label.Label{Repo: "io_bazel_rules_go", Pkg: "proto/wkt", Name: "wrappers_go_proto"},
+	"github.com/golang/protobuf/ptypes/any":               label.Label{Repo: "com_github_golang_protobuf", Pkg: "ptypes/any", Name: "any"},
+	"google.golang.org/genproto/protobuf/api":             label.Label{Repo: "org_golang_google_genproto", Pkg: "protobuf/api", Name: "api"},
+	"github.com/golang/protobuf/protoc-gen-go/plugin":     label.Label{Repo: "com_github_golang_protobuf", Pkg: "protoc-gen-go/plugin", Name: "plugin"},
+	"github.com/golang/protobuf/protoc-gen-go/descriptor": label.Label{Repo: "com_github_golang_protobuf", Pkg: "protoc-gen-go/descriptor", Name: "descriptor"},
+	"github.com/golang/protobuf/ptypes/duration":          label.Label{Repo: "com_github_golang_protobuf", Pkg: "ptypes/duration", Name: "duration"},
+	"github.com/golang/protobuf/ptypes/empty":             label.Label{Repo: "com_github_golang_protobuf", Pkg: "ptypes/empty", Name: "empty"},
+	"google.golang.org/genproto/protobuf/field_mask":      label.Label{Repo: "org_golang_google_genproto", Pkg: "protobuf/field_mask", Name: "field_mask"},
+	"google.golang.org/genproto/protobuf/source_context":  label.Label{Repo: "org_golang_google_genproto", Pkg: "protobuf/source_context", Name: "source_context"},
+	"github.com/golang/protobuf/ptypes/struct":            label.Label{Repo: "com_github_golang_protobuf", Pkg: "ptypes/struct", Name: "struct"},
+	"github.com/golang/protobuf/ptypes/timestamp":         label.Label{Repo: "com_github_golang_protobuf", Pkg: "ptypes/timestamp", Name: "timestamp"},
+	"google.golang.org/genproto/protobuf/ptype":           label.Label{Repo: "org_golang_google_genproto", Pkg: "protobuf/ptype", Name: "ptype"},
+	"github.com/golang/protobuf/ptypes/wrappers":          label.Label{Repo: "com_github_golang_protobuf", Pkg: "ptypes/wrappers", Name: "wrappers"},
 }
