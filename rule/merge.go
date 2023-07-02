@@ -48,12 +48,11 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 
 	// Process attributes that are in dst but not in src.
 	for key, dstAttr := range dst.attrs {
-		if _, ok := src.attrs[key]; ok || !mergeable[key] || ShouldKeep(dstAttr) {
+		if _, ok := src.attrs[key]; ok || !mergeable[key] || ShouldKeep(dstAttr.expr) {
 			continue
 		}
-		dstValue := dstAttr.RHS
-		if mergedValue, err := mergeExprs(nil, dstValue); err != nil {
-			start, end := dstValue.Span()
+		if mergedValue, err := mergeAttrValues(nil, &dstAttr); err != nil {
+			start, end := dstAttr.expr.RHS.Span()
 			log.Printf("%s:%d.%d-%d.%d: could not merge expression", filename, start.Line, start.LineRune, end.Line, end.LineRune)
 		} else if mergedValue == nil {
 			dst.DelAttr(key)
@@ -64,13 +63,11 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 
 	// Merge attributes from src into dst.
 	for key, srcAttr := range src.attrs {
-		srcValue := srcAttr.RHS
 		if dstAttr, ok := dst.attrs[key]; !ok {
-			dst.SetAttr(key, srcValue)
-		} else if mergeable[key] && !ShouldKeep(dstAttr) {
-			dstValue := dstAttr.RHS
-			if mergedValue, err := mergeExprs(srcValue, dstValue); err != nil {
-				start, end := dstValue.Span()
+			dst.SetAttr(key, srcAttr.expr.RHS)
+		} else if mergeable[key] && !ShouldKeep(dstAttr.expr) {
+			if mergedValue, err := mergeAttrValues(&srcAttr, &dstAttr); err != nil {
+				start, end := dstAttr.expr.RHS.Span()
 				log.Printf("%s:%d.%d-%d.%d: could not merge expression", filename, start.Line, start.LineRune, end.Line, end.LineRune)
 			} else if mergedValue == nil {
 				dst.DelAttr(key)
@@ -83,7 +80,7 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 	dst.private = src.private
 }
 
-// mergeExprs combines information from src and dst and returns a merged
+// mergeAttrValues combines information from src and dst and returns a merged
 // expression. dst may be modified during this process. The returned expression
 // may be different from dst when a structural change is needed.
 //
@@ -96,24 +93,40 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 //     and the values must be lists of strings.
 //   * a list of strings combined with a select call using +. The list must
 //     be the left operand.
+//   * an attr value that implements the Merger interface.
 //
 // An error is returned if the expressions can't be merged, for example
 // because they are not in one of the above formats.
-func mergeExprs(src, dst bzl.Expr) (bzl.Expr, error) {
-	if ShouldKeep(dst) {
+func mergeAttrValues(srcAttr, dstAttr *attrValue) (bzl.Expr, error) {
+	if ShouldKeep(dstAttr.expr.RHS) {
 		return nil, nil
 	}
-	if src == nil && (dst == nil || isScalar(dst)) {
+	dst := dstAttr.expr.RHS
+	if srcAttr == nil && (dst == nil || isScalar(dst)) {
 		return nil, nil
 	}
-	if isScalar(src) {
-		return src, nil
+	if srcAttr != nil && isScalar(srcAttr.expr.RHS) {
+		return srcAttr.expr.RHS, nil
 	}
 
-	srcExprs, err := extractPlatformStringsExprs(src)
-	if err != nil {
-		return nil, err
+	if _, ok := dstAttr.val.(Merger); srcAttr == nil && ok {
+		return nil, nil
 	}
+
+	if srcAttr != nil {
+		if srcMerger, ok := srcAttr.val.(Merger); ok {
+			return srcMerger.Merge(dst), nil
+		}
+	}
+	var srcExprs platformStringsExprs
+	var err error
+	if srcAttr != nil {
+		srcExprs, err = extractPlatformStringsExprs(srcAttr.expr.RHS)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	dstExprs, err := extractPlatformStringsExprs(dst)
 	if err != nil {
 		return nil, err
@@ -279,11 +292,11 @@ func SquashRules(src, dst *Rule, filename string) error {
 	}
 
 	for key, srcAttr := range src.attrs {
-		srcValue := srcAttr.RHS
+		srcValue := srcAttr.expr.RHS
 		if dstAttr, ok := dst.attrs[key]; !ok {
 			dst.SetAttr(key, srcValue)
-		} else if !ShouldKeep(dstAttr) {
-			dstValue := dstAttr.RHS
+		} else if !ShouldKeep(dstAttr.expr) {
+			dstValue := dstAttr.expr.RHS
 			if squashedValue, err := squashExprs(srcValue, dstValue); err != nil {
 				start, end := dstValue.Span()
 				return fmt.Errorf("%s:%d.%d-%d.%d: could not squash expression", filename, start.Line, start.LineRune, end.Line, end.LineRune)

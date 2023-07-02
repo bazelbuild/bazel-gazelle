@@ -43,6 +43,16 @@ type BzlExprValue interface {
 	BzlExpr() bzl.Expr
 }
 
+// Merger is implemented by types that can merge their data into an
+// existing Starlark expression.
+//
+// When Merge is invoked, it is responsible for returning a Starlark expression that contains the
+// result of merging its data into the previously-existing expression provided as other.
+// Note that other can be nil, if no previous attr with this name existed.
+type Merger interface {
+	Merge(other bzl.Expr) bzl.Expr
+}
+
 type SortedStrings []string
 
 func (s SortedStrings) BzlExpr() bzl.Expr {
