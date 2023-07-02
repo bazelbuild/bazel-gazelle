@@ -1,13 +1,13 @@
 ---
 matrix:
   platform:
-    - ubuntu2004
+    - ubuntu2204
     - macos
     - windows
 
 tasks:
-  ubuntu1804:
-    platform: ubuntu1804
+  ubuntu2204:
+    platform: ubuntu2204
     build_targets:
     - "..."
     run_targets:
@@ -37,8 +37,8 @@ tasks:
     # Specify this target explicitly to verify that Gazelle generated it correctly.
     - "//pkg:pkg_test"
     - "//..."
-  ubuntu1604:
-    platform: ubuntu1604
+  macos_arm64:
+    platform: macos_arm64
     build_targets:
     - "..."
     test_targets:
