@@ -65,8 +65,23 @@ func (s SortedStrings) BzlExpr() bzl.Expr {
 	return listExpr
 }
 
+func (s SortedStrings) Merge(other bzl.Expr) bzl.Expr {
+	if other == nil {
+		return s.BzlExpr()
+	}
+	merged := mergeList(s.BzlExpr().(*bzl.ListExpr), other.(*bzl.ListExpr))
+	sortExprLabels(merged, []bzl.Expr{})
+	return merged
+}
+
 type UnsortedStrings []string
 
+func (s UnsortedStrings) Merge(other bzl.Expr) bzl.Expr {
+	if other == nil {
+		return ExprFromValue(s)
+	}
+	return mergeList(ExprFromValue(s).(*bzl.ListExpr), other.(*bzl.ListExpr))
+}
 
 // SelectStringListValue is a value that can be translated to a Bazel
 // select expression that picks a string list based on a string condition.
