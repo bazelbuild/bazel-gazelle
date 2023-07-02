@@ -484,7 +484,7 @@ func TestCrossResolve(t *testing.T) {
 			protoMode: DefaultMode,
 			imp:       resolve.ImportSpec{Lang: "proto", Imp: "google/protobuf/any.proto"},
 			lang:      "go",
-			want:      []resolve.FindResult{{Label: label.New("io_bazel_rules_go", "proto/wkt", "any_go_proto")}},
+			want:      []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "ptypes/any", "any")}},
 		},
 		{
 			desc:      "proto unknown import",
