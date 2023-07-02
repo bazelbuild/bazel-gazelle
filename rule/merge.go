@@ -141,20 +141,38 @@ func mergeAttrValues(srcAttr, dstAttr *attrValue) (bzl.Expr, error) {
 func mergePlatformStringsExprs(src, dst platformStringsExprs) (platformStringsExprs, error) {
 	var ps platformStringsExprs
 	var err error
-	ps.generic = mergeList(src.generic, dst.generic)
-	if ps.os, err = mergeDict(src.os, dst.os); err != nil {
+	ps.generic = MergeList(src.generic, dst.generic)
+	if ps.os, err = MergeDict(src.os, dst.os); err != nil {
 		return platformStringsExprs{}, err
 	}
-	if ps.arch, err = mergeDict(src.arch, dst.arch); err != nil {
+	if ps.arch, err = MergeDict(src.arch, dst.arch); err != nil {
 		return platformStringsExprs{}, err
 	}
-	if ps.platform, err = mergeDict(src.platform, dst.platform); err != nil {
+	if ps.platform, err = MergeDict(src.platform, dst.platform); err != nil {
 		return platformStringsExprs{}, err
 	}
 	return ps, nil
 }
 
-func mergeList(src, dst *bzl.ListExpr) *bzl.ListExpr {
+// MergeList merges two bzl.ListExpr of strings. The lists are merged in the
+// following way:
+//
+//   - If a string appears in both lists, it appears in the result.
+//   - If a string appears in only src list, it appears in the result.
+//   - If a string appears in only dst list, it is dropped from the result.
+//   - If a string appears in neither list, it is dropped from the result.
+//
+// The result is nil if both lists are nil or empty.
+//
+// If the result is non-nil, it will have ForceMultiLine set if either of the
+// input lists has ForceMultiLine set or if any of the strings in the result
+// have a "# keep" comment.
+func MergeList(srcExpr, dstExpr bzl.Expr) *bzl.ListExpr {
+	src, isSrcLis := srcExpr.(*bzl.ListExpr)
+	dst, isDstLis := dstExpr.(*bzl.ListExpr)
+	if !isSrcLis && !isDstLis {
+		return nil
+	}
 	if dst == nil {
 		return src
 	}
@@ -203,7 +221,19 @@ func mergeList(src, dst *bzl.ListExpr) *bzl.ListExpr {
 	}
 }
 
-func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
+// MergeDict merges two bzl.DictExpr, src and dst, where the keys are strings
+// and the values are lists of strings.
+//
+// If both src and dst are non-nil, the keys in src are merged into dst. If both
+// src and dst have the same key, the values are merged using MergeList.
+// If the same key is present in both src and dst, and the values are not compatible,
+// an error is returned.
+func MergeDict(srcExpr, dstExpr bzl.Expr) (*bzl.DictExpr, error) {
+	src, isSrcDict := srcExpr.(*bzl.DictExpr)
+	dst, isDstDict := dstExpr.(*bzl.DictExpr)
+	if !isSrcDict && !isDstDict {
+		return nil, fmt.Errorf("expected dict, got %s and %s", srcExpr, dstExpr)
+	}
 	if dst == nil {
 		return src, nil
 	}
@@ -244,7 +274,7 @@ func mergeDict(src, dst *bzl.DictExpr) (*bzl.DictExpr, error) {
 	keys := make([]string, 0, len(entries))
 	haveDefault := false
 	for _, e := range entries {
-		e.mergedValue = mergeList(e.srcValue, e.dstValue)
+		e.mergedValue = MergeList(e.srcValue, e.dstValue)
 		if e.key == "//conditions:default" {
 			// Keep the default case, even if it's empty.
 			haveDefault = true

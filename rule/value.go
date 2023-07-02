@@ -69,7 +69,7 @@ func (s SortedStrings) Merge(other bzl.Expr) bzl.Expr {
 	if other == nil {
 		return s.BzlExpr()
 	}
-	merged := mergeList(s.BzlExpr().(*bzl.ListExpr), other.(*bzl.ListExpr))
+	merged := MergeList(s.BzlExpr(), other)
 	sortExprLabels(merged, []bzl.Expr{})
 	return merged
 }
@@ -80,7 +80,7 @@ func (s UnsortedStrings) Merge(other bzl.Expr) bzl.Expr {
 	if other == nil {
 		return ExprFromValue(s)
 	}
-	return mergeList(ExprFromValue(s).(*bzl.ListExpr), other.(*bzl.ListExpr))
+	return MergeList(ExprFromValue(s), other)
 }
 
 // SelectStringListValue is a value that can be translated to a Bazel
