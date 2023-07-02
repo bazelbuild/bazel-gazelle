@@ -43,6 +43,21 @@ type BzlExprValue interface {
 	BzlExpr() bzl.Expr
 }
 
+type SortedStrings []string
+
+func (s SortedStrings) BzlExpr() bzl.Expr {
+	list := make([]bzl.Expr, len(s))
+	for i, v := range s {
+		list[i] = &bzl.StringExpr{Value: v}
+	}
+	listExpr := &bzl.ListExpr{List: list}
+	sortExprLabels(listExpr, []bzl.Expr{})
+	return listExpr
+}
+
+type UnsortedStrings []string
+
+
 // SelectStringListValue is a value that can be translated to a Bazel
 // select expression that picks a string list based on a string condition.
 type SelectStringListValue map[string][]string

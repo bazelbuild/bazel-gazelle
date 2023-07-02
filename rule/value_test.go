@@ -55,6 +55,26 @@ func TestExprFromValue(t *testing.T) {
 				},
 			},
 		},
+		"sorted strings": {
+			val: SortedStrings{"@b", ":a", "//:target"},
+			want: &bzl.ListExpr{
+				List: []bzl.Expr{
+					&bzl.StringExpr{Value: ":a"},
+					&bzl.StringExpr{Value: "//:target"},
+					&bzl.StringExpr{Value: "@b"},
+				},
+			},
+		},
+		"unsorted strings": {
+			val: UnsortedStrings{"@d", ":a", "//:b"},
+			want: &bzl.ListExpr{
+				List: []bzl.Expr{
+					&bzl.StringExpr{Value: "@d"},
+					&bzl.StringExpr{Value: ":a"},
+					&bzl.StringExpr{Value: "//:b"},
+				},
+			},
+		},
 	} {
 		t.Run(name, func(t *testing.T) {
 			got := ExprFromValue(tt.val)
