@@ -776,6 +776,11 @@ The following directives are recognized:
 | Prevents Gazelle from modifying the build file. Gazelle will still read                    |
 | rules in the build file and may modify build files in subdirectories.                      |
 +---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:ignore_subdir`                  | n/a                                    |
++---------------------------------------------------+----------------------------------------+
+| Prevents Gazelle from modifying the build files in the subdirectory (and its               |
+| subdiretories). Gazelle will still read rules in the build files.                          |
++---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:importmap_prefix path`          | See below                              |
 +---------------------------------------------------+----------------------------------------+
 | A prefix for ``importmap`` attributes in library rules. Gazelle will set                   |

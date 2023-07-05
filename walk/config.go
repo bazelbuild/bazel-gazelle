@@ -39,10 +39,11 @@ import (
 // declared generated files, so we can't just stat.
 
 type walkConfig struct {
-	excludes []string
-	ignore   bool
-	follow   []string
-	loadOnce *sync.Once
+	excludes      []string
+	ignore        bool
+	ignore_subdir []string
+	follow        []string
+	loadOnce      *sync.Once
 }
 
 const walkName = "_walk"
@@ -83,7 +84,7 @@ func (*Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config)
 func (*Configurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error { return nil }
 
 func (*Configurer) KnownDirectives() []string {
-	return []string{"exclude", "follow", "ignore"}
+	return []string{"exclude", "follow", "ignore", "ignore_subdir"}
 }
 
 func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
@@ -91,6 +92,12 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	wcCopy := &walkConfig{}
 	*wcCopy = *wc
 	wcCopy.ignore = false
+	for _, d := range wcCopy.ignore_subdir {
+		if rel == d || strings.HasPrefix(rel, d+"/") {
+			wcCopy.ignore = true
+			break
+		}
+	}
 
 	wc.loadOnce.Do(func() {
 		if err := cr.loadBazelIgnore(c.RepoRoot, wcCopy); err != nil {
@@ -111,6 +118,8 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				wcCopy.follow = append(wcCopy.follow, path.Join(rel, d.Value))
 			case "ignore":
 				wcCopy.ignore = true
+			case "ignore_subdir":
+				wcCopy.ignore_subdir = append(wcCopy.ignore_subdir, path.Join(rel, d.Value))
 			}
 		}
 	}
