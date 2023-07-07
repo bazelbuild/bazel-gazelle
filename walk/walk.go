@@ -152,17 +152,16 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		for _, fi := range files {
 			base := fi.Name()
 			switch {
-			case base == "" || wc.isExcluded(rel, base) || fi.Mode()&os.ModeSymlink != 0:
+			case base == "" || wc.isExcluded(rel, base) || (!wc.isFollowed(rel, base) && fi.Mode()&os.ModeSymlink != 0):
 				continue
 
-			case fi.IsDir():
+			case fi.IsDir() || wc.isFollowed(rel, base):
 				subdirs = append(subdirs, base)
 
 			default:
 				regularFiles = append(regularFiles, base)
 			}
 		}
-
 		shouldUpdate := shouldUpdate(rel, mode, updateParent, updateRels)
 		for _, sub := range subdirs {
 			if subRel := path.Join(rel, sub); shouldVisit(subRel, mode, shouldUpdate, updateRels) {

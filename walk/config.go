@@ -72,6 +72,16 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 	return false
 }
 
+func (wc *walkConfig) isFollowed(rel, base string) bool {
+	f := path.Join(rel, base)
+	for _, x := range wc.follow {
+		if x == f {
+			return true
+		}
+	}
+	return false
+}
+
 type Configurer struct{}
 
 func (*Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {

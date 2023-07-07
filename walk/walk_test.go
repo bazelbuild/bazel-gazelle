@@ -17,8 +17,11 @@ package walk
 
 import (
 	"flag"
+	"io/ioutil"
+	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -313,6 +316,109 @@ unknown_rule(
 	genWant := []string{"gen1", "gen2", "gen-and-static"}
 	if diff := cmp.Diff(genWant, genFiles); diff != "" {
 		t.Errorf("Walk genFiles (-want +got):\n%s", diff)
+	}
+}
+
+func TestFollowDirective(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlinks not supported on windows")
+	}
+	externalDir, cleanupExternal := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "my_dependency/"},
+		{
+			Path: "my_dependency/BUILD.bazel",
+		},
+	})
+	defer cleanupExternal()
+	repoDir, cleanupRepo := testtools.CreateFiles(t, []testtools.FileSpec{
+		{
+			Path:    "external",
+			Symlink: path.Join("..", path.Base(externalDir)),
+		},
+		{
+			Path:    "internal",
+			Symlink: "dir",
+		},
+		{Path: "dir/"},
+		{Path: "dir/subdir/"},
+	})
+	defer cleanupRepo()
+	type visitSpec struct {
+		Rel string
+	}
+	for _, tc := range []struct {
+		desc     string
+		rels     []string
+		mode     Mode
+		want     []visitSpec
+		testfile testtools.FileSpec
+	}{
+		{
+			desc: "dont_follow_external_by_default",
+			testfile: testtools.FileSpec{
+				Path:    "BUILD.bazel",
+				Content: "",
+			},
+			rels: []string{"update"},
+			mode: VisitAllUpdateSubdirsMode,
+			want: []visitSpec{
+				{"dir/subdir"},
+				{"dir"},
+				{""},
+			},
+		},
+		{
+			desc: "follow_external_dir_when_set",
+			testfile: testtools.FileSpec{
+				Path:    "BUILD.bazel",
+				Content: "# gazelle:follow external",
+			},
+			rels: []string{"update"},
+			mode: VisitAllUpdateSubdirsMode,
+			want: []visitSpec{
+				{"dir/subdir"},
+				{"dir"},
+				{"external/my_dependency"},
+				{"external"},
+				{""},
+			},
+		},
+		{
+			desc: "follow_internal_dir_when_set",
+			testfile: testtools.FileSpec{
+				Path:    "BUILD.bazel",
+				Content: "# gazelle:follow internal",
+			},
+			rels: []string{"update"},
+			mode: VisitAllUpdateSubdirsMode,
+			want: []visitSpec{
+				{"dir/subdir"},
+				{"dir"},
+				{"internal/subdir"},
+				{"internal"},
+				{""},
+			},
+		},
+	} {
+		t.Run(tc.desc, func(t *testing.T) {
+			p := path.Join(repoDir, tc.testfile.Path)
+			if err := ioutil.WriteFile(p, []byte(tc.testfile.Content), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			defer os.Remove(p)
+			c, cexts := testConfig(t, repoDir)
+			dirs := make([]string, len(tc.rels))
+			for i, rel := range tc.rels {
+				dirs[i] = filepath.Join(repoDir, filepath.FromSlash(rel))
+			}
+			var visits []visitSpec
+			Walk(c, cexts, dirs, tc.mode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+				visits = append(visits, visitSpec{rel})
+			})
+			if diff := cmp.Diff(tc.want, visits); diff != "" {
+				t.Errorf("Walk visits (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
 
