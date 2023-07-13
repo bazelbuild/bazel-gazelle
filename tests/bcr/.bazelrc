@@ -1,5 +1,1 @@
 common --enable_bzlmod
-
-# TODO: Remove after gazelle 0.32.0 and rules_go 0.41.0 have been released together.
-#       https://github.com/bazelbuild/bazel-central-registry/pull/760
-common --registry=https://raw.githubusercontent.com/fmeum/bazel-central-registry/bazelbuild/rules_go%40v0.41.0-ad5c5146
