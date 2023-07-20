@@ -40,6 +40,17 @@ def gazelle_dependencies(
         go_sdk = "",
         go_repository_default_config = "@//:WORKSPACE",
         go_env = {}):
+    gazelle_init(go_sdk, go_repository_default_config, go_env)
+    gazelle_go_repositories()
+
+# gazelle_init configures basic gazelle infrastructure - like `go_repository` rule.
+# Usually you should use just `gazelle_dependencies`.
+# The pair of `gazelle_init` && `gazelle_go_repositories` is only needed if you need
+# to load custom version of the dependency using `go_repository` rule in between the calls.
+def gazelle_init(
+        go_sdk = "",
+        go_repository_default_config = "@//:WORKSPACE",
+        go_env = {}):
     _maybe(
         http_archive,
         name = "bazel_skylib",
@@ -84,6 +95,8 @@ def gazelle_dependencies(
         name = "bazel_gazelle_go_repository_config",
         config = go_repository_default_config,
     )
+
+def gazelle_go_repositories():
     _maybe(
         go_repository,
         name = "co_honnef_go_tools",
