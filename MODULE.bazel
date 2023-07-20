@@ -14,7 +14,7 @@ go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
 # Known to exist since it is instantiated by rules_go itself.
 use_repo(
     go_sdk,
-    go_sdk = "go_default_sdk",
+    "go_host_compatible_sdk_label",
 )
 
 non_module_deps = use_extension("//internal/bzlmod:non_module_deps.bzl", "non_module_deps")
