@@ -8,6 +8,12 @@ local_path_override(
     path = "../..",
 )
 
+bazel_dep(name = "test_dep", version = "1.0.0")
+local_path_override(
+    module_name = "test_dep",
+    path = "test_dep",
+)
+
 bazel_dep(name = "rules_go", version = "0.39.1", repo_name = "my_rules_go")
 
 # This bazel_dep provides the Go dependency github.com/cloudflare/circl, which requires custom
