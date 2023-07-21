@@ -6,14 +6,18 @@ load(
     "//internal:go_repository_tools.bzl",
     "go_repository_tools",
 )
+load(
+    "@go_host_compatible_sdk_label//:defs.bzl",
+    "HOST_COMPATIBLE_SDK",
+)
 
 visibility("//")
 
 def _non_module_deps_impl(_):
     go_repository_cache(
         name = "bazel_gazelle_go_repository_cache",
-        # Always provided by rules_go.
-        go_sdk_name = "go_sdk",
+        # Label.workspace_name is always a canonical name, so use a canonical label.
+        go_sdk_name = "@" + HOST_COMPATIBLE_SDK.workspace_name,
         go_env = {},
     )
     go_repository_tools(
