@@ -20,6 +20,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -196,6 +197,10 @@ func updateRepos(wd string, args []string) (err error) {
 		return err
 	}
 
+	// DEBUG BEGIN
+	log.Printf("*** CHUCK: updateRepos c.Bzlmod: %+#v", c.Bzlmod)
+	// DEBUG END
+
 	// Organize generated and empty rules by file. A rule should go into the file
 	// it came from (by name). New rules should go into WORKSPACE or the file
 	// specified with -to_macro.
@@ -300,7 +305,7 @@ func updateRepos(wd string, args []string) (err error) {
 	for _, f := range sortedFiles {
 		merger.MergeFile(f, emptyForFiles[f], genForFiles[f], merger.PreResolve, kinds)
 		merger.FixLoads(f, loads)
-		if f == uc.workspace {
+		if f == uc.workspace && !c.Bzlmod {
 			if err := merger.CheckGazelleLoaded(f); err != nil {
 				return err
 			}
