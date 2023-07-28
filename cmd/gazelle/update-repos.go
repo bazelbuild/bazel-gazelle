@@ -238,35 +238,40 @@ func updateRepos(wd string, args []string) (err error) {
 		emptyForFiles[f] = append(emptyForFiles[f], r)
 	}
 
-	var newGenFile *rule.File
 	var macroPath string
 	if uc.macroFileName != "" {
 		macroPath = filepath.Join(c.RepoRoot, filepath.Clean(uc.macroFileName))
 	}
-	for f := range genForFiles {
-		if macroPath == "" && wspace.IsWORKSPACE(f.Path) ||
-			macroPath != "" && f.Path == macroPath && f.DefName == uc.macroDefName {
-			newGenFile = f
-			break
-		}
-	}
-	if newGenFile == nil {
-		if uc.macroFileName == "" {
-			newGenFile = uc.workspace
-		} else {
-			var err error
-			newGenFile, err = rule.LoadMacroFile(macroPath, "", uc.macroDefName)
-			if os.IsNotExist(err) {
-				newGenFile, err = rule.EmptyMacroFile(macroPath, "", uc.macroDefName)
-				if err != nil {
-					return fmt.Errorf("error creating %q: %v", macroPath, err)
-				}
-			} else if err != nil {
-				return fmt.Errorf("error loading %q: %v", macroPath, err)
+	// If we are in bzlmod mode, then do not update the workspace. However, if a macro file was
+	// specified, proceed with generating the macro file. This is useful for rule repositories that
+	// build with bzlmod enabled, but support clients that use legacy WORKSPACE dependency loading.
+	if !c.Bzlmod || macroPath != "" {
+		var newGenFile *rule.File
+		for f := range genForFiles {
+			if macroPath == "" && wspace.IsWORKSPACE(f.Path) ||
+				macroPath != "" && f.Path == macroPath && f.DefName == uc.macroDefName {
+				newGenFile = f
+				break
 			}
 		}
+		if newGenFile == nil {
+			if uc.macroFileName == "" {
+				newGenFile = uc.workspace
+			} else {
+				var err error
+				newGenFile, err = rule.LoadMacroFile(macroPath, "", uc.macroDefName)
+				if os.IsNotExist(err) {
+					newGenFile, err = rule.EmptyMacroFile(macroPath, "", uc.macroDefName)
+					if err != nil {
+						return fmt.Errorf("error creating %q: %v", macroPath, err)
+					}
+				} else if err != nil {
+					return fmt.Errorf("error loading %q: %v", macroPath, err)
+				}
+			}
+		}
+		genForFiles[newGenFile] = append(genForFiles[newGenFile], newGen...)
 	}
-	genForFiles[newGenFile] = append(genForFiles[newGenFile], newGen...)
 
 	workspaceInsertIndex := findWorkspaceInsertIndex(uc.workspace, kinds, loads)
 	for _, r := range genForFiles[uc.workspace] {
@@ -288,7 +293,10 @@ func updateRepos(wd string, args []string) (err error) {
 			sortedFiles = append(sortedFiles, f)
 		}
 	}
-	if ensureMacroInWorkspace(uc, workspaceInsertIndex) {
+	// If we are in bzlmod mode, then do not update the workspace. However, if a macro file was
+	// specified, proceed with generating the macro file. This is useful for rule repositories that
+	// build with bzlmod enabled, but support clients that use legacy WORKSPACE dependency loading.
+	if !c.Bzlmod && ensureMacroInWorkspace(uc, workspaceInsertIndex) {
 		if !seenFile[uc.workspace] {
 			seenFile[uc.workspace] = true
 			sortedFiles = append(sortedFiles, uc.workspace)

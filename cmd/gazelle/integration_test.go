@@ -4373,10 +4373,6 @@ func TestUpdateReposWithBzlmodWithoutToMacro(t *testing.T) {
 	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
 		{Path: "WORKSPACE"},
 		{
-			Path:    "MODULE.bazel",
-			Content: `bazel_dep(name = "rules_go", version = "0.39.1", repo_name = "bazel_gazelle")`,
-		},
-		{
 			Path: "go.mod",
 			Content: `
 module example.com/foo/v2
@@ -4391,10 +4387,6 @@ require (
 	})
 
 	defer cleanup()
-
-	// DEBUG BEGIN
-	log.Printf("*** CHUCK: TestUpdateReposWithBzlmodWithoutToMacro START ======================")
-	// DEBUG END
 
 	args := []string{
 		"update-repos",
@@ -4412,9 +4404,4 @@ require (
 	} else if string(got) != want {
 		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
 	}
-
-	// DEBUG BEGIN
-	log.Printf("*** CHUCK: TestUpdateReposWithBzlmodWithoutToMacro STOP ======================")
-	// DEBUG END
-
 }
