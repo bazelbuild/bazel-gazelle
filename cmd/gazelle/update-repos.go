@@ -288,9 +288,7 @@ func updateRepos(wd string, args []string) (err error) {
 			sortedFiles = append(sortedFiles, f)
 		}
 	}
-	// If we are in bzlmod mode, then do not update the workspace. However, if a macro file was
-	// specified, proceed with generating the macro file. This is useful for rule repositories that
-	// build with bzlmod enabled, but support clients that use legacy WORKSPACE dependency loading.
+	// If we are in bzlmod mode, then do not update the workspace.
 	if !c.Bzlmod && ensureMacroInWorkspace(uc, workspaceInsertIndex) {
 		if !seenFile[uc.workspace] {
 			seenFile[uc.workspace] = true
