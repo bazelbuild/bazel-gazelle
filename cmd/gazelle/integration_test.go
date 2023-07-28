@@ -4416,9 +4416,6 @@ def my_go_deps():
 	if got, err := ioutil.ReadFile(filepath.Join(dir, "go_deps.bzl")); err != nil {
 		t.Fatal(err)
 	} else if string(got) != want {
-		// DEBUG BEGIN
-		log.Printf("*** CHUCK:  string(got):\n%s", string(got))
-		// DEBUG END
 		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
 	}
 }

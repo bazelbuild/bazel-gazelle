@@ -20,7 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -196,10 +195,6 @@ func updateRepos(wd string, args []string) (err error) {
 	if err != nil {
 		return err
 	}
-
-	// DEBUG BEGIN
-	log.Printf("*** CHUCK: updateRepos c.Bzlmod: %+#v", c.Bzlmod)
-	// DEBUG END
 
 	// Organize generated and empty rules by file. A rule should go into the file
 	// it came from (by name). New rules should go into WORKSPACE or the file
