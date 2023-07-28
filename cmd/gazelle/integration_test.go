@@ -4366,7 +4366,61 @@ go_library(
 }
 
 func TestUpdateReposWithBzlmodWithToMacro(t *testing.T) {
-	t.Error("IMPLEMENT ME!")
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{
+			Path: "go.mod",
+			Content: `
+module example.com/foo/v2
+
+go 1.19
+
+require (
+	github.com/stretchr/testify v1.8.4
+)
+`,
+		},
+	})
+
+	defer cleanup()
+
+	args := []string{
+		"update-repos",
+		"-from_file=go.mod",
+		"-to_macro=go_deps.bzl%my_go_deps",
+		"-bzlmod",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	// Confirm that the WORKSPACE is still empty
+	want := ""
+	if got, err := ioutil.ReadFile(filepath.Join(dir, "WORKSPACE")); err != nil {
+		t.Fatal(err)
+	} else if string(got) != want {
+		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
+	}
+
+	// Confirm that the macro file was written
+	want = `load("@bazel_gazelle//:deps.bzl", "go_repository")
+
+def my_go_deps():
+    go_repository(
+        name = "com_github_stretchr_testify",
+        importpath = "github.com/stretchr/testify",
+        sum = "h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=",
+        version = "v1.8.4",
+    )
+`
+	if got, err := ioutil.ReadFile(filepath.Join(dir, "go_deps.bzl")); err != nil {
+		t.Fatal(err)
+	} else if string(got) != want {
+		// DEBUG BEGIN
+		log.Printf("*** CHUCK:  string(got):\n%s", string(got))
+		// DEBUG END
+		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
+	}
 }
 
 func TestUpdateReposWithBzlmodWithoutToMacro(t *testing.T) {
