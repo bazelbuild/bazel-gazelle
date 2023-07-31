@@ -1,0 +1,19 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "bar_test",
+    srcs = ["bar_test.go"],
+    _gazelle_imports = ["testing"],
+)
+
+go_test(
+    name = "external_test",
+    srcs = ["external_test.go"],
+    _gazelle_imports = ["testing"],
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    _gazelle_imports = ["testing"],
+)

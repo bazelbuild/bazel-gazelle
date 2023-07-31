@@ -19,7 +19,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/bazelbuild/bazel-gazelle/internal/module"
 	"go/build"
 	"io/ioutil"
 	"log"
@@ -29,6 +28,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/bazelbuild/bazel-gazelle/internal/module"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
@@ -126,6 +127,9 @@ type goConfig struct {
 	// in internal packages.
 	submodules []moduleRepo
 
+	// testMode determines how go_test targets are generated.
+	testMode testMode
+
 	// buildDirectives, buildExternalAttr, buildExtraArgsAttr,
 	// buildFileGenerationAttr, buildFileNamesAttr, buildFileProtoModeAttr and
 	// buildTagsAttr are attributes for go_repository rules, set on the command
@@ -133,10 +137,44 @@ type goConfig struct {
 	buildDirectivesAttr, buildExternalAttr, buildExtraArgsAttr, buildFileGenerationAttr, buildFileNamesAttr, buildFileProtoModeAttr, buildTagsAttr string
 }
 
+// testMode determines how go_test rules are generated.
+type testMode int
+
+const (
+	// defaultTestMode generates a go_test for the primary package in a directory.
+	defaultTestMode = iota
+
+	// fileTestMode generates a go_test for each Go test file.
+	fileTestMode
+)
+
 var (
 	defaultGoProtoCompilers = []string{"@io_bazel_rules_go//proto:go_proto"}
 	defaultGoGrpcCompilers  = []string{"@io_bazel_rules_go//proto:go_grpc"}
 )
+
+func (m testMode) String() string {
+	switch m {
+	case defaultTestMode:
+		return "default"
+	case fileTestMode:
+		return "file"
+	default:
+		log.Panicf("unknown mode %d", m)
+		return ""
+	}
+}
+
+func testModeFromString(s string) (testMode, error) {
+	switch s {
+	case "default":
+		return defaultTestMode, nil
+	case "file":
+		return fileTestMode, nil
+	default:
+		return 0, fmt.Errorf("unrecognized go_test mode: %q", s)
+	}
+}
 
 func newGoConfig() *goConfig {
 	gc := &goConfig{
@@ -351,6 +389,7 @@ func (*goLang) KnownDirectives() []string {
 		"go_naming_convention",
 		"go_naming_convention_external",
 		"go_proto_compilers",
+		"go_test",
 		"go_visibility",
 		"importmap_prefix",
 		"prefix",
@@ -591,6 +630,14 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 					gc.goProtoCompilersSet = true
 					gc.goProtoCompilers = splitValue(d.Value)
 				}
+
+			case "go_test":
+				mode, err := testModeFromString(d.Value)
+				if err != nil {
+					log.Print(err)
+					continue
+				}
+				gc.testMode = mode
 
 			case "go_visibility":
 				gc.goVisibility = append(gc.goVisibility, strings.TrimSpace(d.Value))

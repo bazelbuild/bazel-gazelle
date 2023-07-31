@@ -32,11 +32,12 @@ import (
 // goPackage contains metadata for a set of .go and .proto files that can be
 // used to generate Go rules.
 type goPackage struct {
-	name, dir, rel        string
-	library, binary, test goTarget
-	proto                 protoTarget
-	hasTestdata           bool
-	importPath            string
+	name, dir, rel  string
+	library, binary goTarget
+	tests           []goTarget
+	proto           protoTarget
+	hasTestdata     bool
+	importPath      string
 }
 
 // goTarget contains information used to generate an individual Go rule
@@ -107,9 +108,14 @@ func (pkg *goPackage) addFile(c *config.Config, er *embedResolver, info fileInfo
 		if info.isCgo {
 			return fmt.Errorf("%s: use of cgo in test not supported", info.path)
 		}
-		pkg.test.addFile(c, er, info)
+		var test *goTarget
+		if getGoConfig(c).testMode == fileTestMode || len(pkg.tests) == 0 {
+			pkg.tests = append(pkg.tests, goTarget{})
+		}
+		test = &pkg.tests[len(pkg.tests)-1]
+		test.addFile(c, er, info)
 		if !info.isExternalTest {
-			pkg.test.hasInternalTest = true
+			test.hasInternalTest = true
 		}
 	default:
 		pkg.library.addFile(c, er, info)
@@ -136,8 +142,11 @@ func (pkg *goPackage) firstGoFile() string {
 	goSrcs := []platformStringsBuilder{
 		pkg.library.sources,
 		pkg.binary.sources,
-		pkg.test.sources,
 	}
+	for _, test := range pkg.tests {
+		goSrcs = append(goSrcs, test.sources)
+	}
+
 	for _, sb := range goSrcs {
 		if sb.strs != nil {
 			for s := range sb.strs {
@@ -151,7 +160,15 @@ func (pkg *goPackage) firstGoFile() string {
 }
 
 func (pkg *goPackage) haveCgo() bool {
-	return pkg.library.cgo || pkg.binary.cgo || pkg.test.cgo
+	if pkg.library.cgo || pkg.binary.cgo {
+		return true
+	}
+	for _, t := range pkg.tests {
+		if t.cgo {
+			return true
+		}
+	}
+	return false
 }
 
 func (pkg *goPackage) inferImportPath(c *config.Config) error {
@@ -213,6 +230,22 @@ func testNameByConvention(nc namingConvention, imp string) string {
 	libName := libNameFromImportPath(imp)
 	if libName == "" {
 		libName = "lib"
+	}
+	return libName + "_test"
+}
+
+// testNameFromSingleSource returns a suitable name for a go_test using the
+// single Go source file name.
+func testNameFromSingleSource(src string) string {
+	if i := strings.LastIndexByte(src, '.'); i >= 0 {
+		src = src[0:i]
+	}
+	libName := libNameFromImportPath(src)
+	if libName == "" {
+		return ""
+	}
+	if strings.HasSuffix(libName, "_test") {
+		return libName
 	}
 	return libName + "_test"
 }
