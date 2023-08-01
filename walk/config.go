@@ -102,7 +102,6 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 					log.Printf("the follow pattern is not valid %q: %s", path.Join(rel, d.Value), err)
 					continue
 				}
-				log.Printf("found follow pattern: %q", path.Join(rel, d.Value))
 				wcCopy.follow = append(wcCopy.follow, path.Join(rel, d.Value))
 			case "ignore":
 				wcCopy.ignore = true
