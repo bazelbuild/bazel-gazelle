@@ -70,10 +70,23 @@ func TestGenerateRules(t *testing.T) {
 		"-go_prefix=example.com/repo",
 		"-repo_root="+testdataDir)
 
+	// runfiles are symbolic links, which we need Walk to follow.
+	content := []byte(`
+# gazelle:follow **
+`)
+	f, err := rule.LoadData(filepath.FromSlash("BUILD.config"), "config", content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cext := range cexts {
+		cext.Configure(c, "", f)
+	}
+
 	var loads []rule.LoadInfo
 	for _, lang := range langs {
 		loads = append(loads, lang.(language.ModuleAwareLanguage).ApparentLoads(func(string) string { return "" })...)
 	}
+	var testsFound int
 	walk.Walk(c, cexts, []string{testdataDir}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
 		t.Run(rel, func(t *testing.T) {
 			var empty, gen []*rule.Rule
@@ -104,6 +117,7 @@ func TestGenerateRules(t *testing.T) {
 				// there's no test.
 				return
 			}
+			testsFound += 1
 			f := rule.EmptyFile("test", "")
 			for _, r := range gen {
 				r.Insert(f)
@@ -124,6 +138,10 @@ func TestGenerateRules(t *testing.T) {
 			}
 		})
 	})
+	// Avoid spurious success if we fail to find any tests.
+	if testsFound == 0 {
+		t.Error("No rule generation tests were found")
+	}
 }
 
 func TestGenerateRulesEmpty(t *testing.T) {
