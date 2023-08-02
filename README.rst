@@ -716,11 +716,11 @@ The following directives are recognized:
 | Gazelle won't recurse into it. This directive may be repeated to exclude                   |
 | multiple patterns, one per line.                                                           |
 +---------------------------------------------------+----------------------------------------+
-| :direc:`# gazelle:follow path`                    | n/a                                    |
+| :direc:`# gazelle:follow pattern`                 | n/a                                    |
 +---------------------------------------------------+----------------------------------------+
-| Instructs Gazelle to follow a symbolic link to a directory within the                      |
-| repository. Normally, Gazelle does not follow symbolic links unless they                   |
-| point outside of the repository root.                                                      |
+| Instructs Gazelle to follow a symbolic link to a directory within the repository if the    |
+| given `doublestar.Match`_ pattern matches. Normally, Gazelle does not follow symbolic      |
+| links unless they point outside of the repository root.                                    |
 |                                                                                            |
 | Care must be taken to avoid visiting a directory more than once.                           |
 | The ``# gazelle:exclude`` directive may be used to prevent Gazelle from                    |
