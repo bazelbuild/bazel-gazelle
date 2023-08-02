@@ -96,6 +96,42 @@ def _is_dev_dependency(module_ctx, tag):
     # not available.
     return module_ctx.is_dev_dependency(tag) if hasattr(module_ctx, "is_dev_dependency") else False
 
+# This function processes a given override type for a given module, checks for duplicate overrides
+# and inserts the override returned from the process_override_func into the overrides dict.
+def _process_overrides(module_ctx, module, override_type, overrides, process_override_func, additional_overrides = None):
+    _fail_on_non_root_overrides(module_ctx, module, override_type)
+    for override_tag in getattr(module.tags, override_type):
+        _fail_on_duplicate_overrides(override_tag.path, module.name, overrides)
+
+        # Some overrides conflict with other overrides. These can be specified in the
+        # additional_overrides dict. If the override is in the additional_overrides dict, then fail.
+        if additional_overrides:
+            _fail_on_duplicate_overrides(override_tag.path, module.name, additional_overrides)
+
+        overrides[override_tag.path] = process_override_func(override_tag)
+
+def _process_gazelle_override(gazelle_override_tag):
+    for directive in gazelle_override_tag.directives:
+        _check_directive(directive)
+
+    return struct(
+        directives = gazelle_override_tag.directives,
+        build_file_generation = gazelle_override_tag.build_file_generation,
+    )
+
+def _process_module_override(module_override_tag):
+    return struct(
+        patches = module_override_tag.patches,
+        patch_strip = module_override_tag.patch_strip,
+    )
+
+def _process_archive_override(archive_override_tag):
+    return struct(
+        urls = archive_override_tag.urls,
+        sha256 = archive_override_tag.sha256,
+        strip_prefix = archive_override_tag.strip_prefix,
+    )
+
 def _extension_metadata(module_ctx, *, root_module_direct_deps, root_module_direct_dev_deps):
     if not hasattr(module_ctx, "extension_metadata"):
         return None
@@ -141,7 +177,6 @@ def _go_deps_impl(module_ctx):
     module_overrides = {}
 
     root_versions = {}
-    root_fixups = []
     root_module_direct_deps = {}
     root_module_direct_dev_deps = {}
 
@@ -162,38 +197,9 @@ def _go_deps_impl(module_ctx):
             elif check_direct_deps == "error":
                 outdated_direct_dep_printer = fail
 
-        _fail_on_non_root_overrides(module_ctx, module, "gazelle_override")
-        for gazelle_override_tag in module.tags.gazelle_override:
-            _fail_on_duplicate_overrides(gazelle_override_tag.path, module.name, gazelle_overrides)
-            for directive in gazelle_override_tag.directives:
-                _check_directive(directive)
-
-            gazelle_overrides[gazelle_override_tag.path] = struct(
-                directives = gazelle_override_tag.directives,
-                build_file_generation = gazelle_override_tag.build_file_generation,
-            )
-
-
-        # A user is not able to specify both an archive override and a module override for the
-        # same module. This is checked by calling _fail_on_duplicate_overrides() for each override
-        _fail_on_non_root_overrides(module_ctx, module, "module_override")
-        for module_override_tag in module.tags.module_override:
-            _fail_on_duplicate_overrides(module_override_tag.path, module.name, module_overrides)
-            _fail_on_duplicate_overrides(module_override_tag.path, module.name, archive_overrides)
-            module_overrides[module_override_tag.path] = struct(
-                patches = module_override_tag.patches,
-                patch_strip = module_override_tag.patch_strip,
-            )
-
-        _fail_on_non_root_overrides(module, "archive_override")
-        for archive_override_tag in module.tags.archive_override:
-            _fail_on_duplicate_overrides(archive_override_tag.path, module.name, module_overrides)
-            _fail_on_duplicate_overrides(archive_override_tag.path, module.name, archive_overrides)
-            archive_overrides[archive_override_tag.path] = struct(
-                urls = archive_override_tag.urls,
-                sha256 = archive_override_tag.sha256,
-                strip_prefix = archive_override_tag.strip_prefix,
-            )
+        _process_overrides(module_ctx, module, "gazelle_override", gazelle_overrides, _process_gazelle_override)
+        _process_overrides(module_ctx, module, "module_override", module_overrides, _process_module_override, archive_overrides)
+        _process_overrides(module_ctx, module, "archive_override", archive_overrides, _process_archive_override, module_overrides)
 
         if len(module.tags.from_file) > 1:
             fail(
