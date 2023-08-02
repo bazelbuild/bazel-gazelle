@@ -55,21 +55,11 @@ func (wc *walkConfig) isExcluded(rel, base string) bool {
 	if base == ".git" {
 		return true
 	}
-	f := path.Join(rel, base)
-	for _, x := range wc.excludes {
-		matched, err := doublestar.Match(x, f)
-		if err != nil {
-			// doublestar.Match returns only one possible error, and only if the
-			// pattern is not valid. During the configuration of the walker (see
-			// Configure below), we discard any invalid pattern and thus an error
-			// here should not be possible.
-			log.Panicf("error during doublestar.Match. This should not happen, please file an issue https://github.com/bazelbuild/bazel-gazelle/issues/new: %s", err)
-		}
-		if matched {
-			return true
-		}
-	}
-	return false
+	return matchAnyGlob(wc.excludes, path.Join(rel, base))
+}
+
+func (wc *walkConfig) shouldFollow(rel, base string) bool {
+	return matchAnyGlob(wc.follow, path.Join(rel, base))
 }
 
 type Configurer struct{}
@@ -108,6 +98,10 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 				wcCopy.excludes = append(wcCopy.excludes, path.Join(rel, d.Value))
 			case "follow":
+				if err := checkPathMatchPattern(path.Join(rel, d.Value)); err != nil {
+					log.Printf("the follow pattern is not valid %q: %s", path.Join(rel, d.Value), err)
+					continue
+				}
 				wcCopy.follow = append(wcCopy.follow, path.Join(rel, d.Value))
 			case "ignore":
 				wcCopy.ignore = true
@@ -150,4 +144,21 @@ func (c *Configurer) loadBazelIgnore(repoRoot string, wc *walkConfig) error {
 func checkPathMatchPattern(pattern string) error {
 	_, err := doublestar.Match(pattern, "x")
 	return err
+}
+
+func matchAnyGlob(patterns []string, path string) bool {
+	for _, x := range patterns {
+		matched, err := doublestar.Match(x, path)
+		if err != nil {
+			// doublestar.Match returns only one possible error, and only if the
+			// pattern is not valid. During the configuration of the walker (see
+			// Configure below), we discard any invalid pattern and thus an error
+			// here should not be possible.
+			log.Panicf("error during doublestar.Match. This should not happen, please file an issue https://github.com/bazelbuild/bazel-gazelle/issues/new: %s", err)
+		}
+		if matched {
+			return true
+		}
+	}
+	return false
 }

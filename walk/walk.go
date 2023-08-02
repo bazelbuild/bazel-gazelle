@@ -18,6 +18,7 @@ limitations under the License.
 package walk
 
 import (
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -151,13 +152,12 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		var subdirs, regularFiles []string
 		for _, fi := range files {
 			base := fi.Name()
+			fi := resolveFileInfo(wc, dir, rel, fi)
 			switch {
-			case base == "" || wc.isExcluded(rel, base) || fi.Mode()&os.ModeSymlink != 0:
+			case fi == nil:
 				continue
-
 			case fi.IsDir():
 				subdirs = append(subdirs, base)
-
 			default:
 				regularFiles = append(regularFiles, base)
 			}
@@ -313,4 +313,25 @@ func findGenFiles(wc *walkConfig, f *rule.File) []string {
 		}
 	}
 	return genFiles
+}
+
+func resolveFileInfo(wc *walkConfig, dir, rel string, fi fs.FileInfo) fs.FileInfo {
+	base := fi.Name()
+	if base == "" || wc.isExcluded(rel, base) {
+		return nil
+	}
+	if fi.Mode()&os.ModeSymlink == 0 {
+		// Not a symlink, use the original FileInfo.
+		return fi
+	}
+	if !wc.shouldFollow(rel, fi.Name()) {
+		// A symlink, but not one we should follow.
+		return nil
+	}
+	fi, err := os.Stat(path.Join(dir, base))
+	if err != nil {
+		// A symlink, but not one we could resolve.
+		return nil
+	}
+	return fi
 }
