@@ -105,6 +105,13 @@ Gazelle can generate Bazel BUILD files for many languages:
   BenchSci's `rules_nodejs_gazelle`_ supports generating `ts_project`, `js_library`, `jest_test`,
   and `web_asset` rules, and is able to support module bundlers like Webpack and Next.js
 
+
+* Kotlin
+
+  Aspect Build provides some [Kotlin Support](https://github.com/aspect-build/aspect-cli/blob/main/gazelle/kotlin/)
+  in the repo of their aspect-cli (also usable separately). Still under development, please check the README for 
+  currently available features.
+
 * Protocol Buffers
 
   Support for the `proto_library` rule, as well as `go_proto_library` is in this repository, see below.
