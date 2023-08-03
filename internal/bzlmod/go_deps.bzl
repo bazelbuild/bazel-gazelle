@@ -29,8 +29,14 @@ the required directives to the "default_gazelle_overrides.bzl" file at \
 https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/default_gazelle_overrides.bzl.
 """
 
-def _fail_on_non_root_overrides(module, tag_class):
+def _fail_on_non_root_overrides(module_ctx, module, tag_class):
     if module.is_root:
+        return
+
+    # Isolated module extension usages only contain tags from a single module, so we can allow
+    # overrides. This is a new feature in Bazel 6.3.0, earlier versions do not allow module usages
+    # to be isolated.
+    if getattr(module_ctx, "is_isolated", False):
         return
 
     if getattr(module.tags, tag_class):
@@ -151,7 +157,7 @@ def _go_deps_impl(module_ctx):
             elif check_direct_deps == "error":
                 outdated_direct_dep_printer = fail
 
-        _fail_on_non_root_overrides(module, "gazelle_override")
+        _fail_on_non_root_overrides(module_ctx, module, "gazelle_override")
         for gazelle_override_tag in module.tags.gazelle_override:
             if gazelle_override_tag.path in gazelle_overrides:
                 fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(gazelle_override_tag.path, module.name))
@@ -163,7 +169,7 @@ def _go_deps_impl(module_ctx):
                 build_file_generation = gazelle_override_tag.build_file_generation,
             )
 
-        _fail_on_non_root_overrides(module, "module_override")
+        _fail_on_non_root_overrides(module_ctx, module, "module_override")
         for module_override_tag in module.tags.module_override:
             if module_override_tag.path in module_overrides:
                 fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(module_override_tag.path, module.name))
@@ -188,7 +194,7 @@ def _go_deps_impl(module_ctx):
                 for tag in module_tags_from_go_mod
             ]
 
-            if module.is_root:
+            if module.is_root or getattr(module_ctx, "is_isolated", False):
                 replace_map.update(go_mod_replace_map)
             else:
                 # Register this Bazel module as providing the specified Go module. It participates

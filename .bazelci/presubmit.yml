@@ -37,6 +37,7 @@ tasks:
     # Specify this target explicitly to verify that Gazelle generated it correctly.
     - "//pkg:pkg_test"
     - "//..."
+    - "@test_dep//..."
   macos_arm64:
     platform: macos_arm64
     build_targets:
