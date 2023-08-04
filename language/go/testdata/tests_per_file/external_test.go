@@ -1,5 +1,11 @@
 package tests_per_file_test
 
-import "testing"
+import (
+	"testing"
 
-func TestStuff(t *testing.T) {}
+	"example.com/repo/tests_per_file"
+)
+
+func TestStuff(t *testing.T) {
+	var _ tests_per_file.Type
+}

@@ -342,7 +342,6 @@ func buildPackages(c *config.Config, dir, rel string, hasTestdata bool, er *embe
 				hasTestdata: hasTestdata,
 			}
 		}
-		fmt.Printf("adding %v to package %s\n", f, f.packageName)
 		if err := packageMap[f.packageName].addFile(c, er, f, false); err != nil {
 			log.Print(err)
 		}
