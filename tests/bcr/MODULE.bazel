@@ -48,6 +48,22 @@ go_deps.module_override(
     path = "github.com/stretchr/testify",
 )
 
+# Test an archive override from a known archive.
+go_deps.gazelle_override(
+    directives = [
+        "gazelle:go_naming_convention go_default_library",
+    ],
+    path = "github.com/bazelbuild/buildtools",
+)
+go_deps.archive_override(
+    urls = [
+        "https://github.com/bazelbuild/buildtools/archive/refs/tags/v6.1.2.tar.gz",
+    ],
+    strip_prefix = "buildtools-6.1.2",
+    path = "github.com/bazelbuild/buildtools",
+    sha256 = "977a0bd4593c8d4c8f45e056d181c35e48aa01ad4f8090bdb84f78dca42f47dc",
+)
+
 # Transitive dependencies have to be listed here explicitly.
 go_deps.module(
     indirect = True,
@@ -71,6 +87,7 @@ go_deps.module(
 )
 use_repo(
     go_deps,
+    "com_github_bazelbuild_buildtools",
     "com_github_bmatcuk_doublestar_v4",
     "com_github_datadog_sketches_go",
     "com_github_envoyproxy_protoc_gen_validate",
