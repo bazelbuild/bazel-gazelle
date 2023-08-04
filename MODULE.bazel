@@ -36,7 +36,7 @@ use_repo(
     "org_golang_x_mod",
     "org_golang_x_sync",
     "org_golang_x_tools",
-    # Read by go_repository rules.
+    # Referenced by `gazelle_binary`.
     "bazel_gazelle_go_repository_config",
 )
 

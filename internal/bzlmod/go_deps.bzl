@@ -29,8 +29,14 @@ the required directives to the "default_gazelle_overrides.bzl" file at \
 https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/default_gazelle_overrides.bzl.
 """
 
-def _fail_on_non_root_overrides(module, tag_class):
+def _fail_on_non_root_overrides(module_ctx, module, tag_class):
     if module.is_root:
+        return
+
+    # Isolated module extension usages only contain tags from a single module, so we can allow
+    # overrides. This is a new feature in Bazel 6.3.0, earlier versions do not allow module usages
+    # to be isolated.
+    if getattr(module_ctx, "is_isolated", False):
         return
 
     if getattr(module.tags, tag_class):
@@ -38,6 +44,10 @@ def _fail_on_non_root_overrides(module, tag_class):
             tag_class = tag_class,
             module_name = module.name,
         ))
+
+def _fail_on_duplicate_overrides(path, module_name, overrides):
+    if path in overrides:
+        fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(path, module_name))
 
 def _check_directive(directive):
     if directive.startswith("gazelle:") and " " in directive and not directive[len("gazelle:"):][0].isspace():
@@ -86,6 +96,42 @@ def _is_dev_dependency(module_ctx, tag):
     # not available.
     return module_ctx.is_dev_dependency(tag) if hasattr(module_ctx, "is_dev_dependency") else False
 
+# This function processes a given override type for a given module, checks for duplicate overrides
+# and inserts the override returned from the process_override_func into the overrides dict.
+def _process_overrides(module_ctx, module, override_type, overrides, process_override_func, additional_overrides = None):
+    _fail_on_non_root_overrides(module_ctx, module, override_type)
+    for override_tag in getattr(module.tags, override_type):
+        _fail_on_duplicate_overrides(override_tag.path, module.name, overrides)
+
+        # Some overrides conflict with other overrides. These can be specified in the
+        # additional_overrides dict. If the override is in the additional_overrides dict, then fail.
+        if additional_overrides:
+            _fail_on_duplicate_overrides(override_tag.path, module.name, additional_overrides)
+
+        overrides[override_tag.path] = process_override_func(override_tag)
+
+def _process_gazelle_override(gazelle_override_tag):
+    for directive in gazelle_override_tag.directives:
+        _check_directive(directive)
+
+    return struct(
+        directives = gazelle_override_tag.directives,
+        build_file_generation = gazelle_override_tag.build_file_generation,
+    )
+
+def _process_module_override(module_override_tag):
+    return struct(
+        patches = module_override_tag.patches,
+        patch_strip = module_override_tag.patch_strip,
+    )
+
+def _process_archive_override(archive_override_tag):
+    return struct(
+        urls = archive_override_tag.urls,
+        sha256 = archive_override_tag.sha256,
+        strip_prefix = archive_override_tag.strip_prefix,
+    )
+
 def _extension_metadata(module_ctx, *, root_module_direct_deps, root_module_direct_dev_deps):
     if not hasattr(module_ctx, "extension_metadata"):
         return None
@@ -126,11 +172,11 @@ def _go_deps_impl(module_ctx):
     replace_map = {}
     bazel_deps = {}
 
+    archive_overrides = {}
     gazelle_overrides = {}
     module_overrides = {}
 
     root_versions = {}
-    root_fixups = []
     root_module_direct_deps = {}
     root_module_direct_dev_deps = {}
 
@@ -151,26 +197,9 @@ def _go_deps_impl(module_ctx):
             elif check_direct_deps == "error":
                 outdated_direct_dep_printer = fail
 
-        _fail_on_non_root_overrides(module, "gazelle_override")
-        for gazelle_override_tag in module.tags.gazelle_override:
-            if gazelle_override_tag.path in gazelle_overrides:
-                fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(gazelle_override_tag.path, module.name))
-            for directive in gazelle_override_tag.directives:
-                _check_directive(directive)
-
-            gazelle_overrides[gazelle_override_tag.path] = struct(
-                directives = gazelle_override_tag.directives,
-                build_file_generation = gazelle_override_tag.build_file_generation,
-            )
-
-        _fail_on_non_root_overrides(module, "module_override")
-        for module_override_tag in module.tags.module_override:
-            if module_override_tag.path in module_overrides:
-                fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(module_override_tag.path, module.name))
-            module_overrides[module_override_tag.path] = struct(
-                patches = module_override_tag.patches,
-                patch_strip = module_override_tag.patch_strip,
-            )
+        _process_overrides(module_ctx, module, "gazelle_override", gazelle_overrides, _process_gazelle_override)
+        _process_overrides(module_ctx, module, "module_override", module_overrides, _process_module_override, archive_overrides)
+        _process_overrides(module_ctx, module, "archive_override", archive_overrides, _process_archive_override, module_overrides)
 
         if len(module.tags.from_file) > 1:
             fail(
@@ -188,7 +217,7 @@ def _go_deps_impl(module_ctx):
                 for tag in module_tags_from_go_mod
             ]
 
-            if module.is_root:
+            if module.is_root or getattr(module_ctx, "is_isolated", False):
                 replace_map.update(go_mod_replace_map)
             else:
                 # Register this Bazel module as providing the specified Go module. It participates
@@ -290,7 +319,7 @@ def _go_deps_impl(module_ctx):
 
     for path, bazel_dep in bazel_deps.items():
         # We can't apply overrides to Bazel dependencies and thus fall back to using the Go module.
-        if path in gazelle_overrides or path in module_overrides or path in replace_map:
+        if path in archive_overrides or path in gazelle_overrides or path in module_overrides or path in replace_map:
             continue
 
         # Only use the Bazel module if it is at least as high as the required Go module version.
@@ -326,17 +355,30 @@ def _go_deps_impl(module_ctx):
             root_module_direct_dev_deps.pop(_repo_name(path), default = None)
             continue
 
-        go_repository(
-            name = module.repo_name,
-            importpath = path,
-            sum = _get_sum_from_module(path, module, sums),
-            replace = getattr(module, "replace", None),
-            version = "v" + module.raw_version,
-            build_directives = _get_directives(path, gazelle_overrides),
-            build_file_generation = _get_build_file_generation(path, gazelle_overrides),
-            patches = _get_patches(path, module_overrides),
-            patch_args = _get_patch_args(path, module_overrides),
-        )
+        go_repository_args = {
+            "name": module.repo_name,
+            "importpath": path,
+            "build_directives": _get_directives(path, gazelle_overrides),
+            "build_file_generation": _get_build_file_generation(path, gazelle_overrides),
+            "patches": _get_patches(path, module_overrides),
+            "patch_args": _get_patch_args(path, module_overrides),
+        }
+
+        archive_override = archive_overrides.get(path)
+        if archive_override:
+            go_repository_args.update({
+                "urls": archive_override.urls,
+                "strip_prefix": archive_override.strip_prefix,
+                "sha256": archive_override.sha256,
+            })
+        else:
+            go_repository_args.update({
+                "sum": _get_sum_from_module(path, module, sums),
+                "replace": getattr(module, "replace", None),
+                "version": "v" + module.raw_version,
+            })
+
+        go_repository(**go_repository_args)
 
     # Create a synthetic WORKSPACE file that lists all Go repositories created
     # above and contains all the information required by Gazelle's -repo_config
@@ -422,6 +464,33 @@ _module_tag = tag_class(
     },
 )
 
+_archive_override_tag = tag_class(
+    attrs = {
+        "path": attr.string(
+            doc = """The Go module path for the repository to be overridden.
+
+            This module path must be defined by other tags in this
+            extension within this Bazel module.""",
+            mandatory = True,
+        ),
+        "urls": attr.string_list(
+            doc = """A list of HTTP(S) URLs where an archive containing the project can be
+            downloaded. Bazel will attempt to download from the first URL; the others
+            are mirrors.""",
+        ),
+        "strip_prefix": attr.string(
+            doc = """If the repository is downloaded via HTTP (`urls` is set), this is a
+            directory prefix to strip. See [`http_archive.strip_prefix`].""",
+        ),
+        "sha256": attr.string(
+            doc = """If the repository is downloaded via HTTP (`urls` is set), this is the
+            SHA-256 sum of the downloaded archive. When set, Bazel will verify the archive
+            against this sum before extracting it.""",
+        ),
+    },
+    doc = "Override the default source location on a given Go module in this extension.",
+)
+
 _gazelle_override_tag = tag_class(
     attrs = {
         "path": attr.string(
@@ -479,6 +548,7 @@ _module_override_tag = tag_class(
 go_deps = module_extension(
     _go_deps_impl,
     tag_classes = {
+        "archive_override": _archive_override_tag,
         "config": _config_tag,
         "from_file": _from_file_tag,
         "gazelle_override": _gazelle_override_tag,

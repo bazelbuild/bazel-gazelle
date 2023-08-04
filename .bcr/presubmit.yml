@@ -11,6 +11,8 @@ bcr_test_module:
     run_test_module:
       name: Run test module
       platform: ${{ platform }}
+      build_flags:
+      - --experimental_isolated_extension_usages
       shell_commands:
       # Regenerate the BUILD file for the test module using Gazelle.
       - rm pkg/BUILD.bazel
@@ -22,3 +24,4 @@ bcr_test_module:
       # Specify this target explicitly to verify that Gazelle generated it correctly.
       - "//pkg:pkg_test"
       - "//..."
+      - "@test_dep//..."

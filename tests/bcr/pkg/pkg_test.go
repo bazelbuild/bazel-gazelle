@@ -7,6 +7,7 @@ import (
 
 	"github.com/DataDog/sketches-go/ddsketch"
 	"github.com/bazelbuild/bazel-gazelle/tests/bcr/pkg/data"
+	"github.com/bazelbuild/buildtools/labels"
 	"github.com/bazelbuild/rules_go/go/runfiles"
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/cloudflare/circl/dh/x25519"
@@ -66,4 +67,9 @@ func TestBazelDepUsedAsGoDep(t *testing.T) {
 	_, err := rand.Read(secret[:])
 	require.NoError(t, err)
 	x25519.KeyGen(&public, &secret)
+}
+
+func TestArchiveOverrideUsed(t *testing.T) {
+	label := labels.Parse("@com_github_bazelbuild_buildtools//labels:labels")
+	require.NotEmpty(t, label)
 }
