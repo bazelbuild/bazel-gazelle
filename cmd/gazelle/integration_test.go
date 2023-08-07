@@ -4382,7 +4382,7 @@ require (
 		},
 	})
 
-	defer cleanup()
+	t.Cleanup(cleanup)
 
 	args := []string{
 		"update-repos",
