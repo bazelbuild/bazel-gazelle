@@ -4396,7 +4396,7 @@ require (
 
 	// Confirm that the WORKSPACE is still empty
 	want := ""
-	if got, err := ioutil.ReadFile(filepath.Join(dir, "WORKSPACE")); err != nil {
+	if got, err := os.ReadFile(filepath.Join(dir, "WORKSPACE")); err != nil {
 		t.Fatal(err)
 	} else if string(got) != want {
 		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
@@ -4413,7 +4413,7 @@ def my_go_deps():
         version = "v1.8.4",
     )
 `
-	if got, err := ioutil.ReadFile(filepath.Join(dir, "go_deps.bzl")); err != nil {
+	if got, err := os.ReadFile(filepath.Join(dir, "go_deps.bzl")); err != nil {
 		t.Fatal(err)
 	} else if string(got) != want {
 		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
@@ -4437,7 +4437,7 @@ require (
 		},
 	})
 
-	defer cleanup()
+	t.Cleanup(cleanup)
 
 	args := []string{
 		"update-repos",
@@ -4450,7 +4450,7 @@ require (
 
 	// Confirm that the WORKSPACE is still empty
 	want := ""
-	if got, err := ioutil.ReadFile(filepath.Join(dir, "WORKSPACE")); err != nil {
+	if got, err := os.ReadFile(filepath.Join(dir, "WORKSPACE")); err != nil {
 		t.Fatal(err)
 	} else if string(got) != want {
 		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
