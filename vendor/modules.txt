@@ -1,4 +1,4 @@
-# github.com/bazelbuild/buildtools v0.0.0-20230510134650-37bd1811516d
+# github.com/bazelbuild/buildtools v0.0.0-20230823134145-56628089db01
 ## explicit; go 1.15
 github.com/bazelbuild/buildtools/build
 github.com/bazelbuild/buildtools/tables
