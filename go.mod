@@ -11,7 +11,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	golang.org/x/mod v0.12.0
 	golang.org/x/sync v0.2.0
-	golang.org/x/tools v0.9.1
+	golang.org/x/tools/go/vcs v0.1.0-deprecated
 )
 
-require golang.org/x/sys v0.8.0 // indirect
+require golang.org/x/sys v0.9.0 // indirect

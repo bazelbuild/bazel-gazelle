@@ -87,4 +87,5 @@ register_unittest_toolchains()
 # gazelle:repository go_repository name=org_golang_x_sys importpath=golang.org/x/sys
 # gazelle:repository go_repository name=org_golang_x_text importpath=golang.org/x/text
 # gazelle:repository go_repository name=org_golang_x_tools importpath=golang.org/x/tools
+# gazelle:repository go_repository name=org_golang_x_tools_go_vcs importpath=golang.org/x/tools/go/vcs
 # gazelle:repository go_repository name=org_golang_x_xerrors importpath=golang.org/x/xerrors
