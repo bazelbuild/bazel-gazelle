@@ -57,7 +57,7 @@ def parse_go_mod(content, path):
             continue
 
         if not current_directive:
-            if tokens[0] not in ["module", "go", "require", "replace", "exclude", "retract"]:
+            if tokens[0] not in ["module", "go", "require", "replace", "exclude", "retract", "toolchain"]:
                 fail("{}:{}: unexpected token '{}' at start of line".format(path, line_no, tokens[0]))
             if len(tokens) == 1:
                 fail("{}:{}: expected another token after '{}'".format(path, line_no, tokens[0]))
@@ -98,7 +98,9 @@ def parse_go_mod(content, path):
     if not go:
         # "As of the Go 1.17 release, if the go directive is missing, go 1.16 is assumed."
         go = "1.16"
-    major, minor = go.split(".")
+
+    # The go directive can contain patch and pre-release versions, but we omit them.
+    major, minor = go.split(".")[:2]
 
     return struct(
         module = module,
