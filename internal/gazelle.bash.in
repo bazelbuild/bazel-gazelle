@@ -14,41 +14,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# --- begin runfiles.bash initialization v3 ---
+# Copy-pasted from the Bazel Bash runfiles library v3.
+set -uo pipefail; set +e; f=bazel_tools/tools/bash/runfiles/runfiles.bash
+source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
+  source "$(grep -sm1 "^$f " "${RUNFILES_MANIFEST_FILE:-/dev/null}" | cut -f2- -d' ')" 2>/dev/null || \
+  source "$0.runfiles/$f" 2>/dev/null || \
+  source "$(grep -sm1 "^$f " "$0.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \
+  source "$(grep -sm1 "^$f " "$0.exe.runfiles_manifest" | cut -f2- -d' ')" 2>/dev/null || \
+  { echo>&2 "ERROR: cannot find $f"; exit 1; }; f=; set -e
+# --- end runfiles.bash initialization v3 ---
+
 @@GENERATED_MESSAGE@@
 
 set -euo pipefail
 
-RUNNER_LABEL=@@RUNNER_LABEL@@
-GAZELLE_SHORT_PATH=@@GAZELLE_SHORT_PATH@@
-GAZELLE_LABEL=@@GAZELLE_LABEL@@
+GAZELLE_PATH=@@GAZELLE_PATH@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
-REPO_CONFIG_SHORT_PATH=@@REPO_CONFIG_SHORT_PATH@@
+REPO_CONFIG_PATH=@@REPO_CONFIG_PATH@@
 
 @@ENV@@
-
-# find_runfile prints the location of a runfile in the source workspace,
-# either by reading the symbolic link or reading the runfiles manifest.
-function find_runfile {
-  local runfile=$1
-  if [ -f "$runfile" ]; then
-    readlink "$runfile"
-    return
-  fi
-  runfile=${runfile#external/}
-  if grep -q "^$runfile" "$0.runfiles_manifest"; then
-    grep "^$runfile" "$0.runfiles_manifest" | head -n 1 | cut -d' ' -f2
-    return
-  fi
-  # printing nothing indicates failure
-}
 
 # set_goroot attempts to set GOROOT to the SDK used by rules_go. gazelle
 # invokes tools inside the Go SDK for dependency management. It's good to
 # use the SDK used by the workspace in case the Go SDK is not installed
 # on the host system or is a different version.
 function set_goroot {
-  local gotool=$(find_runfile "$GOTOOL")
+  local gotool=$(rlocation "$GOTOOL")
   if [ -z "$gotool" ]; then
     echo "$0: warning: could not locate GOROOT used by rules_go" >&2
     return
@@ -76,8 +69,8 @@ esac
 # able to find runfiles, and some extensions rely on that. Gazelle can use
 # BUILD_WORKSPACE_DIRECTORY to interpret relative paths on the command line.
 set_goroot
-gazelle_short_path=$(find_runfile "$GAZELLE_SHORT_PATH")
-if [ -z "$gazelle_short_path" ]; then
+gazelle_path=$(rlocation "$GAZELLE_PATH")
+if [ -z "$gazelle_path" ]; then
   echo "error: could not locate gazelle binary" >&2
   exit 1
 fi
@@ -101,8 +94,8 @@ fi
 # When running with Bzlmod, there is no WORKSPACE file for Gazelle to read
 # the definitions of go_repository rules from. Instead, we pass the path to
 # the repo config file as a flag.
-if [[ "${is_fix_or_update:-}" == "true"  ]] && [[ -n $REPO_CONFIG_SHORT_PATH ]]; then
-  ARGS=("${ARGS[0]}" "-repo_config" "$(find_runfile "$REPO_CONFIG_SHORT_PATH")" "${ARGS[@]:1}")
+if [[ "${is_fix_or_update:-}" == "true"  ]] && [[ -n $REPO_CONFIG_PATH ]]; then
+  ARGS=("${ARGS[0]}" "-repo_config" "$(rlocation "$REPO_CONFIG_PATH")" "${ARGS[@]:1}")
 fi
 
-"$gazelle_short_path" "${ARGS[@]}"
+"$gazelle_path" "${ARGS[@]}"
