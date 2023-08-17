@@ -37,6 +37,8 @@ GO_REPOSITORY_TOOLS_SRCS = [
     Label("//internal/language:BUILD.bazel"),
     Label("//internal/language/test_filegroup:BUILD.bazel"),
     Label("//internal/language/test_filegroup:lang.go"),
+    Label("//internal/language/test_load_for_packed_rules:BUILD.bazel"),
+    Label("//internal/language/test_load_for_packed_rules:lang.go"),
     Label("//internal/language/test_loads_from_flag:BUILD.bazel"),
     Label("//internal/language/test_loads_from_flag:lang.go"),
     Label("//internal:list_repository_tools_srcs.go"),

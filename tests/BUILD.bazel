@@ -4,6 +4,8 @@ load(
     "gazelle_generation_test",
 )
 
+load("//tests:tools.bzl", "get_binary")
+
 # Exclude this entire directly from having anything gnerated by Gazelle. That
 # way the test cases won't be fixed by `bazel run //:gazelle` when run in this
 # repository.
@@ -26,10 +28,18 @@ gazelle_binary(
     visibility = ["//visibility:private"],
 )
 
+gazelle_binary(
+    name = "gazelle_with_language_load_for_packed_rules",
+    languages = [
+        "//internal/language/test_load_for_packed_rules",
+    ],
+    visibility = ["//visibility:private"],
+)
+
 [gazelle_generation_test(
     # Name the test the path to the directory containing the WORKSPACE file.
     name = file[0:-len("/WORKSPACE")],
-    gazelle_binary = ":gazelle" if "loads_from_flag" not in file else ":gazelle_with_language_loads_from_flag",
+    gazelle_binary = get_binary(file),
     # This is a noop as the default is False. However, it does confirm that
     # gazelle_generation_test accepts setting common test attributes.
     local = False,
