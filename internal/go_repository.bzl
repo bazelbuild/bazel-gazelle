@@ -115,9 +115,6 @@ Authorization: Bearer RANDOM-TOKEN
 # We can't disable timeouts on Bazel, but we can set them to large values.
 _GO_REPOSITORY_TIMEOUT = 86400
 
-# Default value from `go env GOPROXY`
-_GOPROXY_DEFAULT = "https://proxy.golang.org,direct"
-
 def _go_repository_impl(ctx):
     # TODO(#549): vcs repositories are not cached and still need to be fetched.
     # Download the repository or module.
@@ -239,10 +236,6 @@ def _go_repository_impl(ctx):
                 env_keys = env_keys + [key, value]
 
     env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
-
-    # Since Go 1.21.0, GOPROXY must be set to a non-empty value.
-    if "GOPROXY" not in env:
-        env["GOPROXY"] = _GOPROXY_DEFAULT
 
     if fetch_repo_args:
         # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
