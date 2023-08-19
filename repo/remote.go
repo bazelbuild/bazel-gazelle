@@ -180,15 +180,28 @@ func NewRemoteCache(knownRepos []Repo) (r *RemoteCache, cleanup func() error) {
 	// allowed to use them. However, we'll return the same result nearly all
 	// the time, and simpler is better.
 	for _, repo := range knownRepos {
-		path := pathWithoutSemver(repo.GoPrefix)
-		if path == "" || r.root.cache[path] != nil {
+		newPath := pathWithoutSemver(repo.GoPrefix)
+		if newPath == "" {
 			continue
 		}
-		r.root.cache[path] = r.root.cache[repo.GoPrefix]
-		if e := r.remote.cache[repo.GoPrefix]; e != nil {
-			r.remote.cache[path] = e
+		// Avoid adding the semver-less path for this module if there
+		// is another known module which already covers this path.
+		// See https://github.com/bazelbuild/bazel-gazelle/issues/1595.
+		found := false
+		for prefix := newPath; prefix != "." && prefix != "/"; prefix = path.Dir(prefix) {
+			if _, ok := r.root.cache[prefix]; ok {
+				found = true
+				break
+			}
 		}
-		r.mod.cache[path] = r.mod.cache[repo.GoPrefix]
+		if found {
+			continue
+		}
+		r.root.cache[newPath] = r.root.cache[repo.GoPrefix]
+		if e := r.remote.cache[repo.GoPrefix]; e != nil {
+			r.remote.cache[newPath] = e
+		}
+		r.mod.cache[newPath] = r.mod.cache[repo.GoPrefix]
 	}
 
 	return r, r.cleanup

@@ -289,6 +289,18 @@ func TestMod(t *testing.T) {
 			wantModPath: "example.com/known",
 			wantName:    "known",
 		}, {
+			desc:       "semver_less_path_is_safe",
+			importPath: "example.com/known/internal/endpoints",
+			repos: []Repo{{
+				Name:     "known",
+				GoPrefix: "example.com/known",
+			}, {
+				Name:     "known_internal_endpoints_v2",
+				GoPrefix: "example.com/known/internal/endpoints/v2",
+			}},
+			wantModPath: "example.com/known",
+			wantName:    "known",
+		}, {
 			desc:        "lookup",
 			importPath:  "example.com/stub/v2/foo",
 			wantModPath: "example.com/stub/v2",
