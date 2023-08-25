@@ -27,9 +27,11 @@ tasks:
     - bazel run //:gazelle -- update pkg
     - bazel run //:gazelle -- pkg
     build_flags:
-    - "--allow_yanked_versions=all"
+    # Verify that the committed lockfile is platform-independent.
+    - "--lockfile_mode=error"
     test_flags:
-    - "--allow_yanked_versions=all"
+    # Verify that the committed lockfile is platform-independent.
+    - "--lockfile_mode=error"
     build_targets:
     - "//..."
     - "//:gazelle"
