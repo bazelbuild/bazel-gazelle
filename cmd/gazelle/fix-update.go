@@ -18,6 +18,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -26,6 +27,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
@@ -142,7 +144,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		ucr.repoConfigPath = wspace.FindWORKSPACEFile(c.RepoRoot)
 	}
 	repoConfigFile, err := rule.LoadWorkspaceFile(ucr.repoConfigPath, "")
-	if err != nil && !os.IsNotExist(err) {
+	if err != nil && !os.IsNotExist(err) && !isDirErr(err) {
 		return err
 	} else if err == nil {
 		c.Repos, _, err = repo.ListRepositories(repoConfigFile)
@@ -185,7 +187,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		workspace = repoConfigFile
 	} else {
 		workspace, err = rule.LoadWorkspaceFile(workspacePath, "")
-		if err != nil && !os.IsNotExist(err) {
+		if err != nil && !os.IsNotExist(err) && !isDirErr(err) {
 			return err
 		}
 	}
@@ -740,4 +742,15 @@ func appendOrMergeKindMapping(mappedLoads []rule.LoadInfo, mappedKind config.Map
 		Name:    mappedKind.KindLoad,
 		Symbols: []string{mappedKind.KindName},
 	})
+}
+
+func isDirErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pe *os.PathError
+	if errors.As(err, &pe) {
+		return pe.Err == syscall.EISDIR
+	}
+	return false
 }
