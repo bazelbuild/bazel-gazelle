@@ -1,0 +1,9 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "main_no_bin_lib",
+    srcs = ["main.go"],
+    _gazelle_imports = [],
+    importpath = "example.com/repo/main_no_bin",
+    visibility = ["//visibility:public"],
+)

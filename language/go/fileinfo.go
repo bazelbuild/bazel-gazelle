@@ -49,6 +49,10 @@ type fileInfo struct {
 	// "_test" suffix if it was present. It is empty for non-Go files.
 	packageName string
 
+	// hasMainFunction is true when packageName is "main" and a main function was
+	// found in the file
+	hasMainFunction bool
+
 	// isTest is true if the file stem (the part before the extension)
 	// ends with "_test.go". This is never true for non-Go files.
 	isTest bool
@@ -270,7 +274,7 @@ func goFileInfo(path, rel string) fileInfo {
 	}
 	info.tags = tags
 
-	if importsEmbed {
+	if importsEmbed || info.packageName == "main" {
 		pf, err = parser.ParseFile(fset, info.path, nil, parser.ParseComments)
 		if err != nil {
 			log.Printf("%s: error reading go file: %v", info.path, err)
@@ -295,6 +299,14 @@ func goFileInfo(path, rel string) fileInfo {
 					continue
 				}
 				info.embeds = append(info.embeds, embeds...)
+			}
+		}
+		for _, decl := range pf.Decls {
+			if fdecl, ok := decl.(*ast.FuncDecl); ok {
+				if fdecl.Name.Name == "main" {
+					info.hasMainFunction = true
+					break
+				}
 			}
 		}
 	}
