@@ -1998,7 +1998,10 @@ go_library(
 		},
 		{
 			Path:    "enabled/multiple_mappings/multiple_mappings.go",
-			Content: `package main`,
+			Content: `
+package main
+
+func main() {}`,
 		},
 		{
 			Path: "depend_on_mapped_kind/lib.go",
