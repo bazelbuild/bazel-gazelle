@@ -3,6 +3,7 @@ Gazelle build file generator
 
 .. All external links are here
 .. _a gazelle extension: https://github.com/bazel-contrib/rules_jvm/tree/main/java/gazelle
+.. _Kotlin Support: https://github.com/aspect-build/aspect-cli/blob/main/gazelle/kotlin/
 .. _Architecture of Gazelle: Design.rst
 .. _Repository rules: repository.md
 .. _go_repository: repository.md#go_repository
@@ -108,8 +109,8 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Kotlin
 
-  Aspect Build provides some [Kotlin Support](https://github.com/aspect-build/aspect-cli/blob/main/gazelle/kotlin/)
-  in the repo of their aspect-cli (also usable separately). Still under development, please check the README for 
+  Aspect Build provides some `Kotlin Support`_ in the repo of their aspect-cli (also usable separately).
+  Still under development, please check the README for 
   currently available features.
 
 * Protocol Buffers
