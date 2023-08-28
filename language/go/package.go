@@ -32,12 +32,13 @@ import (
 // goPackage contains metadata for a set of .go and .proto files that can be
 // used to generate Go rules.
 type goPackage struct {
-	name, dir, rel  string
-	library, binary goTarget
-	tests           []goTarget
-	proto           protoTarget
-	hasTestdata     bool
-	importPath      string
+	name, dir, rel        string
+	library, binary, test goTarget
+  tests                 []goTarget
+	proto                 protoTarget
+	hasTestdata           bool
+	hasMainFunction       bool
+	importPath            string
 }
 
 // goTarget contains information used to generate an individual Go rule
@@ -120,6 +121,7 @@ func (pkg *goPackage) addFile(c *config.Config, er *embedResolver, info fileInfo
 			test.hasInternalTest = true
 		}
 	default:
+		pkg.hasMainFunction = pkg.hasMainFunction || info.hasMainFunction
 		pkg.library.addFile(c, er, info)
 	}
 
@@ -128,7 +130,7 @@ func (pkg *goPackage) addFile(c *config.Config, er *embedResolver, info fileInfo
 
 // isCommand returns true if the package name is "main".
 func (pkg *goPackage) isCommand() bool {
-	return pkg.name == "main"
+	return pkg.name == "main" && pkg.hasMainFunction
 }
 
 // isBuildable returns true if anything in the package is buildable.

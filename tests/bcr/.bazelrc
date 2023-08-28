@@ -1,2 +1,3 @@
 common --enable_bzlmod
 common --experimental_isolated_extension_usages
+common --lockfile_mode=update

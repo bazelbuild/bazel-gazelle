@@ -5,7 +5,7 @@ go_library(
     srcs = ["module.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/internal/module",
     visibility = ["//:__subpackages__"],
-    deps = ["@com_github_bazelbuild_buildtools//build:go_default_library"],
+    deps = ["@com_github_bazelbuild_buildtools//build"],
 )
 
 filegroup(

@@ -3,6 +3,7 @@ Gazelle build file generator
 
 .. All external links are here
 .. _a gazelle extension: https://github.com/bazel-contrib/rules_jvm/tree/main/java/gazelle
+.. _Kotlin Support: https://github.com/aspect-build/aspect-cli/blob/main/gazelle/kotlin/
 .. _Architecture of Gazelle: Design.rst
 .. _Repository rules: repository.md
 .. _go_repository: repository.md#go_repository
@@ -36,6 +37,8 @@ Gazelle build file generator
 .. _Open a PR: https://github.com/bazelbuild/bazel-gazelle/edit/master/README.rst
 .. _Bazel Slack: https://slack.bazel.build
 .. _swift_bazel: https://github.com/cgrindel/swift_bazel
+.. _gazelle_rust: https://github.com/Calsign/gazelle_rust
+.. _rules_rust: https://github.com/bazelbuild/rules_rust
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -108,8 +111,8 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Kotlin
 
-  Aspect Build provides some [Kotlin Support](https://github.com/aspect-build/aspect-cli/blob/main/gazelle/kotlin/)
-  in the repo of their aspect-cli (also usable separately). Still under development, please check the README for 
+  Aspect Build provides some `Kotlin Support`_ in the repo of their aspect-cli (also usable separately).
+  Still under development, please check the README for 
   currently available features.
 
 * Protocol Buffers
@@ -125,6 +128,10 @@ Gazelle can generate Bazel BUILD files for many languages:
 * R
 
   `rules_r`_ has an extension for generating rules for R package builds and tests.
+
+* Rust
+
+  `gazelle_rust`_ is an extension for generating `rules_rust`_ targets.
 
 * Starlark
 

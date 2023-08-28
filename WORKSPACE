@@ -52,7 +52,7 @@ load("@bazel_skylib//lib:unittest.bzl", "register_unittest_toolchains")
 register_unittest_toolchains()
 
 # gazelle:repository go_repository name=co_honnef_go_tools importpath=honnef.co/go/tools
-# gazelle:repository go_repository name=com_github_bazelbuild_buildtools importpath=github.com/bazelbuild/buildtools build_naming_convention=go_default_library
+# gazelle:repository go_repository name=com_github_bazelbuild_buildtools importpath=github.com/bazelbuild/buildtools
 # gazelle:repository go_repository name=com_github_bazelbuild_rules_go importpath=github.com/bazelbuild/rules_go
 # gazelle:repository go_repository name=com_github_bmatcuk_doublestar_v4 importpath=github.com/bmatcuk/doublestar/v4
 # gazelle:repository go_repository name=com_github_burntsushi_toml importpath=github.com/BurntSushi/toml
@@ -87,4 +87,5 @@ register_unittest_toolchains()
 # gazelle:repository go_repository name=org_golang_x_sys importpath=golang.org/x/sys
 # gazelle:repository go_repository name=org_golang_x_text importpath=golang.org/x/text
 # gazelle:repository go_repository name=org_golang_x_tools importpath=golang.org/x/tools
+# gazelle:repository go_repository name=org_golang_x_tools_go_vcs importpath=golang.org/x/tools/go/vcs
 # gazelle:repository go_repository name=org_golang_x_xerrors importpath=golang.org/x/xerrors

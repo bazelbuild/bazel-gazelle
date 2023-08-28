@@ -172,7 +172,7 @@ func TestNoChanges(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
+	if err = ioutil.WriteFile(goFile, []byte("package main\n\nfunc main() {}"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 

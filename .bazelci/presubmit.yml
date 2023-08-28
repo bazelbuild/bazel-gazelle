@@ -27,9 +27,18 @@ tasks:
     - bazel run //:gazelle -- update pkg
     - bazel run //:gazelle -- pkg
     build_flags:
-    - "--allow_yanked_versions=all"
+    # Verify that the committed lockfile is platform-independent.
+    # In case of expected changes, regenerate the lockfile with
+    # `bazel mod graph`, which evaluates all module extensions.
+    # Note: `go_sdk`s *is* platform-dependent since it registers the first
+    # host-compatible SDK, but the result only differs if there is also a
+    # matching SDK with manual goos/goarch set, which isn't the case in CI.
+    # TODO: Make this more realistic after
+    # https://github.com/bazelbuild/bazel/issues/19154.
+    - "--lockfile_mode=error"
     test_flags:
-    - "--allow_yanked_versions=all"
+    # See above.
+    - "--lockfile_mode=error"
     build_targets:
     - "//..."
     - "//:gazelle"
