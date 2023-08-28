@@ -47,7 +47,7 @@ go_library(
         "//repo",
         "//resolve",
         "//rule",
-        "@com_github_bazelbuild_buildtools//build:go_default_library",
+        "@com_github_bazelbuild_buildtools//build",
         "@org_golang_x_mod//modfile",
         "@org_golang_x_mod//module",
         "@org_golang_x_sync//errgroup",
@@ -81,10 +81,10 @@ go_test(
         "//rule",
         "//testtools",
         "//walk",
-        "@com_github_bazelbuild_buildtools//build:go_default_library",
+        "@com_github_bazelbuild_buildtools//build",
         "@com_github_google_go_cmp//cmp",
         "@io_bazel_rules_go//go/tools/bazel:go_default_library",
-        "@org_golang_x_tools//go/vcs",
+        "@org_golang_x_tools_go_vcs//:vcs",
     ],
 )
 

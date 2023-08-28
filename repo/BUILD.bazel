@@ -13,7 +13,7 @@ go_library(
         "//pathtools",
         "//rule",
         "@org_golang_x_mod//modfile",
-        "@org_golang_x_tools//go/vcs",
+        "@org_golang_x_tools_go_vcs//:vcs",
     ],
 )
 
@@ -29,7 +29,7 @@ go_test(
         "//pathtools",
         "//rule",
         "//testtools",
-        "@org_golang_x_tools//go/vcs",
+        "@org_golang_x_tools_go_vcs//:vcs",
     ],
 )
 

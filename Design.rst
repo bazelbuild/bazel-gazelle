@@ -425,7 +425,7 @@ Gazelle resolves each import string in ``_gazelle_imports`` as follows:
     * In ``external`` mode, Gazelle determines the portion of the import path
       that corresponds to a repository using `golang.org/x/tools/go/vcs`_. This
       part of the path is converted into a repository name (for example,
-      ``@org_golang_x_tools``), and the rest is converted to a package name.
+      ``@org_golang_x_tools_go_vcs``), and the rest is converted to a package name.
 
     * In ``vendored`` mode, Gazelle constructs a label by prepending ``vendor/``
       to the import path.

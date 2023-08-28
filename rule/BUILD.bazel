@@ -17,8 +17,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//label",
-        "@com_github_bazelbuild_buildtools//build:go_default_library",
-        "@com_github_bazelbuild_buildtools//tables:go_default_library",
+        "@com_github_bazelbuild_buildtools//build",
+        "@com_github_bazelbuild_buildtools//tables",
     ],
 )
 
@@ -32,7 +32,7 @@ go_test(
     ],
     embed = [":rule"],
     deps = [
-        "@com_github_bazelbuild_buildtools//build:go_default_library",
+        "@com_github_bazelbuild_buildtools//build",
         "@com_github_google_go_cmp//cmp",
     ],
 )
