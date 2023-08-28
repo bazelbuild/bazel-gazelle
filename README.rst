@@ -37,6 +37,8 @@ Gazelle build file generator
 .. _Open a PR: https://github.com/bazelbuild/bazel-gazelle/edit/master/README.rst
 .. _Bazel Slack: https://slack.bazel.build
 .. _swift_bazel: https://github.com/cgrindel/swift_bazel
+.. _gazelle_rust: https://github.com/Calsign/gazelle_rust
+.. _rules_rust: https://github.com/bazelbuild/rules_rust
 
 .. role:: cmd(code)
 .. role:: flag(code)
@@ -126,6 +128,10 @@ Gazelle can generate Bazel BUILD files for many languages:
 * R
 
   `rules_r`_ has an extension for generating rules for R package builds and tests.
+
+* Rust
+
+  `gazelle_rust`_ is an extension for generating `rules_rust`_ targets.
 
 * Starlark
 
