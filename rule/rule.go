@@ -715,8 +715,17 @@ type Rule struct {
 	stmt
 	kind    bzl.Expr
 	args    []bzl.Expr
-	attrs   map[string]*bzl.AssignExpr
+	attrs   map[string]attrValue
 	private map[string]interface{}
+}
+
+type attrValue struct {
+	// expr is the expression that defines the attribute assignment. If mergeable
+	// this will be replaced with a call to the merge function.
+	expr *bzl.AssignExpr
+	// val is the value of the attribute. If the attribute is mergeable
+	// the value must implement the Merger interface. could be nil.
+	val interface{}
 }
 
 // NewRule creates a new, empty rule with the given kind and name.
@@ -726,16 +735,18 @@ func NewRule(kind, name string) *Rule {
 	r := &Rule{
 		stmt:    stmt{expr: call},
 		kind:    kindIdent,
-		attrs:   map[string]*bzl.AssignExpr{},
+		attrs:   map[string]attrValue{},
 		private: map[string]interface{}{},
 	}
 	if name != "" {
-		nameAttr := &bzl.AssignExpr{
-			LHS: &bzl.Ident{Name: "name"},
-			RHS: &bzl.StringExpr{Value: name},
-			Op:  "=",
-		}
-		call.List = []bzl.Expr{nameAttr}
+		nameAttr := attrValue{
+			expr: &bzl.AssignExpr{
+				LHS: &bzl.Ident{Name: "name"},
+				RHS: &bzl.StringExpr{Value: name},
+				Op:  "=",
+			},
+			val: name}
+		call.List = []bzl.Expr{nameAttr.expr}
 		r.attrs["name"] = nameAttr
 	}
 	return r
@@ -766,11 +777,11 @@ func ruleFromExpr(index int, expr bzl.Expr) *Rule {
 	}
 
 	var args []bzl.Expr
-	attrs := make(map[string]*bzl.AssignExpr)
+	attrs := make(map[string]attrValue, len(call.List))
 	for _, arg := range call.List {
 		if attr, ok := arg.(*bzl.AssignExpr); ok {
 			key := attr.LHS.(*bzl.Ident) // required by parser
-			attrs[key.Name] = attr
+			attrs[key.Name] = attrValue{expr: attr}
 		} else {
 			args = append(args, arg)
 		}
@@ -839,7 +850,7 @@ func (r *Rule) Attr(key string) bzl.Expr {
 	if !ok {
 		return nil
 	}
-	return attr.RHS
+	return attr.expr.RHS
 }
 
 // AttrString returns the value of the named attribute if it is a scalar string.
@@ -849,7 +860,7 @@ func (r *Rule) AttrString(key string) string {
 	if !ok {
 		return ""
 	}
-	str, ok := attr.RHS.(*bzl.StringExpr)
+	str, ok := attr.expr.RHS.(*bzl.StringExpr)
 	if !ok {
 		return ""
 	}
@@ -864,7 +875,7 @@ func (r *Rule) AttrStrings(key string) []string {
 	if !ok {
 		return nil
 	}
-	list, ok := attr.RHS.(*bzl.ListExpr)
+	list, ok := attr.expr.RHS.(*bzl.ListExpr)
 	if !ok {
 		return nil
 	}
@@ -883,17 +894,22 @@ func (r *Rule) DelAttr(key string) {
 	r.updated = true
 }
 
-// SetAttr adds or replaces the named attribute with an expression produced
-// by ExprFromValue.
+// SetAttr adds or replaces the named attribute with value. If the attribute is
+// mergeable, then the value must implement the Merger interface, or an error will
+// be returned.
 func (r *Rule) SetAttr(key string, value interface{}) {
 	rhs := ExprFromValue(value)
 	if attr, ok := r.attrs[key]; ok {
-		attr.RHS = rhs
+		attr.expr.RHS = rhs
+		attr.val = value
 	} else {
-		r.attrs[key] = &bzl.AssignExpr{
-			LHS: &bzl.Ident{Name: key},
-			RHS: rhs,
-			Op:  "=",
+		r.attrs[key] = attrValue{
+			expr: &bzl.AssignExpr{
+				LHS: &bzl.Ident{Name: key},
+				RHS: rhs,
+				Op:  "=",
+			},
+			val: value,
 		}
 	}
 	r.updated = true
@@ -975,8 +991,10 @@ func (r *Rule) sync() {
 	r.updated = false
 
 	for _, k := range []string{"srcs", "deps"} {
-		if attr, ok := r.attrs[k]; ok {
-			bzl.Walk(attr.RHS, sortExprLabels)
+		attr, ok := r.attrs[k]
+		_, isUnsorted := attr.val.(UnsortedStrings)
+		if ok && !isUnsorted {
+			bzl.Walk(attr.expr.RHS, sortExprLabels)
 		}
 	}
 
@@ -990,7 +1008,7 @@ func (r *Rule) sync() {
 	list := make([]bzl.Expr, 0, len(r.args)+len(r.attrs))
 	list = append(list, r.args...)
 	for _, attr := range r.attrs {
-		list = append(list, attr)
+		list = append(list, attr.expr)
 	}
 	sortedAttrs := list[len(r.args):]
 	key := func(e bzl.Expr) string { return e.(*bzl.AssignExpr).LHS.(*bzl.Ident).Name }

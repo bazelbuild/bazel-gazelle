@@ -43,6 +43,46 @@ type BzlExprValue interface {
 	BzlExpr() bzl.Expr
 }
 
+// Merger is implemented by types that can merge their data into an
+// existing Starlark expression.
+//
+// When Merge is invoked, it is responsible for returning a Starlark expression that contains the
+// result of merging its data into the previously-existing expression provided as other.
+// Note that other can be nil, if no previous attr with this name existed.
+type Merger interface {
+	Merge(other bzl.Expr) bzl.Expr
+}
+
+type SortedStrings []string
+
+func (s SortedStrings) BzlExpr() bzl.Expr {
+	list := make([]bzl.Expr, len(s))
+	for i, v := range s {
+		list[i] = &bzl.StringExpr{Value: v}
+	}
+	listExpr := &bzl.ListExpr{List: list}
+	sortExprLabels(listExpr, []bzl.Expr{})
+	return listExpr
+}
+
+func (s SortedStrings) Merge(other bzl.Expr) bzl.Expr {
+	if other == nil {
+		return s.BzlExpr()
+	}
+	merged := MergeList(s.BzlExpr(), other)
+	sortExprLabels(merged, []bzl.Expr{})
+	return merged
+}
+
+type UnsortedStrings []string
+
+func (s UnsortedStrings) Merge(other bzl.Expr) bzl.Expr {
+	if other == nil {
+		return ExprFromValue(s)
+	}
+	return MergeList(ExprFromValue(s), other)
+}
+
 // SelectStringListValue is a value that can be translated to a Bazel
 // select expression that picks a string list based on a string condition.
 type SelectStringListValue map[string][]string
