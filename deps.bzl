@@ -32,6 +32,10 @@ load(
     "//internal:go_repository_config.bzl",
     "go_repository_config",
 )
+load(
+    "//internal:is_bazel_module.bzl",
+    "is_bazel_module",
+)
 
 # Re-export go_repository . Users should get it from this file.
 go_repository = _go_repository
@@ -84,6 +88,12 @@ def gazelle_dependencies(
         name = "bazel_gazelle_go_repository_config",
         config = go_repository_default_config,
     )
+
+    is_bazel_module(
+        name = "bazel_gazelle_is_bazel_module",
+        is_bazel_module = False,
+    )
+
     _maybe(
         go_repository,
         name = "co_honnef_go_tools",
