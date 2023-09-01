@@ -23,6 +23,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
         "gazelle:build_file_name BUILD.bazel",
         "gazelle:build_file_proto_mode disable_global",
     ],
+    "github.com/googleapis/gax-go/v2": [
+        "gazelle:proto disable",
+    ],
     "github.com/googleapis/gnostic": [
         "gazelle:proto disable",
     ],
