@@ -1228,7 +1228,7 @@
       }
     },
     "@gazelle~override//:extensions.bzl%go_deps%test_dep@_~go_deps": {
-      "bzlTransitiveDigest": "ti6/wrYI3K/ecfLzekOUxKJVqza2UYx79wFadZG0AMQ=",
+      "bzlTransitiveDigest": "/K0VG842rhxf79zqsWaTHVXGr//yhT+oZy6MvwjYSKk=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
