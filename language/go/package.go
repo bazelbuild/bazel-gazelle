@@ -34,7 +34,7 @@ import (
 type goPackage struct {
 	name, dir, rel        string
 	library, binary, test goTarget
-  tests                 []goTarget
+	tests                 []goTarget
 	proto                 protoTarget
 	hasTestdata           bool
 	hasMainFunction       bool
