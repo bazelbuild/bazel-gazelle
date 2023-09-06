@@ -742,6 +742,15 @@ The following directives are recognized:
 | ``proto_library`` rules. If there are any pre-generated Go files, they will be treated as  |
 | regular Go files.                                                                          |
 +---------------------------------------------------+----------------------------------------+
+| :direc:`# gazelle:go_test mode`                   | ``default``                            |
++---------------------------------------------------+----------------------------------------+
+| Tells Gazelle how to generate rules for _test.go files. Valid values are:                  |
+|                                                                                            |
+| * ``default``: One ``go_test`` rule will be generated whose ``srcs`` includes              |
+|   all ``_test.go`` files in the directory.                                                 |
+| * ``file``: A distinct ``go_test`` rule will be generated for each ``_test.go`` file in the|
+|   package directory.                                                                       |
++---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:go_grpc_compilers`              | ``@io_bazel_rules_go//proto:go_grpc``  |
 +---------------------------------------------------+----------------------------------------+
 | The protocol buffers compiler(s) to use for building go bindings for gRPC.                 |

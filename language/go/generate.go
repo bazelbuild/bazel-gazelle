@@ -282,9 +282,8 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			g.maybePublishToolLib(r, pkg)
 			rules = append(rules, r)
 		}
-		rules = append(rules,
-			g.generateBin(pkg, libName),
-			g.generateTest(pkg, libName))
+		rules = append(rules, g.generateBin(pkg, libName))
+		rules = append(rules, g.generateTests(pkg, libName)...)
 	}
 
 	for _, r := range rules {
@@ -517,22 +516,48 @@ func (g *generator) generateBin(pkg *goPackage, library string) *rule.Rule {
 	return goBinary
 }
 
-func (g *generator) generateTest(pkg *goPackage, library string) *rule.Rule {
+func (g *generator) generateTests(pkg *goPackage, library string) []*rule.Rule {
 	gc := getGoConfig(g.c)
-	name := testNameByConvention(gc.goNamingConvention, pkg.importPath)
-	goTest := rule.NewRule("go_test", name)
-	if !pkg.test.sources.hasGo() {
-		return goTest // empty
+	tests := pkg.tests
+	if len(tests) == 0 && gc.testMode == defaultTestMode {
+		tests = []goTarget{goTarget{}}
 	}
-	var embed string
-	if pkg.test.hasInternalTest {
-		embed = library
+	var name func(goTarget) string
+	switch gc.testMode {
+	case defaultTestMode:
+		name = func(goTarget) string {
+			return testNameByConvention(gc.goNamingConvention, pkg.importPath)
+		}
+	case fileTestMode:
+		name = func(test goTarget) string {
+			if test.sources.hasGo() {
+				if srcs := test.sources.buildFlat(); len(srcs) == 1 {
+					return testNameFromSingleSource(srcs[0])
+				}
+			}
+			return testNameByConvention(gc.goNamingConvention, pkg.importPath)
+		}
 	}
-	g.setCommonAttrs(goTest, pkg.rel, nil, pkg.test, embed)
-	if pkg.hasTestdata {
-		goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
+	var res []*rule.Rule
+	for i, test := range tests {
+		goTest := rule.NewRule("go_test", name(test))
+		hasGo := test.sources.hasGo()
+		if hasGo || i == 0 {
+			res = append(res, goTest)
+			if !hasGo {
+				continue
+			}
+		}
+		var embed string
+		if test.hasInternalTest {
+			embed = library
+		}
+		g.setCommonAttrs(goTest, pkg.rel, nil, test, embed)
+		if pkg.hasTestdata {
+			goTest.SetAttr("data", rule.GlobValue{Patterns: []string{"testdata/**"}})
+		}
 	}
-	return goTest
+	return res
 }
 
 // maybePublishToolLib makes the given go_library rule public if needed for nogo.

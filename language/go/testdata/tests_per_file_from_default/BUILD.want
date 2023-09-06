@@ -1,0 +1,35 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "tests_per_file_from_default",
+    srcs = ["lib.go"],
+    _gazelle_imports = [],
+    importpath = "example.com/repo/tests_per_file_from_default",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "bar_test",
+    srcs = ["bar_test.go"],
+    _gazelle_imports = ["testing"],
+    embed = [":tests_per_file_from_default"],
+)
+
+go_test(
+    name = "external_test",
+    srcs = ["external_test.go"],
+    _gazelle_imports = [
+        "example.com/repo/tests_per_file_from_default",
+        "testing",
+    ],
+)
+
+go_test(
+    name = "foo_test",
+    srcs = ["foo_test.go"],
+    _gazelle_imports = [
+        "github.com/bazelbuild/bazel-gazelle/testtools",
+        "testing",
+    ],
+    embed = [":tests_per_file_from_default"],
+)
