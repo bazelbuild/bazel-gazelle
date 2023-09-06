@@ -36,7 +36,3 @@ def executable_extension(ctx):
     if ctx.os.name.startswith("windows"):
         extension = ".exe"
     return extension
-
-# Label instances stringify to a canonical label if and only if Bzlmod is
-# enabled.
-IS_BZLMOD_ENABLED = str(Label("//:bogus")).startswith("@@")

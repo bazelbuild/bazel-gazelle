@@ -17,8 +17,8 @@ load(
     "shell",
 )
 load(
-    "//internal:common.bzl",
-    "IS_BZLMOD_ENABLED",
+    "@bazel_gazelle_is_bazel_module//:defs.bzl",
+    "GAZELLE_IS_BAZEL_MODULE",
 )
 load(
     "//internal:go_repository.bzl",
@@ -79,7 +79,7 @@ def _gazelle_runner_impl(ctx):
         args.extend(["-go_prefix", ctx.attr.prefix])
     if ctx.attr.build_tags:
         args.extend(["-build_tags", ",".join(ctx.attr.build_tags)])
-    if IS_BZLMOD_ENABLED:
+    if GAZELLE_IS_BAZEL_MODULE:
         args.append("-bzlmod")
     args.extend([ctx.expand_location(arg, ctx.attr.data) for arg in ctx.attr.extra_args])
 
@@ -153,7 +153,7 @@ _gazelle_runner = rule(
         "data": attr.label_list(allow_files = True),
         "env": attr.string_dict(),
         "_repo_config": attr.label(
-            default = "@bazel_gazelle_go_repository_config//:WORKSPACE" if IS_BZLMOD_ENABLED else None,
+            default = "@bazel_gazelle_go_repository_config//:WORKSPACE" if GAZELLE_IS_BAZEL_MODULE else None,
             allow_single_file = True,
         ),
         "_template": attr.label(

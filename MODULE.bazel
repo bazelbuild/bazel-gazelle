@@ -22,6 +22,7 @@ use_repo(
     non_module_deps,
     "bazel_gazelle_go_repository_cache",
     "bazel_gazelle_go_repository_tools",
+    "bazel_gazelle_is_bazel_module",
 )
 
 go_deps = use_extension("//:extensions.bzl", "go_deps")
