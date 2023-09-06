@@ -287,10 +287,6 @@ func readFromTmp(tmpBzlPath string) ([]*rule.Rule, []byte, error) {
 		}
 
 		var suffix string
-		if r.Name() == "com_github_bazelbuild_buildtools" {
-			maybeRule.SetAttr("build_naming_convention", "go_default_library")
-			suffix = " build_naming_convention=go_default_library"
-		}
 		rules = append(rules, maybeRule)
 		fmt.Fprintf(workspaceDirectivesBuff, "# gazelle:repository go_repository name=%s importpath=%s%s\n",
 			r.Name(),
