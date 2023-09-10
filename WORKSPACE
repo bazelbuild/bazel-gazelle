@@ -76,7 +76,6 @@ register_unittest_toolchains()
 # gazelle:repository go_repository name=org_golang_google_genproto importpath=google.golang.org/genproto
 # gazelle:repository go_repository name=org_golang_google_grpc importpath=google.golang.org/grpc
 # gazelle:repository go_repository name=org_golang_google_protobuf importpath=google.golang.org/protobuf
-# gazelle:repository go_repository name=org_golang_x_crypto importpath=golang.org/x/crypto
 # gazelle:repository go_repository name=org_golang_x_exp importpath=golang.org/x/exp
 # gazelle:repository go_repository name=org_golang_x_lint importpath=golang.org/x/lint
 # gazelle:repository go_repository name=org_golang_x_mod importpath=golang.org/x/mod
