@@ -117,11 +117,14 @@ func fileContainsGoBinary(c *config.Config, f *rule.File) bool {
 	}
 	for _, r := range f.Rules {
 		kind := r.Kind()
-		if mappedKind, ok := c.KindMap[kind]; ok {
-			kind = mappedKind.KindName
-		}
 		if kind == "go_binary" {
 			return true
+		}
+
+		if mappedKind, ok := c.KindMap["go_binary"]; ok {
+			if mappedKind.KindName == kind {
+				return true
+			}
 		}
 	}
 	return false
