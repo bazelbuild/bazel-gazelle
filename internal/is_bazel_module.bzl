@@ -14,7 +14,15 @@
 
 def _is_bazel_module_impl(repository_ctx):
     repository_ctx.file("WORKSPACE")
-    repository_ctx.file("BUILD")
+    repository_ctx.file("BUILD", """\
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+bzl_library(
+    name = "defs",
+    srcs = ["defs.bzl"],
+    visibility = ["//visibility:public"],
+)
+""")
     repository_ctx.file("defs.bzl", "GAZELLE_IS_BAZEL_MODULE = {}".format(
         repr(repository_ctx.attr.is_bazel_module),
     ))

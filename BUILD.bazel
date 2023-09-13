@@ -98,6 +98,7 @@ bzl_library(
         "//internal:go_repository",
         "//internal:overlay_repository",
         "//internal/generationtest",
+        "@bazel_gazelle_is_bazel_module//:defs",
         "@bazel_skylib//lib:shell",
     ],
 )
