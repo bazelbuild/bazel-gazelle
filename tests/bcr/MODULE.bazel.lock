@@ -966,7 +966,7 @@
       }
     },
     "@gazelle~override//internal/bzlmod:non_module_deps.bzl%non_module_deps": {
-      "bzlTransitiveDigest": "idtJXxcHUd75fcvggtK/s6naCFjcaysxF0U5OKBm2LE=",
+      "bzlTransitiveDigest": "wdirRXKNPbbln3dfsr2tlza6Y8itKEhUmqgQx8l634g=",
       "accumulatedFileDigests": {},
       "envVariables": {},
       "generatedRepoSpecs": {
