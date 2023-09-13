@@ -1023,7 +1023,7 @@
         "@@rules_go~0.41.0//:go.mod": "a7143f329c2a3e0b983ce74a96c0c25b0d0c59d236d75f7e1b069aadd988d55e",
         "@@circl~1.3.3//:go.sum": "c895d918735c8cff9d877af70b1177c11b456e87b5a6a9aec025ddae0090300b",
         "@@gazelle~override//:go.mod": "e915e3f980bea175c80cc30fa7433e69f1251a9ce03046579d7b24588a93e75f",
-        "@@gazelle~override//:go.sum": "afb3c20626470bff206a91f35b0994f514f7a05ca44d9105f5ccb84e0d3ca197",
+        "@@gazelle~override//:go.sum": "605cac5a9f03f40e96fcce1bd86a71ed803cb6ef335031e40ddd438024772707",
         "@@rules_go~0.41.0//:go.sum": "022d36c9ebcc7b5dee1e9b85b3da9c9f3a529ee6f979946d66e4955b8d54614a"
       },
       "envVariables": {},
