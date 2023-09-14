@@ -185,6 +185,7 @@ def _go_repository_impl(ctx):
         fail("one of urls, commit, tag, or importpath must be specified")
 
     env = read_cache_env(ctx, go_env_cache)
+    print(env)
     env_keys = [
         # Respect user proxy and sumdb settings for privacy.
         # TODO(jayconrod): gazelle in go_repository mode should probably
