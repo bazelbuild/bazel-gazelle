@@ -730,8 +730,9 @@ type attrValue struct {
 
 // NewRule creates a new, empty rule with the given kind and name.
 func NewRule(kind, name string) *Rule {
-	kindIdent := &bzl.Ident{Name: kind}
+	kindIdent := createDotExpr(kind)
 	call := &bzl.CallExpr{X: kindIdent}
+
 	r := &Rule{
 		stmt:    stmt{expr: call},
 		kind:    kindIdent,
@@ -750,6 +751,47 @@ func NewRule(kind, name string) *Rule {
 		r.attrs["name"] = nameAttr
 	}
 	return r
+}
+
+// Creates `bzl.Expr` for a kind which
+// is either `*bzl.DotExpr` or `*bzl.Ident`.
+//
+// For `myKind` kind it returns:
+//  &bzl.Ident{
+//      Name: "myKind"
+//  }
+//
+// For `myKind.inner` kind it returns:
+//  &bzl.DotExpr{
+//      Name: "inner",
+//      X: &bzl.Ident {
+//          Name: "myKind"
+//      }
+//  }
+func createDotExpr(kind string) bzl.Expr {
+	var expr bzl.Expr
+	parts := strings.Split(kind, ".")
+
+	if len(parts) > 1 {
+		// last `parts` element is the main bzl.DotExpr
+		var dotExpr *bzl.DotExpr = &bzl.DotExpr{Name: parts[len(parts)-1]}
+
+		_pDot := dotExpr
+
+		for idx := len(parts) - 2; idx > 0; idx-- {
+			d := &bzl.DotExpr{Name: parts[idx]}
+			_pDot.X = d
+			_pDot = d
+		}
+
+		// first `parts` element is the identifier
+		_pDot.X = &bzl.Ident{Name: parts[0]}
+		expr = dotExpr
+	} else {
+		expr = &bzl.Ident{Name: kind}
+	}
+
+	return expr
 }
 
 func isNestedDotOrIdent(expr bzl.Expr) bool {
@@ -999,7 +1041,9 @@ func (r *Rule) sync() {
 	}
 
 	call := r.expr.(*bzl.CallExpr)
-	call.X = r.kind
+
+	// update `call.X` (e.g.: "# gazelle:map_kind")
+	call.X = createDotExpr(r.Kind())
 
 	if len(r.attrs) > 1 {
 		call.ForceMultiLine = true

@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "test_load_for_packed_rules",
+    srcs = ["lang.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/internal/language/test_load_for_packed_rules",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//config",
+        "//label",
+        "//language",
+        "//repo",
+        "//resolve",
+        "//rule",
+    ],
+)
+
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        "BUILD.bazel",
+        "lang.go",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "go_default_library",
+    actual = ":test_load_for_packed_rules",
+    visibility = ["//:__subpackages__"],
+)

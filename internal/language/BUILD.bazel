@@ -4,6 +4,7 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "//internal/language/test_filegroup:all_files",
+        "//internal/language/test_load_for_packed_rules:all_files",
         "//internal/language/test_loads_from_flag:all_files",
     ],
     visibility = ["//visibility:public"],
