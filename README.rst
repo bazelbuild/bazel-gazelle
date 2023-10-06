@@ -104,6 +104,8 @@ Gazelle can generate Bazel BUILD files for many languages:
   generating ``java_library``, ``java_binary``, ``java_test``, and ``java_test_suite`` rules.
 
 * JavaScript / TypeScript
+  
+  Aspect provides JavaScript and TypeScript support in aspect-cli (also usable separately)
 
   BenchSci's `rules_nodejs_gazelle`_ supports generating `ts_project`, `js_library`, `jest_test`,
   and `web_asset` rules, and is able to support module bundlers like Webpack and Next.js
