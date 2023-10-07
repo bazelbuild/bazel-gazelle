@@ -43,6 +43,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/googleapis/gnostic": [
         "gazelle:proto disable",
     ],
+    "github.com/googleapis/gnostic-models": [
+        "gazelle:proto disable",
+    ],
     "google.golang.org/grpc": [
         "gazelle:proto disable",
     ],
