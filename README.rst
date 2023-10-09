@@ -4,6 +4,7 @@ Gazelle build file generator
 .. All external links are here
 .. _a gazelle extension: https://github.com/bazel-contrib/rules_jvm/tree/main/java/gazelle
 .. _Kotlin Support: https://github.com/aspect-build/aspect-cli/blob/main/gazelle/kotlin/
+.. _JavaScript and TypeScript Support: https://github.com/aspect-build/aspect-cli/blob/main/gazelle/js/
 .. _Architecture of Gazelle: Design.rst
 .. _Repository rules: repository.md
 .. _go_repository: repository.md#go_repository
@@ -105,7 +106,7 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * JavaScript / TypeScript
   
-  Aspect provides JavaScript and TypeScript support in aspect-cli (also usable separately)
+  Aspect provides `JavaScript and TypeScript Support`_ in aspect-cli (also usable separately).
 
   BenchSci's `rules_nodejs_gazelle`_ supports generating `ts_project`, `js_library`, `jest_test`,
   and `web_asset` rules, and is able to support module bundlers like Webpack and Next.js
@@ -114,8 +115,7 @@ Gazelle can generate Bazel BUILD files for many languages:
 * Kotlin
 
   Aspect Build provides some `Kotlin Support`_ in the repo of their aspect-cli (also usable separately).
-  Still under development, please check the README for
-  currently available features.
+  Still under development, please check the README for currently available features.
 
 * Protocol Buffers
 
