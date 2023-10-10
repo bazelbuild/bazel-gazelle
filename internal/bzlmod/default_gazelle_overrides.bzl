@@ -59,3 +59,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
         "gazelle:proto disable",
     ],
 }
+
+DEFAULT_BUILD_EXTRA_ARGS_BY_PATH = {
+    "github.com/census-instrumentation/opencensus-proto": [
+        "-exclude=src",
+    ],
+}

@@ -16,6 +16,7 @@ load("//internal:go_repository.bzl", "go_repository")
 load(":go_mod.bzl", "deps_from_go_mod", "sums_from_go_mod")
 load(
     ":default_gazelle_overrides.bzl",
+    "DEFAULT_BUILD_EXTRA_ARGS_BY_PATH",
     "DEFAULT_BUILD_FILE_GENERATION_BY_PATH",
     "DEFAULT_DIRECTIVES_BY_PATH",
 )
@@ -93,7 +94,7 @@ def _get_patches(path, module_overrides):
     override = module_overrides.get(path)
     if override:
         return override.patches
-    return []
+    return DEFAULT_BUILD_EXTRA_ARGS_BY_PATH.get(path, [])
 
 def _get_patch_args(path, module_overrides):
     override = module_overrides.get(path)

@@ -1015,7 +1015,7 @@
       }
     },
     "@gazelle~override//:extensions.bzl%go_deps": {
-      "bzlTransitiveDigest": "UbsXI/pKqJGKgGEvF3NdJeiekaFnMih9dP4U4/mP89A=",
+      "bzlTransitiveDigest": "dtNBKTx0oxsD0FtL0HK1lPZPkGpFrAGsDAfsWMKaZK4=",
       "accumulatedFileDigests": {
         "@@//:go.mod": "8e62c686b94b37593b38766d425ceccbf86a9b07c0121feaaf42293050a42ae3",
         "@@circl~1.3.3//:go.mod": "68b12e4662bb0639728490153ffc52d8bdd63be558bdd41bcb0d8f1eeeb03e41",
