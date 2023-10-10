@@ -81,7 +81,7 @@ def _get_build_extra_args(path, gazelle_overrides):
     if override:
         return override.build_extra_args
 
-    return []
+    return DEFAULT_BUILD_EXTRA_ARGS_BY_PATH.get(path, [])
 
 def _get_directives(path, gazelle_overrides):
     override = gazelle_overrides.get(path)
@@ -94,7 +94,7 @@ def _get_patches(path, module_overrides):
     override = module_overrides.get(path)
     if override:
         return override.patches
-    return DEFAULT_BUILD_EXTRA_ARGS_BY_PATH.get(path, [])
+    return []
 
 def _get_patch_args(path, module_overrides):
     override = module_overrides.get(path)
