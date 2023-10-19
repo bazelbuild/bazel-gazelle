@@ -82,6 +82,10 @@ func Parse(s string) (Label, error) {
 
 	relative := true
 	var repo string
+	// if target name begins @@ drop the first @
+	if strings.HasPrefix(s, "@@") {
+		s = s[len("@"):]
+	}
 	if strings.HasPrefix(s, "@") {
 		relative = false
 		endRepo := strings.Index(s, "//")
