@@ -33,6 +33,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/google/gnostic": [
         "gazelle:proto disable",
     ],
+    "github.com/google/gnostic-models": [
+        "gazelle:proto disable",
+    ],
     "github.com/google/safetext": [
         "gazelle:build_file_name BUILD.bazel",
         "gazelle:build_file_proto_mode disable_global",
@@ -41,9 +44,6 @@ DEFAULT_DIRECTIVES_BY_PATH = {
         "gazelle:proto disable",
     ],
     "github.com/googleapis/gnostic": [
-        "gazelle:proto disable",
-    ],
-    "github.com/googleapis/gnostic-models": [
         "gazelle:proto disable",
     ],
     "google.golang.org/grpc": [
