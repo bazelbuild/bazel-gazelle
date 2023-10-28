@@ -16,6 +16,7 @@ load("//internal:go_repository.bzl", "go_repository")
 load(":go_mod.bzl", "deps_from_go_mod", "sums_from_go_mod")
 load(
     ":default_gazelle_overrides.bzl",
+    "DEFAULT_BUILD_EXTRA_ARGS_BY_PATH",
     "DEFAULT_BUILD_FILE_GENERATION_BY_PATH",
     "DEFAULT_DIRECTIVES_BY_PATH",
 )
@@ -75,6 +76,12 @@ def _get_build_file_generation(path, gazelle_overrides):
 
     return DEFAULT_BUILD_FILE_GENERATION_BY_PATH.get(path, "auto")
 
+def _get_build_extra_args(path, gazelle_overrides):
+    override = gazelle_overrides.get(path)
+    if override:
+        return override.build_extra_args
+    return DEFAULT_BUILD_EXTRA_ARGS_BY_PATH.get(path, [])
+
 def _get_directives(path, gazelle_overrides):
     override = gazelle_overrides.get(path)
     if override:
@@ -131,6 +138,7 @@ def _process_gazelle_override(gazelle_override_tag):
     return struct(
         directives = gazelle_override_tag.directives,
         build_file_generation = gazelle_override_tag.build_file_generation,
+        build_extra_args = gazelle_override_tag.build_extra_args,
     )
 
 def _process_module_override(module_override_tag):
@@ -374,6 +382,7 @@ def _go_deps_impl(module_ctx):
             "importpath": path,
             "build_directives": _get_directives(path, gazelle_overrides),
             "build_file_generation": _get_build_file_generation(path, gazelle_overrides),
+            "build_extra_args": _get_build_extra_args(path, gazelle_overrides),
             "patches": _get_patches(path, module_overrides),
             "patch_args": _get_patch_args(path, module_overrides),
         }
@@ -526,6 +535,12 @@ _gazelle_override_tag = tag_class(
                 "off",
                 "on",
             ],
+        ),
+        "build_extra_args": attr.string_list(
+            default = [],
+            doc = """
+            A list of additional command line arguments to pass to Gazelle when generating build files.
+            """,
         ),
         "directives": attr.string_list(
             doc = """Gazelle configuration directives to use for this Go module's external repository.
