@@ -80,7 +80,6 @@ def _get_build_extra_args(path, gazelle_overrides):
     override = gazelle_overrides.get(path)
     if override:
         return override.build_extra_args
-
     return DEFAULT_BUILD_EXTRA_ARGS_BY_PATH.get(path, [])
 
 def _get_directives(path, gazelle_overrides):
