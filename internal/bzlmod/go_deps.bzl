@@ -94,7 +94,11 @@ def _get_patch_args(path, module_overrides):
         return ["-p{}".format(override.patch_strip)]
     return []
 
-def _repo_name(importpath):
+def _repo_name(module_tag):
+    if module_tag.repo_name and module_tag.repo_name != "":
+        return module_tag.repo_name
+
+    importpath = module_tag.path
     path_segments = importpath.split("/")
     segments = reversed(path_segments[0].split(".")) + path_segments[1:]
     candidate_name = "_".join(segments).replace("-", "_")
@@ -298,7 +302,7 @@ def _go_deps_impl(module_ctx):
             version = semver.to_comparable(raw_version)
             if module_tag.path not in module_resolutions or version > module_resolutions[module_tag.path].version:
                 module_resolutions[module_tag.path] = struct(
-                    repo_name = _repo_name(module_tag.path),
+                    repo_name = _repo_name(module_tag),
                     version = version,
                     raw_version = raw_version,
                 )
@@ -475,6 +479,11 @@ _module_tag = tag_class(
         ),
         "build_naming_convention": attr.string(doc = """Removed, do not use""", default = ""),
         "build_file_proto_mode": attr.string(doc = """Removed, do not use""", default = ""),
+        "repo_name": attr.string(
+            doc = """The name of the repository to be created for this Go module.
+            If not specified, a name will be generated from the module path.""",
+            mandatory = False,
+        ),
     },
 )
 
