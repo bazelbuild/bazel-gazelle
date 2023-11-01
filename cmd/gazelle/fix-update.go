@@ -46,14 +46,14 @@ import (
 // update commands. This includes everything in config.Config, but it also
 // includes some additional fields that aren't relevant to other packages.
 type updateConfig struct {
-	dirs           []string
-	emit           emitFunc
-	repos          []repo.Repo
-	workspaceFiles []*rule.File
-	walkMode       walk.Mode
-	patchPath      string
-	patchBuffer    bytes.Buffer
-	print0         bool
+	dirs                          []string
+	emit                          emitFunc
+	repos                         []repo.Repo
+	workspaceFiles                []*rule.File
+	walkMode                      walk.Mode
+	patchPath                     string
+	patchBuffer                   bytes.Buffer
+	print0                        bool
 	readIndexFile, writeIndexFile string
 }
 
@@ -313,7 +313,8 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 
 	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)
 	if uc.readIndexFile != "" {
-		err := ruleIndex.ReadFromFile(uc.readIndexFile, walk.NewUpdateFilter(c.RepoRoot, uc.dirs, uc.walkMode).ShouldIndex)
+		exclude := walk.NewUpdateFilter(c.RepoRoot, uc.dirs, uc.walkMode).ShouldIndex
+		err := ruleIndex.ReadFromFile(uc.readIndexFile, exclude)
 		if err != nil {
 			return err
 		}

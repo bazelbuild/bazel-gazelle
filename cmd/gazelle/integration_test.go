@@ -22,7 +22,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -2038,7 +2037,7 @@ my_go_binary(
 `,
 		},
 		{
-			Path:    "enabled/multiple_mappings/multiple_mappings.go",
+			Path: "enabled/multiple_mappings/multiple_mappings.go",
 			Content: `
 package main
 
@@ -3046,7 +3045,7 @@ github.com/selvatico/go-mocket v1.0.7/go.mod h1:7bSWzuNieCdUlanCVu3w0ppS0LvDtPAZ
 	if err := runGazelle(dir, args); err == nil {
 		t.Fatal("expected error, got nil")
 	} else if err.Error() != errMsg {
-		t.Error(fmt.Sprintf("want %s, got %s", errMsg, err.Error()))
+		t.Errorf("want %s, got %s", errMsg, err.Error())
 	}
 }
 
@@ -4514,4 +4513,131 @@ require (
 	} else if string(got) != want {
 		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
 	}
+}
+
+// TestExperimentalPersistentIndex tests that the experimental persistent index
+// feature works as expected. It performs several steps:
+//  1. Set up a workspace with two directories, where b depends on a.
+//  2. Run Gazelle on the workspace, exporting the index. This should create
+//     BUILD files for both a and b, and write the index to disk.
+//  3. Modify the label for a in its BUILD file, but rerun Gazelle on only b.
+//     This should not modify b's BUILD file, since Gazelle is using the (stale)
+//     index.
+//  4. Rerun Gazelle on a, using the index. This should update the index, but not
+//     modify b's BUILD file.
+//  5. Using the new index, rerun Gazelle on b. This should update b's BUILD file
+//     to use the new label for a.
+func TestExperimentalPersistentIndex(t *testing.T) {
+	dir, cleanup := testtools.CreateFiles(t, []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{
+			Path:    "a/a.go",
+			Content: `package a`,
+		},
+		{
+			Path: "b/b.go",
+			Content: `
+package b
+
+import _ "example.com/foo/a"
+`,
+		},
+	})
+
+	t.Cleanup(cleanup)
+
+	index_path := filepath.Join(dir, "index.json")
+
+	args := []string{
+		"update",
+		"-go_prefix=example.com/foo",
+		"-experimental_write_index_path=" + index_path,
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	// Confirm that the index file was written
+	// var indexData string
+	if got, err := os.ReadFile(index_path); err != nil {
+		t.Fatal(err)
+	} else {
+		if len(got) < 10 {
+			t.Errorf("index file seems to be empty: %s", string(got))
+		}
+	}
+
+	buildA := testtools.FileSpec{
+		Path: "a/BUILD.bazel", Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "a",
+    srcs = ["a.go"],
+    importpath = "example.com/foo/a",
+    visibility = ["//visibility:public"],
+)
+`}
+	buildB := testtools.FileSpec{
+		Path: "b/BUILD.bazel", Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "b",
+    srcs = ["b.go"],
+    importpath = "example.com/foo/b",
+    visibility = ["//visibility:public"],
+    deps = ["//a"],
+)
+`}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{buildA, buildB})
+
+	// Modify the BUILD file file for a to have a different label, but use the old index and don't notify Gazelle about this fact.
+	newBuildA := buildA
+	newBuildA.Content = strings.ReplaceAll(newBuildA.Content, `"a"`, `"a_new"`)
+
+	if err := os.WriteFile(filepath.Join(dir, "a/BUILD.bazel"), []byte(newBuildA.Content), 0666); err != nil {
+		t.Fatal(err)
+	}
+
+	updateBArgs := []string{
+		"update",
+		"-go_prefix=example.com/foo",
+		"-experimental_read_index_path=" + index_path,
+		"b/",
+	}
+	if err := runGazelle(dir, updateBArgs); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that Gazelle has not modified buildB (because it didn't scan a/).
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{newBuildA, buildB})
+
+	// This time, tell Gazelle to scan a/. It should notice that the label has change, and update
+	// the index. Because we're not processing b/, that change won't be reflected in b/BUILD.bazel.
+	updateAArgs := []string{
+		"update",
+		"-go_prefix=example.com/foo",
+		"-experimental_read_index_path=" + index_path,
+		"-experimental_write_index_path=" + index_path,
+		"a/",
+	}
+	if err := runGazelle(dir, updateAArgs); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{newBuildA, buildB})
+
+	// Now, run Gazelle on b/ with the index again. It should notice that the label has changed,
+	// and update b/BUILD.bazel
+
+	if err := runGazelle(dir, updateBArgs); err != nil {
+		t.Fatal(err)
+	}
+
+	newBuildB := buildB
+	newBuildB.Content = strings.ReplaceAll(newBuildB.Content, `"//a"`, `"//a:a_new"`)
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{newBuildA, newBuildB})
 }

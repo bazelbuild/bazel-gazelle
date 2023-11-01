@@ -175,6 +175,10 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	ix.indexRule(record)
 }
 
+// Deprecated
+// Finish is a no-op. It is kept for compatibility with old code
+func (ix *RuleIndex) Finish() {}
+
 func (ix *RuleIndex) indexRule(record *ruleRecord) {
 	ix.labelMap[record.Label] = record
 	for _, spec := range record.ImportedAs {
@@ -249,24 +253,24 @@ targets:
 // If start is of length 1, the provided starting point will always be the first element in the result.
 // If reverse is true, it instead returns the transitive set of labels embedding the provided rule.
 func (ix *RuleIndex) walkEmbeddingGraph(start []label.Label, reverse bool) []label.Label {
-	var results []label.Label
-
 	// Perform graph traversal, starting with a copy of the starting slice provided.
-	// Frontier tracks the set of labels that need to be explored, and explored tracks those
-	// that already have.
-	// As a future performance improvement, this would benefit from a fast-path to avoid allocation
-	// if there's no embedding on any provided labels.
-	frontier := append([]label.Label(nil), start...)
-	explored := make(map[label.Label]bool)
 
-	for len(frontier) > 0 {
-		target := frontier[len(frontier)-1]
-		frontier = frontier[:len(frontier)-1]
-		if explored[target] {
-			continue
-		}
-		results = append(results, target)
-		explored[target] = true
+	// results contains the set of labels that have been found so far.
+	// Elements before exploredIdx have been fully explored and their children are also in results.
+	// Elements at or after exploredIdx are in the "frontier".
+	//
+	// If we need to append things to results, we will first make a copy of the slice to avoid
+	// modifying the backing array of the input slice.
+	results := start
+	exploredIdx := 0
+
+	// This is a set representation of results, used to avoid adding duplicate entries. It's initialized
+	// lazily, as an optimization to avoid allocating if none of the rules have children.
+	var results_set map[label.Label]bool
+
+	for exploredIdx < len(results) {
+		target := results[exploredIdx]
+		exploredIdx += 1
 
 		record := ix.labelMap[target]
 
@@ -277,7 +281,24 @@ func (ix *RuleIndex) walkEmbeddingGraph(start []label.Label, reverse bool) []lab
 			children = record.Embeds
 		}
 
-		frontier = append(frontier, children...)
+		if len(children) > 0 {
+			// Initialize results_set and copy the results slice if needed
+			if results_set == nil {
+				results_set = make(map[label.Label]bool)
+				for _, l := range results {
+					results_set[l] = true
+				}
+				results = append([]label.Label{}, results...)
+			}
+
+			// Add the children into results if not already present
+			for _, child := range children {
+				if !results_set[child] {
+					results_set[child] = true
+					results = append(results, child)
+				}
+			}
+		}
 	}
 
 	return results
@@ -353,6 +374,8 @@ func (ix *RuleIndex) WriteToFile(path string) error {
 		contents.Data = append(contents.Data, v)
 	}
 
+	// TODO(eric-skydio): Add a Compare() method to Label in order to avoid the
+	// allocations here.
 	sort.Slice(contents.Data, func(i, j int) bool {
 		return contents.Data[i].Label.String() < contents.Data[j].Label.String()
 	})
@@ -360,7 +383,7 @@ func (ix *RuleIndex) WriteToFile(path string) error {
 	encoder := json.NewEncoder(f)
 	encoder.SetIndent("", "    ")
 
-	err = encoder.Encode(contents.Data)
+	err = encoder.Encode(contents)
 	if err != nil {
 		return err
 	}
@@ -393,7 +416,7 @@ func (ix *RuleIndex) ReadFromFile(path string, exclude func(string) bool) error 
 	}
 
 	for _, v := range contents.Data {
-		if exclude(v.Pkg) {
+		if exclude != nil && exclude(v.Pkg) {
 			continue
 		}
 		ix.indexRule(v)

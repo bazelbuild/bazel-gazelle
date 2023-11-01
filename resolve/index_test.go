@@ -1,8 +1,22 @@
+/* Copyright 2018 The Bazel Authors. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package resolve_test
 
 import (
 	"path"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -11,6 +25,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/repo"
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"github.com/google/go-cmp/cmp"
 )
 
 // testResolver implements the resolve.Resolve interface, with a configurable language name and
@@ -115,8 +130,8 @@ test(
 	loaded.ReadFromFile(savedFile, nil)
 
 	indexes := []struct {
-		name  string
-		index *resolve.RuleIndex
+		name      string
+		ruleIndex *resolve.RuleIndex
 	}{
 		{"parsed", ix},
 		{"loaded", loaded},
@@ -126,7 +141,7 @@ test(
 		t.Run(index.name, func(t *testing.T) {
 			for _, tC := range testCases {
 				t.Run(tC.desc, func(t *testing.T) {
-					got := ix.FindRulesByImport(tC.query, tC.lang)
+					got := index.ruleIndex.FindRulesByImport(tC.query, tC.lang)
 					var gotNames []string
 					var gotEmbeds [][]string
 					for _, val := range got {
@@ -138,11 +153,11 @@ test(
 						gotEmbeds = append(gotEmbeds, embeds)
 					}
 
-					if !reflect.DeepEqual(gotNames, tC.wantNames) {
+					if !cmp.Equal(gotNames, tC.wantNames) {
 						t.Errorf("Querying for rule %v: expected %v got %v", tC.query, tC.wantNames, gotNames)
 					}
 
-					if tC.wantEmbeds != nil && !reflect.DeepEqual(gotEmbeds, tC.wantEmbeds) {
+					if tC.wantEmbeds != nil && !cmp.Equal(gotEmbeds, tC.wantEmbeds) {
 						t.Errorf("Embeds for query %v: expected %v got %v", tC.query, tC.wantEmbeds, gotEmbeds)
 					}
 				})
