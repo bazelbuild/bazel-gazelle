@@ -3,7 +3,6 @@ matrix:
   platform:
     - ubuntu2204
     - macos
-    - windows
 
 tasks:
   ubuntu2204:
@@ -39,6 +38,31 @@ tasks:
     test_flags:
     # See above.
     - "--lockfile_mode=error"
+    build_targets:
+    - "//..."
+    - "//:gazelle"
+    test_targets:
+    # Specify this target explicitly to verify that Gazelle generated it correctly.
+    - "//pkg:pkg_test"
+    - "//..."
+    - "@test_dep//..."
+  bcr_test_windows:
+    name: BCR test on Windows
+    platform: windows
+    working_directory: tests/bcr
+    shell_commands:
+    # Regenerate the BUILD file for the test module using Gazelle.
+    # Also verify -repo_config are generated correctly in gazelle.bash
+    - rm pkg/BUILD.bazel
+    - bazel run //:gazelle -- update pkg
+    - bazel run //:gazelle -- pkg
+    build_flags:
+    # Since go_sdk is platform-dependent, the lockfile will differ between
+    # platforms. We will skip the check on windows.
+    - "--lockfile_mode=update"
+    test_flags:
+    # See above.
+    - "--lockfile_mode=update"
     build_targets:
     - "//..."
     - "//:gazelle"
