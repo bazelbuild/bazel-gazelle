@@ -157,6 +157,7 @@ The generation test expects a file structure like the following:
     |-- some_test
         |-- WORKSPACE
         |-- README.md --&gt; README describing what the test does.
+        |-- arguments.txt --&gt; newline delimited list of arguments to pass in (ignored if empty).
         |-- expectedStdout.txt --&gt; Expected stdout for this test.
         |-- expectedStderr.txt --&gt; Expected stderr for this test.
         |-- expectedExitCode.txt --&gt; Expected exit code for this test.
