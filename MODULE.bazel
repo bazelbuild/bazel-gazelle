@@ -1,12 +1,12 @@
 module(
     name = "gazelle",
-    version = "0.33.0",
+    version = "0.34.0",
     repo_name = "bazel_gazelle",
 )
 
 bazel_dep(name = "bazel_skylib", version = "1.3.0")
 bazel_dep(name = "protobuf", version = "3.19.6", repo_name = "com_google_protobuf")
-bazel_dep(name = "rules_go", version = "0.41.0", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "rules_go", version = "0.42.0", repo_name = "io_bazel_rules_go")
 bazel_dep(name = "rules_proto", version = "4.0.0")
 
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
@@ -32,8 +32,8 @@ go_deps.from_file(go_mod = "//:go.mod")
 # but bazel buildtools and nogo depend on it.
 go_deps.module(
     path = "golang.org/x/tools",
-    sum = "h1:8WMNJAz3zrtPmnYC7ISf5dEn3MT0gY7jBJfw27yrrLo=",
-    version = "v0.9.1",
+    sum = "h1:Iey4qkscZuv0VvIt8E0neZjtPVQFSc870HQ448QgEmQ=",
+    version = "v0.13.0",
 )
 use_repo(
     go_deps,
