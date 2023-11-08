@@ -2,7 +2,6 @@ bcr_test_module:
   module_path: tests/bcr
   matrix:
     platform:
-      - centos7
       - debian10
       - ubuntu2004
       - macos
