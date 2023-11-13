@@ -59,6 +59,10 @@ go_deps.archive_override(
     urls = [
         "https://github.com/bazelbuild/buildtools/archive/ae8e3206e815d086269eb208b01f300639a4b194.tar.gz",
     ],
+    patch_strip = 1,
+    patches = [
+        "//patches:buildtools.patch",
+    ],
     strip_prefix = "buildtools-ae8e3206e815d086269eb208b01f300639a4b194",
     path = "github.com/bazelbuild/buildtools",
     sha256 = "05d7c3d2bd3cc0b02d15672fefa0d6be48c7aebe459c1c99dced7ac5e598508f",

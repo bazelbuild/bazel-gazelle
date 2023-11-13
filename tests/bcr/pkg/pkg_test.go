@@ -73,3 +73,7 @@ func TestArchiveOverrideUsed(t *testing.T) {
 	label := labels.Parse("@com_github_bazelbuild_buildtools//labels:labels")
 	require.NotEmpty(t, label)
 }
+
+func TestArchiveOverrideWithPatch(t *testing.T) {
+	require.Equal(t, labels.Patched, "hello")
+}
