@@ -16,7 +16,7 @@ visibility([
     "//tests/bzlmod/...",
 ])
 
-def prefetch_files(modile_ctx, go_mod_label):
+def prefetch_files(module_ctx, go_mod_label):
     go_mod_path = module_ctx.path(go_mod_label)
     go_sum_path = module_ctx.path(go_mod_path.dirname.get_child("go.sum"))
     if go_sum_path.exists:
