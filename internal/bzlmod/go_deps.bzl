@@ -196,6 +196,10 @@ def _noop(_):
     pass
 
 def _go_deps_impl(module_ctx):
+    for module in module_ctx.modules:
+        for from_file_tag in module.tags.from_file:
+            prefetch_files(from_file_tag.go_mod)
+    
     module_resolutions = {}
     sums = {}
     replace_map = {}
