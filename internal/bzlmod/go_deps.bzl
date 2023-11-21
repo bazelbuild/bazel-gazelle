@@ -64,6 +64,13 @@ def _fail_on_duplicate_overrides(path, module_name, overrides):
     if path in overrides:
         fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(path, module_name))
 
+def _fail_on_unmatched_overrides(override_keys, resolutions, override_name):
+    unmatched_overrides = [path for path in override_keys if path not in resolutions]
+    if unmatched_overrides:
+        fail("Some {} did not target a Go module with a matching path: {}".format(
+            override_name, ", ".join(unmatched_overrides)
+        ))
+
 def _check_directive(directive):
     if directive.startswith("gazelle:") and " " in directive and not directive[len("gazelle:"):][0].isspace():
         return
@@ -313,13 +320,9 @@ def _go_deps_impl(module_ctx):
                     raw_version = raw_version,
                 )
 
-    unmatched_gazelle_overrides = []
-    for path in gazelle_overrides.keys():
-        if path not in module_resolutions:
-            unmatched_gazelle_overrides.append(path)
-    if unmatched_gazelle_overrides:
-        fail("Some gazelle_overrides did not target a Go module with a matching path: {}"
-            .format(", ".join(unmatched_gazelle_overrides)))
+    _fail_on_unmatched_overrides(archive_overrides.keys(), module_resolutions, "archive_overrides")
+    _fail_on_unmatched_overrides(gazelle_overrides.keys(), module_resolutions, "gazelle_overrides")
+    _fail_on_unmatched_overrides(module_overrides.keys(), module_resolutions, "module_overrides")
 
     # All `replace` directives are applied after version resolution.
     # We can simply do this by checking the replace paths' existence

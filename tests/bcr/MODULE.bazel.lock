@@ -1339,7 +1339,7 @@
     },
     "@gazelle~override//:extensions.bzl%go_deps": {
       "general": {
-        "bzlTransitiveDigest": "hxVTSAg3X82nHfibhRDy0s6HkpFt+/TM4p5q9fgmPj8=",
+        "bzlTransitiveDigest": "L3AZyX5+0E4G4CLl2qHH0wR716rVmra4pU+jYAVPz4A=",
         "accumulatedFileDigests": {
           "@@//:go.mod": "8e62c686b94b37593b38766d425ceccbf86a9b07c0121feaaf42293050a42ae3",
           "@@circl~1.3.3//:go.mod": "68b12e4662bb0639728490153ffc52d8bdd63be558bdd41bcb0d8f1eeeb03e41",
@@ -1893,7 +1893,7 @@
     },
     "@gazelle~override//:extensions.bzl%go_deps%test_dep@_~go_deps": {
       "general": {
-        "bzlTransitiveDigest": "hxVTSAg3X82nHfibhRDy0s6HkpFt+/TM4p5q9fgmPj8=",
+        "bzlTransitiveDigest": "L3AZyX5+0E4G4CLl2qHH0wR716rVmra4pU+jYAVPz4A=",
         "accumulatedFileDigests": {},
         "envVariables": {},
         "generatedRepoSpecs": {
