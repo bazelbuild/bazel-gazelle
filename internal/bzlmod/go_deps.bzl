@@ -152,6 +152,8 @@ def _process_archive_override(archive_override_tag):
         urls = archive_override_tag.urls,
         sha256 = archive_override_tag.sha256,
         strip_prefix = archive_override_tag.strip_prefix,
+        patches = archive_override_tag.patches,
+        patch_strip = archive_override_tag.patch_strip,
     )
 
 def _extension_metadata(module_ctx, *, root_module_direct_deps, root_module_direct_dev_deps):
@@ -393,6 +395,8 @@ def _go_deps_impl(module_ctx):
                 "urls": archive_override.urls,
                 "strip_prefix": archive_override.strip_prefix,
                 "sha256": archive_override.sha256,
+                "patches": _get_patches(path, archive_overrides),
+                "patch_args": _get_patch_args(path, archive_overrides),
             })
         else:
             go_repository_args.update({
@@ -509,6 +513,13 @@ _archive_override_tag = tag_class(
             doc = """If the repository is downloaded via HTTP (`urls` is set), this is the
             SHA-256 sum of the downloaded archive. When set, Bazel will verify the archive
             against this sum before extracting it.""",
+        ),
+        "patches": attr.label_list(
+            doc = "A list of patches to apply to the repository *after* gazelle runs.",
+        ),
+        "patch_strip": attr.int(
+            default = 0,
+            doc = "The number of leading path segments to be stripped from the file name in the patches.",
         ),
     },
     doc = "Override the default source location on a given Go module in this extension.",

@@ -1,6 +1,6 @@
 {
   "lockFileVersion": 3,
-  "moduleFileHash": "105c6aed54358f932e73e9600d1333ed61e10215e3ff5b8903a486518ea466d4",
+  "moduleFileHash": "35778fdefbacb956fac662765e79476a44e508bf686b406b8e20a1c724c83cd9",
   "flags": {
     "cmdRegistries": [
       "https://bcr.bazel.build/"
@@ -126,6 +126,10 @@
                 "urls": [
                   "https://github.com/bazelbuild/buildtools/archive/ae8e3206e815d086269eb208b01f300639a4b194.tar.gz"
                 ],
+                "patch_strip": 1,
+                "patches": [
+                  "//patches:buildtools.patch"
+                ],
                 "strip_prefix": "buildtools-ae8e3206e815d086269eb208b01f300639a4b194",
                 "path": "github.com/bazelbuild/buildtools",
                 "sha256": "05d7c3d2bd3cc0b02d15672fefa0d6be48c7aebe459c1c99dced7ac5e598508f"
@@ -148,7 +152,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 68,
+                "line": 72,
                 "column": 15
               }
             },
@@ -163,7 +167,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 74,
+                "line": 78,
                 "column": 25
               }
             },
@@ -178,7 +182,7 @@
               "devDependency": false,
               "location": {
                 "file": "@@//:MODULE.bazel",
-                "line": 82,
+                "line": 86,
                 "column": 15
               }
             }
@@ -1335,7 +1339,7 @@
     },
     "@gazelle~override//:extensions.bzl%go_deps": {
       "general": {
-        "bzlTransitiveDigest": "RTvzANN2+/EJOBq18Leq/MKK1ZjvSj0R51rzhxUZZis=",
+        "bzlTransitiveDigest": "hxVTSAg3X82nHfibhRDy0s6HkpFt+/TM4p5q9fgmPj8=",
         "accumulatedFileDigests": {
           "@@//:go.mod": "8e62c686b94b37593b38766d425ceccbf86a9b07c0121feaaf42293050a42ae3",
           "@@circl~1.3.3//:go.mod": "68b12e4662bb0639728490153ffc52d8bdd63be558bdd41bcb0d8f1eeeb03e41",
@@ -1471,8 +1475,12 @@
               ],
               "build_file_generation": "auto",
               "build_extra_args": [],
-              "patches": [],
-              "patch_args": [],
+              "patches": [
+                "@@//patches:buildtools.patch"
+              ],
+              "patch_args": [
+                "-p1"
+              ],
               "urls": [
                 "https://github.com/bazelbuild/buildtools/archive/ae8e3206e815d086269eb208b01f300639a4b194.tar.gz"
               ],
@@ -1885,7 +1893,7 @@
     },
     "@gazelle~override//:extensions.bzl%go_deps%test_dep@_~go_deps": {
       "general": {
-        "bzlTransitiveDigest": "RTvzANN2+/EJOBq18Leq/MKK1ZjvSj0R51rzhxUZZis=",
+        "bzlTransitiveDigest": "hxVTSAg3X82nHfibhRDy0s6HkpFt+/TM4p5q9fgmPj8=",
         "accumulatedFileDigests": {},
         "envVariables": {},
         "generatedRepoSpecs": {
