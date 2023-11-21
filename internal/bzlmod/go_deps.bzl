@@ -13,7 +13,12 @@
 # limitations under the License.
 
 load("//internal:go_repository.bzl", "go_repository")
-load(":go_mod.bzl", "deps_from_go_mod", "sums_from_go_mod")
+load(
+    ":go_mod.bzl", 
+    "deps_from_go_mod",
+    "prefetch_files",
+    "sums_from_go_mod",
+)
 load(
     ":default_gazelle_overrides.bzl",
     "DEFAULT_BUILD_EXTRA_ARGS_BY_PATH",
