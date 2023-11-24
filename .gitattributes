@@ -1,3 +1,0 @@
-.gitattributes export-ignore
-# The lockfile is not used by downstream projects and tends to be large.
-tests/bcr/MODULE.bazel.lock export-ignore
