@@ -67,7 +67,10 @@ go_test(
         "stubs_test.go",
         "update_import_test.go",
     ],
-    data = glob(["testdata/**"]),
+    data = glob(
+        ["testdata/**"],
+        allow_empty = True,
+    ),
     embed = [":go"],
     deps = [
         "//config",
