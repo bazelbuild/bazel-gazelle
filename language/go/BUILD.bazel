@@ -69,6 +69,7 @@ go_test(
     ],
     data = glob(
         ["testdata/**"],
+        # Empty when distributed.
         allow_empty = True,
     ),
     embed = [":go"],
