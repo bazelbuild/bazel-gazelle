@@ -126,6 +126,8 @@ GO_REPOSITORY_TOOLS_SRCS = [
     Label("//testtools:config.go"),
     Label("//testtools:files.go"),
     Label("//tools:BUILD.bazel"),
+    Label("//tools/override-generator:BUILD.bazel"),
+    Label("//tools/override-generator:main.go"),
     Label("//tools/releaser:BUILD.bazel"),
     Label("//tools/releaser:main.go"),
     Label("//walk:BUILD.bazel"),
