@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -29,6 +30,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
@@ -483,10 +485,13 @@ func defaultModInfo(rc *RemoteCache, importPath string) (modPath string, err err
 	goTool := findGoTool()
 	env := append(os.Environ(), "GO111MODULE=on")
 
+	goGetBegin := time.Now()
 	cmd := exec.Command(goTool, "get", "-d", "--", importPath)
 	cmd.Dir = rc.tmpDir
 	cmd.Env = env
-	if _, err := cmd.Output(); err != nil {
+	_, err = cmd.Output()
+	log.Printf("lookup package %q took %s\n", importPath, time.Since(goGetBegin).Round(10*time.Millisecond))
+	if err != nil {
 		return "", err
 	}
 
