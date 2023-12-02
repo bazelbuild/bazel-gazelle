@@ -104,3 +104,13 @@ use_repo(
     # Only used for testing.
     "bazel_gazelle_go_repository_config",
 )
+
+# Use an isolated usage to bring in Go tools from the tools package with their own dependency
+# closure.
+go_tools = use_extension("@gazelle//:extensions.bzl", "go_deps", isolate = True)
+go_tools.from_file(go_mod = "//tools:go.mod")
+use_repo(
+    go_tools,
+    buildtools = "com_github_bazelbuild_buildtools",
+    gqlgen = "com_github_99designs_gqlgen",
+)
