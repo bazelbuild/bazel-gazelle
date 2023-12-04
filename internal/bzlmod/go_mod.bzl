@@ -144,16 +144,19 @@ def _parse_directive(state, directive, tokens, comment, path, line_no):
         if (len(tokens) == 3 and tokens[2][0] == ".") or (len(tokens) > 3 and tokens[3][0] == "."):
             fail("{}:{}: local file path not supported in replace directive: '{}'".format(path, line_no, tokens[2]))
 
+        # replacements key off of the from_path
+        from_path = tokens[0]
+
         # pattern: replace from_path => to_path to_version
         if len(tokens) == 4 and tokens[1] == "=>":
-            state["replace"][tokens[0]] = struct(
+            state["replace"][from_path] = struct(
                 from_version = None,
                 to_path = tokens[2],
                 version = _canonicalize_raw_version(tokens[3]),
             )
         # pattern: replace from_path from_version => to_path to_version
         elif len(tokens) == 5 and tokens[2] == "=>":
-            state["replace"][tokens[0]] = struct(
+            state["replace"][from_path] = struct(
                 from_version = _canonicalize_raw_version(tokens[1]),
                 to_path = tokens[3],
                 version = _canonicalize_raw_version(tokens[4]),
