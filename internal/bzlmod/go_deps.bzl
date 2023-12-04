@@ -197,6 +197,18 @@ _go_repository_config = repository_rule(
 def _noop(_):
     pass
 
+# These repos are shared between the isolated and non-isolated instances of go_deps as they are
+# referenced directly by rules (go_proto_library) and would result in linker errors due to duplicate
+# packages if they were resolved separately.
+# When adding a new Go module to this list, make sure that:
+# 1. The corresponding repository is visible to the gazelle module via a use_repo directive.
+# 2. All transitive dependencies of the module are also in this list. Avoid adding module that have
+#    a large number of transitive dependencies.
+_SHARED_REPOS = [
+    "github.com/golang/protobuf",
+    "google.golang.org/protobuf",
+]
+
 def _go_deps_impl(module_ctx):
     module_resolutions = {}
     sums = {}
@@ -380,6 +392,10 @@ def _go_deps_impl(module_ctx):
             # Do not create a go_repository for a Go module provided by a bazel_dep.
             root_module_direct_deps.pop(_repo_name(path), default = None)
             root_module_direct_dev_deps.pop(_repo_name(path), default = None)
+            continue
+        if getattr(module_ctx, "is_isolated", False) and path in _SHARED_REPOS:
+            # Do not create a go_repository for a dep shared with the non-isolated instance of
+            # go_deps.
             continue
 
         go_repository_args = {

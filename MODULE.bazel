@@ -48,6 +48,9 @@ use_repo(
     "org_golang_x_tools_go_vcs",
     # Referenced by `gazelle_binary`.
     "bazel_gazelle_go_repository_config",
+    # Dependencies of rules_go that require special handling in go_deps.
+    "com_github_golang_protobuf",
+    "org_golang_google_protobuf",
 )
 
 bazel_dep(name = "bazel_skylib_gazelle_plugin", version = "1.4.1", dev_dependency = True)
