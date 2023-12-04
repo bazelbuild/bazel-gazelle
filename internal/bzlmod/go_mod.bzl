@@ -141,7 +141,7 @@ def _parse_directive(state, directive, tokens, comment, path, line_no):
     elif directive == "replace":
         # A replace directive might use a local file path beginning with ./ or ../
         # These are not supported with gazelle~go_deps.
-        if len(tokens) == 3 and tokens[2][0] == ".":
+        if (len(tokens) == 3 and tokens[2][0] == ".") or (len(tokens) > 3 and tokens[3][0] == "."):
             fail("{}:{}: local file path not supported in replace directive: '{}'".format(path, line_no, tokens[2]))
 
         # pattern: replace from_path => to_path to_version
