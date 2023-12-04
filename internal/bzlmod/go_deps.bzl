@@ -341,6 +341,14 @@ def _go_deps_impl(module_ctx):
     # in the module resolutions and swapping out the entry.
     for path, replace in replace_map.items():
         if path in module_resolutions:
+
+            # If the replace directive specified a version then we only
+            # apply it if the versions match.
+            if replace.from_version:
+                comparable_from_version = semver.to_comparable(replace.from_version)
+                if module_resolutions[path].version != comparable_from_version:
+                    continue
+
             new_version = semver.to_comparable(replace.version)
             module_resolutions[path] = with_replaced_or_new_fields(
                 module_resolutions[path],

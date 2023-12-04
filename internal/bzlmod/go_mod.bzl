@@ -141,16 +141,32 @@ def _parse_directive(state, directive, tokens, comment, path, line_no):
     elif directive == "replace":
         # A replace directive might use a local file path beginning with ./ or ../
         # These are not supported with gazelle~go_deps.
-        if len(tokens) == 3 and tokens[2][0] == ".":
+        if (len(tokens) == 3 and tokens[2][0] == ".") or (len(tokens) > 3 and tokens[3][0] == "."):
             fail("{}:{}: local file path not supported in replace directive: '{}'".format(path, line_no, tokens[2]))
 
-        if len(tokens) != 4 or tokens[1] != "=>":
-            fail("{}:{}: replace directive must follow pattern: 'replace from_path => to_path version' ".format(path, line_no))
+        # replacements key off of the from_path
         from_path = tokens[0]
-        state["replace"][from_path] = struct(
-            to_path = tokens[2],
-            version = _canonicalize_raw_version(tokens[3]),
-        )
+
+        # pattern: replace from_path => to_path to_version
+        if len(tokens) == 4 and tokens[1] == "=>":
+            state["replace"][from_path] = struct(
+                from_version = None,
+                to_path = tokens[2],
+                version = _canonicalize_raw_version(tokens[3]),
+            )
+        # pattern: replace from_path from_version => to_path to_version
+        elif len(tokens) == 5 and tokens[2] == "=>":
+            state["replace"][from_path] = struct(
+                from_version = _canonicalize_raw_version(tokens[1]),
+                to_path = tokens[3],
+                version = _canonicalize_raw_version(tokens[4]),
+            )
+        else:
+            fail(
+                "{}:{}: replace directive must follow pattern: ".format(path, line_no) + 
+                "'replace from_path from_version => to_path to_version' or " +
+                "'replace from_path => to_path to_version'"
+            )
 
     # TODO: Handle exclude.
 
