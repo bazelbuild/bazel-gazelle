@@ -1025,6 +1025,17 @@ func (r *Rule) IsEmpty(info KindInfo) bool {
 	return true
 }
 
+// ShouldKeepAttrs checks if any attributes in the info.NonEmptyAttrs
+// have a `# keep` statement.
+func (r *Rule) ShouldKeepAttrs(info KindInfo) bool {
+	for k := range info.NonEmptyAttrs {
+		if attr, ok := r.attrs[k]; ok && attr.expr != nil && ShouldKeep(attr.expr) {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *Rule) sync() {
 	r.syncComments()
 	if !r.updated {

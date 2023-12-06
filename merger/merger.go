@@ -121,6 +121,9 @@ func MergeFile(oldFile *rule.File, emptyRules, genRules []*rule.Rule, phase Phas
 			if oldRule.ShouldKeep() {
 				continue
 			}
+			if oldRule.ShouldKeepAttrs(kinds[oldRule.Kind()]) {
+				continue
+			}
 			rule.MergeRules(emptyRule, oldRule, getMergeAttrs(emptyRule), oldFile.Path)
 			if oldRule.IsEmpty(kinds[oldRule.Kind()]) {
 				oldRule.Delete()
