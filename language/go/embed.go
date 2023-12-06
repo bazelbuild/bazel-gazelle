@@ -124,17 +124,7 @@ func newEmbedResolver(dir, rel string, validBuildFileNames []string, pkgRels map
 			if isBadEmbedName(base) {
 				return filepath.SkipDir
 			}
-			if pkgRels[path.Join(rel, fileRel)] {
-				// Directory contains a Go package and will contain a build file,
-				// if it doesn't already.
-				return filepath.SkipDir
-			}
-			for _, name := range validBuildFileNames {
-				if bFileInfo, err := os.Stat(filepath.Join(p, name)); err == nil && !bFileInfo.IsDir() {
-					// Directory already contains a build file.
-					return filepath.SkipDir
-				}
-			}
+
 			add(fileRel, true)
 			return nil
 		})
