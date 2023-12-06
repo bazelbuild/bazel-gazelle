@@ -65,7 +65,7 @@ def _fail_on_duplicate_overrides(path, module_name, overrides):
         fail("Multiple overrides defined for Go module path \"{}\" in module \"{}\".".format(path, module_name))
 
 def _fail_on_unmatched_overrides(override_keys, resolutions, override_name):
-    unmatched_overrides = [path for path in override_keys if path not in resolutions]
+    unmatched_overrides = [path for path in override_keys if path and path not in resolutions]
     if unmatched_overrides:
         fail("Some {} did not target a Go module with a matching path: {}".format(
             override_name, ", ".join(unmatched_overrides)
@@ -395,6 +395,10 @@ def _go_deps_impl(module_ctx):
                 ),
             )
 
+    global_gazelle_directives = gazelle_overrides.get("", struct(
+        directives = [],
+    )).directives
+
     for path, module in module_resolutions.items():
         if hasattr(module, "module_name"):
             # Do not create a go_repository for a Go module provided by a bazel_dep.
@@ -409,7 +413,7 @@ def _go_deps_impl(module_ctx):
         go_repository_args = {
             "name": module.repo_name,
             "importpath": path,
-            "build_directives": _get_directives(path, gazelle_overrides),
+            "build_directives": global_gazelle_directives + _get_directives(path, gazelle_overrides),
             "build_file_generation": _get_build_file_generation(path, gazelle_overrides),
             "build_extra_args": _get_build_extra_args(path, gazelle_overrides),
             "patches": _get_patches(path, module_overrides),
@@ -558,8 +562,10 @@ _gazelle_override_tag = tag_class(
             doc = """The Go module path for the repository to be overridden.
 
             This module path must be defined by other tags in this
-            extension within this Bazel module.""",
-            mandatory = True,
+            extension within this Bazel module.
+            
+            If the path is empty the override will apply to all modules.""",
+            mandatory = False,
         ),
         "build_file_generation": attr.string(
             default = "auto",
