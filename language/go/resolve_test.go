@@ -999,7 +999,6 @@ go_proto_library(
 				imports[i] = convertImportsAttr(r)
 				ix.AddRule(c, r, f)
 			}
-			ix.Finish()
 			for i, r := range f.Rules {
 				mrslv.Resolver(r, "").Resolve(c, ix, rc, r, imports[i], label.New("", tc.old.rel, r.Name()))
 			}
@@ -1023,7 +1022,6 @@ func TestResolveDisableGlobal(t *testing.T) {
 		exts = append(exts, lang)
 	}
 	ix := resolve.NewRuleIndex(nil, exts...)
-	ix.Finish()
 	rc := testRemoteCache([]repo.Repo{
 		{
 			Name:     "com_github_golang_protobuf",
@@ -1107,7 +1105,6 @@ func TestResolveExternal(t *testing.T) {
 		"-go_prefix=example.com/local")
 	gc := getGoConfig(c)
 	ix := resolve.NewRuleIndex(nil)
-	ix.Finish()
 	gl := langs[1].(*goLang)
 	for _, tc := range []struct {
 		desc, importpath         string

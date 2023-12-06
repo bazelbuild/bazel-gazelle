@@ -16,7 +16,11 @@ limitations under the License.
 package resolve
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
+	"os"
+	"sort"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
@@ -73,40 +77,40 @@ type CrossResolver interface {
 // RuleIndex is a table of rules in a workspace, indexed by label and by
 // import path. Used by Resolver to map import paths to labels.
 type RuleIndex struct {
-	rules          []*ruleRecord
-	labelMap       map[label.Label]*ruleRecord
-	importMap      map[ImportSpec][]*ruleRecord
+	labelMap  map[label.Label]*ruleRecord
+	importMap map[ImportSpec][]label.Label
+
+	// embeddersMap references other rules (of any language) that embed this
+	// rule. Embedded rules will be treated as non-indexed, and any FindRulesByImport
+	// call that would return the embedded rule will instead return the transitive
+	// embeddersMap.
+	embeddersMap map[label.Label][]label.Label
+
 	mrslv          func(r *rule.Rule, pkgRel string) Resolver
 	crossResolvers []CrossResolver
 }
 
 // ruleRecord contains information about a rule relevant to import indexing.
 type ruleRecord struct {
-	rule  *rule.Rule
-	label label.Label
-	file  *rule.File
+	// Package responsible for generating this ruleRecord
+	Pkg string `json:"pkg"`
 
-	// importedAs is a list of ImportSpecs by which this rule may be imported.
+	// Label of this rule
+	Label label.Label `json:"label"`
+
+	// ImportedAs is a list of ImportSpecs by which this rule may be imported.
 	// Used to build a map from ImportSpecs to ruleRecords.
-	importedAs []ImportSpec
+	ImportedAs []ImportSpec `json:"imported_as"`
 
-	// embeds is the transitive closure of labels for rules that this rule embeds
-	// (as determined by the Embeds method). This only includes rules in the same
-	// language (i.e., it includes a go_library embedding a go_proto_library, but
-	// not a go_proto_library embedding a proto_library).
-	embeds []label.Label
+	// Embeds is the set of labels (of any language) that this rule directly Embeds,
+	// as determined by the Embeds method.
+	Embeds []label.Label `json:"embeds,omitempty"`
 
-	// embedded indicates whether another rule of the same language embeds this
-	// rule. Embedded rules should not be indexed.
-	embedded bool
-
-	didCollectEmbeds bool
-
-	// lang records the language that this import is relevant for.
+	// Lang records the language that this import is relevant for.
 	// Due to the presence of mapped kinds, it's otherwise
 	// impossible to know the underlying builtin rule type for an
 	// arbitrary import.
-	lang string
+	Lang string `json:"lang"`
 }
 
 // NewRuleIndex creates a new index.
@@ -122,6 +126,8 @@ func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...inte
 	}
 	return &RuleIndex{
 		labelMap:       make(map[label.Label]*ruleRecord),
+		importMap:      make(map[ImportSpec][]label.Label),
+		embeddersMap:   make(map[label.Label][]label.Label),
 		mrslv:          mrslv,
 		crossResolvers: crossResolvers,
 	}
@@ -133,86 +139,54 @@ func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...inte
 //
 // AddRule may only be called before Finish.
 func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
-	var lang string
-	var imps []ImportSpec
-	if rslv := ix.mrslv(r, f.Pkg); rslv != nil {
-		lang = rslv.Name()
-		if passesLanguageFilter(c.Langs, lang) {
-			imps = rslv.Imports(c, r, f)
-		}
-	}
-	// If imps == nil, the rule is not importable. If imps is the empty slice,
-	// it may still be importable if it embeds importable libraries.
-	if imps == nil {
-		return
-	}
-
+	l := label.New(c.RepoName, f.Pkg, r.Name())
 	record := &ruleRecord{
-		rule:       r,
-		label:      label.New(c.RepoName, f.Pkg, r.Name()),
-		file:       f,
-		importedAs: imps,
-		lang:       lang,
+		Pkg:   f.Pkg,
+		Label: l,
 	}
-	if _, ok := ix.labelMap[record.label]; ok {
-		log.Printf("multiple rules found with label %s", record.label)
+
+	rslv := ix.mrslv(r, f.Pkg)
+	if rslv == nil {
 		return
 	}
-	ix.rules = append(ix.rules, record)
-	ix.labelMap[record.label] = record
-}
 
-// Finish constructs the import index and performs any other necessary indexing
-// actions after all rules have been added. This step is necessary because
-// a rule may be indexed differently based on what rules are added later.
-//
-// Finish must be called after all AddRule calls and before any
-// FindRulesByImport calls.
-func (ix *RuleIndex) Finish() {
-	for _, r := range ix.rules {
-		ix.collectEmbeds(r)
-	}
-	ix.buildImportIndex()
-}
-
-func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
-	if r.didCollectEmbeds {
+	record.Lang = rslv.Name()
+	if !passesLanguageFilter(c.Langs, record.Lang) {
 		return
 	}
-	resolver := ix.mrslv(r.rule, r.file.Pkg)
-	r.didCollectEmbeds = true
-	embedLabels := resolver.Embeds(r.rule, r.label)
-	r.embeds = embedLabels
-	for _, e := range embedLabels {
-		er, ok := ix.findRuleByLabel(e, r.label)
-		if !ok {
-			continue
-		}
-		ix.collectEmbeds(er)
-		erResolver := ix.mrslv(er.rule, er.file.Pkg)
-		if resolver.Name() == erResolver.Name() {
-			er.embedded = true
-			r.embeds = append(r.embeds, er.embeds...)
-		}
-		r.importedAs = append(r.importedAs, er.importedAs...)
+
+	record.ImportedAs = rslv.Imports(c, r, f)
+
+	if record.ImportedAs == nil {
+		// if Imports returns nil, the rule is not indexed at all
+		return
 	}
+
+	for _, e := range rslv.Embeds(r, l) {
+		embedded := e.Abs(l.Repo, l.Pkg)
+		record.Embeds = append(record.Embeds, embedded)
+	}
+
+	if _, ok := ix.labelMap[l]; ok {
+		log.Printf("multiple rules found with label %s", l)
+		return
+	}
+
+	ix.indexRule(record)
 }
 
-// buildImportIndex constructs the map used by FindRulesByImport.
-func (ix *RuleIndex) buildImportIndex() {
-	ix.importMap = make(map[ImportSpec][]*ruleRecord)
-	for _, r := range ix.rules {
-		if r.embedded {
-			continue
-		}
-		indexed := make(map[ImportSpec]bool)
-		for _, imp := range r.importedAs {
-			if indexed[imp] {
-				continue
-			}
-			indexed[imp] = true
-			ix.importMap[imp] = append(ix.importMap[imp], r)
-		}
+// Deprecated
+// Finish is a no-op. It is kept for compatibility with old code
+func (ix *RuleIndex) Finish() {}
+
+func (ix *RuleIndex) indexRule(record *ruleRecord) {
+	ix.labelMap[record.Label] = record
+	for _, spec := range record.ImportedAs {
+		ix.importMap[spec] = append(ix.importMap[spec], record.Label)
+	}
+
+	for _, e := range record.Embeds {
+		ix.embeddersMap[e] = append(ix.embeddersMap[e], record.Label)
 	}
 }
 
@@ -246,17 +220,87 @@ type FindResult struct {
 //
 // DEPRECATED: use FindRulesByImportWithConfig instead
 func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult {
-	matches := ix.importMap[imp]
-	results := make([]FindResult, 0, len(matches))
-	for _, m := range matches {
-		if m.lang != lang {
+	results := []FindResult{}
+
+	allEmbeddingRules := ix.walkEmbeddingGraph(ix.importMap[imp], true)
+
+targets:
+	for _, target := range allEmbeddingRules {
+		record := ix.labelMap[target]
+
+		if record.Lang != lang {
 			continue
 		}
+
+		for _, embedder := range ix.embeddersMap[target] {
+			// If this rule is embedded by any other rule in this language, it is not directly importable
+			if ix.labelMap[embedder].Lang == lang {
+				continue targets
+			}
+		}
+
 		results = append(results, FindResult{
-			Label:  m.label,
-			Embeds: m.embeds,
+			Label:  target,
+			Embeds: ix.walkEmbeddingGraph([]label.Label{target}, false)[1:],
 		})
 	}
+
+	return results
+}
+
+// walkEmbeddingGraph returns the set of rules transitively embedded in the provided rule.
+//
+// If start is of length 1, the provided starting point will always be the first element in the result.
+// If reverse is true, it instead returns the transitive set of labels embedding the provided rule.
+func (ix *RuleIndex) walkEmbeddingGraph(start []label.Label, reverse bool) []label.Label {
+	// Perform graph traversal, starting with a copy of the starting slice provided.
+
+	// results contains the set of labels that have been found so far.
+	// Elements before exploredIdx have been fully explored and their children are also in results.
+	// Elements at or after exploredIdx are in the "frontier".
+	//
+	// If we need to append things to results, we will first make a copy of the slice to avoid
+	// modifying the backing array of the input slice.
+	results := start
+	exploredIdx := 0
+
+	// This is a set representation of results, used to avoid adding duplicate entries. It's initialized
+	// lazily, as an optimization to avoid allocating if none of the rules have children.
+	var results_set map[label.Label]bool
+
+	for exploredIdx < len(results) {
+		target := results[exploredIdx]
+		exploredIdx += 1
+
+		record := ix.labelMap[target]
+
+		var children []label.Label
+		if reverse {
+			children = ix.embeddersMap[target]
+		} else {
+			children = record.Embeds
+		}
+
+		if len(children) > 0 {
+			// Initialize results_set and copy the results slice if needed
+			if results_set == nil {
+				results_set = make(map[label.Label]bool)
+				for _, l := range results {
+					results_set[l] = true
+				}
+				results = append([]label.Label{}, results...)
+			}
+
+			// Add the children into results if not already present
+			for _, child := range children {
+				if !results_set[child] {
+					results_set[child] = true
+					results = append(results, child)
+				}
+			}
+		}
+	}
+
 	return results
 }
 
@@ -302,4 +346,81 @@ func passesLanguageFilter(langFilter []string, langName string) bool {
 		}
 	}
 	return false
+}
+
+const indexFileVersion = 1
+
+type indexFileData struct {
+	Version int           `json:"version"`
+	Data    []*ruleRecord `json:"data"`
+}
+
+// WriteToFile saves all data in the index to a JSON file at the path provided.
+//
+// This file is not expected to have a stable format between Gazelle versions, but
+// a best-effort attempt is made to keep it sorted so it _should_ remain stable
+// between runs.
+func (ix *RuleIndex) WriteToFile(path string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	contents := indexFileData{
+		Version: indexFileVersion,
+	}
+	for _, v := range ix.labelMap {
+		contents.Data = append(contents.Data, v)
+	}
+
+	// TODO(eric-skydio): Add a Compare() method to Label in order to avoid the
+	// allocations here.
+	sort.Slice(contents.Data, func(i, j int) bool {
+		return contents.Data[i].Label.String() < contents.Data[j].Label.String()
+	})
+
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "    ")
+
+	err = encoder.Encode(contents)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ReadFromFile reads back in the index data saved by WriteToFile.
+//
+// Any data in the index which was originally obtained by scanning a package
+// which matches the provided exclude function will not be read in, and will instead be dropped.
+// For Gazelle to produce the same output as it would with a full re-index, it is important
+// that any packages that have changed since the run that produced the index file are explicitly
+// passed to the new Gazelle invocation so they are excluded here and scanned again.
+func (ix *RuleIndex) ReadFromFile(path string, exclude func(string) bool) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var contents indexFileData
+	err = json.NewDecoder(f).Decode(&contents)
+	if err != nil {
+		return err
+	}
+
+	if contents.Version != indexFileVersion {
+		return fmt.Errorf("version mismatch, expected %d got %d", contents.Version, indexFileVersion)
+	}
+
+	for _, v := range contents.Data {
+		if exclude != nil && exclude(v.Pkg) {
+			continue
+		}
+		ix.indexRule(v)
+	}
+
+	return nil
 }

@@ -46,14 +46,15 @@ import (
 // update commands. This includes everything in config.Config, but it also
 // includes some additional fields that aren't relevant to other packages.
 type updateConfig struct {
-	dirs           []string
-	emit           emitFunc
-	repos          []repo.Repo
-	workspaceFiles []*rule.File
-	walkMode       walk.Mode
-	patchPath      string
-	patchBuffer    bytes.Buffer
-	print0         bool
+	dirs                          []string
+	emit                          emitFunc
+	repos                         []repo.Repo
+	workspaceFiles                []*rule.File
+	walkMode                      walk.Mode
+	patchPath                     string
+	patchBuffer                   bytes.Buffer
+	print0                        bool
+	readIndexFile, writeIndexFile string
 }
 
 type emitFunc func(c *config.Config, f *rule.File) error
@@ -89,6 +90,9 @@ func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *conf
 	fs.BoolVar(&uc.print0, "print0", false, "when set with -mode=fix, gazelle will print the names of rewritten files separated with \\0 (NULL)")
 	fs.Var(&gzflag.MultiFlag{Values: &ucr.knownImports}, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
 	fs.StringVar(&ucr.repoConfigPath, "repo_config", "", "file where Gazelle should load repository configuration. Defaults to WORKSPACE.")
+	fs.StringVar(&uc.readIndexFile, "experimental_read_index_path", "", "path to a file that Gazelle will read the initial index from")
+	fs.StringVar(&uc.writeIndexFile, "experimental_write_index_path", "", "path to a file that Gazelle will populate with the dependency resolution index before exiting")
+
 }
 
 func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) error {
@@ -126,9 +130,11 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		uc.dirs[i] = dir
 	}
 
-	if ucr.recursive && c.IndexLibraries {
+	needsIndex := c.IndexLibraries && uc.readIndexFile == ""
+
+	if ucr.recursive && needsIndex {
 		uc.walkMode = walk.VisitAllUpdateSubdirsMode
-	} else if c.IndexLibraries {
+	} else if needsIndex {
 		uc.walkMode = walk.VisitAllUpdateDirsMode
 	} else if ucr.recursive {
 		uc.walkMode = walk.UpdateSubdirsMode
@@ -288,7 +294,6 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 		exts = append(exts, lang)
 	}
-	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)
 
 	if err := fixRepoFiles(c, loads); err != nil {
 		return err
@@ -305,6 +310,16 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	// Visit all directories in the repository.
 	var visits []visitRecord
 	uc := getUpdateConfig(c)
+
+	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)
+	if uc.readIndexFile != "" {
+		exclude := walk.NewUpdateFilter(c.RepoRoot, uc.dirs, uc.walkMode).ShouldIndex
+		err := ruleIndex.ReadFromFile(uc.readIndexFile, exclude)
+		if err != nil {
+			return err
+		}
+	}
+
 	var errorsFromWalk []error
 	walk.Walk(c, cexts, uc.dirs, uc.walkMode, func(dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string) {
 		// If this file is ignored or if Gazelle was not asked to update this
@@ -432,8 +447,13 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		return fmt.Errorf("encountered multiple errors: %w, %v", errorsFromWalk[0], strings.Join(additionalErrors, ", "))
 	}
 
-	// Finish building the index for dependency resolution.
-	ruleIndex.Finish()
+	// Indexing is done, write out the file if requested
+	if uc.writeIndexFile != "" {
+		err := ruleIndex.WriteToFile(uc.writeIndexFile)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Resolve dependencies.
 	rc, cleanupRc := repo.NewRemoteCache(uc.repos)

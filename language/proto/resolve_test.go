@@ -414,7 +414,6 @@ proto_library(
 				imports[i] = convertImportsAttr(r)
 				ix.AddRule(c, r, f)
 			}
-			ix.Finish()
 			for i, r := range f.Rules {
 				lang.Resolve(c, ix, rc, r, imports[i], label.New("", "test", r.Name()))
 			}
