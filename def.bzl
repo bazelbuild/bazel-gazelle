@@ -112,7 +112,7 @@ def _gazelle_runner_impl(ctx):
     runfiles = ctx.runfiles(files = [
         ctx.executable.gazelle,
         go_tool,
-    ] + ([repo_config] if repo_config else [])).merge(
+    ] + ctx.files._bash_runfile_helpers + ([repo_config] if repo_config else [])).merge(
         ctx.attr.gazelle[DefaultInfo].default_runfiles,
     )
     for d in ctx.attr.data:
@@ -152,6 +152,9 @@ _gazelle_runner = rule(
         "extra_args": attr.string_list(),
         "data": attr.label_list(allow_files = True),
         "env": attr.string_dict(),
+        "_bash_runfile_helpers": attr.label(
+            default = "@bazel_tools//tools/bash/runfiles",
+        ),
         "_repo_config": attr.label(
             default = "@bazel_gazelle_go_repository_config//:WORKSPACE" if GAZELLE_IS_BAZEL_MODULE else None,
             allow_single_file = True,
