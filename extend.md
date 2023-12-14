@@ -1,6 +1,5 @@
 <!-- Generated with Stardoc: http://skydoc.bazel.build -->
 
-
 Extending Gazelle
 =================
 
@@ -108,7 +107,6 @@ includes the proto package name, as well as source names, imports, and options.
 [proto.GetProtoConfig]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#GetProtoConfig
 [proto.Package]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#Package
 
-
 <a id="gazelle_binary"></a>
 
 ## gazelle_binary
@@ -129,14 +127,13 @@ proto extension stores metadata in hidden attributes of generated
 `proto_library` rules. The Go extension uses this metadata to generate
 `go_proto_library` rules.
 
-
 **ATTRIBUTES**
 
 
 | Name  | Description | Type | Mandatory | Default |
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="gazelle_binary-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
-| <a id="gazelle_binary-languages"></a>languages |  A list of language extensions the Gazelle binary will use.<br><br>            Each extension must be a [go_library] or something compatible. Each extension             must export a function named <code>NewLanguage</code> with no parameters that returns             a value assignable to [Language].   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
+| <a id="gazelle_binary-languages"></a>languages |  A list of language extensions the Gazelle binary will use.<br><br>Each extension must be a [go_library] or something compatible. Each extension must export a function named `NewLanguage` with no parameters that returns a value assignable to [Language].   | <a href="https://bazel.build/concepts/labels">List of labels</a> | required |  |
 
 
 <a id="gazelle_generation_test"></a>
@@ -148,23 +145,23 @@ gazelle_generation_test(<a href="#gazelle_generation_test-name">name</a>, <a hre
                         <a href="#gazelle_generation_test-gazelle_timeout_seconds">gazelle_timeout_seconds</a>, <a href="#gazelle_generation_test-size">size</a>, <a href="#gazelle_generation_test-kwargs">kwargs</a>)
 </pre>
 
-    gazelle_generation_test is a macro for testing gazelle against workspaces.
+gazelle_generation_test is a macro for testing gazelle against workspaces.
 
 The generation test expects a file structure like the following:
 
 ```
-|-- &lt;testDataPath&gt;
+|-- <testDataPath>
     |-- some_test
         |-- WORKSPACE
-        |-- README.md --&gt; README describing what the test does.
-        |-- arguments.txt --&gt; newline delimited list of arguments to pass in (ignored if empty).
-        |-- expectedStdout.txt --&gt; Expected stdout for this test.
-        |-- expectedStderr.txt --&gt; Expected stderr for this test.
-        |-- expectedExitCode.txt --&gt; Expected exit code for this test.
+        |-- README.md --> README describing what the test does.
+        |-- arguments.txt --> newline delimited list of arguments to pass in (ignored if empty).
+        |-- expectedStdout.txt --> Expected stdout for this test.
+        |-- expectedStderr.txt --> Expected stderr for this test.
+        |-- expectedExitCode.txt --> Expected exit code for this test.
         |-- app
             |-- sourceFile.foo
-            |-- BUILD.in --&gt; BUILD file prior to running gazelle.
-            |-- BUILD.out --&gt; BUILD file expected after running gazelle.
+            |-- BUILD.in --> BUILD file prior to running gazelle.
+            |-- BUILD.out --> BUILD file expected after running gazelle.
 ```
 
 To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the_test_target`.
@@ -178,10 +175,10 @@ To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the
 | <a id="gazelle_generation_test-name"></a>name |  The name of the test.   |  none |
 | <a id="gazelle_generation_test-gazelle_binary"></a>gazelle_binary |  The name of the gazelle binary target. For example, //path/to:my_gazelle.   |  none |
 | <a id="gazelle_generation_test-test_data"></a>test_data |  A list of target of the test data files you will pass to the test. This can be a https://bazel.build/reference/be/general#filegroup.   |  none |
-| <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  <code>".in"</code> |
-| <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  <code>".out"</code> |
-| <a id="gazelle_generation_test-gazelle_timeout_seconds"></a>gazelle_timeout_seconds |  <p align="center"> - </p>   |  <code>2</code> |
-| <a id="gazelle_generation_test-size"></a>size |  Specifies a test target's "heaviness": how much time/resources it needs to run.   |  <code>None</code> |
+| <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  `".in"` |
+| <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  `".out"` |
+| <a id="gazelle_generation_test-gazelle_timeout_seconds"></a>gazelle_timeout_seconds |  <p align="center"> - </p>   |  `2` |
+| <a id="gazelle_generation_test-size"></a>size |  Specifies a test target's "heaviness": how much time/resources it needs to run.   |  `None` |
 | <a id="gazelle_generation_test-kwargs"></a>kwargs |  Attributes that are passed directly to the test declaration.   |  none |
 
 
