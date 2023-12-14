@@ -6,6 +6,22 @@ matrix:
 
 tasks:
   ubuntu2204:
+    name: Ubuntu 22.04 with WORKSPACE
+    platform: ubuntu2204
+    build_flags:
+    - "--noexperimental_enable_bzlmod"
+    test_flags:
+    - "--noexperimental_enable_bzlmod"
+    build_targets:
+    - "..."
+    run_targets:
+    # Run Gazelle on repo to verify BUILD files are up-to-date. The output shouldn't differ
+    # between platforms, so we only run it from one.
+    - "//:gazelle_ci"
+    test_targets:
+    - "..."
+  ubuntu2204_bzlmod:
+    name: Ubuntu 22.04 with Bzlmod
     platform: ubuntu2204
     build_targets:
     - "..."
@@ -15,6 +31,8 @@ tasks:
     - "//:gazelle_ci"
     test_targets:
     - "..."
+    - "-//internal:bazel_test"
+    - "-//cmd/gazelle:gazelle_test"
   bcr_tests:
     name: BCR test module
     platform: ${{ platform }}
@@ -58,20 +76,75 @@ tasks:
     - "//pkg:pkg_test"
     - "//..."
     - "@test_dep//..."
-  macos_arm64:
+  macos_arm64_bzlmod:
+    name: Mac OS Arm 64 with Bzlmod
     platform: macos_arm64
     build_targets:
     - "..."
     test_targets:
     - "..."
-  macos:
+    - "-//internal:bazel_test"
+    - "-//cmd/gazelle:gazelle_test"
+  macos_arm64:
+    name: Mac OS Arm 64 with WORKSPACE
+    platform: macos_arm64
+    build_flags:
+    - "--noexperimental_enable_bzlmod"
+    test_flags:
+    - "--noexperimental_enable_bzlmod"
+    build_targets:
+    - "..."
+    test_targets:
+    - "..."
+  macos_bzlmod:
+    name: Mac OS with Bzlmod
     platform: macos
     build_targets:
     - "..."
     test_targets:
     - "..."
-  windows:
+    - "-//internal:bazel_test"
+    - "-//cmd/gazelle:gazelle_test"
+  macos:
+    name: Mac OS with WORKSPACE
+    build_flags:
+    - "--noexperimental_enable_bzlmod"
+    test_flags:
+    - "--noexperimental_enable_bzlmod"
+    build_targets:
+    - "..."
+    test_targets:
+    - "..."
+  windows_bzlmod:
+    name: Windows with Bzlmod
     platform: windows
+    build_targets:
+    - "--"
+    - "..."
+    - "-//cmd/autogazelle/..."
+    test_targets:
+    - "--"
+    - "..."
+    - "-//cmd/gazelle:gazelle_test"
+    # autogazelle is only supported on UNIX-like platforms.
+    # It requires UNIX domain sockets.
+    - "-//cmd/autogazelle/..."
+    # Stardoc produces different line-endings on windows,
+    # so the documentation it generates doesn't match the checked in files
+    - "-//docs:all"
+    # Fails to execute, apparently due to command-line length limit.
+    - "-//internal:bazel_test"
+    # gazelle prints file paths with backward slashes on windows,
+    # which doesn't match the golden files generated on *nix.
+    - "-//tests:fix_mode_print0"
+    - "-//tests:fix_mode_strict"
+  windows:
+    name: Windows with WORKSPACE
+    platform: windows
+    build_flags:
+    - "--noexperimental_enable_bzlmod"
+    test_flags:
+    - "--noexperimental_enable_bzlmod"
     build_targets:
     - "--"
     - "..."
