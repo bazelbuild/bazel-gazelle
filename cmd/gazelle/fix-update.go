@@ -54,6 +54,7 @@ type updateConfig struct {
 	patchPath      string
 	patchBuffer    bytes.Buffer
 	print0         bool
+	profile        profiler
 }
 
 type emitFunc func(c *config.Config, f *rule.File) error
@@ -75,6 +76,8 @@ type updateConfigurer struct {
 	recursive      bool
 	knownImports   []string
 	repoConfigPath string
+	cpuProfile     string
+	memProfile     string
 }
 
 func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
@@ -87,6 +90,8 @@ func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *conf
 	fs.BoolVar(&ucr.recursive, "r", true, "when true, gazelle will update subdirectories recursively")
 	fs.StringVar(&uc.patchPath, "patch", "", "when set with -mode=diff, gazelle will write to a file instead of stdout")
 	fs.BoolVar(&uc.print0, "print0", false, "when set with -mode=fix, gazelle will print the names of rewritten files separated with \\0 (NULL)")
+	fs.StringVar(&ucr.cpuProfile, "cpuprofile", "", "write cpu profile to `file`")
+	fs.StringVar(&ucr.memProfile, "memprofile", "", "write memory profile to `file`")
 	fs.Var(&gzflag.MultiFlag{Values: &ucr.knownImports}, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
 	fs.StringVar(&ucr.repoConfigPath, "repo_config", "", "file where Gazelle should load repository configuration. Defaults to WORKSPACE.")
 }
@@ -105,6 +110,11 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 	if uc.patchPath != "" && !filepath.IsAbs(uc.patchPath) {
 		uc.patchPath = filepath.Join(c.WorkDir, uc.patchPath)
 	}
+	p, err := newProfiler(ucr.cpuProfile, ucr.memProfile)
+	if err != nil {
+		return err
+	}
+	uc.profile = p
 
 	dirs := fs.Args()
 	if len(dirs) == 0 {
@@ -305,6 +315,12 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	// Visit all directories in the repository.
 	var visits []visitRecord
 	uc := getUpdateConfig(c)
+	defer func() {
+		if err := uc.profile.stop(); err != nil {
+			log.Printf("stopping profiler: %v", err)
+		}
+	}()
+
 	var errorsFromWalk []error
 	walk.Walk(c, cexts, uc.dirs, uc.walkMode, func(dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string) {
 		// If this file is ignored or if Gazelle was not asked to update this

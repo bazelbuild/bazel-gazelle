@@ -19,6 +19,7 @@ GO_REPOSITORY_TOOLS_SRCS = [
     Label("//cmd/gazelle:langs.go"),
     Label("//cmd/gazelle:metaresolver.go"),
     Label("//cmd/gazelle:print.go"),
+    Label("//cmd/gazelle:profiler.go"),
     Label("//cmd/gazelle:update-repos.go"),
     Label("//cmd/generate_repo_config:BUILD.bazel"),
     Label("//cmd/generate_repo_config:generate_repo_config.go"),

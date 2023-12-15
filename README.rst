@@ -575,6 +575,20 @@ The following flags are accepted:
 |                                                                                                            |
 | By default, all languages that this Gazelle was built with are processed.                                  |
 +-------------------------------------------------------------------+----------------------------------------+
+| :flag:`-cpuprofile filename`                                      | :value:`""`                            |
++-------------------------------------------------------------------+----------------------------------------+
+| If specified, gazelle uses [runtime/pprof](https://pkg.go.dev/runtime/pprof#StartCPUProfile) to collect    |
+| CPU profiling information from the command and save it to the given file.                                          |
+|                                                                                                            |
+| By default, this is disabled                                                                               |
++-------------------------------------------------------------------+----------------------------------------+
+| :flag:`-memprofile filename`                                      | :value:`""`                            |
++-------------------------------------------------------------------+----------------------------------------+
+| If specified, gazelle uses [runtime/pprof](https://pkg.go.dev/runtime/pprof#WriteHeapProfile) to collect   |
+| memory a profile information from the command and save it to a file.                                       |
+|                                                                                                            |
+| By default, this is disabled                                                                               |
++-------------------------------------------------------------------+----------------------------------------+
 
 .. _Predefined plugins: https://github.com/bazelbuild/rules_go/blob/master/proto/core.rst#predefined-plugins
 
