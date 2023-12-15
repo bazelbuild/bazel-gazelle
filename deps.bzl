@@ -104,15 +104,15 @@ def gazelle_dependencies(
         go_repository,
         name = "com_github_bazelbuild_buildtools",
         importpath = "github.com/bazelbuild/buildtools",
-        sum = "h1:VUHCI4QRifAGYsbVJYqJndLf7YqV12YthB+PLFsEKqo=",
-        version = "v0.0.0-20231017121127-23aa65d4e117",
+        sum = "h1:2Gc2Q6hVR1SJ8bBI9Ybzoggp8u/ED2WkM4MfvEIn9+c=",
+        version = "v0.0.0-20231115204819-d4c9dccdfbb1",
     )
     _maybe(
         go_repository,
         name = "com_github_bazelbuild_rules_go",
         importpath = "github.com/bazelbuild/rules_go",
-        sum = "h1:aY2smc3JWyUKOjGYmOKVLX70fPK9ON0rtwQojuIeUHc=",
-        version = "v0.42.0",
+        sum = "h1:uJStI9o5obVWSwquy9WxKNWfZxf2sKA2rpEsX6x5RVM=",
+        version = "v0.44.0",
     )
     _maybe(
         go_repository,
@@ -293,15 +293,15 @@ def gazelle_dependencies(
         go_repository,
         name = "org_golang_x_mod",
         importpath = "golang.org/x/mod",
-        sum = "h1:I/DsJXRlw/8l/0c24sM9yb0T4z9liZTduXvdAWYiysY=",
-        version = "v0.13.0",
+        sum = "h1:dGoOF9QVLYng8IHTm7BAyWqCqSheQ5pYWGhzW00YJr0=",
+        version = "v0.14.0",
     )
     _maybe(
         go_repository,
         name = "org_golang_x_net",
         importpath = "golang.org/x/net",
-        sum = "h1:4nGaVu0QrbjT/AK2PRLuQfQuh6DJve+pELhqTdAj3x0=",
-        version = "v0.0.0-20210405180319-a5a99cb37ef4",
+        sum = "h1:7eBu7KsSvFDtSXUIDbh3aqlK4DPsZ1rByC8PFfBThos=",
+        version = "v0.16.0",
     )
     _maybe(
         go_repository,
@@ -314,29 +314,29 @@ def gazelle_dependencies(
         go_repository,
         name = "org_golang_x_sync",
         importpath = "golang.org/x/sync",
-        sum = "h1:zxkM55ReGkDlKSM+Fu41A+zmbZuaPVbGMzvvdUPznYQ=",
-        version = "v0.4.0",
+        sum = "h1:60k92dhOjHxJkrqnwsfl8KuaHbn/5dl0lUPUklKo3qE=",
+        version = "v0.5.0",
     )
     _maybe(
         go_repository,
         name = "org_golang_x_sys",
         importpath = "golang.org/x/sys",
-        sum = "h1:Af8nKPmuFypiUBjVoU9V20FiaFXOcuZI21p0ycVYYGE=",
-        version = "v0.13.0",
+        sum = "h1:h48lPFYpsTvQJZF4EKyI4aLHaev3CxivZmv7yZig9pc=",
+        version = "v0.15.0",
     )
     _maybe(
         go_repository,
         name = "org_golang_x_text",
         importpath = "golang.org/x/text",
-        sum = "h1:cokOdA+Jmi5PJGXLlLllQSgYigAEfHXJAERHVMaCc2k=",
-        version = "v0.3.3",
+        sum = "h1:ablQoSUd0tRdKxZewP80B+BaqeKJuVhuRxj/dkrun3k=",
+        version = "v0.13.0",
     )
     _maybe(
         go_repository,
         name = "org_golang_x_tools",
         importpath = "golang.org/x/tools",
-        sum = "h1:Iey4qkscZuv0VvIt8E0neZjtPVQFSc870HQ448QgEmQ=",
-        version = "v0.13.0",
+        sum = "h1:zdAyfUGbYmuVokhzVmghFl2ZJh5QhcfebBgmVPFYA+8=",
+        version = "v0.15.0",
     )
     _maybe(
         go_repository,
