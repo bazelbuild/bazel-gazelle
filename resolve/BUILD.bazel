@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "resolve",
@@ -23,6 +23,7 @@ filegroup(
         "BUILD.bazel",
         "config.go",
         "index.go",
+        "resolve_test.go",
     ],
     visibility = ["//visibility:public"],
 )
@@ -31,4 +32,16 @@ alias(
     name = "go_default_library",
     actual = ":resolve",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "resolve_test",
+    srcs = ["resolve_test.go"],
+    embed = [":resolve"],
+    deps = [
+        "//config",
+        "//label",
+        "//rule",
+        "@com_github_google_go_cmp//cmp",
+    ],
 )
