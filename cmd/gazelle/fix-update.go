@@ -327,6 +327,9 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		// directory, just index the build file and move on.
 		if !update {
 			if c.IndexLibraries && f != nil {
+				for _, repl := range c.KindMap {
+					mrslv.MappedKind(rel, repl)
+				}
 				for _, r := range f.Rules {
 					ruleIndex.AddRule(c, r, f)
 				}
