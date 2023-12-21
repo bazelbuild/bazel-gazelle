@@ -1,9 +1,9 @@
-# github.com/bazelbuild/buildtools v0.0.0-20231017121127-23aa65d4e117
+# github.com/bazelbuild/buildtools v0.0.0-20231115204819-d4c9dccdfbb1
 ## explicit; go 1.15
 github.com/bazelbuild/buildtools/build
 github.com/bazelbuild/buildtools/tables
-# github.com/bazelbuild/rules_go v0.42.0
-## explicit; go 1.18
+# github.com/bazelbuild/rules_go v0.44.0
+## explicit; go 1.21.1
 github.com/bazelbuild/rules_go/go/tools/bazel
 github.com/bazelbuild/rules_go/go/tools/bazel_testing
 github.com/bazelbuild/rules_go/go/tools/internal/txtar
@@ -23,17 +23,17 @@ github.com/google/go-cmp/cmp/internal/value
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
-# golang.org/x/mod v0.13.0
+# golang.org/x/mod v0.14.0
 ## explicit; go 1.18
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/modfile
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/sync v0.4.0
-## explicit; go 1.17
+# golang.org/x/sync v0.5.0
+## explicit; go 1.18
 golang.org/x/sync/errgroup
-# golang.org/x/sys v0.13.0
-## explicit; go 1.17
+# golang.org/x/sys v0.15.0
+## explicit; go 1.18
 golang.org/x/sys/execabs
 golang.org/x/sys/unix
 golang.org/x/sys/windows
