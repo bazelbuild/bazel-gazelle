@@ -164,3 +164,18 @@ tasks:
     # which doesn't match the golden files generated on *nix.
     - "-//tests:fix_mode_print0"
     - "-//tests:fix_mode_strict"
+  incompatible:
+    name: Ubuntu 22.04 with WORKSPACE and --config=incompatible
+    platform: ubuntu2204
+    build_flags:
+      - "--noexperimental_enable_bzlmod"
+      - "--config=incompatible"
+    build_targets:
+      - "..."
+    run_targets:
+      - "//:gazelle_ci"
+    test_flags:
+      - "--noexperimental_enable_bzlmod"
+      - "--config=incompatible"
+    test_targets:
+      - "..."
