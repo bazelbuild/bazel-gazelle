@@ -28,6 +28,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/envoyproxy/protoc-gen-validate": [
         "gazelle:build_file_name BUILD.bazel",
     ],
+    "github.com/gogo/googleapis": [
+        "gazelle:go_generate_proto false",
+    ],
     "github.com/gogo/protobuf": [
         "gazelle:proto disable",
     ],
@@ -47,6 +50,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/googleapis/gnostic": [
         "gazelle:proto disable",
     ],
+    "github.com/pseudomuto/protoc-gen-doc": [
+        "gazelle:resolve go github.com/mwitkow/go-proto-validators @com_github_mwitkow_go_proto_validators//:validators_gogo",
+    ],
     "google.golang.org/grpc": [
         "gazelle:proto disable",
     ],
@@ -57,7 +63,12 @@ DEFAULT_DIRECTIVES_BY_PATH = {
         "gazelle:proto disable",
     ],
     "k8s.io/apimachinery": [
-        "gazelle:proto disable",
+        "gazelle:go_generate_proto false",
+        "gazelle:proto_import_prefix k8s.io/apimachinery",
+        "gazelle:resolve proto k8s.io/apimachinery/pkg/runtime/generated.proto @@io_k8s_apimachinery//pkg/runtime:runtime_proto",
+        "gazelle:resolve proto go k8s.io/apimachinery/pkg/runtime/generated.proto @@io_k8s_apimachinery//pkg/runtime:runtime_go_proto",
+        "gazelle:resolve proto k8s.io/apimachinery/pkg/runtime/schema/generated.proto @@io_k8s_apimachinery//pkg/runtime/schema:schema_proto",
+        "gazelle:resolve proto go k8s.io/apimachinery/pkg/runtime/schema/generated.proto @@io_k8s_apimachinery//pkg/runtime/schema:schema_go_proto",
     ],
 }
 
