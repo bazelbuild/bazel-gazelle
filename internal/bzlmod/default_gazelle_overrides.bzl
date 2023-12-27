@@ -65,8 +65,6 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "k8s.io/apimachinery": [
         "gazelle:go_generate_proto false",
         "gazelle:proto_import_prefix k8s.io/apimachinery",
-        "gazelle:resolve proto k8s.io/apimachinery/pkg/runtime/generated.proto @@io_k8s_apimachinery//pkg/runtime:runtime_proto",
-        "gazelle:resolve proto k8s.io/apimachinery/pkg/runtime/schema/generated.proto @@io_k8s_apimachinery//pkg/runtime/schema:schema_proto",
     ],
 }
 
