@@ -9,3 +9,11 @@ test:ci --test_strategy=standalone
 
 common --lockfile_mode=update
 test --test_output=errors
+
+build:incompatible --incompatible_load_proto_rules_from_bzl
+build:incompatible --incompatible_config_setting_private_default_visibility
+build:incompatible --incompatible_enforce_config_setting_visibility
+build:incompatible --incompatible_disallow_empty_glob
+build:incompatible --incompatible_disable_starlark_host_transitions
+build:incompatible --nolegacy_external_runfiles
+test:incompatible --test_env=GO_BAZEL_TEST_BAZELFLAGS='--incompatible_load_proto_rules_from_bzl --incompatible_config_setting_private_default_visibility --incompatible_enforce_config_setting_visibility --incompatible_disallow_empty_glob --incompatible_disable_starlark_host_transitions --nolegacy_external_runfiles'
