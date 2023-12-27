@@ -29,7 +29,7 @@ DEFAULT_DIRECTIVES_BY_PATH = {
         "gazelle:build_file_name BUILD.bazel",
     ],
     "github.com/gogo/googleapis": [
-        "gazelle:go_generate_proto false",
+        "gazelle:proto disable",
     ],
     "github.com/gogo/protobuf": [
         "gazelle:proto disable",
