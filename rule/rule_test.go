@@ -638,3 +638,31 @@ a_rule(
 		t.Errorf("got:%s\nwant:%s", got, want)
 	}
 }
+
+func TestSimpleArgument(t *testing.T) {
+	f := EmptyFile("foo", "bar")
+
+	r := NewRule("export_files", "")
+	r.AddArg(&bzl.CallExpr{
+		X: &bzl.Ident{Name: "glob"},
+		List: []bzl.Expr{
+			&bzl.ListExpr{
+				List: []bzl.Expr{
+					&bzl.StringExpr{Value: "**"},
+				},
+			},
+		},
+	})
+
+	r.Insert(f)
+	f.Sync()
+
+	got := strings.TrimSpace(string(bzl.FormatWithoutRewriting(f.File)))
+	want := strings.TrimSpace(`
+export_files(glob(["**"]))
+`)
+
+	if got != want {
+		t.Errorf("got:%s\nwant:%s", got, want)
+	}
+}
