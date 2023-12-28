@@ -27,7 +27,7 @@ package rule
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -95,7 +95,7 @@ func EmptyFile(path, pkg string) *File {
 // This function returns I/O and parse errors without modification. It's safe
 // to use os.IsNotExist and similar predicates.
 func LoadFile(path, pkg string) (*File, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func LoadFile(path, pkg string) (*File, error) {
 // LoadWorkspaceFile is similar to LoadFile but parses the file as a WORKSPACE
 // file.
 func LoadWorkspaceFile(path, pkg string) (*File, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +118,7 @@ func LoadWorkspaceFile(path, pkg string) (*File, error) {
 // The function's syntax tree will be returned within File and can be modified by
 // Sync and Save calls.
 func LoadMacroFile(path, pkg, defName string) (*File, error) {
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -253,10 +253,22 @@ func scanExprs(defName string, stmt []bzl.Expr) (rules []*Rule, loads []*Load, f
 	return rules, loads, fn
 }
 
-// MatchBuildFileName looks for a file in files that has a name from names.
+// MatchBuildFile looks for a file in files that has a name from names.
 // If there is at least one matching file, a path will be returned by joining
 // dir and the first matching name. If there are no matching files, the
 // empty string is returned.
+func MatchBuildFile(dir string, names []string, ents []fs.DirEntry) string {
+	for _, name := range names {
+		for _, ent := range ents {
+			if ent.Name() == name && !ent.IsDir() {
+				return filepath.Join(dir, name)
+			}
+		}
+	}
+	return ""
+}
+
+// Deprecated: Prefer MatchBuildFile, it's more efficient to fetch a []fs.DirEntry
 func MatchBuildFileName(dir string, names []string, files []os.FileInfo) string {
 	for _, name := range names {
 		for _, fi := range files {
@@ -412,7 +424,7 @@ func (f *File) SortMacro() {
 func (f *File) Save(path string) error {
 	f.Sync()
 	f.Content = bzl.Format(f.File)
-	return ioutil.WriteFile(path, f.Content, 0o666)
+	return os.WriteFile(path, f.Content, 0o666)
 }
 
 // HasDefaultVisibility returns whether the File contains a "package" rule with
@@ -757,17 +769,19 @@ func NewRule(kind, name string) *Rule {
 // is either `*bzl.DotExpr` or `*bzl.Ident`.
 //
 // For `myKind` kind it returns:
-//  &bzl.Ident{
-//      Name: "myKind"
-//  }
+//
+//	&bzl.Ident{
+//	    Name: "myKind"
+//	}
 //
 // For `myKind.inner` kind it returns:
-//  &bzl.DotExpr{
-//      Name: "inner",
-//      X: &bzl.Ident {
-//          Name: "myKind"
-//      }
-//  }
+//
+//	&bzl.DotExpr{
+//	    Name: "inner",
+//	    X: &bzl.Ident {
+//	        Name: "myKind"
+//	    }
+//	}
 func createDotExpr(kind string) bzl.Expr {
 	var expr bzl.Expr
 	parts := strings.Split(kind, ".")
