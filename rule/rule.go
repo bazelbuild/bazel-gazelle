@@ -957,6 +957,16 @@ func (r *Rule) SetAttr(key string, value interface{}) {
 	r.updated = true
 }
 
+// GetAttrComments returns the comments for an attribute.
+// It can be used to attach comments like "do not sort".
+func (r *Rule) GetAttrComments(key string) *bzl.Comments {
+	attr, ok := r.attrs[key]
+	if !ok {
+		return nil
+	}
+	return attr.expr.Comment()
+}
+
 // PrivateAttrKeys returns a sorted list of private attribute names.
 func (r *Rule) PrivateAttrKeys() []string {
 	keys := make([]string, 0, len(r.private))

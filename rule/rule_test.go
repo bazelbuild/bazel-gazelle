@@ -599,3 +599,42 @@ func TestCheckFile(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
+
+func TestAttributeComment(t *testing.T) {
+	f, err := LoadData(filepath.Join("old", "BUILD.bazel"), "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r := NewRule("a_rule", "name1")
+	r.SetAttr("deps", []string{"foo", "bar", "baz"})
+	r.SetAttr("hdrs", []string{"foo", "bar", "baz"})
+	hdrComments := r.GetAttrComments("hdrs")
+	hdrComments.Before = append(hdrComments.Before, bzl.Comment{
+		Token: "# do not sort",
+	})
+
+	r.Insert(f)
+
+	got := strings.TrimSpace(string(f.Format()))
+	want := strings.TrimSpace(`
+a_rule(
+    name = "name1",
+    # do not sort
+    hdrs = [
+        "foo",
+        "bar",
+        "baz",
+    ],
+    deps = [
+        "bar",
+        "baz",
+        "foo",
+    ],
+)
+`)
+
+	if got != want {
+		t.Errorf("got:%s\nwant:%s", got, want)
+	}
+}
