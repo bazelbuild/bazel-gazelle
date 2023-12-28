@@ -609,7 +609,7 @@ func TestAttributeComment(t *testing.T) {
 	r := NewRule("a_rule", "name1")
 	r.SetAttr("deps", []string{"foo", "bar", "baz"})
 	r.SetAttr("hdrs", []string{"foo", "bar", "baz"})
-	hdrComments := r.GetAttrComments("hdrs")
+	hdrComments := r.AttrComments("hdrs")
 	hdrComments.Before = append(hdrComments.Before, bzl.Comment{
 		Token: "# do not sort",
 	})
