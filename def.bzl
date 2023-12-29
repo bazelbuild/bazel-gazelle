@@ -127,6 +127,7 @@ _gazelle_runner = rule(
     implementation = _gazelle_runner_impl,
     attrs = {
         "gazelle": attr.label(
+            allow_single_file = True,
             default = "//cmd/gazelle",
             executable = True,
             cfg = "exec",
