@@ -21,7 +21,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -493,7 +492,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 	}
 	if uc.patchPath != "" {
-		if err := ioutil.WriteFile(uc.patchPath, uc.patchBuffer.Bytes(), 0o666); err != nil {
+		if err := os.WriteFile(uc.patchPath, uc.patchBuffer.Bytes(), 0o666); err != nil {
 			return err
 		}
 	}
@@ -676,12 +675,12 @@ func findOutputPath(c *config.Config, f *rule.File) string {
 	}
 	outputDir := filepath.Join(baseDir, filepath.FromSlash(f.Pkg))
 	defaultOutputPath := filepath.Join(outputDir, c.DefaultBuildFileName())
-	files, err := ioutil.ReadDir(outputDir)
+	ents, err := os.ReadDir(outputDir)
 	if err != nil {
 		// Ignore error. Directory probably doesn't exist.
 		return defaultOutputPath
 	}
-	outputPath := rule.MatchBuildFileName(outputDir, c.ValidBuildFileNames, files)
+	outputPath := rule.MatchBuildFile(outputDir, c.ValidBuildFileNames, ents)
 	if outputPath == "" {
 		return defaultOutputPath
 	}

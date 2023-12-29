@@ -20,7 +20,6 @@ import (
 	"flag"
 	"fmt"
 	"go/build"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -726,7 +725,7 @@ Update io_bazel_rules_go to a newer version in your WORKSPACE file.`
 		// Bazel has already fetched io_bazel_rules_go. We can read its version
 		// from //go:def.bzl.
 		defBzlPath := filepath.Join(rulesGoPath, "go", "def.bzl")
-		defBzlContent, err := ioutil.ReadFile(defBzlPath)
+		defBzlContent, err := os.ReadFile(defBzlPath)
 		if err != nil {
 			return nil, err
 		}
@@ -799,7 +798,7 @@ func detectNamingConvention(c *config.Config, rootFile *rule.File) namingConvent
 		var f *rule.File
 		for _, name := range c.ValidBuildFileNames {
 			fpath := filepath.Join(dir, name)
-			data, err := ioutil.ReadFile(fpath)
+			data, err := os.ReadFile(fpath)
 			if err != nil {
 				continue
 			}
@@ -821,15 +820,15 @@ func detectNamingConvention(c *config.Config, rootFile *rule.File) namingConvent
 		}
 	}
 
-	infos, err := ioutil.ReadDir(c.RepoRoot)
+	ents, err := os.ReadDir(c.RepoRoot)
 	if err != nil {
 		return importNamingConvention
 	}
-	for _, info := range infos {
-		if !info.IsDir() {
+	for _, ent := range ents {
+		if !ent.IsDir() {
 			continue
 		}
-		dirName := info.Name()
+		dirName := ent.Name()
 		dirNC := detectInDir(filepath.Join(c.RepoRoot, dirName), dirName)
 		if dirNC == unknownNamingConvention {
 			continue

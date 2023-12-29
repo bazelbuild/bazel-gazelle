@@ -19,7 +19,6 @@ package walk
 
 import (
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -125,13 +124,13 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		// TODO: OPT: ReadDir stats all the files, which is slow. We just care about
 		// names and modes, so we should use something like
 		// golang.org/x/tools/internal/fastwalk to speed this up.
-		files, err := ioutil.ReadDir(dir)
+		ents, err := os.ReadDir(dir)
 		if err != nil {
 			log.Print(err)
 			return
 		}
 
-		f, err := loadBuildFile(c, rel, dir, files)
+		f, err := loadBuildFile(c, rel, dir, ents)
 		if err != nil {
 			log.Print(err)
 			if c.Strict {
@@ -150,13 +149,13 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		}
 
 		var subdirs, regularFiles []string
-		for _, fi := range files {
-			base := fi.Name()
-			fi := resolveFileInfo(wc, dir, rel, fi)
+		for _, ent := range ents {
+			base := ent.Name()
+			ent := resolveFileInfo(wc, dir, rel, ent)
 			switch {
-			case fi == nil:
+			case ent == nil:
 				continue
-			case fi.IsDir():
+			case ent.IsDir():
 				subdirs = append(subdirs, base)
 			default:
 				regularFiles = append(regularFiles, base)
@@ -251,18 +250,18 @@ func shouldVisit(rel string, mode Mode, updateParent bool, updateRels map[string
 	}
 }
 
-func loadBuildFile(c *config.Config, pkg, dir string, files []os.FileInfo) (*rule.File, error) {
+func loadBuildFile(c *config.Config, pkg, dir string, ents []fs.DirEntry) (*rule.File, error) {
 	var err error
 	readDir := dir
-	readFiles := files
+	readEnts := ents
 	if c.ReadBuildFilesDir != "" {
 		readDir = filepath.Join(c.ReadBuildFilesDir, filepath.FromSlash(pkg))
-		readFiles, err = ioutil.ReadDir(readDir)
+		readEnts, err = os.ReadDir(readDir)
 		if err != nil {
 			return nil, err
 		}
 	}
-	path := rule.MatchBuildFileName(readDir, c.ValidBuildFileNames, readFiles)
+	path := rule.MatchBuildFile(readDir, c.ValidBuildFileNames, readEnts)
 	if path == "" {
 		return nil, nil
 	}
@@ -315,16 +314,16 @@ func findGenFiles(wc *walkConfig, f *rule.File) []string {
 	return genFiles
 }
 
-func resolveFileInfo(wc *walkConfig, dir, rel string, fi fs.FileInfo) fs.FileInfo {
-	base := fi.Name()
+func resolveFileInfo(wc *walkConfig, dir, rel string, ent fs.DirEntry) fs.DirEntry {
+	base := ent.Name()
 	if base == "" || wc.isExcluded(rel, base) {
 		return nil
 	}
-	if fi.Mode()&os.ModeSymlink == 0 {
+	if ent.Type()&os.ModeSymlink == 0 {
 		// Not a symlink, use the original FileInfo.
-		return fi
+		return ent
 	}
-	if !wc.shouldFollow(rel, fi.Name()) {
+	if !wc.shouldFollow(rel, ent.Name()) {
 		// A symlink, but not one we should follow.
 		return nil
 	}
@@ -333,5 +332,5 @@ func resolveFileInfo(wc *walkConfig, dir, rel string, fi fs.FileInfo) fs.FileInf
 		// A symlink, but not one we could resolve.
 		return nil
 	}
-	return fi
+	return fs.FileInfoToDirEntry(fi)
 }
