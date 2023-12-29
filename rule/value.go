@@ -22,6 +22,7 @@ import (
 	"sort"
 
 	bzl "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/bazel-gazelle/label"
 )
 
 // KeyValue represents a key-value pair. This gets converted into a
@@ -125,6 +126,7 @@ func (s SelectStringListValue) BzlExpr() bzl.Expr {
 // a Bazel build file. The following types of values can be converted:
 //
 //   * bools, integers, floats, strings.
+//   * labels (converted to strings).
 //   * slices, arrays (converted to lists).
 //   * maps (converted to select expressions; keys must be rules in
 //     @io_bazel_rules_go//go/platform).
@@ -198,6 +200,8 @@ func ExprFromValue(val interface{}) bzl.Expr {
 				X:    &bzl.LiteralExpr{Token: "glob"},
 				List: globArgs,
 			}
+		case label.Label:
+			return &bzl.StringExpr{Value: val.String()}
 		}
 	}
 

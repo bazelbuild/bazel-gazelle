@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	bzl "github.com/bazelbuild/buildtools/build"
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -89,6 +90,10 @@ func TestExprFromValue(t *testing.T) {
 					&bzl.StringExpr{Value: "//:b"},
 				},
 			},
+		},
+		"labels": {
+			val:  label.New("repo", "pkg", "name"),
+			want: &bzl.StringExpr{Value: "@repo//pkg:name"},
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
