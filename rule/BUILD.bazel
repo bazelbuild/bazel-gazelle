@@ -32,6 +32,7 @@ go_test(
     ],
     embed = [":rule"],
     deps = [
+        "//label",
         "@com_github_bazelbuild_buildtools//build",
         "@com_github_google_go_cmp//cmp",
     ],
