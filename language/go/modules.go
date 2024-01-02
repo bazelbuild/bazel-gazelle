@@ -18,7 +18,7 @@ package golang
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -39,7 +39,7 @@ func importReposFromModules(args language.ImportReposArgs) language.ImportReposR
 
 	// Load sums from go.sum. Ideally, they're all there.
 	goSumPath := filepath.Join(filepath.Dir(args.Path), "go.sum")
-	data, _ = ioutil.ReadFile(goSumPath)
+	data, _ = os.ReadFile(goSumPath)
 	lines := bytes.Split(data, []byte("\n"))
 	for _, line := range lines {
 		line = bytes.TrimSpace(line)

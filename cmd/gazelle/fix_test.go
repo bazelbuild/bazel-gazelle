@@ -18,7 +18,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -40,7 +39,7 @@ func TestMain(m *testing.M) {
 	flag.Parse()
 
 	var err error
-	tmpDir, err := ioutil.TempDir(os.Getenv("TEST_TMPDIR"), "gazelle_test")
+	tmpDir, err := os.MkdirTemp(os.Getenv("TEST_TMPDIR"), "gazelle_test")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return
@@ -105,14 +104,14 @@ func defaultArgs(dir string) []string {
 func TestCreateFile(t *testing.T) {
 	// Create a directory with a simple .go file.
 	tmpdir := os.Getenv("TEST_TMPDIR")
-	dir, err := ioutil.TempDir(tmpdir, "")
+	dir, err := os.MkdirTemp(tmpdir, "")
 	if err != nil {
-		t.Fatalf("ioutil.TempDir(%q, %q) failed with %v; want success", tmpdir, "", err)
+		t.Fatalf("os.MkdirTemp(%q, %q) failed with %v; want success", tmpdir, "", err)
 	}
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
+	if err = os.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
@@ -130,19 +129,19 @@ func TestCreateFile(t *testing.T) {
 func TestUpdateFile(t *testing.T) {
 	// Create a directory with a simple .go file and an empty BUILD file.
 	tmpdir := os.Getenv("TEST_TMPDIR")
-	dir, err := ioutil.TempDir(tmpdir, "")
+	dir, err := os.MkdirTemp(tmpdir, "")
 	if err != nil {
-		t.Fatalf("ioutil.TempDir(%q, %q) failed with %v; want success", tmpdir, "", err)
+		t.Fatalf("os.MkdirTemp(%q, %q) failed with %v; want success", tmpdir, "", err)
 	}
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
+	if err = os.WriteFile(goFile, []byte("package main"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
 	buildFile := filepath.Join(dir, "BUILD")
-	if err = ioutil.WriteFile(buildFile, nil, 0o600); err != nil {
+	if err = os.WriteFile(buildFile, nil, 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", buildFile, err)
 	}
 
@@ -165,19 +164,19 @@ func TestUpdateFile(t *testing.T) {
 func TestNoChanges(t *testing.T) {
 	// Create a directory with a BUILD file that doesn't need any changes.
 	tmpdir := os.Getenv("TEST_TMPDIR")
-	dir, err := ioutil.TempDir(tmpdir, "")
+	dir, err := os.MkdirTemp(tmpdir, "")
 	if err != nil {
-		t.Fatalf("ioutil.TempDir(%q, %q) failed with %v; want success", tmpdir, "", err)
+		t.Fatalf("os.MkdirTemp(%q, %q) failed with %v; want success", tmpdir, "", err)
 	}
 	defer os.RemoveAll(dir)
 
 	goFile := filepath.Join(dir, "main.go")
-	if err = ioutil.WriteFile(goFile, []byte("package main\n\nfunc main() {}"), 0o600); err != nil {
+	if err = os.WriteFile(goFile, []byte("package main\n\nfunc main() {}"), 0o600); err != nil {
 		t.Fatalf("error writing file %q: %v", goFile, err)
 	}
 
 	buildFile := filepath.Join(dir, "BUILD")
-	if err = ioutil.WriteFile(buildFile, []byte(`load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+	if err = os.WriteFile(buildFile, []byte(`load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 
 go_library(
     name = "go_default_library",

@@ -16,7 +16,7 @@ limitations under the License.
 package bazel_test
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -24,12 +24,12 @@ import (
 )
 
 func TestRunner(t *testing.T) {
-	origBuildData, err := ioutil.ReadFile("BUILD.bazel")
+	origBuildData, err := os.ReadFile("BUILD.bazel")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := ioutil.WriteFile("BUILD.bazel", origBuildData, 0o666); err != nil {
+		if err := os.WriteFile("BUILD.bazel", origBuildData, 0o666); err != nil {
 			t.Fatalf("restoring build file: %v", err)
 		}
 	}()
@@ -54,12 +54,12 @@ func TestRunner(t *testing.T) {
 }
 
 func TestRunnerUpdateReposFromGoMod(t *testing.T) {
-	origWorkspaceData, err := ioutil.ReadFile("WORKSPACE")
+	origWorkspaceData, err := os.ReadFile("WORKSPACE")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := ioutil.WriteFile("WORKSPACE", origWorkspaceData, 0o666); err != nil {
+		if err := os.WriteFile("WORKSPACE", origWorkspaceData, 0o666); err != nil {
 			t.Fatalf("restoring WORKSPACE: %v", err)
 		}
 	}()
@@ -70,12 +70,12 @@ func TestRunnerUpdateReposFromGoMod(t *testing.T) {
 }
 
 func TestRunnerUpdateReposCommand(t *testing.T) {
-	origWorkspaceData, err := ioutil.ReadFile("WORKSPACE")
+	origWorkspaceData, err := os.ReadFile("WORKSPACE")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := ioutil.WriteFile("WORKSPACE", origWorkspaceData, 0o666); err != nil {
+		if err := os.WriteFile("WORKSPACE", origWorkspaceData, 0o666); err != nil {
 			t.Fatalf("restoring WORKSPACE: %v", err)
 		}
 	}()

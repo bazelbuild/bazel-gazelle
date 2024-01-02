@@ -22,7 +22,6 @@ package main
 
 import (
 	"bytes"
-	"io/ioutil"
 	"log"
 	"os"
 	"text/template"
@@ -37,7 +36,7 @@ func main() {
 	packagesTxtPath := os.Args[1]
 	genGoPath := os.Args[2]
 
-	packagesTxt, err := ioutil.ReadFile(packagesTxtPath)
+	packagesTxt, err := os.ReadFile(packagesTxtPath)
 	if err != nil {
 		log.Fatal(err)
 	}

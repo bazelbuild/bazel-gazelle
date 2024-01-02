@@ -16,7 +16,6 @@ limitations under the License.
 package proto
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -121,12 +120,12 @@ import "second.proto";`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestProtoFileinfo")
+			dir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "TestProtoFileinfo")
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer os.RemoveAll(dir)
-			if err := ioutil.WriteFile(filepath.Join(dir, tc.name), []byte(tc.proto), 0o600); err != nil {
+			if err := os.WriteFile(filepath.Join(dir, tc.name), []byte(tc.proto), 0o600); err != nil {
 				t.Fatal(err)
 			}
 

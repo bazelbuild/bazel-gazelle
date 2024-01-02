@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -604,11 +603,11 @@ func (m *remoteCacheMap) ensure(key string, load func() (interface{}, error)) (i
 
 func (rc *RemoteCache) initTmp() {
 	rc.tmpOnce.Do(func() {
-		rc.tmpDir, rc.tmpErr = ioutil.TempDir("", "gazelle-remotecache-")
+		rc.tmpDir, rc.tmpErr = os.MkdirTemp("", "gazelle-remotecache-")
 		if rc.tmpErr != nil {
 			return
 		}
-		rc.tmpErr = ioutil.WriteFile(filepath.Join(rc.tmpDir, "go.mod"), []byte("module gazelle_remote_cache\ngo 1.15\n"), 0o666)
+		rc.tmpErr = os.WriteFile(filepath.Join(rc.tmpDir, "go.mod"), []byte("module gazelle_remote_cache\ngo 1.15\n"), 0o666)
 	})
 }
 

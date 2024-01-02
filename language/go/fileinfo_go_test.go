@@ -17,7 +17,6 @@ package golang
 
 import (
 	"go/build/constraint"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -171,13 +170,13 @@ var src string
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestGoFileInfo")
+			dir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "TestGoFileInfo")
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer os.RemoveAll(dir)
 			path := filepath.Join(dir, tc.name)
-			if err := ioutil.WriteFile(path, []byte(tc.source), 0o600); err != nil {
+			if err := os.WriteFile(path, []byte(tc.source), 0o600); err != nil {
 				t.Fatal(err)
 			}
 
@@ -204,14 +203,14 @@ var src string
 }
 
 func TestGoFileInfoFailure(t *testing.T) {
-	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestGoFileInfoFailure")
+	dir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "TestGoFileInfoFailure")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(dir)
 	name := "foo_linux_amd64.go"
 	path := filepath.Join(dir, name)
-	if err := ioutil.WriteFile(path, []byte("pakcage foo"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("pakcage foo"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -331,14 +330,14 @@ import ("C")
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestCgo")
+			dir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "TestCgo")
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer os.RemoveAll(dir)
 			name := "TestCgo.go"
 			path := filepath.Join(dir, name)
-			if err := ioutil.WriteFile(path, []byte(tc.source), 0o600); err != nil {
+			if err := os.WriteFile(path, []byte(tc.source), 0o600); err != nil {
 				t.Fatal(err)
 			}
 
@@ -405,7 +404,7 @@ var (
 )
 
 func TestExpandSrcDirRepoRelative(t *testing.T) {
-	repo, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "repo")
+	repo, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "repo")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,7 +420,7 @@ func TestExpandSrcDirRepoRelative(t *testing.T) {
 */
 import "C"
 `)
-	if err := ioutil.WriteFile(goFile, content, 0o644); err != nil {
+	if err := os.WriteFile(goFile, content, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	c, _, _ := testConfig(

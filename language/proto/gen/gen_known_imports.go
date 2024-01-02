@@ -26,7 +26,6 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -138,7 +137,7 @@ func run(args []string) (err error) {
 	if err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(knownImportsPath, knownImportsData, 0o666); err != nil {
+	if err := os.WriteFile(knownImportsPath, knownImportsData, 0o666); err != nil {
 		return err
 	}
 

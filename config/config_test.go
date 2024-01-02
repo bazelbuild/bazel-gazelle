@@ -17,7 +17,6 @@ package config
 
 import (
 	"flag"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -27,7 +26,7 @@ import (
 )
 
 func TestCommonConfigurerFlags(t *testing.T) {
-	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "config_test")
+	dir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "config_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +35,7 @@ func TestCommonConfigurerFlags(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "WORKSPACE"), nil, 0o666); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "WORKSPACE"), nil, 0o666); err != nil {
 		t.Fatal(err)
 	}
 
