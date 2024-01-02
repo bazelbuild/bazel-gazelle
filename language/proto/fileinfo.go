@@ -17,8 +17,8 @@ package proto
 
 import (
 	"bytes"
-	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -51,7 +51,7 @@ func protoFileInfo(dir, name string) FileInfo {
 		Path: filepath.Join(dir, name),
 		Name: name,
 	}
-	content, err := ioutil.ReadFile(info.Path)
+	content, err := os.ReadFile(info.Path)
 	if err != nil {
 		log.Printf("%s: error reading proto file: %v", info.Path, err)
 		return info

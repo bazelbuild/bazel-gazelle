@@ -16,7 +16,6 @@ limitations under the License.
 package golang
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -127,7 +126,7 @@ func TestGenerateRules(t *testing.T) {
 			f.Sync()
 			got := string(bzl.Format(f.File))
 			wantPath := filepath.Join(dir, "BUILD.want")
-			wantBytes, err := ioutil.ReadFile(wantPath)
+			wantBytes, err := os.ReadFile(wantPath)
 			if err != nil {
 				t.Fatalf("error reading %s: %v", wantPath, err)
 			}

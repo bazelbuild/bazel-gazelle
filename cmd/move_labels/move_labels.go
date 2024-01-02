@@ -20,7 +20,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -64,7 +63,7 @@ func run(args []string) error {
 	var errs errorList
 	for _, file := range files {
 		content := build.Format(file)
-		if err := ioutil.WriteFile(file.Path, content, 0o666); err != nil {
+		if err := os.WriteFile(file.Path, content, 0o666); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -90,7 +89,7 @@ func moveLabelsInDir(c *configuration) ([]*build.File, error) {
 		if name := info.Name(); name != "BUILD" && name != "BUILD.bazel" {
 			return nil
 		}
-		content, err := ioutil.ReadFile(path)
+		content, err := os.ReadFile(path)
 		if err != nil {
 			errors = append(errors, err)
 			return nil

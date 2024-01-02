@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"go/build"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -116,7 +115,7 @@ func fillMissingSums(pathToModule map[string]*moduleFromList) (map[string]*modul
 	}
 
 	if len(missingSumArgs) > 0 {
-		tmpDir, err := ioutil.TempDir("", "")
+		tmpDir, err := os.MkdirTemp("", "")
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +219,7 @@ func runGoCommandForOutput(dir string, args ...string) ([]byte, error) {
 	env := os.Environ()
 	env = append(env, "GO111MODULE=on")
 	if os.Getenv("GOCACHE") == "" && os.Getenv("HOME") == "" {
-		gocache, err := ioutil.TempDir("", "")
+		gocache, err := os.MkdirTemp("", "")
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +227,7 @@ func runGoCommandForOutput(dir string, args ...string) ([]byte, error) {
 		defer os.RemoveAll(gocache)
 	}
 	if os.Getenv("GOPATH") == "" && os.Getenv("HOME") == "" {
-		gopath, err := ioutil.TempDir("", "")
+		gopath, err := os.MkdirTemp("", "")
 		if err != nil {
 			return nil, err
 		}

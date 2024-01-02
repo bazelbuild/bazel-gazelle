@@ -16,7 +16,6 @@ limitations under the License.
 package golang
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -50,7 +49,7 @@ func TestOtherFileInfo(t *testing.T) {
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			if err := ioutil.WriteFile(tc.name, []byte(tc.source), 0o600); err != nil {
+			if err := os.WriteFile(tc.name, []byte(tc.source), 0o600); err != nil {
 				t.Fatal(err)
 			}
 			defer os.Remove(tc.name)
@@ -359,7 +358,7 @@ package main`,
 		},
 	} {
 		t.Run(tc.desc, func(t *testing.T) {
-			f, err := ioutil.TempFile(".", "TestReadTags")
+			f, err := os.CreateTemp(".", "TestReadTags")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -380,7 +379,7 @@ package main`,
 }
 
 func TestCheckConstraints(t *testing.T) {
-	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestCheckConstraints")
+	dir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "TestCheckConstraints")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -596,7 +595,7 @@ import "C"
 			}
 
 			path := filepath.Join(dir, filename)
-			if err := ioutil.WriteFile(path, content, 0o666); err != nil {
+			if err := os.WriteFile(path, content, 0o666); err != nil {
 				t.Fatal(err)
 			}
 
@@ -696,7 +695,7 @@ func TestIsOSArchSpecific(t *testing.T) {
 			})
 
 			path := filepath.Join(tmpDir, tc.filename)
-			if err := ioutil.WriteFile(path, []byte(tc.content), 0o666); err != nil {
+			if err := os.WriteFile(path, []byte(tc.content), 0o666); err != nil {
 				t.Fatal(err)
 			}
 			fi := goFileInfo(path, "")

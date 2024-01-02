@@ -22,8 +22,6 @@ package main
 import (
 	"bytes"
 	"flag"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -211,7 +209,7 @@ go_library(
 	if err := runGazelle(dir, []string{"-go_prefix", "example.com/foo"}); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := ioutil.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
+	if got, err := os.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
 		t.Fatal(err)
 	} else if string(got) != want {
 		t.Fatalf("got %s ; want %s", string(got), want)
@@ -310,7 +308,7 @@ go_library(
 			if err := runGazelle(dir, []string{c.cmd}); err != nil {
 				t.Fatal(err)
 			}
-			if got, err := ioutil.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
+			if got, err := os.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
 				t.Fatal(err)
 			} else if string(got) != c.want {
 				t.Fatalf("got %s ; want %s", string(got), c.want)
@@ -360,7 +358,7 @@ go_library(
 	if err := runGazelle(dir, []string{"fix", "-go_prefix", "example.com/foo"}); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := ioutil.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
+	if got, err := os.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
 		t.Fatal(err)
 	} else if string(got) != want {
 		t.Fatalf("got %s ; want %s", string(got), want)
@@ -2038,7 +2036,7 @@ my_go_binary(
 `,
 		},
 		{
-			Path:    "enabled/multiple_mappings/multiple_mappings.go",
+			Path: "enabled/multiple_mappings/multiple_mappings.go",
 			Content: `
 package main
 
@@ -3046,7 +3044,7 @@ github.com/selvatico/go-mocket v1.0.7/go.mod h1:7bSWzuNieCdUlanCVu3w0ppS0LvDtPAZ
 	if err := runGazelle(dir, args); err == nil {
 		t.Fatal("expected error, got nil")
 	} else if err.Error() != errMsg {
-		t.Error(fmt.Sprintf("want %s, got %s", errMsg, err.Error()))
+		t.Errorf("want %s, got %s", errMsg, err.Error())
 	}
 }
 
@@ -4417,7 +4415,7 @@ go_library(
 	if err := runGazelle(dir, []string{"-go_prefix", "example.com/foo"}); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := ioutil.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
+	if got, err := os.ReadFile(filepath.Join(dir, "BUILD")); err != nil {
 		t.Fatal(err)
 	} else if string(got) != want {
 		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))

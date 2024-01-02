@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -63,7 +62,7 @@ type FileSpec struct {
 // after the test.
 func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 	t.Helper()
-	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "gazelle_test")
+	dir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "gazelle_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +93,7 @@ func CreateFiles(t *testing.T, files []FileSpec) (dir string, cleanup func()) {
 			}
 			continue
 		}
-		if err := ioutil.WriteFile(path, []byte(f.Content), 0o600); err != nil {
+		if err := os.WriteFile(path, []byte(f.Content), 0o600); err != nil {
 			os.RemoveAll(dir)
 			t.Fatal(err)
 		}
@@ -129,7 +128,7 @@ func CheckFiles(t *testing.T, dir string, files []FileSpec) {
 			}
 		} else {
 			want := strings.TrimSpace(f.Content)
-			gotBytes, err := ioutil.ReadFile(filepath.Join(dir, f.Path))
+			gotBytes, err := os.ReadFile(filepath.Join(dir, f.Path))
 			if err != nil {
 				t.Errorf("could not read %s: %v", f.Path, err)
 				continue
@@ -176,18 +175,19 @@ var (
 
 // TestGazelleGenerationOnPath runs a full gazelle binary on a testdata directory.
 // With a test data directory of the form:
-//└── <testDataPath>
-//    └── some_test
-//        ├── WORKSPACE
-//        ├── README.md --> README describing what the test does.
-//        ├── arguments.txt --> newline delimited list of arguments to pass in (ignored if empty).
-//        ├── expectedStdout.txt --> Expected stdout for this test.
-//        ├── expectedStderr.txt --> Expected stderr for this test.
-//        ├── expectedExitCode.txt --> Expected exit code for this test.
-//        └── app
-//            └── sourceFile.foo
-//            └── BUILD.in --> BUILD file prior to running gazelle.
-//            └── BUILD.out --> BUILD file expected after running gazelle.
+// └── <testDataPath>
+//
+//	└── some_test
+//	    ├── WORKSPACE
+//	    ├── README.md --> README describing what the test does.
+//	    ├── arguments.txt --> newline delimited list of arguments to pass in (ignored if empty).
+//	    ├── expectedStdout.txt --> Expected stdout for this test.
+//	    ├── expectedStderr.txt --> Expected stderr for this test.
+//	    ├── expectedExitCode.txt --> Expected exit code for this test.
+//	    └── app
+//	        └── sourceFile.foo
+//	        └── BUILD.in --> BUILD file prior to running gazelle.
+//	        └── BUILD.out --> BUILD file expected after running gazelle.
 func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) {
 	t.Run(args.Name, func(t *testing.T) {
 		t.Helper() // Make the stack trace a little bit more clear.
@@ -217,9 +217,9 @@ func TestGazelleGenerationOnPath(t *testing.T, args *TestGazelleGenerationArgs) 
 				return nil
 			}
 
-			content, err := ioutil.ReadFile(path)
+			content, err := os.ReadFile(path)
 			if err != nil {
-				t.Errorf("ioutil.ReadFile(%q) error: %v", path, err)
+				t.Errorf("os.ReadFile(%q) error: %v", path, err)
 			}
 
 			// Read in expected stdout, stderr, and exit code files.

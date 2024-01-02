@@ -17,7 +17,6 @@ package repo_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -34,7 +33,7 @@ func TestFindExternalRepo(t *testing.T) {
 		t.Skip("symlinks not supported on windows")
 	}
 
-	dir, err := ioutil.TempDir(os.Getenv("TEST_TEMPDIR"), "TestFindExternalRepo")
+	dir, err := os.MkdirTemp(os.Getenv("TEST_TEMPDIR"), "TestFindExternalRepo")
 	if err != nil {
 		t.Fatal(err)
 	}

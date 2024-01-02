@@ -17,7 +17,6 @@ package bazel_test
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -188,7 +187,7 @@ func TestRepoCacheContainsGoEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 	goEnvPath := filepath.Join(outputBase, "external/bazel_gazelle_go_repository_cache", "go.env")
-	gotBytes, err := ioutil.ReadFile(goEnvPath)
+	gotBytes, err := os.ReadFile(goEnvPath)
 	if err != nil {
 		t.Fatalf("could not read file %s: %v", goEnvPath, err)
 	}
