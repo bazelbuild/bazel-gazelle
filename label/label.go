@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/pathtools"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 // A Label represents a label of a build target in Bazel. Labels have three
@@ -208,6 +209,12 @@ func (l Label) Contains(other Label) bool {
 	}
 	result := l.Repo == other.Repo && pathtools.HasPrefix(other.Pkg, l.Pkg)
 	return result
+}
+
+func (l Label) BzlExpr() bzl.Expr {
+	return &bzl.StringExpr {
+	    Value: l.String(),
+	}
 }
 
 var nonWordRe = regexp.MustCompile(`\W+`)

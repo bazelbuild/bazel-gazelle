@@ -5,7 +5,10 @@ go_library(
     srcs = ["label.go"],
     importpath = "github.com/bazelbuild/bazel-gazelle/label",
     visibility = ["//visibility:public"],
-    deps = ["//pathtools"],
+    deps = [
+        "//pathtools",
+        "@com_github_bazelbuild_buildtools//build",
+    ],
 )
 
 go_test(

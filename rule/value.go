@@ -22,7 +22,6 @@ import (
 	"sort"
 
 	bzl "github.com/bazelbuild/buildtools/build"
-	"github.com/bazelbuild/bazel-gazelle/label"
 )
 
 // KeyValue represents a key-value pair. This gets converted into a
@@ -36,6 +35,23 @@ type KeyValue struct {
 type GlobValue struct {
 	Patterns []string
 	Excludes []string
+}
+
+func (g GlobValue) BzlExpr() bzl.Expr {
+	patternsValue := ExprFromValue(g.Patterns)
+	globArgs := []bzl.Expr{patternsValue}
+	if len(g.Excludes) > 0 {
+		excludesValue := ExprFromValue(g.Excludes)
+		globArgs = append(globArgs, &bzl.AssignExpr{
+			LHS: &bzl.LiteralExpr{Token: "exclude"},
+			Op:  "=",
+			RHS: excludesValue,
+		})
+	}
+	return &bzl.CallExpr{
+		X:    &bzl.LiteralExpr{Token: "glob"},
+		List: globArgs,
+	}
 }
 
 // BzlExprValue is implemented by types that have custom translations
@@ -182,27 +198,6 @@ func ExprFromValue(val interface{}) bzl.Expr {
 			args[i] = &bzl.KeyValueExpr{Key: k, Value: v}
 		}
 		return &bzl.DictExpr{List: args, ForceMultiLine: true}
-
-	case reflect.Struct:
-		switch val := val.(type) {
-		case GlobValue:
-			patternsValue := ExprFromValue(val.Patterns)
-			globArgs := []bzl.Expr{patternsValue}
-			if len(val.Excludes) > 0 {
-				excludesValue := ExprFromValue(val.Excludes)
-				globArgs = append(globArgs, &bzl.AssignExpr{
-					LHS: &bzl.LiteralExpr{Token: "exclude"},
-					Op:  "=",
-					RHS: excludesValue,
-				})
-			}
-			return &bzl.CallExpr{
-				X:    &bzl.LiteralExpr{Token: "glob"},
-				List: globArgs,
-			}
-		case label.Label:
-			return &bzl.StringExpr{Value: val.String()}
-		}
 	}
 
 	log.Panicf("type not supported: %T", val)
