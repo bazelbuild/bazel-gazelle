@@ -22,7 +22,6 @@ import (
 	"sort"
 
 	bzl "github.com/bazelbuild/buildtools/build"
-	"github.com/bazelbuild/bazel-gazelle/label"
 )
 
 // KeyValue represents a key-value pair. This gets converted into a
@@ -200,8 +199,6 @@ func ExprFromValue(val interface{}) bzl.Expr {
 				X:    &bzl.LiteralExpr{Token: "glob"},
 				List: globArgs,
 			}
-		case label.Label:
-			return &bzl.StringExpr{Value: val.String()}
 		}
 	}
 
