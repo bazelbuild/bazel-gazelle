@@ -667,6 +667,12 @@ export_files(glob(["**"]))
 	}
 }
 
+type TestSortedStrings []string
+
+func (s TestSortedStrings) ShouldSort(key string) bool {
+	return key == "some_attribute"
+}
+
 func TestAttributeValueSorting(t *testing.T) {
 	f := EmptyFile("foo", "bar")
 
@@ -674,6 +680,7 @@ func TestAttributeValueSorting(t *testing.T) {
 	r.SetAttr("deps", []string{"foo", "bar", "baz"})
 	r.SetAttr("srcs", UnsortedStrings{"foo", "bar", "baz"})
 	r.SetAttr("hdrs", []string{"foo", "bar", "baz"})
+	r.SetAttr("some_attribute", TestSortedStrings{"foo", "bar", "baz"})
 
 	r.Insert(f)
 	f.Sync()
@@ -690,6 +697,11 @@ a_rule(
         "foo",
         "bar",
         "baz",
+    ],
+    some_attribute = [
+        "bar",
+        "baz",
+        "foo",
     ],
     deps = [
         "bar",

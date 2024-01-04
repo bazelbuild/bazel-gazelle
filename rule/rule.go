@@ -1050,6 +1050,15 @@ func (r *Rule) IsEmpty(info KindInfo) bool {
 	return true
 }
 
+func shouldSort(val interface{}, key string) bool {
+	maybeSorted, isMaybeSorted := val.(MaybeSorted)
+	if isMaybeSorted {
+		return maybeSorted.ShouldSort(key)
+	} else {
+		return key == "srcs" || key == "deps"
+	}
+}
+
 func (r *Rule) sync() {
 	r.syncComments()
 	if !r.updated {
@@ -1057,10 +1066,9 @@ func (r *Rule) sync() {
 	}
 	r.updated = false
 
-	for _, k := range []string{"srcs", "deps"} {
-		attr, ok := r.attrs[k]
-		maybeSorted, isMaybeSorted := attr.val.(MaybeSorted)
-		if ok && (!isMaybeSorted || maybeSorted.ShouldSort(k)) {
+	for _, k := range r.AttrKeys() {
+		attr := r.attrs[k]
+		if shouldSort(attr.val, k) {
 			bzl.Walk(attr.expr.RHS, sortExprLabels)
 		}
 	}
