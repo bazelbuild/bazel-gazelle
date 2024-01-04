@@ -73,6 +73,8 @@ func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Remo
 	switch r.Kind() {
 	case "go_proto_library":
 		resolve = resolveProto
+	case "go_grpc_library":
+		resolve = resolveProto
 	default:
 		resolve = ResolveGo
 	}
@@ -95,7 +97,7 @@ func (gl *goLang) Resolve(c *config.Config, ix *resolve.RuleIndex, rc *repo.Remo
 		log.Print(err)
 	}
 	if !deps.IsEmpty() {
-		if r.Kind() == "go_proto_library" {
+		if isGoProtoLibrary(r.Kind()) {
 			// protos may import the same library multiple times by different names,
 			// so we need to de-duplicate them. Protos are not platform-specific,
 			// so it's safe to just flatten them.

@@ -46,7 +46,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	protoPackages := make(map[string]proto.Package)
 	protoFileInfo := make(map[string]proto.FileInfo)
 	for _, r := range args.OtherGen {
-		if r.Kind() == "go_proto_library" {
+		if r.Kind() == "go_proto_library" || r.Kind() == "go_grpc_library" {
 			if proto := r.AttrString("proto"); proto != "" {
 				goProtoRules[proto] = struct{}{}
 			}
@@ -454,14 +454,20 @@ func (g *generator) generateProto(mode proto.Mode, target protoTarget, importPat
 		}
 	}
 
-	goProtoLibrary := rule.NewRule("go_proto_library", goProtoName)
+	var goProtoLibrary *rule.Rule
+	if !target.hasServices {
+		goProtoLibrary = rule.NewRule("go_proto_library", goProtoName)
+		if gc.goProtoCompilersSet {
+			goProtoLibrary.SetAttr("compilers", gc.goProtoCompilers)
+		}
+	} else {
+		goProtoLibrary = rule.NewRule("go_grpc_library", goProtoName)
+		if gc.goGrpcCompilersSet {
+			goProtoLibrary.SetAttr("compilers", gc.goGrpcCompilers)
+		}
+	}
 	goProtoLibrary.SetAttr("proto", ":"+protoName)
 	g.setImportAttrs(goProtoLibrary, importPath)
-	if target.hasServices {
-		goProtoLibrary.SetAttr("compilers", gc.goGrpcCompilers)
-	} else if gc.goProtoCompilersSet {
-		goProtoLibrary.SetAttr("compilers", gc.goProtoCompilers)
-	}
 	if g.shouldSetVisibility {
 		goProtoLibrary.SetAttr("visibility", visibility)
 	}

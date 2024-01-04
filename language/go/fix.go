@@ -171,15 +171,15 @@ func migrateLibraryEmbed(c *config.Config, f *rule.File) {
 	}
 }
 
-// migrateGrpcCompilers converts "go_grpc_library" rules into "go_proto_library"
-// rules with a "compilers" attribute.
+// migrateGrpcCompilers converts "go_proto_library" rules with a "compilers"
+// attribute containing exactly oldGrpcCompilerLabel into "go_grpc_library" rules.
 func migrateGrpcCompilers(c *config.Config, f *rule.File) {
 	for _, r := range f.Rules {
-		if r.Kind() != "go_grpc_library" || r.ShouldKeep() || r.Attr("compilers") != nil {
+		if r.Kind() != "go_proto_library" || r.ShouldKeep() || r.Attr("compilers") == nil || len(r.AttrStrings("compilers")) != 1 || !strListAttrContains(r, "compilers", oldGrpcCompilerLabel) {
 			continue
 		}
-		r.SetKind("go_proto_library")
-		r.SetAttr("compilers", []string{grpcCompilerLabel})
+		r.SetKind("go_grpc_library")
+		r.DelAttr("compilers")
 	}
 }
 

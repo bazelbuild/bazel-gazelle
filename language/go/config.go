@@ -147,8 +147,8 @@ const (
 )
 
 var (
-	defaultGoProtoCompilers = []string{"@io_bazel_rules_go//proto:go_proto"}
-	defaultGoGrpcCompilers  = []string{"@io_bazel_rules_go//proto:go_grpc"}
+	defaultGoProtoCompilers = []string{}
+	defaultGoGrpcCompilers  = []string{}
 )
 
 func (m testMode) String() string {
