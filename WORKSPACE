@@ -15,11 +15,10 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_go",
-    integrity = "sha256-C4AgoAugSPzSnRcEilR0x16TzYFuUcAnOhYRdYuB5fs=",
-    strip_prefix = "rules_go-32b8404911a3810f57b9be1077092729fb3fe8aa",
+    integrity = "sha256-fHbWI2so/2laoozzX5XeMXqUcv0fsUrHl8m/aE8Js3w=",
     urls = [
-        # TODO: Return to the next release.
-        "https://github.com/bazelbuild/rules_go/archive/32b8404911a3810f57b9be1077092729fb3fe8aa.tar.gz",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.44.2/rules_go-v0.44.2.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.44.2/rules_go-v0.44.2.zip",
     ],
 )
 

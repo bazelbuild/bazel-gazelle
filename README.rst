@@ -139,8 +139,8 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Swift
 
-  `rules_swift_package_manager`_ has an extension for generating ``swift_library``, ``swift_binary``, and 
-  ``swift_test`` rules. It also includes facilities for resolving, downloading and building external Swift 
+  `rules_swift_package_manager`_ has an extension for generating ``swift_library``, ``swift_binary``, and
+  ``swift_test`` rules. It also includes facilities for resolving, downloading and building external Swift
   packages for a Bazel workspace.
 
 If you know of an extension which could be linked here, please `open a PR`_!
@@ -169,19 +169,19 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "91585017debb61982f7054c9688857a2ad1fd823fc3f9cb05048b0025c47d023",
+        integrity = "sha256-fHbWI2so/2laoozzX5XeMXqUcv0fsUrHl8m/aE8Js3w=",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.42.0/rules_go-v0.42.0.zip",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.42.0/rules_go-v0.42.0.zip",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.44.2/rules_go-v0.44.2.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.44.2/rules_go-v0.44.2.zip",
         ],
     )
 
     http_archive(
         name = "bazel_gazelle",
-        sha256 = "b7387f72efb59f876e4daae42f1d3912d0d45563eac7cb23d1de0b094ab588cf",
+        integrity = "sha256-MpOL2hbmcABjA1R5Bj2dJMYO2o15/Uc5Vj9Q0zHLMgk=",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.34.0/bazel-gazelle-v0.34.0.tar.gz",
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.34.0/bazel-gazelle-v0.34.0.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz",
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz",
         ],
     )
 
@@ -356,6 +356,10 @@ you're using a compatible version.
 | 0.32                | **0.41**                     | n/a                          |
 +---------------------+------------------------------+------------------------------+
 | 0.33                | 0.41                         | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.34                | 0.41                         | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.35                | 0.41                         | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage
