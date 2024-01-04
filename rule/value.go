@@ -70,6 +70,11 @@ type Merger interface {
 	Merge(other bzl.Expr) bzl.Expr
 }
 
+// MaybeSorted is implemented by types that customize their sorting behavior.
+type MaybeSorted interface {
+	ShouldSort(key string) bool
+}
+
 type SortedStrings []string
 
 func (s SortedStrings) BzlExpr() bzl.Expr {
@@ -98,6 +103,10 @@ func (s UnsortedStrings) Merge(other bzl.Expr) bzl.Expr {
 		return ExprFromValue(s)
 	}
 	return MergeList(ExprFromValue(s), other)
+}
+
+func (s UnsortedStrings) ShouldSort(string) bool {
+	return false
 }
 
 // SelectStringListValue is a value that can be translated to a Bazel

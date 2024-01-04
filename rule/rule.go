@@ -1059,8 +1059,8 @@ func (r *Rule) sync() {
 
 	for _, k := range []string{"srcs", "deps"} {
 		attr, ok := r.attrs[k]
-		_, isUnsorted := attr.val.(UnsortedStrings)
-		if ok && !isUnsorted {
+		maybeSorted, isMaybeSorted := attr.val.(MaybeSorted)
+		if ok && (!isMaybeSorted || maybeSorted.ShouldSort(k)) {
 			bzl.Walk(attr.expr.RHS, sortExprLabels)
 		}
 	}
