@@ -37,6 +37,23 @@ type GlobValue struct {
 	Excludes []string
 }
 
+func (g GlobValue) BzlExpr() bzl.Expr {
+	patternsValue := ExprFromValue(g.Patterns)
+	globArgs := []bzl.Expr{patternsValue}
+	if len(g.Excludes) > 0 {
+		excludesValue := ExprFromValue(g.Excludes)
+		globArgs = append(globArgs, &bzl.AssignExpr{
+			LHS: &bzl.LiteralExpr{Token: "exclude"},
+			Op:  "=",
+			RHS: excludesValue,
+		})
+	}
+	return &bzl.CallExpr{
+		X:    &bzl.LiteralExpr{Token: "glob"},
+		List: globArgs,
+	}
+}
+
 // BzlExprValue is implemented by types that have custom translations
 // to Starlark values.
 type BzlExprValue interface {
@@ -181,25 +198,6 @@ func ExprFromValue(val interface{}) bzl.Expr {
 			args[i] = &bzl.KeyValueExpr{Key: k, Value: v}
 		}
 		return &bzl.DictExpr{List: args, ForceMultiLine: true}
-
-	case reflect.Struct:
-		switch val := val.(type) {
-		case GlobValue:
-			patternsValue := ExprFromValue(val.Patterns)
-			globArgs := []bzl.Expr{patternsValue}
-			if len(val.Excludes) > 0 {
-				excludesValue := ExprFromValue(val.Excludes)
-				globArgs = append(globArgs, &bzl.AssignExpr{
-					LHS: &bzl.LiteralExpr{Token: "exclude"},
-					Op:  "=",
-					RHS: excludesValue,
-				})
-			}
-			return &bzl.CallExpr{
-				X:    &bzl.LiteralExpr{Token: "glob"},
-				List: globArgs,
-			}
-		}
 	}
 
 	log.Panicf("type not supported: %T", val)
