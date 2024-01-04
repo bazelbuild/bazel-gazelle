@@ -41,12 +41,14 @@ REPO_CONFIG_PATH=@@REPO_CONFIG_PATH@@
 # use the SDK used by the workspace in case the Go SDK is not installed
 # on the host system or is a different version.
 function set_goroot {
-  local gotool=$(rlocation "$GOTOOL")
+  local gotool
+  gotool=$(rlocation "$GOTOOL")
   if [ -z "$gotool" ]; then
     echo "$0: warning: could not locate GOROOT used by rules_go" >&2
     return
   fi
-  export GOROOT=$(cd "$(dirname "$gotool")/.."; pwd)
+  GOROOT=$(cd "$(dirname "$gotool")/.."; pwd)
+  export GOROOT
   if type cygpath >/dev/null 2>&1; then
     # On Windows, convert the path to something usable outside of bash.
     GOROOT=$(cygpath -w "$GOROOT")
