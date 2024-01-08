@@ -24,6 +24,11 @@ go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 
 # Validate a go.mod replace directive works.
 go_deps.from_file(go_mod = "//:go.mod")
+go_deps.gazelle_default_attributes(
+    directives = [
+        "gazelle:proto disable",
+    ],
+)
 
 # Verify that the gazelle:go_naming_convention directive in an override is
 # respected.
