@@ -44,6 +44,44 @@ the required directives to the "default_gazelle_overrides.bzl" file at \
 https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/default_gazelle_overrides.bzl.
 """
 
+_GAZELLE_ATTRS = {
+    "build_file_generation": attr.string(
+        default = "on",
+        doc = """One of `"auto"`, `"on"` (default), `"off"`.
+
+        Whether Gazelle should generate build files for the Go module.
+
+        Although "auto" is the default globally for build_file_generation,
+        if a `"gazelle_override"` or `"gazelle_default_attributes"` tag is present
+        for a Go module, the `"build_file_generation"` attribute will default to "on"
+        since these tags indicate the presence of `"directives"` or `"build_extra_args"`.
+
+        In `"auto"` mode, Gazelle will run if there is no build file in the Go
+        module's root directory.
+
+        """,
+        values = [
+            "auto",
+            "off",
+            "on",
+        ],
+    ),
+    "build_extra_args": attr.string_list(
+        default = [],
+        doc = """
+        A list of additional command line arguments to pass to Gazelle when generating build files.
+        """,
+    ),
+    "directives": attr.string_list(
+        doc = """Gazelle configuration directives to use for this Go module's external repository.
+
+        Each directive uses the same format as those that Gazelle
+        accepts as comments in Bazel source files, with the
+        directive name followed by optional arguments separated by
+        whitespace.""",
+    ),
+}
+
 def _fail_on_non_root_overrides(module_ctx, module, tag_class):
     if module.is_root:
         return
@@ -68,7 +106,8 @@ def _fail_on_unmatched_overrides(override_keys, resolutions, override_name):
     unmatched_overrides = [path for path in override_keys if path not in resolutions]
     if unmatched_overrides:
         fail("Some {} did not target a Go module with a matching path: {}".format(
-            override_name, ", ".join(unmatched_overrides)
+            override_name,
+            ", ".join(unmatched_overrides),
         ))
 
 def _check_directive(directive):
@@ -76,37 +115,49 @@ def _check_directive(directive):
         return
     fail("Invalid Gazelle directive: \"{}\". Gazelle directives must be of the form \"gazelle:key value\".".format(directive))
 
-def _get_build_file_generation(path, gazelle_overrides):
-    override = gazelle_overrides.get(path)
-    if override:
-        return override.build_file_generation
+def _get_override_or_default(specific_overrides, gazelle_default_attributes, default_path_overrides, path, default_value, attribute_name):
+    # 1st: Check for user-provided specific overrides. If a specific override is found,
+    # all of its attributes will be applied (even if left to the tag's default). This is to allow
+    # users to override the gazelle_default_attributes tag back to the tag's default.
+    #
+    # This will also cause "build_file_generation" to default to "on" if a specific override is found.
+    specific_override = specific_overrides.get(path)
+    if specific_override and hasattr(specific_override, attribute_name):
+        return getattr(specific_override, attribute_name)
 
-    return DEFAULT_BUILD_FILE_GENERATION_BY_PATH.get(path, "auto")
+    # 2nd. Check for default attributes provided by the user. This must be done before checking for
+    # gazelle's defaults path overrides to prevent Gazelle from overriding a user-specified flag.
+    #
+    # This will also cause "build_file_generation" to default to "on" if default attirbutes are found.
+    global_override_value = getattr(gazelle_default_attributes, attribute_name, None)
+    if global_override_value:
+        return global_override_value
 
-def _get_build_extra_args(path, gazelle_overrides):
-    override = gazelle_overrides.get(path)
-    if override:
-        return override.build_extra_args
-    return DEFAULT_BUILD_EXTRA_ARGS_BY_PATH.get(path, [])
+    # 3rd: Check for default overrides for specific path.
+    default_path_override = default_path_overrides.get(path)
+    if default_path_override:
+        return default_path_override
 
-def _get_directives(path, gazelle_overrides):
-    override = gazelle_overrides.get(path)
-    if override:
-        return override.directives
+    # 4th. Return the default value if no override was found.
+    # This will cause "build_file_generation" to default to "auto".
+    return default_value
 
-    return DEFAULT_DIRECTIVES_BY_PATH.get(path, [])
+def _get_directives(path, gazelle_overrides, gazelle_default_attributes):
+    return _get_override_or_default(gazelle_overrides, gazelle_default_attributes, DEFAULT_DIRECTIVES_BY_PATH, path, [], "directives")
+
+def _get_build_file_generation(path, gazelle_overrides, gazelle_default_attributes):
+    # The default value for build_file_generation is "auto" if no override is found, but will default to "on" if an override is found.
+    return _get_override_or_default(gazelle_overrides, gazelle_default_attributes, DEFAULT_BUILD_FILE_GENERATION_BY_PATH, path, "auto", "build_file_generation")
+
+def _get_build_extra_args(path, gazelle_overrides, gazelle_default_attributes):
+    return _get_override_or_default(gazelle_overrides, gazelle_default_attributes, DEFAULT_BUILD_EXTRA_ARGS_BY_PATH, path, [], "build_extra_args")
 
 def _get_patches(path, module_overrides):
-    override = module_overrides.get(path)
-    if override:
-        return override.patches
-    return []
+    return _get_override_or_default(module_overrides, struct(), {}, path, [], "patches")
 
 def _get_patch_args(path, module_overrides):
-    override = module_overrides.get(path)
-    if override:
-        return ["-p{}".format(override.patch_strip)]
-    return []
+    override = _get_override_or_default(module_overrides, struct(), {}, path, None, "patch_strip")
+    return ["-p{}".format(override)] if override else []
 
 def _repo_name(importpath):
     path_segments = importpath.split("/")
@@ -123,6 +174,32 @@ def _is_dev_dependency(module_ctx, tag):
     # module_ctx.extension_metadata, so the return value of this function is not used if it is
     # not available.
     return module_ctx.is_dev_dependency(tag) if hasattr(module_ctx, "is_dev_dependency") else False
+
+# This function processes the gazelle_default_attributes tag for a given module and returns a struct
+# containing the attributes from _GAZELLE_ATTRS that are defined in the tag.
+def _process_gazelle_default_attributes(module_ctx):
+    for module in module_ctx.modules:
+        _fail_on_non_root_overrides(module_ctx, module, "gazelle_default_attributes")
+
+    for module in module_ctx.modules:
+        tags = module.tags.gazelle_default_attributes
+        if not tags:
+            continue
+
+        if len(tags) > 1:
+            fail(
+                "go_deps.gazelle_default_attributes: only one tag can be specified per module, got:\n",
+                *[t for p in zip(module.tags.gazelle_default_attributes, len(module.tags.gazelle_default_attributes) * ["\n"]) for t in p]
+            )
+
+        tag = tags[0]
+        return struct(**{
+            attr: getattr(tag, attr)
+            for attr in _GAZELLE_ATTRS.keys()
+            if hasattr(tag, attr)
+        })
+
+    return None
 
 # This function processes a given override type for a given module, checks for duplicate overrides
 # and inserts the override returned from the process_override_func into the overrides dict.
@@ -142,11 +219,11 @@ def _process_gazelle_override(gazelle_override_tag):
     for directive in gazelle_override_tag.directives:
         _check_directive(directive)
 
-    return struct(
-        directives = gazelle_override_tag.directives,
-        build_file_generation = gazelle_override_tag.build_file_generation,
-        build_extra_args = gazelle_override_tag.build_extra_args,
-    )
+    return struct(**{
+        attr: getattr(gazelle_override_tag, attr)
+        for attr in _GAZELLE_ATTRS.keys()
+        if hasattr(gazelle_override_tag, attr)
+    })
 
 def _process_module_override(module_override_tag):
     return struct(
@@ -215,6 +292,7 @@ def _go_deps_impl(module_ctx):
     replace_map = {}
     bazel_deps = {}
 
+    gazelle_default_attributes = _process_gazelle_default_attributes(module_ctx)
     archive_overrides = {}
     gazelle_overrides = {}
     module_overrides = {}
@@ -341,7 +419,6 @@ def _go_deps_impl(module_ctx):
     # in the module resolutions and swapping out the entry.
     for path, replace in replace_map.items():
         if path in module_resolutions:
-
             # If the replace directive specified a version then we only
             # apply it if the versions match.
             if replace.from_version:
@@ -409,9 +486,9 @@ def _go_deps_impl(module_ctx):
         go_repository_args = {
             "name": module.repo_name,
             "importpath": path,
-            "build_directives": _get_directives(path, gazelle_overrides),
-            "build_file_generation": _get_build_file_generation(path, gazelle_overrides),
-            "build_extra_args": _get_build_extra_args(path, gazelle_overrides),
+            "build_directives": _get_directives(path, gazelle_overrides, gazelle_default_attributes),
+            "build_file_generation": _get_build_file_generation(path, gazelle_overrides, gazelle_default_attributes),
+            "build_extra_args": _get_build_extra_args(path, gazelle_overrides, gazelle_default_attributes),
             "patches": _get_patches(path, module_overrides),
             "patch_args": _get_patch_args(path, module_overrides),
         }
@@ -451,7 +528,7 @@ def _go_deps_impl(module_ctx):
         },
         build_naming_conventions = drop_nones({
             module.repo_name: get_directive_value(
-                _get_directives(path, gazelle_overrides),
+                _get_directives(path, gazelle_overrides, gazelle_default_attributes),
                 "go_naming_convention",
             )
             for path, module in module_resolutions.items()
@@ -561,35 +638,13 @@ _gazelle_override_tag = tag_class(
             extension within this Bazel module.""",
             mandatory = True,
         ),
-        "build_file_generation": attr.string(
-            default = "auto",
-            doc = """One of `"auto"` (default), `"on"`, `"off"`.
-
-            Whether Gazelle should generate build files for the Go module. In
-            `"auto"` mode, Gazelle will run if there is no build file in the Go
-            module's root directory.""",
-            values = [
-                "auto",
-                "off",
-                "on",
-            ],
-        ),
-        "build_extra_args": attr.string_list(
-            default = [],
-            doc = """
-            A list of additional command line arguments to pass to Gazelle when generating build files.
-            """,
-        ),
-        "directives": attr.string_list(
-            doc = """Gazelle configuration directives to use for this Go module's external repository.
-
-            Each directive uses the same format as those that Gazelle
-            accepts as comments in Bazel source files, with the
-            directive name followed by optional arguments separated by
-            whitespace.""",
-        ),
-    },
+    } | _GAZELLE_ATTRS,
     doc = "Override Gazelle's behavior on a given Go module defined by other tags in this extension.",
+)
+
+_gazelle_default_attributes_tag = tag_class(
+    attrs = _GAZELLE_ATTRS,
+    doc = "Override Gazelle's default attribute values for all modules in this extension.",
 )
 
 _module_override_tag = tag_class(
@@ -619,6 +674,7 @@ go_deps = module_extension(
         "config": _config_tag,
         "from_file": _from_file_tag,
         "gazelle_override": _gazelle_override_tag,
+        "gazelle_default_attributes": _gazelle_default_attributes_tag,
         "module": _module_tag,
         "module_override": _module_override_tag,
     },
