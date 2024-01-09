@@ -17,6 +17,7 @@ package golang
 
 import (
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -111,6 +112,23 @@ func setBuildAttrs(gc *goConfig, r *rule.Rule) {
 	if gc.buildTagsAttr != "" {
 		buildTags := strings.Split(gc.buildTagsAttr, ",")
 		r.SetAttr("build_tags", buildTags)
+	}
+	env := make(map[string]string)
+
+	// Iterate of the goEnv struct using the `key` and `value` field with reflect
+	// tbh, this is a very silly quirk of go and I wish I could just iterate over a struct
+	t := reflect.TypeOf(gc.goEnv)
+	v := reflect.ValueOf(gc.goEnv)
+	num := t.NumField()
+	for i := 0; i < num; i++ {
+		ek := v.Field(i).Interface().(goEnvKey)
+		if ek.value != "" {
+			env[ek.key] = ek.value
+		}
+	}
+
+	if len(env) > 0 {
+		r.SetAttr("go_env", env)
 	}
 }
 
