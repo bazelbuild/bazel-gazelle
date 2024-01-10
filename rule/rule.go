@@ -725,10 +725,11 @@ func (l *Load) sync() {
 // Rule represents a rule statement within a build file.
 type Rule struct {
 	stmt
-	kind    bzl.Expr
-	args    []bzl.Expr
-	attrs   map[string]attrValue
-	private map[string]interface{}
+	kind        bzl.Expr
+	args        []bzl.Expr
+	attrs       map[string]attrValue
+	private     map[string]interface{}
+	sortedAttrs []string
 }
 
 type attrValue struct {
@@ -746,10 +747,11 @@ func NewRule(kind, name string) *Rule {
 	call := &bzl.CallExpr{X: kindIdent}
 
 	r := &Rule{
-		stmt:    stmt{expr: call},
-		kind:    kindIdent,
-		attrs:   map[string]attrValue{},
-		private: map[string]interface{}{},
+		stmt:        stmt{expr: call},
+		kind:        kindIdent,
+		attrs:       map[string]attrValue{},
+		private:     map[string]interface{}{},
+		sortedAttrs: []string{"deps", "srcs"},
 	}
 	if name != "" {
 		nameAttr := attrValue{
@@ -1014,6 +1016,17 @@ func (r *Rule) AddArg(value bzl.Expr) {
 	r.updated = true
 }
 
+// SortedAttrs returns the keys of attributes whose values will be sorted
+func (r *Rule) SortedAttrs() []string {
+	return r.sortedAttrs
+}
+
+// SetSortedAttrs sets the keys of attributes whose values will be sorted
+func (r *Rule) SetSortedAttrs(keys []string) {
+	r.sortedAttrs = keys
+	r.updated = true
+}
+
 // Insert marks this statement for insertion at the end of the file. Multiple
 // statements will be inserted in the order Insert is called.
 func (r *Rule) Insert(f *File) {
@@ -1057,7 +1070,7 @@ func (r *Rule) sync() {
 	}
 	r.updated = false
 
-	for _, k := range []string{"srcs", "deps"} {
+	for _, k := range r.sortedAttrs {
 		attr, ok := r.attrs[k]
 		_, isUnsorted := attr.val.(UnsortedStrings)
 		if ok && !isUnsorted {
