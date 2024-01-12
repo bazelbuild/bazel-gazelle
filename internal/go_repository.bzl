@@ -333,6 +333,8 @@ def _go_repository_impl(ctx):
         if ctx.attr.debug_mode and result.stderr:
             print("%s gazelle.stdout: %s" % (ctx.name, result.stdout))
             print("%s gazelle.stderr: %s" % (ctx.name, result.stderr))
+    elif len(ctx.attr.build_directives) > 0:
+        fail("%s: build_directives were specified but are being ignored - perhaps the repo already has BUILD files present. Try setting build_file_generation = \"on\"" % ctx.name)
 
     # Apply patches if necessary.
     patch(ctx)
