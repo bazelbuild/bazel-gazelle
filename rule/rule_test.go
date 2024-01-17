@@ -666,3 +666,82 @@ export_files(glob(["**"]))
 		t.Errorf("got:%s\nwant:%s", got, want)
 	}
 }
+
+func TestAttributeValueSorting(t *testing.T) {
+	f := EmptyFile("foo", "bar")
+
+	r := NewRule("a_rule", "")
+	r.SetAttr("deps", []string{"foo", "bar", "baz"})
+	r.SetAttr("srcs", UnsortedStrings{"foo", "bar", "baz"})
+	r.SetAttr("hdrs", []string{"foo", "bar", "baz"})
+
+	r.Insert(f)
+	f.Sync()
+
+	got := strings.TrimSpace(string(bzl.FormatWithoutRewriting(f.File)))
+	want := strings.TrimSpace(`
+a_rule(
+    srcs = [
+        "foo",
+        "bar",
+        "baz",
+    ],
+    hdrs = [
+        "foo",
+        "bar",
+        "baz",
+    ],
+    deps = [
+        "bar",
+        "baz",
+        "foo",
+    ],
+)
+`)
+
+	if got != want {
+		t.Errorf("got:%s\nwant:%s", got, want)
+	}
+}
+
+func TestAttributeValueSortingOverride(t *testing.T) {
+	f := EmptyFile("foo", "bar")
+
+	r := NewRule("a_rule", "")
+	r.SetAttr("deps", []string{"foo", "bar", "baz"})
+	r.SetAttr("srcs", UnsortedStrings{"foo", "bar", "baz"})
+	r.SetAttr("hdrs", []string{"foo", "bar", "baz"})
+	r.SetSortedAttrs([]string{"srcs", "hdrs"})
+
+	r.Insert(f)
+	f.Sync()
+
+	got := strings.TrimSpace(string(bzl.FormatWithoutRewriting(f.File)))
+	want := strings.TrimSpace(`
+a_rule(
+    srcs = [
+        "foo",
+        "bar",
+        "baz",
+    ],
+    hdrs = [
+        "bar",
+        "baz",
+        "foo",
+    ],
+    deps = [
+        "foo",
+        "bar",
+        "baz",
+    ],
+)
+`)
+
+	if got != want {
+		t.Errorf("got:%s\nwant:%s", got, want)
+	}
+
+	if !reflect.DeepEqual(r.SortedAttrs(), []string{"srcs", "hdrs"}) {
+		t.Errorf("Unexpected r.SortedAttrs(): %v", r.SortedAttrs())
+	}
+}
