@@ -1016,6 +1016,15 @@ func (r *Rule) AddArg(value bzl.Expr) {
 	r.updated = true
 }
 
+// UpdateArg replaces an existing arg with a new value.
+func (r *Rule) UpdateArg(index int, value bzl.Expr) {
+	if len(r.args) < index {
+		panic(fmt.Sprintf("Can't update argument at index %d, only have %d args", index, len(r.args)))
+	}
+	r.args[index] = value
+	r.updated = true
+}
+
 // SortedAttrs returns the keys of attributes whose values will be sorted
 func (r *Rule) SortedAttrs() []string {
 	return r.sortedAttrs
