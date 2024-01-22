@@ -63,6 +63,8 @@ y_library(name = "bar")
 	loadMaybe.Insert(f, 0)
 	baz := NewRule("maybe", "baz")
 	baz.AddArg(&bzl.LiteralExpr{Token: "z"})
+	baz.AddArg(&bzl.LiteralExpr{Token: "z"})
+	baz.UpdateArg(0, &bzl.LiteralExpr{Token: "z0"})
 	baz.SetAttr("srcs", GlobValue{
 		Patterns: []string{"**"},
 		Excludes: []string{"*.pem"},
@@ -85,6 +87,7 @@ y_library(
 )
 
 maybe(
+    z0,
     z,
     name = "baz",
     srcs = glob(
