@@ -141,7 +141,7 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 			haveError = true
 		}
 
-		c = configure(cexts, knownDirectives, c, rel, f)
+		c = configure(cexts, knownDirectives, c, rel, f, ents)
 		wc := getWalkConfig(c)
 
 		if wc.isExcluded(rel, ".") {
@@ -268,7 +268,11 @@ func loadBuildFile(c *config.Config, pkg, dir string, ents []fs.DirEntry) (*rule
 	return rule.LoadFile(path, pkg)
 }
 
-func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *config.Config, rel string, f *rule.File) *config.Config {
+type Configurer2 interface {
+	Configure2(c *config.Config, rel string, f *rule.File, ents []fs.DirEntry)
+}
+
+func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *config.Config, rel string, f *rule.File, ents []fs.DirEntry) *config.Config {
 	if rel != "" {
 		c = c.Clone()
 	}
@@ -285,7 +289,11 @@ func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *co
 		}
 	}
 	for _, cext := range cexts {
-		cext.Configure(c, rel, f)
+		if maybeC2, ok := cext.(Configurer2); ok {
+			maybeC2.Configure2(c, rel, f, ents)
+		} else {
+			cext.Configure(c, rel, f)
+		}
 	}
 	return c
 }
