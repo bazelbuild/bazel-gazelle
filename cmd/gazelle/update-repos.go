@@ -108,7 +108,11 @@ func (*updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) err
 	workspacePath := wspace.FindWORKSPACEFile(c.RepoRoot)
 	uc.workspace, err = rule.LoadWorkspaceFile(workspacePath, "")
 	if err != nil {
-		return fmt.Errorf("loading WORKSPACE file: %v", err)
+		if c.Bzlmod {                                                                                                                                                                                                                  
+			return nil                                                                                                                                                                                                                 
+		} else {                                                                                                                                                                                                                       
+			return fmt.Errorf("loading WORKSPACE file: %v", err)                                                                                                                                                                       
+		} 
 	}
 	c.Repos, uc.repoFileMap, err = repo.ListRepositories(uc.workspace)
 	if err != nil {
