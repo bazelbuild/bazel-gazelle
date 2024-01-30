@@ -28,6 +28,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/envoyproxy/protoc-gen-validate": [
         "gazelle:build_file_name BUILD.bazel",
     ],
+    "github.com/cockroachdb/errors": [
+        "gazelle:proto disable",
+    ],
     "github.com/gogo/googleapis": [
         "gazelle:proto disable",
     ],
