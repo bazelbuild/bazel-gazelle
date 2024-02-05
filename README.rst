@@ -975,12 +975,7 @@ The following directives are recognized:
 | Specifies an explicit mapping from an import regex to a label for                          |
 | `Dependency resolution`_. The format for a resolve directive is:                           |
 |                                                                                            |
-| ``# gazelle:resolve source-lang import-lang import-string-regex label``                    |
-|                                                                                            |
-| Specifies an explicit mapping from an import regex to a label for                          |
-| `Dependency resolution`_. The format for a resolve directive is:                           |
-|                                                                                            |
-| ``# gazelle:resolve source-lang import-lang import-string-regex label``                    |
+| ``# gazelle:resolve_regexp source-lang import-lang import-string-regex label``             |
 |                                                                                            |
 | * ``source-lang`` is the language of the source code being imported.                       |
 | * ``import-lang`` is the language importing the library. This is usually                   |
