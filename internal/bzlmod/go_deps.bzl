@@ -128,7 +128,7 @@ def _get_override_or_default(specific_overrides, gazelle_default_attributes, def
     # 2nd. Check for default attributes provided by the user. This must be done before checking for
     # gazelle's defaults path overrides to prevent Gazelle from overriding a user-specified flag.
     #
-    # This will also cause "build_file_generation" to default to "on" if default attirbutes are found.
+    # This will also cause "build_file_generation" to default to "on" if default attributes are found.
     global_override_value = getattr(gazelle_default_attributes, attribute_name, None)
     if global_override_value:
         return global_override_value
