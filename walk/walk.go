@@ -23,10 +23,14 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+
+	"github.com/charlievieth/fastwalk"
 )
 
 // Mode determines which directories Walk visits and which directories
@@ -117,17 +121,52 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 
 	updateRels := buildUpdateRelMap(c.RepoRoot, dirs)
 
+	mu := sync.Mutex{}
+	trie := &pathTrie{}
+
+	fwc := &fastwalk.DefaultConfig
+	wc := getWalkConfig(c)
+	if err := loadBazelIgnore(c.RepoRoot, wc); err != nil {
+		log.Printf("error loading .bazelignore: %v", err)
+	}
+
+	err := fastwalk.Walk(fwc, c.RepoRoot, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(c.RepoRoot, path)
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() && slices.Contains(wc.excludes, rel) {
+			return filepath.SkipDir
+		}
+
+		mu.Lock()
+		defer mu.Unlock()
+		trie.Put(rel, &d)
+
+		return nil
+	})
+
+	if err != nil {
+		log.Fatalf("error walking the file system: %v\n", err)
+	}
+
 	var visit func(*config.Config, string, string, bool)
 	visit = func(c *config.Config, dir, rel string, updateParent bool) {
 		haveError := false
 
-		// TODO: OPT: ReadDir stats all the files, which is slow. We just care about
-		// names and modes, so we should use something like
-		// golang.org/x/tools/internal/fastwalk to speed this up.
-		ents, err := os.ReadDir(dir)
-		if err != nil {
-			log.Print(err)
+		node := trie.Get(rel)
+		if node == nil {
 			return
+		}
+
+		ents := make([]fs.DirEntry, 0, len(node.children))
+		for _, node := range node.children {
+			ents = append(ents, *node.value)
 		}
 
 		f, err := loadBuildFile(c, rel, dir, ents)
@@ -141,7 +180,7 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 			haveError = true
 		}
 
-		c = configure(cexts, knownDirectives, c, rel, f)
+		c = configure(cexts, knownDirectives, c, rel, f, ents)
 		wc := getWalkConfig(c)
 
 		if wc.isExcluded(rel, ".") {
@@ -268,7 +307,11 @@ func loadBuildFile(c *config.Config, pkg, dir string, ents []fs.DirEntry) (*rule
 	return rule.LoadFile(path, pkg)
 }
 
-func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *config.Config, rel string, f *rule.File) *config.Config {
+type Configurer2 interface {
+	Configure2(c *config.Config, rel string, f *rule.File, ents []fs.DirEntry)
+}
+
+func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *config.Config, rel string, f *rule.File, ents []fs.DirEntry) *config.Config {
 	if rel != "" {
 		c = c.Clone()
 	}
@@ -285,7 +328,11 @@ func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *co
 		}
 	}
 	for _, cext := range cexts {
-		cext.Configure(c, rel, f)
+		if maybeC2, ok := cext.(Configurer2); ok {
+			maybeC2.Configure2(c, rel, f, ents)
+		} else {
+			cext.Configure(c, rel, f)
+		}
 	}
 	return c
 }

@@ -6,6 +6,7 @@ require (
 	github.com/bazelbuild/buildtools v0.0.0-20240313121412-66c605173954
 	github.com/bazelbuild/rules_go v0.46.0
 	github.com/bmatcuk/doublestar/v4 v4.6.1
+	github.com/charlievieth/fastwalk v1.0.2
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/go-cmp v0.6.0
 	github.com/pmezard/go-difflib v1.0.0

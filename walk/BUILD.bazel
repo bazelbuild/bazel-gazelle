@@ -4,6 +4,7 @@ go_library(
     name = "walk",
     srcs = [
         "config.go",
+        "trie.go",
         "walk.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/walk",
@@ -13,6 +14,7 @@ go_library(
         "//flag",
         "//rule",
         "@com_github_bmatcuk_doublestar_v4//:doublestar",
+        "@com_github_charlievieth_fastwalk//:fastwalk",
     ],
 )
 
