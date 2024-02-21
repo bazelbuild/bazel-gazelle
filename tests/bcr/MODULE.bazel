@@ -24,6 +24,31 @@ go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 
 # Validate a go.mod replace directive works.
 go_deps.from_file(go_mod = "//:go.mod")
+go_deps.gazelle_default_attributes(
+    build_file_generation = "on",
+    directives = [
+        "gazelle:proto disable",
+    ],
+)
+
+# By defining `gazelle_default_attributes`, we also must individually
+# specify certain overrides from internal/bzlmod/default_gazelle_overrides.bzl
+#
+# "build_file_generation" defaults to "on" because we provided a "gazelle_override"
+# (which contains either directives or build extra args).
+go_deps.gazelle_override(
+    directives = [
+        "gazelle:build_file_name BUILD.bazel",
+        "gazelle:build_file_proto_mode disable_global",
+    ],
+    path = "github.com/google/safetext",
+)
+go_deps.gazelle_override(
+    directives = [
+        "gazelle:build_file_name BUILD.bazel",
+    ],
+    path = "github.com/envoyproxy/protoc-gen-validate",
+)
 
 # Verify that the gazelle:go_naming_convention directive in an override is
 # respected.
@@ -56,16 +81,16 @@ go_deps.gazelle_override(
     path = "github.com/bazelbuild/buildtools",
 )
 go_deps.archive_override(
-    urls = [
-        "https://github.com/bazelbuild/buildtools/archive/ae8e3206e815d086269eb208b01f300639a4b194.tar.gz",
-    ],
     patch_strip = 1,
     patches = [
         "//patches:buildtools.patch",
     ],
-    strip_prefix = "buildtools-ae8e3206e815d086269eb208b01f300639a4b194",
     path = "github.com/bazelbuild/buildtools",
     sha256 = "05d7c3d2bd3cc0b02d15672fefa0d6be48c7aebe459c1c99dced7ac5e598508f",
+    strip_prefix = "buildtools-ae8e3206e815d086269eb208b01f300639a4b194",
+    urls = [
+        "https://github.com/bazelbuild/buildtools/archive/ae8e3206e815d086269eb208b01f300639a4b194.tar.gz",
+    ],
 )
 
 # Transitive dependencies have to be listed here explicitly.
@@ -76,12 +101,12 @@ go_deps.module(
     version = "v3.0.1",
 )
 go_deps.gazelle_override(
-    path = "gopkg.in/yaml.v3",
     directives = [
         # Verify that the build naming convention is picked up by Gazelle when it
         # emits references to this repo.
         "gazelle:go_naming_convention go_default_library",
     ],
+    path = "gopkg.in/yaml.v3",
 )
 go_deps.module(
     indirect = True,
