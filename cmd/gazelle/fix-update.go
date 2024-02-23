@@ -30,7 +30,6 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
-	"github.com/bazelbuild/bazel-gazelle/internal/module"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -168,15 +167,10 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		})
 	}
 
-	moduleToApparentName, err := module.ExtractModuleToApparentNameMapping(c.RepoRoot)
-	if err != nil {
-		return err
-	}
-
 	for _, r := range c.Repos {
 		if r.Kind() == "go_repository" {
 			var name string
-			if apparentName := moduleToApparentName(r.AttrString("module_name")); apparentName != "" {
+			if apparentName := c.ModuleToApparentName(r.AttrString("module_name")); apparentName != "" {
 				name = apparentName
 			} else {
 				name = r.Name()
@@ -276,11 +270,6 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		return err
 	}
 
-	moduleToApparentName, err := module.ExtractModuleToApparentNameMapping(c.RepoRoot)
-	if err != nil {
-		return err
-	}
-
 	mrslv := newMetaResolver()
 	kinds := make(map[string]rule.KindInfo)
 	loads := genericLoads
@@ -291,7 +280,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 			kinds[kind] = info
 		}
 		if moduleAwareLang, ok := lang.(language.ModuleAwareLanguage); ok {
-			loads = append(loads, moduleAwareLang.ApparentLoads(moduleToApparentName)...)
+			loads = append(loads, moduleAwareLang.ApparentLoads(c.ModuleToApparentName)...)
 		} else {
 			loads = append(loads, lang.Loads()...)
 		}

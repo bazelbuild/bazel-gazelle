@@ -15,11 +15,11 @@ require (
 	github.com/fmeum/dep_on_gazelle v1.0.0
 	github.com/google/safetext v0.0.0-20220905092116-b49f7bc46da2
 	golang.org/x/sys v0.15.0
+	google.golang.org/protobuf v1.32.0
 )
 
 require (
 	github.com/bazelbuild/bazel-gazelle v0.30.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
 )

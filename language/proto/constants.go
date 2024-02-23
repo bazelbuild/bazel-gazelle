@@ -25,3 +25,9 @@ const (
 	// pre-generated code for the Well Known Types.
 	wellKnownTypesGoPrefix = "github.com/golang/protobuf"
 )
+
+// bazelModuleRepos maps the names of Bazel modules to their "well-known"
+// WORKSPACE repository name
+var bazelModuleRepos = map[string]string{
+	"protobuf": "com_google_protobuf",
+}

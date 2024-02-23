@@ -122,6 +122,17 @@ func resolveProto(c *config.Config, ix *resolve.RuleIndex, r *rule.Rule, imp str
 		if l.Equal(from) {
 			return label.NoLabel, errSkipImport
 		} else {
+			if workspaceName, isModule := bazelModuleRepos[l.Repo]; isModule {
+				apparentRepoName := c.ModuleToApparentName(l.Repo)
+				if apparentRepoName == "" {
+					// The user doesn't have a bazel_dep for the module containing this known
+					// target.
+					// TODO: Fail here instead when not using WORKSPACE anymore.
+					l.Repo = workspaceName
+				} else {
+					l.Repo = apparentRepoName
+				}
+			}
 			return l, nil
 		}
 	}
