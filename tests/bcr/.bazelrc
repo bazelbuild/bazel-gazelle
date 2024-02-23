@@ -1,3 +1,5 @@
 common --enable_bzlmod
 common --experimental_isolated_extension_usages
 common --lockfile_mode=update
+# Required by abseil-cpp with Bazel 6.
+common --cxxopt=-std=c++14
