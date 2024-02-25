@@ -59,7 +59,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
         srcs = [Label("//internal/generationtest:generation_test.go")],
         deps = [
             Label("//testtools"),
-            "@io_bazel_rules_go//go/tools/bazel:go_default_library",
+            Label("@io_bazel_rules_go//go/tools/bazel:go_default_library"),
         ],
         args = [
             "-gazelle_binary_path=$(rootpath %s)" % gazelle_binary,
