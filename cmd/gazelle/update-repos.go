@@ -26,7 +26,6 @@ import (
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
-	"github.com/bazelbuild/bazel-gazelle/internal/module"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/language"
@@ -108,11 +107,11 @@ func (*updateReposConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) err
 	workspacePath := wspace.FindWORKSPACEFile(c.RepoRoot)
 	uc.workspace, err = rule.LoadWorkspaceFile(workspacePath, "")
 	if err != nil {
-		if c.Bzlmod {                                                                                                                                                                                                                  
-			return nil                                                                                                                                                                                                                 
-		} else {                                                                                                                                                                                                                       
-			return fmt.Errorf("loading WORKSPACE file: %v", err)                                                                                                                                                                       
-		} 
+		if c.Bzlmod {
+			return nil
+		} else {
+			return fmt.Errorf("loading WORKSPACE file: %v", err)
+		}
 	}
 	c.Repos, uc.repoFileMap, err = repo.ListRepositories(uc.workspace)
 	if err != nil {
@@ -141,16 +140,11 @@ func updateRepos(wd string, args []string) (err error) {
 	}
 	uc := getUpdateReposConfig(c)
 
-	moduleToApparentName, err := module.ExtractModuleToApparentNameMapping(c.RepoRoot)
-	if err != nil {
-		return err
-	}
-
 	kinds := make(map[string]rule.KindInfo)
 	loads := []rule.LoadInfo{}
 	for _, lang := range languages {
 		if moduleAwareLang, ok := lang.(language.ModuleAwareLanguage); ok {
-			loads = append(loads, moduleAwareLang.ApparentLoads(moduleToApparentName)...)
+			loads = append(loads, moduleAwareLang.ApparentLoads(c.ModuleToApparentName)...)
 		} else {
 			loads = append(loads, lang.Loads()...)
 		}

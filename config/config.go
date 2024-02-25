@@ -34,6 +34,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bazelbuild/bazel-gazelle/internal/module"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
@@ -107,6 +108,11 @@ type Config struct {
 
 	// Whether Gazelle is loaded as a Bzlmod 'bazel_dep'.
 	Bzlmod bool
+
+	// ModuleToApparentName is a function that maps the name of a Bazel module
+	// to the apparent name (repo_name) specified in the MODULE.bazel file. It
+	// returns the empty string if the module is not found.
+	ModuleToApparentName func(string) string
 }
 
 // MappedKind describes a replacement to use for a built-in kind.
@@ -250,6 +256,10 @@ func (cc *CommonConfigurer) CheckFlags(fs *flag.FlagSet, c *Config) error {
 		c.Langs = strings.Split(cc.langCsv, ",")
 	}
 	c.Bzlmod = cc.bzlmod
+	c.ModuleToApparentName, err = module.ExtractModuleToApparentNameMapping(c.RepoRoot)
+	if err != nil {
+		return fmt.Errorf("failed to parse MODULE.bazel: %v", err)
+	}
 	return nil
 }
 
