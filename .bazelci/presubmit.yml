@@ -3,11 +3,13 @@ matrix:
   platform:
     - ubuntu2204
     - macos
+  bazel: [6.5.0, 7.0.2]
 
 tasks:
   ubuntu2204:
     name: Ubuntu 22.04 with WORKSPACE
     platform: ubuntu2204
+    bazel: ${{ bazel }}
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -23,6 +25,7 @@ tasks:
   ubuntu2204_bzlmod:
     name: Ubuntu 22.04 with Bzlmod
     platform: ubuntu2204
+    bazel: ${{ bazel }}
     build_targets:
     - "..."
     run_targets:
@@ -36,6 +39,7 @@ tasks:
   bcr_tests:
     name: BCR test module
     platform: ${{ platform }}
+    bazel: ${{ bazel }}
     working_directory: tests/bcr
     shell_commands:
     # Regenerate the BUILD files for the test module using Gazelle.
@@ -55,6 +59,7 @@ tasks:
   bcr_test_windows:
     name: BCR test on Windows
     platform: windows
+    bazel: ${{ bazel }}
     working_directory: tests/bcr
     shell_commands:
     # Regenerate the BUILD file for the test module using Gazelle.
@@ -80,6 +85,7 @@ tasks:
   macos_arm64_bzlmod:
     name: Mac OS Arm 64 with Bzlmod
     platform: macos_arm64
+    bazel: ${{ bazel }}
     build_targets:
     - "..."
     test_targets:
@@ -88,6 +94,7 @@ tasks:
     - "-//cmd/gazelle:gazelle_test"
   macos_arm64:
     name: Mac OS Arm 64 with WORKSPACE
+    bazel: ${{ bazel }}
     platform: macos_arm64
     build_flags:
     - "--noexperimental_enable_bzlmod"
@@ -100,6 +107,7 @@ tasks:
   macos_bzlmod:
     name: Mac OS with Bzlmod
     platform: macos
+    bazel: ${{ bazel }}
     build_targets:
     - "..."
     test_targets:
@@ -108,6 +116,8 @@ tasks:
     - "-//cmd/gazelle:gazelle_test"
   macos:
     name: Mac OS with WORKSPACE
+    platform: macos
+    bazel: ${{ bazel }}
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -119,6 +129,7 @@ tasks:
   windows_bzlmod:
     name: Windows with Bzlmod
     platform: windows
+    bazel: ${{ bazel }}
     build_targets:
     - "--"
     - "..."
@@ -142,6 +153,7 @@ tasks:
   windows:
     name: Windows with WORKSPACE
     platform: windows
+    bazel: ${{ bazel }}
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -168,6 +180,7 @@ tasks:
   incompatible:
     name: Ubuntu 22.04 with WORKSPACE and --config=incompatible
     platform: ubuntu2204
+    bazel: 7.0.2
     build_flags:
       - "--noexperimental_enable_bzlmod"
       - "--config=incompatible"
