@@ -3,13 +3,12 @@ matrix:
   platform:
     - ubuntu2204
     - macos
-  bazel: [6.5.0, 7.0.2]
-
+  bazel: [6.x, 7.x]
 tasks:
   ubuntu2204:
     name: Ubuntu 22.04 with WORKSPACE
     platform: ubuntu2204
-    bazel: ${{ bazel }}
+    bazel: 7.0.2
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -25,7 +24,7 @@ tasks:
   ubuntu2204_bzlmod:
     name: Ubuntu 22.04 with Bzlmod
     platform: ubuntu2204
-    bazel: ${{ bazel }}
+    bazel: 7.0.2
     build_targets:
     - "..."
     run_targets:
@@ -85,7 +84,7 @@ tasks:
   macos_arm64_bzlmod:
     name: Mac OS Arm 64 with Bzlmod
     platform: macos_arm64
-    bazel: ${{ bazel }}
+    bazel: 7.0.2
     build_targets:
     - "..."
     test_targets:
@@ -94,8 +93,8 @@ tasks:
     - "-//cmd/gazelle:gazelle_test"
   macos_arm64:
     name: Mac OS Arm 64 with WORKSPACE
-    bazel: ${{ bazel }}
     platform: macos_arm64
+    bazel: 7.0.2
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -107,7 +106,7 @@ tasks:
   macos_bzlmod:
     name: Mac OS with Bzlmod
     platform: macos
-    bazel: ${{ bazel }}
+    bazel: 7.0.2
     build_targets:
     - "..."
     test_targets:
@@ -117,7 +116,7 @@ tasks:
   macos:
     name: Mac OS with WORKSPACE
     platform: macos
-    bazel: ${{ bazel }}
+    bazel: 7.0.2
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -129,7 +128,7 @@ tasks:
   windows_bzlmod:
     name: Windows with Bzlmod
     platform: windows
-    bazel: ${{ bazel }}
+    bazel: 7.0.2
     build_targets:
     - "--"
     - "..."
@@ -153,7 +152,7 @@ tasks:
   windows:
     name: Windows with WORKSPACE
     platform: windows
-    bazel: ${{ bazel }}
+    bazel: 7.0.2
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
