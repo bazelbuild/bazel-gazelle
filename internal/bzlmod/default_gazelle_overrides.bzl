@@ -37,6 +37,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/gogo/protobuf": [
         "gazelle:proto disable",
     ],
+    "github.com/google/cel-go": [
+        "gazelle:go_naming_convention go_default_library",
+    ],
     "github.com/google/gnostic": [
         "gazelle:proto disable",
     ],
