@@ -175,6 +175,9 @@ def _is_dev_dependency(module_ctx, tag):
     # not available.
     return module_ctx.is_dev_dependency(tag) if hasattr(module_ctx, "is_dev_dependency") else False
 
+def _intersperse_newlines(tags):
+    return [tag for p in zip(tags, len(tags) * ["\n"]) for tag in p]
+
 # This function processes the gazelle_default_attributes tag for a given module and returns a struct
 # containing the attributes from _GAZELLE_ATTRS that are defined in the tag.
 def _process_gazelle_default_attributes(module_ctx):
@@ -260,7 +263,11 @@ def _go_repository_config_impl(ctx):
         ))
 
     ctx.file("WORKSPACE", "\n".join(repos))
-    ctx.file("BUILD.bazel", "exports_files(['WORKSPACE'])")
+    ctx.file("BUILD.bazel", "exports_files(['WORKSPACE', 'config.json'])")
+    ctx.file("go_env.bzl", content = "GO_ENV = " + repr(ctx.attr.go_env))
+
+    # For use by @rules_go//go.
+    ctx.file("config.json", content = json.encode_indent(ctx.attr.go_env))
 
 _go_repository_config = repository_rule(
     implementation = _go_repository_config_impl,
@@ -268,6 +275,7 @@ _go_repository_config = repository_rule(
         "importpaths": attr.string_dict(mandatory = True),
         "module_names": attr.string_dict(mandatory = True),
         "build_naming_conventions": attr.string_dict(mandatory = True),
+        "go_env": attr.string_dict(mandatory = True),
     },
 )
 
@@ -301,11 +309,19 @@ def _go_deps_impl(module_ctx):
     root_module_direct_deps = {}
     root_module_direct_dev_deps = {}
 
-    if module_ctx.modules[0].name == "gazelle":
+    first_module = module_ctx.modules[0]
+    if first_module.is_root and first_module.name in ["gazelle", "rules_go"]:
         root_module_direct_deps["bazel_gazelle_go_repository_config"] = None
 
     outdated_direct_dep_printer = print
+    go_env = {}
     for module in module_ctx.modules:
+        if len(module.tags.config) > 1:
+            fail(
+                "Multiple \"go_deps.config\" tags defined in module \"{}\":\n".format(module.name),
+                *_intersperse_newlines(module.tags.config)
+            )
+
         # Parse the go_deps.config tag of the root module only.
         for mod_config in module.tags.config:
             if not module.is_root:
@@ -317,6 +333,7 @@ def _go_deps_impl(module_ctx):
                 outdated_direct_dep_printer = print
             elif check_direct_deps == "error":
                 outdated_direct_dep_printer = fail
+            go_env = mod_config.go_env
 
         _process_overrides(module_ctx, module, "gazelle_override", gazelle_overrides, _process_gazelle_override)
         _process_overrides(module_ctx, module, "module_override", module_overrides, _process_module_override, archive_overrides)
@@ -533,6 +550,7 @@ def _go_deps_impl(module_ctx):
             )
             for path, module in module_resolutions.items()
         }),
+        go_env = go_env,
     )
 
     return _extension_metadata(
@@ -571,6 +589,9 @@ _config_tag = tag_class(
     attrs = {
         "check_direct_dependencies": attr.string(
             values = ["off", "warning", "error"],
+        ),
+        "go_env": attr.string_dict(
+            doc = "The environment variables to use when fetching Go dependencies or running the `@rules_go//go` tool.",
         ),
     },
 )

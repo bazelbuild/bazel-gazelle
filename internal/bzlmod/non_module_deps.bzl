@@ -29,7 +29,7 @@ load(
     "HOST_COMPATIBLE_SDK",
 )
 load(
-    "@io_bazel_rules_go_go_env//:go_env.bzl",
+    "@bazel_gazelle_go_repository_config//:go_env.bzl",
     "GO_ENV",
 )
 
