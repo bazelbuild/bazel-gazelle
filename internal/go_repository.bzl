@@ -182,7 +182,7 @@ def _go_repository_impl(ctx):
             "-sum=" + ctx.attr.sum,
         ]
     else:
-        fail("one of urls, commit, tag, or importpath must be specified")
+        fail("one of urls, commit, tag, or version must be specified")
 
     env = read_cache_env(ctx, go_env_cache)
     env_keys = [
