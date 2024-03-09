@@ -1,13 +1,13 @@
 module(
     name = "gazelle",
-    version = "0.35.0",
+    version = "0.36.0",
     repo_name = "bazel_gazelle",
 )
 
 bazel_dep(name = "bazel_features", version = "1.9.1")
 bazel_dep(name = "bazel_skylib", version = "1.5.0")
 bazel_dep(name = "protobuf", version = "3.19.6", repo_name = "com_google_protobuf")
-bazel_dep(name = "rules_go", version = "0.44.0", repo_name = "io_bazel_rules_go")
+bazel_dep(name = "rules_go", version = "0.46.0", repo_name = "io_bazel_rules_go")
 bazel_dep(name = "rules_proto", version = "4.0.0")
 
 go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
@@ -33,8 +33,8 @@ go_deps.from_file(go_mod = "//:go.mod")
 # but bazel buildtools and nogo depend on it.
 go_deps.module(
     path = "golang.org/x/tools",
-    sum = "h1:zdAyfUGbYmuVokhzVmghFl2ZJh5QhcfebBgmVPFYA+8=",
-    version = "v0.15.0",
+    sum = "h1:k8NLag8AGHnn+PHbl7g43CtqZAwG60vZkLqgyZgIHgQ=",
+    version = "v0.18.0",
 )
 use_repo(
     go_deps,
@@ -63,4 +63,11 @@ go_sdk_dev = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk", de
 use_repo(
     go_sdk_dev,
     go_sdk = "go_default_sdk",
+)
+
+# This will only apply in the root module. temporarily needed to fix `bazel_features` in CI.
+single_version_override(
+    module_name = "rules_go",
+    patch_strip = 1,
+    patches = ["//third_party/patches:rules_go.patch"],
 )

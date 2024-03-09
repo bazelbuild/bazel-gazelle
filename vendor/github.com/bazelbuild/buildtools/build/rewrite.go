@@ -28,7 +28,7 @@ import (
 	"github.com/bazelbuild/buildtools/tables"
 )
 
-// For debugging: flag to disable certain rewrites.
+// DisableRewrites disables certain rewrites (for debugging).
 var DisableRewrites []string
 
 // disabled reports whether the named rewrite is disabled.
@@ -41,7 +41,7 @@ func disabled(name string) bool {
 	return false
 }
 
-// For debugging: allow sorting of these lists even with sorting otherwise disabled.
+// AllowSort allows sorting of these lists even with sorting otherwise disabled (for debugging).
 var AllowSort []string
 
 // allowedSort reports whether sorting is allowed in the named context.
@@ -71,6 +71,7 @@ type Rewriter struct {
 	ShortenAbsoluteLabelsToRelative bool
 }
 
+// Rewrite applies rewrites to a file
 func Rewrite(f *File) {
 	var rewriter = &Rewriter{
 		IsLabelArg:                      tables.IsLabelArg,
@@ -127,6 +128,9 @@ var rewrites = []struct {
 	{"label", fixLabels, scopeBuild},
 	{"listsort", sortStringLists, scopeBoth},
 	{"multiplus", fixMultilinePlus, scopeBuild},
+	{"loadTop", moveLoadOnTop, scopeBoth},
+	{"sameOriginLoad", compressSameOriginLoads, scopeBoth},
+	{"sortLoadStatements", sortLoadStatements, scopeBoth},
 	{"loadsort", sortAllLoadArgs, scopeBoth},
 	{"useRepoPositionalsSort", sortUseRepoPositionals, TypeModule},
 	{"formatdocstrings", formatDocstrings, scopeBoth},
@@ -159,7 +163,31 @@ func hasComment(x Expr, text string) bool {
 			return true
 		}
 	}
+	for _, com := range x.Comment().After {
+		if strings.Contains(strings.ToLower(com.Token), text) {
+			return true
+		}
+	}
+	for _, com := range x.Comment().Suffix {
+		if strings.Contains(strings.ToLower(com.Token), text) {
+			return true
+		}
+	}
 	return false
+}
+
+// isCommentAnywhere checks whether there's a comment containing the given text
+// anywhere in the file.
+func isCommentAnywhere(f *File, text string) bool {
+	commentExists := false
+	WalkInterruptable(f, func(node Expr, stack []Expr) (err error) {
+		if hasComment(node, text) {
+			commentExists = true
+			return &StopTraversalError{}
+		}
+		return nil
+	})
+	return commentExists
 }
 
 // leaveAlone1 reports whether x is marked with a comment containing
@@ -460,8 +488,8 @@ func sortStringLists(f *File, w *Rewriter) {
 					continue
 				}
 				if w.IsSortableListArg[key.Name] ||
-						w.SortableAllowlist[context] ||
-						(!disabled("unsafesort") && allowedSort(context)) {
+					w.SortableAllowlist[context] ||
+					(!disabled("unsafesort") && allowedSort(context)) {
 					if doNotSort(as) {
 						deduplicateStringList(as.RHS)
 					} else {
@@ -911,6 +939,245 @@ func fixMultilinePlus(f *File, _ *Rewriter) {
 	})
 }
 
+// isFunctionCall checks whether expr is a call of a function with a given name
+func isFunctionCall(expr Expr, name string) bool {
+	call, ok := expr.(*CallExpr)
+	if !ok {
+		return false
+	}
+	if ident, ok := call.X.(*Ident); ok && ident.Name == name {
+		return true
+	}
+	return false
+}
+
+// moveLoadOnTop moves all load statements to the top of the file
+func moveLoadOnTop(f *File, _ *Rewriter) {
+	if f.Type == TypeWorkspace {
+		// Moving load statements in Workspace files can break the semantics
+		return
+	}
+	if isCommentAnywhere(f, "disable=load-on-top") {
+		// For backward compatibility. This rewrite used to be a suppressible warning,
+		// in some cases it's hard to maintain the position of load statements (e.g.
+		// when the file is automatically generated or has automatic transformations
+		// applied to it). The rewrite checks for the comment anywhere in the file
+		// because it's hard to determine which statement is out of order.
+		return
+	}
+
+	// Find the misplaced load statements
+	misplacedLoads := make(map[int]*LoadStmt)
+	firstStmtIndex := -1 // index of the first seen non-load statement
+	for i := 0; i < len(f.Stmt); i++ {
+		stmt := f.Stmt[i]
+		_, isString := stmt.(*StringExpr) // typically a docstring
+		_, isComment := stmt.(*CommentBlock)
+		isWorkspace := isFunctionCall(stmt, "workspace")
+		if isString || isComment || isWorkspace || stmt == nil {
+			continue
+		}
+		load, ok := stmt.(*LoadStmt)
+		if !ok {
+			if firstStmtIndex == -1 {
+				firstStmtIndex = i
+			}
+			continue
+		}
+		if firstStmtIndex == -1 {
+			continue
+		}
+		misplacedLoads[i] = load
+	}
+
+	// Calculate a fix
+	if firstStmtIndex == -1 {
+		firstStmtIndex = 0
+	}
+	offset := len(misplacedLoads)
+	if offset == 0 {
+		return
+	}
+	stmtCopy := append([]Expr{}, f.Stmt...)
+	for i := range f.Stmt {
+		if i < firstStmtIndex {
+			// Docstring or a comment in the beginning, skip
+			continue
+		} else if _, ok := misplacedLoads[i]; ok {
+			// A misplaced load statement, should be moved up to the `firstStmtIndex` position
+			f.Stmt[firstStmtIndex] = stmtCopy[i]
+			firstStmtIndex++
+			offset--
+			if offset == 0 {
+				// No more statements should be moved
+				break
+			}
+		} else {
+			// An actual statement (not a docstring or a comment in the beginning), should be moved
+			// `offset` positions down.
+			f.Stmt[i+offset] = stmtCopy[i]
+		}
+	}
+}
+
+// compressSameOriginLoads merges loads from the same source into one load statement
+func compressSameOriginLoads(f *File, _ *Rewriter) {
+	// Load statements grouped by their source files
+	loads := make(map[string]*LoadStmt)
+
+	for stmtIndex := 0; stmtIndex < len(f.Stmt); stmtIndex++ {
+		load, ok := f.Stmt[stmtIndex].(*LoadStmt)
+		if !ok {
+			continue
+		}
+
+		previousLoad, ok := loads[load.Module.Value]
+		if !ok {
+			loads[load.Module.Value] = load
+			continue
+		}
+		if hasComment(previousLoad, "disable=same-origin-load") ||
+			hasComment(load, "disable=same-origin-load") {
+			continue
+		}
+
+		// Move loaded symbols to the existing load statement
+		previousLoad.From = append(previousLoad.From, load.From...)
+		previousLoad.To = append(previousLoad.To, load.To...)
+		// Remove the current statement
+		f.Stmt[stmtIndex] = nil
+	}
+}
+
+// comparePaths compares two strings as if they were paths (the path delimiter,
+// '/', should be treated as smallest symbol).
+func comparePaths(path1, path2 string) bool {
+	if path1 == path2 {
+		return false
+	}
+
+	chunks1 := strings.Split(path1, "/")
+	chunks2 := strings.Split(path2, "/")
+
+	for i, chunk1 := range chunks1 {
+		if i >= len(chunks2) {
+			return false
+		}
+		chunk2 := chunks2[i]
+		// Compare case-insensitively
+		chunk1Lower := strings.ToLower(chunk1)
+		chunk2Lower := strings.ToLower(chunk2)
+		if chunk1Lower != chunk2Lower {
+			return chunk1Lower < chunk2Lower
+		}
+	}
+
+	// No case-insensitive difference detected. Likely the difference is just in
+	// the case of some symbols, compare case-sensitively for the determinism.
+	return path1 <= path2
+}
+
+// compareLoadLabels compares two module names
+// If one label has explicit repository path (starts with @), it goes first
+// If the packages are different, labels are sorted by package name (empty package goes first)
+// If the packages are the same, labels are sorted by their name
+func compareLoadLabels(load1Label, load2Label string) bool {
+	// handle absolute labels with explicit repositories separately to
+	// make sure they precede absolute and relative labels without repos
+	isExplicitRepo1 := strings.HasPrefix(load1Label, "@")
+	isExplicitRepo2 := strings.HasPrefix(load2Label, "@")
+
+	if isExplicitRepo1 != isExplicitRepo2 {
+		// Exactly one label has an explicit repository name, it should be the first one.
+		return isExplicitRepo1
+	}
+
+	// Either both labels have explicit repository names or both don't, compare their packages
+	// and break ties using file names if necessary
+	module1Parts := strings.SplitN(load1Label, ":", 2)
+	package1, filename1 := "", module1Parts[0]
+	if len(module1Parts) == 2 {
+		package1, filename1 = module1Parts[0], module1Parts[1]
+	}
+	module2Parts := strings.SplitN(load2Label, ":", 2)
+	package2, filename2 := "", module2Parts[0]
+	if len(module2Parts) == 2 {
+		package2, filename2 = module2Parts[0], module2Parts[1]
+	}
+
+	// in case both packages are the same, use file names to break ties
+	if package1 == package2 {
+		return comparePaths(filename1, filename2)
+	}
+
+	// in case one of the packages is empty, the empty one goes first
+	if len(package1) == 0 || len(package2) == 0 {
+		return len(package1) > 0
+	}
+
+	// both packages are non-empty and not equal, so compare them
+	return comparePaths(package1, package2)
+}
+
+// sortLoadStatements reorders sorts loads lexicographically by the source file,
+// but absolute loads have priority over local loads.
+func sortLoadStatements(f *File, _ *Rewriter) {
+	if isCommentAnywhere(f, "disable=out-of-order-load") {
+		// For backward compatibility. This rewrite used to be a suppressible warning,
+		// in some cases it's hard to maintain the position of load statements (e.g.
+		// when the file is automatically generated or has automatic transformations
+		// applied to it). The rewrite checks for the comment anywhere in the file
+		// because it's hard to determine which statement is out of order.
+		return
+	}
+
+	// Consequent chunks of load statements (i.e. without statements of other types between them)
+	var loadsChunks [][]*LoadStmt
+	newChunk := true // Create a new chunk for the next seen load statement
+
+	for _, stmt := range f.Stmt {
+		if stmt == nil {
+			// nil statements are no-op and shouldn't break consecutive chains of
+			// load statements
+			continue
+		}
+		load, ok := stmt.(*LoadStmt)
+		if !ok {
+			newChunk = true
+			continue
+		}
+		if newChunk {
+			// There's a non-load statement between this load and the previous load
+			loadsChunks = append(loadsChunks, []*LoadStmt{})
+			newChunk = false
+		}
+		loadsChunks[len(loadsChunks)-1] = append(loadsChunks[len(loadsChunks)-1], load)
+	}
+
+	// Sort and flatten the chunks
+	var sortedLoads []*LoadStmt
+	for _, chunk := range loadsChunks {
+		sortedChunk := append([]*LoadStmt{}, chunk...)
+
+		sort.SliceStable(sortedChunk, func(i, j int) bool {
+			load1Label := (sortedChunk)[i].Module.Value
+			load2Label := (sortedChunk)[j].Module.Value
+			return compareLoadLabels(load1Label, load2Label)
+		})
+		sortedLoads = append(sortedLoads, sortedChunk...)
+	}
+
+	// Calculate the replacements
+	loadIndex := 0
+	for stmtIndex := range f.Stmt {
+		if _, ok := f.Stmt[stmtIndex].(*LoadStmt); !ok {
+			continue
+		}
+		f.Stmt[stmtIndex] = sortedLoads[loadIndex]
+		loadIndex++
+	}
+}
+
 // sortAllLoadArgs sorts all load arguments in the file
 func sortAllLoadArgs(f *File, _ *Rewriter) {
 	Walk(f, func(v Expr, stk []Expr) {
@@ -973,17 +1240,17 @@ type loadArgs struct {
 	modified bool
 }
 
-func (args loadArgs) Len() int {
+func (args *loadArgs) Len() int {
 	return len(args.From)
 }
 
-func (args loadArgs) Swap(i, j int) {
+func (args *loadArgs) Swap(i, j int) {
 	args.From[i], args.From[j] = args.From[j], args.From[i]
 	args.To[i], args.To[j] = args.To[j], args.To[i]
 	args.modified = true
 }
 
-func (args loadArgs) Less(i, j int) bool {
+func (args *loadArgs) Less(i, j int) bool {
 	// Arguments with equal "from" and "to" parts are prioritized
 	equalI := args.From[i].Name == args.To[i].Name
 	equalJ := args.From[j].Name == args.To[j].Name
@@ -995,10 +1262,33 @@ func (args loadArgs) Less(i, j int) bool {
 	return args.To[i].Name < args.To[j].Name
 }
 
+// deduplicate assumes that the args are sorted and prioritize arguments that
+// are defined later (e.g. `a = "x", a = "y"` is shortened to `a = "y"`).
+func (args *loadArgs) deduplicate() {
+	var from, to []*Ident
+	for i := range args.To {
+		if len(to) > 0 && to[len(to)-1].Name == args.To[i].Name {
+			// Overwrite
+			from[len(from)-1] = args.From[i]
+			to[len(to)-1] = args.To[i]
+			args.modified = true
+		} else {
+			// Just append
+			from = append(from, args.From[i])
+			to = append(to, args.To[i])
+		}
+	}
+	args.From = from
+	args.To = to
+}
+
 // SortLoadArgs sorts a load statement arguments (lexicographically, but positional first)
 func SortLoadArgs(load *LoadStmt) bool {
 	args := loadArgs{From: load.From, To: load.To}
-	sort.Sort(args)
+	sort.Sort(&args)
+	args.deduplicate()
+	load.From = args.From
+	load.To = args.To
 	return args.modified
 }
 

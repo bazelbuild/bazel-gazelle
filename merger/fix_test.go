@@ -173,8 +173,8 @@ foo_library(name = "a_lib")
     name = "a",
 )
 `,
-			want: `load("@foo", "foo_binary")
-load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+			want: `load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
+load("@foo", "foo_binary")
 
 maybe(
     foo_binary,
