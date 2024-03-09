@@ -15,10 +15,10 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_go",
-    integrity = "sha256-fHbWI2so/2laoozzX5XeMXqUcv0fsUrHl8m/aE8Js3w=",
+    integrity = "sha256-gKmCd60TEdrNg3+bFttiiHcC6fHRxMn3ltASGkbI4YQ=",
     urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.44.2/rules_go-v0.44.2.zip",
-        "https://github.com/bazelbuild/rules_go/releases/download/v0.44.2/rules_go-v0.44.2.zip",
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.46.0/rules_go-v0.46.0.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.46.0/rules_go-v0.46.0.zip",
     ],
 )
 
@@ -85,6 +85,7 @@ register_unittest_toolchains()
 # gazelle:repository go_repository name=com_github_envoyproxy_go_control_plane importpath=github.com/envoyproxy/go-control-plane
 # gazelle:repository go_repository name=com_github_envoyproxy_protoc_gen_validate importpath=github.com/envoyproxy/protoc-gen-validate
 # gazelle:repository go_repository name=com_github_fsnotify_fsnotify importpath=github.com/fsnotify/fsnotify
+# gazelle:repository go_repository name=com_github_gogo_protobuf importpath=github.com/gogo/protobuf
 # gazelle:repository go_repository name=com_github_golang_glog importpath=github.com/golang/glog
 # gazelle:repository go_repository name=com_github_golang_mock importpath=github.com/golang/mock
 # gazelle:repository go_repository name=com_github_golang_protobuf importpath=github.com/golang/protobuf
@@ -96,6 +97,7 @@ register_unittest_toolchains()
 # gazelle:repository go_repository name=org_golang_google_appengine importpath=google.golang.org/appengine
 # gazelle:repository go_repository name=org_golang_google_genproto importpath=google.golang.org/genproto
 # gazelle:repository go_repository name=org_golang_google_grpc importpath=google.golang.org/grpc
+# gazelle:repository go_repository name=org_golang_google_grpc_cmd_protoc_gen_go_grpc importpath=google.golang.org/grpc/cmd/protoc-gen-go-grpc
 # gazelle:repository go_repository name=org_golang_google_protobuf importpath=google.golang.org/protobuf
 # gazelle:repository go_repository name=org_golang_x_crypto importpath=golang.org/x/crypto
 # gazelle:repository go_repository name=org_golang_x_exp importpath=golang.org/x/exp
