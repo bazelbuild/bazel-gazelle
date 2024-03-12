@@ -49,6 +49,7 @@ func (*goLang) Embeds(r *rule.Rule, from label.Label) []label.Label {
 	embedStrings := r.AttrStrings("embed")
 	if isGoProtoLibrary(r.Kind()) {
 		embedStrings = append(embedStrings, r.AttrString("proto"))
+		embedStrings = append(embedStrings, r.AttrStrings("protos")...)
 	}
 	embedLabels := make([]label.Label, 0, len(embedStrings))
 	for _, s := range embedStrings {
