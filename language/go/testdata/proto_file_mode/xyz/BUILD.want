@@ -1,0 +1,17 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "x_proto",
+    srcs = ["x.proto"],
+    _gazelle_imports = [],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "x_go_proto",
+    _gazelle_imports = [],
+    importpath = "example.com/repo/proto_file_mode/xyz",
+    proto = ":x_proto",
+    visibility = ["//visibility:public"],
+)

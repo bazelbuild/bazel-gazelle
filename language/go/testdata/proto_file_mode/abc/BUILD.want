@@ -1,0 +1,31 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "a_proto",
+    srcs = ["a.proto"],
+    _gazelle_imports = ["xyz/x.proto"],
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "b_proto",
+    srcs = ["b.proto"],
+    _gazelle_imports = ["abc/a.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "abc_go_proto",
+    _gazelle_imports = [
+        "abc/a.proto",
+        "xyz/x.proto",
+    ],
+    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
+    importpath = "example.com/repo/proto_file_mode/abc",
+    protos = [
+        ":a_proto",
+        ":b_proto",
+    ],
+    visibility = ["//visibility:public"],
+)

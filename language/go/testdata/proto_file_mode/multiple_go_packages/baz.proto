@@ -1,0 +1,3 @@
+syntax = "proto3";
+
+package proto_file_mode.multiple_go_packages.baz;

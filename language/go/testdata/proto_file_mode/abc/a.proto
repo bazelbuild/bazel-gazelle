@@ -1,0 +1,4 @@
+syntax = "proto3";
+
+package proto_file_mode.abc;
+import "xyz/x.proto";
