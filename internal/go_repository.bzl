@@ -136,7 +136,7 @@ def _go_repository_impl(ctx):
         for key in ("commit", "tag", "vcs", "remote", "version", "sum", "replace"):
             if getattr(ctx.attr, key):
                 fail("cannot specifiy both urls and %s" % key, key)
-        ctx.download_and_extract(
+        result = ctx.download_and_extract(
             url = ctx.attr.urls,
             sha256 = ctx.attr.sha256,
             canonical_id = ctx.attr.canonical_id,
@@ -144,6 +144,11 @@ def _go_repository_impl(ctx):
             type = ctx.attr.type,
             auth = use_netrc(read_user_netrc(ctx), ctx.attr.urls, ctx.attr.auth_patterns),
         )
+        if not ctx.attr.sha256:
+            print("For Go module \"{path}\", integrity not specified, calculated sha256 = \"{sha256}\"".format(
+                path = ctx.attr.importpath,
+                sha256 = result.sha256,
+            ))
     elif ctx.attr.commit or ctx.attr.tag:
         # repository mode
         if ctx.attr.commit:
