@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"golang.org/x/mod/sumdb/dirhash"
 )
 
 func fetchModule(dest, importpath, version, sum string) error {
@@ -114,7 +116,22 @@ func fetchModule(dest, importpath, version, sum string) error {
 	}
 
 	// Copy the module to the destination.
-	return copyTree(dest, dl.Dir)
+	err = copyTree(dest, dl.Dir)
+	if err != nil {
+		return fmt.Errorf("failed copying repo: %w", err)
+	}
+
+	// Verify sum
+	repoSum, err := dirhash.HashDir(dest, importpath+"@"+version, dirhash.Hash1)
+	if err != nil {
+		return fmt.Errorf("failed computing sum: %w", err)
+	}
+
+	if repoSum != sum {
+		return fmt.Errorf("resulting module with sum %s; expected sum %s", repoSum, sum)
+	}
+
+	return nil
 }
 
 func copyTree(destRoot, srcRoot string) error {
