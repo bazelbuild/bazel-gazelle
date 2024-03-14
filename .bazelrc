@@ -1,5 +1,6 @@
 # This file contains options passed to Bazel when running tests.
 # They are used by Travis CI and by non-Bazel test scripts.
+common --noenable_bzlmod
 
 build:ci --verbose_failures
 build:ci --sandbox_debug
@@ -17,3 +18,14 @@ build:incompatible --incompatible_disallow_empty_glob
 build:incompatible --incompatible_disable_starlark_host_transitions
 build:incompatible --nolegacy_external_runfiles
 test:incompatible --test_env=GO_BAZEL_TEST_BAZELFLAGS='--incompatible_load_proto_rules_from_bzl --incompatible_config_setting_private_default_visibility --incompatible_enforce_config_setting_visibility --incompatible_disallow_empty_glob --incompatible_disable_starlark_host_transitions --nolegacy_external_runfiles'
+
+common:bb --bes_results_url=https://buildbuddy.buildbuddy.dev/invocation/
+common:bb --bes_backend=grpcs://buildbuddy.buildbuddy.dev
+common:bb --remote_cache=grpcs://buildbuddy.buildbuddy.dev
+common:bb --remote_timeout=3600
+common:bb --remote_executor=grpcs://buildbuddy.buildbuddy.dev
+common:bb --remote_header=x-buildbuddy-api-key=****
+
+common:bb --platforms=@buildbuddy_toolchain//:platform_linux
+common:bb --extra_execution_platforms=@buildbuddy_toolchain//:platform_linux
+common:bb --extra_toolchains=@buildbuddy_toolchain//:ubuntu_cc_toolchain
