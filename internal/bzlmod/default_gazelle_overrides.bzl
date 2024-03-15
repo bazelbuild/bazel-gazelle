@@ -64,6 +64,9 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "google.golang.org/grpc": [
         "gazelle:proto disable",
     ],
+    "google.golang.org/protobuf": [
+        "gazelle:proto disable",
+    ],
     "k8s.io/api": [
         "gazelle:proto disable",
     ],
