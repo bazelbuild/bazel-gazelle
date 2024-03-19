@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+option go_package = "github.com/bazelbuild/bazel-gazelle/tests/bcr/proto/foo";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/type.proto";
+
+message Foo {
+  string name = 1;
+  google.protobuf.Timestamp last_updated = 2;
+  google.protobuf.Type type = 3;
+}

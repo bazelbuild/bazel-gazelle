@@ -1,0 +1,10 @@
+# Verify that the tools builds.
+alias(
+    name = "gqlgen",
+    actual = "@gqlgen",
+)
+
+alias(
+    name = "buildifier",
+    actual = "@buildtools//buildifier",
+)

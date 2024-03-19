@@ -11,7 +11,7 @@ _EXPECT_REPLACED_STRUCT = struct(
     direct = True,
     path = "github.com/bazelbuild/buildtools",
     replace = "path/to/add/replace",
-    version = "v1.2.2"
+    version = "v1.2.2",
 )
 
 def _with_replaced_or_new_fields_test_impl(ctx):
