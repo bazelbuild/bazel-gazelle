@@ -36,6 +36,7 @@ go_library(
         "//resolve",
         "//rule",
         "//walk",
+        "@com_github_bazelbuild_buildtools//build",
         "@com_github_pmezard_go_difflib//difflib",
     ],
 )
