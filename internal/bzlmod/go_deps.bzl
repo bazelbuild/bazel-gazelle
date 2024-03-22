@@ -268,7 +268,10 @@ def _go_repository_config_impl(ctx):
     ctx.file("go_env.bzl", content = "GO_ENV = " + repr(ctx.attr.go_env))
 
     # For use by @rules_go//go.
-    ctx.file("config.json", content = json.encode_indent(ctx.attr.go_env))
+    ctx.file("config.json", content = json.encode_indent({
+        "go_env": ctx.attr.go_env,
+        "dep_files": ctx.attr.dep_files,
+    }))
 
 _go_repository_config = repository_rule(
     implementation = _go_repository_config_impl,
@@ -277,6 +280,7 @@ _go_repository_config = repository_rule(
         "module_names": attr.string_dict(mandatory = True),
         "build_naming_conventions": attr.string_dict(mandatory = True),
         "go_env": attr.string_dict(mandatory = True),
+        "dep_files": attr.string_list(),
     },
 )
 
@@ -316,6 +320,7 @@ def _go_deps_impl(module_ctx):
 
     outdated_direct_dep_printer = print
     go_env = {}
+    dep_files = []
     for module in module_ctx.modules:
         if len(module.tags.config) > 1:
             fail(
@@ -350,6 +355,15 @@ def _go_deps_impl(module_ctx):
         additional_module_tags = []
         for from_file_tag in module.tags.from_file:
             module_path, module_tags_from_go_mod, go_mod_replace_map = deps_from_go_mod(module_ctx, from_file_tag.go_mod)
+
+            # Collect the relative path of the root module's go.mod file if it lives in the main
+            # repository.
+            if module.is_root and not from_file_tag.go_mod.workspace_name:
+                go_mod = "go.mod"
+                if from_file_tag.go_mod.package:
+                    go_mod = from_file_tag.go_mod.package + "/" + go_mod
+                dep_files.append(go_mod)
+
             is_dev_dependency = _is_dev_dependency(module_ctx, from_file_tag)
             additional_module_tags += [
                 with_replaced_or_new_fields(tag, _is_dev_dependency = is_dev_dependency)
@@ -552,6 +566,7 @@ def _go_deps_impl(module_ctx):
             for path, module in module_resolutions.items()
         }),
         go_env = go_env,
+        dep_files = dep_files,
     )
 
     metadata_kwargs = {}
