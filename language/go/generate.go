@@ -217,14 +217,10 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 			protoTargets := importPathToProtoTargets[importPath]
 			protoEmbed, rs = g.generateProto(pcMode, protoTargets, importPath)
 			if protoEmbed != "" {
-<<<<<<< HEAD
 				// check if rs is non-empty and that the first rule is a go_proto_library with the same importPath
 				if len(rs) > 0 && rs[0].Kind() == "go_proto_library" && rs[0].AttrString("importpath") == pkg.importPath {
 					protoEmbeds = append(protoEmbeds, protoEmbed)
 				}
-=======
-				protoEmbeds = append(protoEmbeds, protoEmbed)
->>>>>>> 661d52e (Add generate.go (with weird platform builder stuff) and integration test changes)
 			}
 			rules = append(rules, rs...)
 		}
@@ -246,14 +242,10 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 				}
 				protoEmbed, rs = g.generateProto(pcMode, []protoTarget{pkg.proto}, pkg.importPath)
 				if protoEmbed != "" {
-<<<<<<< HEAD
 					// check if rs is non-empty and that the first rule is a go_proto_library with the same importPath
 					if len(rs) > 0 && rs[0].Kind() == "go_proto_library" && rs[0].AttrString("importpath") == pkg.importPath {
 						protoEmbeds = append(protoEmbeds, protoEmbed)
 					}
-=======
-					protoEmbeds = append(protoEmbeds, protoEmbed)
->>>>>>> 661d52e (Add generate.go (with weird platform builder stuff) and integration test changes)
 				}
 			} else {
 				target := protoTargetFromProtoPackage(name, ppkg)
