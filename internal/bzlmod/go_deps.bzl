@@ -320,7 +320,7 @@ def _go_deps_impl(module_ctx):
 
     outdated_direct_dep_printer = print
     go_env = {}
-    dep_files = None
+    dep_files = []
     for module in module_ctx.modules:
         if len(module.tags.config) > 1:
             fail(
