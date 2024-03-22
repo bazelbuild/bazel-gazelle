@@ -26,6 +26,21 @@ Tests
 To write tests for your gazelle extension, you can use [gazelle_generation_test](#gazelle_generation_test),
 which will run a gazelle binary of your choosing on a set of test workspaces.
 
+Troubleshooting
+-----
+
+Gazelle supports [Go's profiling](https://go.dev/blog/pprof) that enable you to inspect performance
+bottlenecks.
+
+```bash
+# Execute gazelle to create a Go profile
+$ gazelle --cpu_profile_path=/tmp/gazelle.prof fix
+
+# Analyze Go profile
+$ go tool pprof -http :8080 /tmp/gazelle.prof
+```
+
+This could be particularly helpful to generate a flame graph and/or identify slow code paths when writing a Gazelle extension.
 
 Supported languages
 -------------------
