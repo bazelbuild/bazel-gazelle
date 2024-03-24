@@ -25,6 +25,10 @@ load(
     "is_bazel_module",
 )
 load(
+    "//internal/bzlmod:utils.bzl",
+    "extension_metadata",
+)
+load(
     "@go_host_compatible_sdk_label//:defs.bzl",
     "HOST_COMPATIBLE_SDK",
 )
@@ -35,7 +39,7 @@ load(
 
 visibility("//")
 
-def _non_module_deps_impl(_):
+def _non_module_deps_impl(module_ctx):
     go_repository_cache(
         name = "bazel_gazelle_go_repository_cache",
         # Label.workspace_name is always a canonical name, so use a canonical label.
@@ -50,6 +54,7 @@ def _non_module_deps_impl(_):
         name = "bazel_gazelle_is_bazel_module",
         is_bazel_module = True,
     )
+    return extension_metadata(module_ctx, reproducible = True)
 
 non_module_deps = module_extension(
     _non_module_deps_impl,

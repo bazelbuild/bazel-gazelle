@@ -8,7 +8,7 @@ tasks:
   ubuntu2204:
     name: Ubuntu 22.04 with WORKSPACE
     platform: ubuntu2204
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -24,7 +24,7 @@ tasks:
   ubuntu2204_bzlmod:
     name: Ubuntu 22.04 with Bzlmod
     platform: ubuntu2204
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_targets:
     - "..."
     run_targets:
@@ -84,7 +84,7 @@ tasks:
   macos_arm64_bzlmod:
     name: Mac OS Arm 64 with Bzlmod
     platform: macos_arm64
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_targets:
     - "..."
     test_targets:
@@ -94,7 +94,7 @@ tasks:
   macos_arm64:
     name: Mac OS Arm 64 with WORKSPACE
     platform: macos_arm64
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -106,7 +106,7 @@ tasks:
   macos_bzlmod:
     name: Mac OS with Bzlmod
     platform: macos
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_targets:
     - "..."
     test_targets:
@@ -116,7 +116,7 @@ tasks:
   macos:
     name: Mac OS with WORKSPACE
     platform: macos
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -128,7 +128,7 @@ tasks:
   windows_bzlmod:
     name: Windows with Bzlmod
     platform: windows
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_targets:
     - "--"
     - "..."
@@ -152,7 +152,7 @@ tasks:
   windows:
     name: Windows with WORKSPACE
     platform: windows
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_flags:
     - "--noexperimental_enable_bzlmod"
     test_flags:
@@ -179,7 +179,7 @@ tasks:
   incompatible:
     name: Ubuntu 22.04 with WORKSPACE and --config=incompatible
     platform: ubuntu2204
-    bazel: 7.0.2
+    bazel: 7.1.1
     build_flags:
       - "--noexperimental_enable_bzlmod"
       - "--config=incompatible"
