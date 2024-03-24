@@ -53,6 +53,7 @@ bzl_library(
     name = "utils",
     srcs = ["utils.bzl"],
     visibility = ["//:__subpackages__"],
+    deps = ["@bazel_features//:features"],
 )
 
 bzl_library(
