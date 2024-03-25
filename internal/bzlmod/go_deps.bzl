@@ -28,6 +28,7 @@ load(
     "get_directive_value",
     "with_replaced_or_new_fields",
 )
+load("@bazel_features//:features.bzl", "bazel_features")
 
 visibility("//")
 
@@ -553,6 +554,9 @@ def _go_deps_impl(module_ctx):
         go_env = go_env,
     )
 
+    metadata_kwargs = {}
+    if bazel_features.external_deps.extension_metadata_has_reproducible:
+        metadata_kwargs["reproducible"] = True
     return _extension_metadata(
         module_ctx,
         root_module_direct_deps = root_module_direct_deps.keys(),
@@ -563,6 +567,7 @@ def _go_deps_impl(module_ctx):
             for repo_name in root_module_direct_dev_deps.keys()
             if repo_name not in root_module_direct_deps
         }.keys(),
+        **metadata_kwargs
     )
 
 def _get_sum_from_module(path, module, sums):
