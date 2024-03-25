@@ -1,6 +1,6 @@
 module github.com/bazelbuild/bazel-gazelle
 
-go 1.21.4
+go 1.22
 
 require (
 	github.com/bazelbuild/buildtools v0.0.0-20231115204819-d4c9dccdfbb1
@@ -9,7 +9,8 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/google/go-cmp v0.6.0
 	github.com/pmezard/go-difflib v1.0.0
-	golang.org/x/mod v0.14.0
+	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81
+	golang.org/x/mod v0.16.0
 	golang.org/x/sync v0.5.0
 	golang.org/x/tools/go/vcs v0.1.0-deprecated
 )
