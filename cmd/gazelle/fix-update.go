@@ -76,6 +76,7 @@ type updateConfigurer struct {
 	repoConfigPath string
 	cpuProfile     string
 	memProfile     string
+	traceProfile   string
 }
 
 func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
@@ -90,6 +91,7 @@ func (ucr *updateConfigurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *conf
 	fs.BoolVar(&uc.print0, "print0", false, "when set with -mode=fix, gazelle will print the names of rewritten files separated with \\0 (NULL)")
 	fs.StringVar(&ucr.cpuProfile, "cpuprofile", "", "write cpu profile to `file`")
 	fs.StringVar(&ucr.memProfile, "memprofile", "", "write memory profile to `file`")
+	fs.StringVar(&ucr.traceProfile, "traceprofile", "", "write trace profile to `file`")
 	fs.Var(&gzflag.MultiFlag{Values: &ucr.knownImports}, "known_import", "import path for which external resolution is skipped (can specify multiple times)")
 	fs.StringVar(&ucr.repoConfigPath, "repo_config", "", "file where Gazelle should load repository configuration. Defaults to WORKSPACE.")
 }
@@ -108,7 +110,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 	if uc.patchPath != "" && !filepath.IsAbs(uc.patchPath) {
 		uc.patchPath = filepath.Join(c.WorkDir, uc.patchPath)
 	}
-	p, err := newProfiler(ucr.cpuProfile, ucr.memProfile)
+	p, err := newProfiler(ucr.cpuProfile, ucr.memProfile, ucr.traceProfile)
 	if err != nil {
 		return err
 	}

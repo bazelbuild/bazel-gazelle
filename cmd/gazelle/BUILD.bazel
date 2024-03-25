@@ -37,6 +37,7 @@ go_library(
         "//rule",
         "//walk",
         "@com_github_pmezard_go_difflib//difflib",
+        "@org_golang_x_exp//trace",
     ],
 )
 

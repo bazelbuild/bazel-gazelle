@@ -279,8 +279,8 @@ def gazelle_dependencies(
         go_repository,
         name = "org_golang_x_exp",
         importpath = "golang.org/x/exp",
-        sum = "h1:c2HOrn5iMezYjSlGPncknSEr/8x5LELb/ilJbXi9DEA=",
-        version = "v0.0.0-20190121172915-509febef88a4",
+        sum = "h1:6R2FC06FonbXQ8pK11/PDFY6N6LWlf9KlzibaCapmqc=",
+        version = "v0.0.0-20240318143956-a85f2c67cd81",
     )
     _maybe(
         go_repository,
