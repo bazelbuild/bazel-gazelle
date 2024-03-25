@@ -24,11 +24,11 @@ load(":semver.bzl", "semver")
 load(
     ":utils.bzl",
     "drop_nones",
+    "extension_metadata",
     "format_rule_call",
     "get_directive_value",
     "with_replaced_or_new_fields",
 )
-load("@bazel_features//:features.bzl", "bazel_features")
 
 visibility("//")
 
@@ -242,14 +242,6 @@ def _process_archive_override(archive_override_tag):
         strip_prefix = archive_override_tag.strip_prefix,
         patches = archive_override_tag.patches,
         patch_strip = archive_override_tag.patch_strip,
-    )
-
-def _extension_metadata(module_ctx, *, root_module_direct_deps, root_module_direct_dev_deps):
-    if not hasattr(module_ctx, "extension_metadata"):
-        return None
-    return module_ctx.extension_metadata(
-        root_module_direct_deps = root_module_direct_deps,
-        root_module_direct_dev_deps = root_module_direct_dev_deps,
     )
 
 def _go_repository_config_impl(ctx):
@@ -554,10 +546,7 @@ def _go_deps_impl(module_ctx):
         go_env = go_env,
     )
 
-    metadata_kwargs = {}
-    if bazel_features.external_deps.extension_metadata_has_reproducible:
-        metadata_kwargs["reproducible"] = True
-    return _extension_metadata(
+    return extension_metadata(
         module_ctx,
         root_module_direct_deps = root_module_direct_deps.keys(),
         # If a Go module appears as both a dev and a non-dev dependency, it has to be imported as a
@@ -567,7 +556,7 @@ def _go_deps_impl(module_ctx):
             for repo_name in root_module_direct_dev_deps.keys()
             if repo_name not in root_module_direct_deps
         }.keys(),
-        **metadata_kwargs
+        reproducible = True,
     )
 
 def _get_sum_from_module(path, module, sums):
