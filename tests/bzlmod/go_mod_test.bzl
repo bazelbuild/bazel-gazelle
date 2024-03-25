@@ -1,5 +1,5 @@
 load("@bazel_skylib//lib:unittest.bzl", "asserts", "unittest")
-load("//internal/bzlmod:go_mod.bzl", "parse_go_mod", "parse_go_sum")
+load("//internal/bzlmod:go_mod.bzl", "parse_go_mod", "parse_go_sum", "parse_go_work", "use_spec_to_label")
 
 _GO_MOD_CONTENT = """ go 1.18
 
@@ -64,6 +64,18 @@ _EXPECTED_GO_MOD_21_PARSE_RESULT = struct(
     require = (),
 )
 
+def _use_spec_to_label_test_impl(ctx):
+    env = unittest.begin(ctx)
+
+    asserts.equals(env, Label("@@org_example//:go.mod"), use_spec_to_label("org_example", "."))
+    asserts.equals(env, Label("@@org_example//go_mod_one:go.mod"), use_spec_to_label("org_example", "./go_mod_one"))
+    asserts.equals(env, Label("@@org_example//go_mod_one:go.mod"), use_spec_to_label("org_example", "./go_mod_one/"))
+    asserts.equals(env, Label("@@org_example//bar/go_mod_one:go.mod"), use_spec_to_label("org_example", "./bar/go_mod_one"))
+
+    return unittest.end(env)
+
+use_spec_test = unittest.make(_use_spec_to_label_test_impl)
+
 def _go_mod_21_test_impl(ctx):
     env = unittest.begin(ctx)
     asserts.equals(env, _EXPECTED_GO_MOD_21_PARSE_RESULT, parse_go_mod(_GO_MOD_21_CONTENT, "/go.mod"))
@@ -91,10 +103,52 @@ def _go_sum_test_impl(ctx):
 
 go_sum_test = unittest.make(_go_sum_test_impl)
 
+_GO_WORK_CONTENT = """go 1.18
+use ./go_mod_one
+use (
+    ./foo/go_mod_two
+    ./bar/baz/go_mod_three
+)
+
+replace github.com/go-fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.2
+replace github.com/bmatcuk/doublestar/v4 v4.0.2 => github.com/bmatcuk/doublestar/v4 v4.0.3
+"""
+
+_EXPECTED_GO_WORK_PARSE_RESULT = struct(
+    go = (1, 18),
+    from_file_tags = [
+        struct(_is_dev_dependency = False, go_mod = Label("//go_mod_one:go.mod")),
+        struct(_is_dev_dependency = False, go_mod = Label("//foo/go_mod_two:go.mod")),
+        struct(_is_dev_dependency = False, go_mod = Label("//bar/baz/go_mod_three:go.mod")),
+    ],
+    module_tags = [
+        struct(indirect = False, _parent_label = Label("//:go.work"), path = "github.com/fsnotify/fsnotify", version = "1.4.2"),
+        struct(indirect = False, _parent_label = Label("//:go.work"), path = "github.com/bmatcuk/doublestar/v4", version = "4.0.3"),
+    ],
+    replace_map = {
+        "github.com/go-fsnotify/fsnotify": struct(from_version = None, to_path = "github.com/fsnotify/fsnotify", version = "1.4.2"),
+        "github.com/bmatcuk/doublestar/v4": struct(from_version = "4.0.2", to_path = "github.com/bmatcuk/doublestar/v4", version = "4.0.3"),
+    },
+    use = [
+        "./go_mod_one",
+        "./foo/go_mod_two",
+        "./bar/baz/go_mod_three",
+    ],
+)
+
+def _go_work_test_impl(ctx):
+    env = unittest.begin(ctx)
+    asserts.equals(env, _EXPECTED_GO_WORK_PARSE_RESULT, parse_go_work(_GO_WORK_CONTENT, Label("@@//:go.work")))
+    return unittest.end(env)
+
+go_work_test = unittest.make(_go_work_test_impl)
+
 def go_mod_test_suite(name):
     unittest.suite(
         name,
         go_mod_test,
         go_mod_21_test,
         go_sum_test,
+        go_work_test,
+        use_spec_test,
     )

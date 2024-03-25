@@ -3,7 +3,6 @@ load(
     "gazelle_binary",
     "gazelle_generation_test",
 )
-
 load("//tests:tools.bzl", "get_binary")
 
 # Exclude this entire directly from having anything gnerated by Gazelle. That

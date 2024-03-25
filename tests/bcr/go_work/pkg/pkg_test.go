@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/DataDog/sketches-go/ddsketch"
-	"github.com/bazelbuild/bazel-gazelle/tests/bcr/pkg/data"
+	"github.com/bazelbuild/bazel-gazelle/tests/bcr/go_work/pkg/data"
 	"github.com/bazelbuild/buildtools/labels"
 	"github.com/bazelbuild/rules_go/go/runfiles"
 	"github.com/bmatcuk/doublestar/v4"

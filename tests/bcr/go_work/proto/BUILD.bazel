@@ -1,0 +1,31 @@
+load("@my_rules_proto//proto:defs.bzl", "proto_library")
+load("@my_rules_go//go:def.bzl", "go_test")
+load("@my_rules_go//proto:def.bzl", "go_proto_library")
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@my_protobuf//:timestamp_proto",
+        "@my_protobuf//:type_proto",
+    ],
+)
+
+go_proto_library(
+    name = "foo_go_proto",
+    importpath = "github.com/bazelbuild/bazel-gazelle/tests/bcr/proto/foo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "proto_test",
+    srcs = ["foo_test.go"],
+    deps = [
+        ":foo_go_proto",
+        "@org_golang_google_protobuf//types/known/sourcecontextpb",
+        "@org_golang_google_protobuf//types/known/timestamppb",
+        "@org_golang_google_protobuf//types/known/typepb",
+    ],
+)

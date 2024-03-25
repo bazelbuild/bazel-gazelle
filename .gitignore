@@ -2,11 +2,11 @@
 /bazel-bin
 /bazel-out
 /bazel-testlogs
-/tests/bcr/bazel-bcr
-/tests/bcr/bazel-bin
-/tests/bcr/bazel-out
-/tests/bcr/bazel-testlogs
-/tests/bcr/MODULE.bazel.lock
+/tests/bcr/*/bazel-go_*
+/tests/bcr/*/bazel-bin
+/tests/bcr/*/bazel-out
+/tests/bcr/*/bazel-testlogs
+/tests/bcr/*/MODULE.bazel.lock
 MODULE.bazel.lock
 .DS_STORE
 .ijwb/

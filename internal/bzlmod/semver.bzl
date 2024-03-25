@@ -78,3 +78,6 @@ def _semver_to_comparable(v, *, relaxed = False):
 semver = struct(
     to_comparable = _semver_to_comparable,
 )
+
+def _flatten_segment(segment):
+    return "".join([str(atom) for atom in segment])
