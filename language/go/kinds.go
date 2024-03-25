@@ -76,12 +76,13 @@ var goKinds = map[string]rule.KindInfo{
 	"go_proto_library": {
 		MatchAttrs: []string{"importpath"},
 		NonEmptyAttrs: map[string]bool{
-			"deps":  true,
-			"embed": true,
-			"proto": true,
-			"srcs":  true,
+			"deps":   true,
+			"embed":  true,
+			"proto":  true,
+			"protos": true,
+			"srcs":   true,
 		},
-		SubstituteAttrs: map[string]bool{"proto": true},
+		SubstituteAttrs: map[string]bool{"proto": true, "protos": true},
 		MergeableAttrs: map[string]bool{
 			"srcs":       true,
 			"importpath": true,
@@ -93,6 +94,7 @@ var goKinds = map[string]rule.KindInfo{
 			"cxxopts":    true,
 			"embed":      true,
 			"proto":      true,
+			"protos":     true,
 			"compilers":  true,
 		},
 		ResolveAttrs: map[string]bool{"deps": true},

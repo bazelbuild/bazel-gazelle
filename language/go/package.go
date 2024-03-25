@@ -344,8 +344,8 @@ func (t *goTarget) addFile(c *config.Config, er *embedResolver, info fileInfo) {
 
 func protoTargetFromProtoPackage(name string, pkg proto.Package) protoTarget {
 	target := protoTarget{name: name}
-	for f := range pkg.Files {
-		target.sources.addGenericString(f)
+	for _, fInfo := range pkg.Files {
+		target.sources.addGenericString(fInfo.Path)
 	}
 	for i := range pkg.Imports {
 		target.imports.addGenericString(i)
