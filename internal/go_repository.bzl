@@ -340,6 +340,8 @@ def _go_repository_impl(ctx):
         if ctx.attr.debug_mode and result.stderr:
             print("%s gazelle.stdout: %s" % (ctx.name, result.stdout))
             print("%s gazelle.stderr: %s" % (ctx.name, result.stderr))
+    elif len(ctx.attr.build_directives) > 0:
+        fail("%s: build_directives were specified but are being ignored - perhaps the repo already has BUILD files present.\nIf you're using bzlmod, you may want to use a gazelle_override to set build_file_generation = \"on\" for this dependency.\nIf you're not using bzlmod, you may want to set set build_file_generation = \"on\" for this go_repository." % ctx.name)
 
     # Apply patches if necessary.
     patch(ctx)
