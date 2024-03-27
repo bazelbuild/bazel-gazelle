@@ -553,41 +553,6 @@ gomock(
 )
 `,
 		},
-		// migrateGrpcCompilers tests
-		{
-			desc: "go_grpc_library migrated to compilers",
-			old: `load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
-
-proto_library(
-    name = "foo_proto",
-    srcs = ["foo.proto"],
-    visibility = ["//visibility:public"],
-)
-
-go_grpc_library(
-    name = "foo_go_proto",
-    importpath = "example.com/repo",
-    proto = ":foo_proto",
-    visibility = ["//visibility:public"],
-)
-`,
-			want: `load("@io_bazel_rules_go//proto:def.bzl", "go_grpc_library")
-
-proto_library(
-    name = "foo_proto",
-    srcs = ["foo.proto"],
-    visibility = ["//visibility:public"],
-)
-
-go_proto_library(
-    name = "foo_go_proto",
-    compilers = ["@io_bazel_rules_go//proto:go_grpc"],
-    importpath = "example.com/repo",
-    proto = ":foo_proto",
-    visibility = ["//visibility:public"],
-)
-`,
-		},
 		// flattenSrcs tests
 		{
 			desc: "flatten srcs",
