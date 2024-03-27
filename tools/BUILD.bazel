@@ -3,6 +3,7 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
+        "//tools/override-generator:all_files",
         "//tools/releaser:all_files",
     ],
     visibility = ["//visibility:public"],
