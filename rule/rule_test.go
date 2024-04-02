@@ -64,7 +64,12 @@ y_library(name = "bar")
 	baz := NewRule("maybe", "baz")
 	baz.AddArg(&bzl.LiteralExpr{Token: "z"})
 	baz.AddArg(&bzl.LiteralExpr{Token: "z"})
-	baz.UpdateArg(0, &bzl.LiteralExpr{Token: "z0"})
+	if err := baz.UpdateArg(0, &bzl.LiteralExpr{Token: "z0"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := baz.UpdateArg(10, &bzl.LiteralExpr{Token: "blah"}); err == nil {
+		t.Fatalf("want error because tried to modify an arg outside of arg bounds, got nil")
+	}
 	baz.SetAttr("srcs", GlobValue{
 		Patterns: []string{"**"},
 		Excludes: []string{"*.pem"},

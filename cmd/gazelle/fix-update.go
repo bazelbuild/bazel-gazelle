@@ -406,7 +406,9 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 					if replacementName, err := maybeRecordReplacement(ident.Name); err != nil {
 						errorsFromWalk = append(errorsFromWalk, fmt.Errorf("looking up mapped kind: %w", err))
 					} else if replacementName != nil {
-						r.UpdateArg(i, &build.Ident{Name: *replacementName})
+						if err := r.UpdateArg(i, &build.Ident{Name: *replacementName}); err != nil {
+							log.Panicf("%s: %v", rel, err)
+						}
 					}
 				}
 			}
