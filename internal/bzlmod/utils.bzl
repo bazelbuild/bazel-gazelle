@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_features//:features.bzl", "bazel_features")
+
 visibility([
     "//tests/bzlmod/...",
 ])
@@ -116,3 +118,20 @@ def with_replaced_or_new_fields(_struct, **replacements):
         new_struct_assignments[key] = value
 
     return struct(**new_struct_assignments)
+
+def extension_metadata(
+        module_ctx,
+        *,
+        root_module_direct_deps = None,
+        root_module_direct_dev_deps = None,
+        reproducible = False):
+    if not hasattr(module_ctx, "extension_metadata"):
+        return None
+    metadata_kwargs = {}
+    if bazel_features.external_deps.extension_metadata_has_reproducible:
+        metadata_kwargs["reproducible"] = reproducible
+    return module_ctx.extension_metadata(
+        root_module_direct_deps = root_module_direct_deps,
+        root_module_direct_dev_deps = root_module_direct_dev_deps,
+        **metadata_kwargs
+    )
