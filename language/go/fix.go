@@ -26,7 +26,6 @@ import (
 
 func (*goLang) Fix(c *config.Config, f *rule.File) {
 	migrateLibraryEmbed(c, f)
-	migrateGrpcCompilers(c, f)
 	flattenSrcs(c, f)
 	squashCgoLibrary(c, f)
 	squashXtest(c, f)
@@ -168,18 +167,6 @@ func migrateLibraryEmbed(c *config.Config, f *rule.File) {
 		}
 		r.DelAttr("library")
 		r.SetAttr("embed", &bzl.ListExpr{List: []bzl.Expr{libExpr}})
-	}
-}
-
-// migrateGrpcCompilers converts "go_grpc_library" rules into "go_proto_library"
-// rules with a "compilers" attribute.
-func migrateGrpcCompilers(c *config.Config, f *rule.File) {
-	for _, r := range f.Rules {
-		if r.Kind() != "go_grpc_library" || r.ShouldKeep() || r.Attr("compilers") != nil {
-			continue
-		}
-		r.SetKind("go_proto_library")
-		r.SetAttr("compilers", []string{grpcCompilerLabel})
 	}
 }
 
