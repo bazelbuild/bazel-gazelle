@@ -1057,17 +1057,15 @@ go_rules_dependencies()
 
 go_repository(name = "foo")
 `,
-			want: `
+			want: `load("@bazel_gazelle//:deps.bzl", "go_repository")
 load("@io_bazel_rules_go//go:def.bzl", "go_rules_dependencies")
 
 go_rules_dependencies()
 
-load("@bazel_gazelle//:deps.bzl", "go_repository")
-
 go_repository(name = "foo")
 `,
 		}, {
-			desc: "load after",
+			desc: "load go_repository",
 			old: `
 load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
 
@@ -1077,14 +1075,12 @@ go_register_toolchains()
 
 go_repository(name = "foo")
 `,
-			want: `
+			want: `load("@bazel_gazelle//:deps.bzl", "go_repository")
 load("@io_bazel_rules_go//go:def.bzl", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
 go_register_toolchains()
-
-load("@bazel_gazelle//:deps.bzl", "go_repository")
 
 go_repository(name = "foo")
 `,

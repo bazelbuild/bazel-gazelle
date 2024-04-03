@@ -484,10 +484,10 @@ def repos():
 
 	got := strings.TrimSpace(string(f.Format()))
 	want := strings.TrimSpace(`
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+load("//some:maybe.bzl", "maybe")
 load("//some1:maybe4.bzl", "maybe1")
 load("//some2:maybe.bzl", "maybe2")
-load("//some:maybe.bzl", "maybe")
-load("@bazel_gazelle//:deps.bzl", "go_repository")
 load("b.bzl", "x_library")
 
 def repos():
