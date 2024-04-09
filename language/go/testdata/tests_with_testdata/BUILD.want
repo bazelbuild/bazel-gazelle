@@ -8,4 +8,5 @@ go_test(
     ],
     _gazelle_imports = ["testing"],
     data = glob(["testdata/**"]),
+    importpath = "example.com/repo/tests_with_testdata",
 )
