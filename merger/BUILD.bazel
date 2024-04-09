@@ -21,6 +21,7 @@ go_test(
         "fix_test.go",
         "merger_test.go",
     ],
+    importpath = "github.com/bazelbuild/bazel-gazelle/merger_test",
     deps = [
         ":merger",
         "//language",
