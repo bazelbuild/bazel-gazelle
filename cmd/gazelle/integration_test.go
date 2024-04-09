@@ -4006,6 +4006,7 @@ go_library(
 go_test(
     name = "foo_test",
     srcs = ["foo_test.go"],
+    importpath = "example.com/foo_test",
     deps = [
         ":foo",
         "@org_golang_x_baz//:go_default_library",
