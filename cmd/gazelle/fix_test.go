@@ -445,8 +445,8 @@ go_library(
 				{
 					Path: "BUILD.bazel",
 					Content: `
-load("//my:custom.bzl", "go_binary")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//my:custom.bzl", "go_binary")
 
 # gazelle:map_kind go_binary go_binary //my:custom.bzl
 
@@ -498,8 +498,8 @@ go_library(
 				{
 					Path: "BUILD.bazel",
 					Content: `
-load("//my:custom.bzl", "custom_go_binary")
 load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//my:custom.bzl", "custom_go_binary")
 
 # gazelle:map_kind go_binary custom_go_binary //my:custom.bzl
 
