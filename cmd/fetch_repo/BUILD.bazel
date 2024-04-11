@@ -3,7 +3,9 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 go_library(
     name = "fetch_repo_lib",
     srcs = [
+        "copy_tree.go",
         "fetch_repo.go",
+        "go_mod_download.go",
         "module.go",
         "vcs.go",
     ],
@@ -33,8 +35,10 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
+        "copy_tree.go",
         "fetch_repo.go",
         "fetch_repo_test.go",
+        "go_mod_download.go",
         "module.go",
         "vcs.go",
     ],
