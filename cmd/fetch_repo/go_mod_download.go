@@ -32,8 +32,8 @@ func findGoPath() string {
 }
 
 func runGoModDownload(dl *GoModDownloadResult, dest string, importpath string, version string) error {
-	buf := &bytes.Buffer{}
-	bufErr := &bytes.Buffer{}
+	buf := bytes.NewBuffer(nil)
+	bufErr := bytes.NewBuffer(nil)
 	cmd := exec.Command(findGoPath(), "mod", "download", "-json")
 	cmd.Dir = dest
 	cmd.Args = append(cmd.Args, "-modcacherw")
@@ -44,34 +44,28 @@ func runGoModDownload(dl *GoModDownloadResult, dest string, importpath string, v
 
 	cmd.Stdout = buf
 	cmd.Stderr = bufErr
-	fmt.Printf("Running: %s %s\n", cmd.Path, strings.Join(cmd.Args, " "))
 	dlErr := cmd.Run()
 	if dlErr != nil {
 		if _, ok := dlErr.(*exec.ExitError); !ok {
 			if bufErr.Len() > 0 {
-				return fmt.Errorf("!%s %s: %s", cmd.Path, strings.Join(cmd.Args, " "), bufErr.Bytes())
-			} else {
-				return fmt.Errorf("!!%s %s: %v", cmd.Path, strings.Join(cmd.Args, " "), dlErr)
+				return fmt.Errorf("go mod download exec error: %s %q: %s, %w", cmd.Path, strings.Join(cmd.Args, " "), bufErr.String(), dlErr)
 			}
+			return fmt.Errorf("go mod download exec error: %s %s: %v", cmd.Path, strings.Join(cmd.Args, " "), dlErr)
 		}
 	}
 
 	// Parse the JSON output.
 	if err := json.Unmarshal(buf.Bytes(), &dl); err != nil {
 		if bufErr.Len() > 0 {
-			return fmt.Errorf("3%s %s: %s", cmd.Path, strings.Join(cmd.Args, " "), bufErr.Bytes())
-		} else {
-			return fmt.Errorf("4%s %s: error parsing JSON: %v error: %v", cmd.Path, strings.Join(cmd.Args, " "), buf, err)
+			return fmt.Errorf("go mod download output format: `%s %s`: parsing JSON: %q stderr: %q error: %w", cmd.Path, strings.Join(cmd.Args, " "), buf.String(), bufErr.String(), err)
 		}
+		return fmt.Errorf("go mod download output format: `%s %s`: parsing JSON: %q error: %w", cmd.Path, strings.Join(cmd.Args, " "), buf.String(), err)
 	}
 	if dl.Error != "" {
-		return errors.New(dl.Error)
+		return errors.Join(errors.New(dl.Error), dlErr)
 	}
 	if dlErr != nil {
 		return dlErr
 	}
-
-	fmt.Printf("Downloaded: %s\n", dl.Dir)
-
 	return nil
 }
