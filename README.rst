@@ -607,6 +607,9 @@ used to add new repository rules or update existing rules to the specified
 version. It can also import repository rules from a ``go.mod`` or a ``go.work``
 file.
 
+WARNING: This command is mainly used for managing external Go dependencies in Bazel's WORKSPACE mode.
+For managing external Go dependencies in Bazel's BzlMod mode, please check: https://github.com/bazelbuild/rules_go/blob/master/docs/go/core/bzlmod.md#external-dependencies
+
 .. code:: bash
 
   # Add or update a repository to latest version by import path
