@@ -49,24 +49,25 @@ func fetchModule(dest, importpath, version, sum string) error {
 	var dl = GoModDownloadResult{}
 	err = runGoModDownload(&dl, dest, importpath, version)
 	os.Remove("go.mod")
-
 	if err != nil {
 		return err
 	}
 
 	// Copy the module to the destination.
-	err = copyTree(dest, dl.Dir)
-	if err != nil {
+	if err := copyTree(dest, dl.Dir); err != nil {
 		return fmt.Errorf("failed copying repo: %w", err)
 	}
 
-	// Verify sum
+	// Verify sum of the directory itself against the go.sum.
 	repoSum, err := dirhash.HashDir(dest, importpath+"@"+version, dirhash.Hash1)
 	if err != nil {
 		return fmt.Errorf("failed computing sum: %w", err)
 	}
 
 	if repoSum != sum {
+		if goModCache := os.Getenv("GOMODCACHE"); goModCache != "" {
+			return fmt.Errorf("resulting module with sum %s; expected sum %s, Please try clearing your module cache directory %q", repoSum, sum, goModCache)
+		}
 		return fmt.Errorf("resulting module with sum %s; expected sum %s", repoSum, sum)
 	}
 
