@@ -34,9 +34,8 @@ func findGoPath() string {
 func runGoModDownload(dl *GoModDownloadResult, dest string, importpath string, version string) error {
 	buf := bytes.NewBuffer(nil)
 	bufErr := bytes.NewBuffer(nil)
-	cmd := exec.Command(findGoPath(), "mod", "download", "-json")
+	cmd := exec.Command(findGoPath(), "mod", "download", "-json", "-modcacherw")
 	cmd.Dir = dest
-	cmd.Args = append(cmd.Args, "-modcacherw")
 
 	if version != "" && importpath != "" {
 		cmd.Args = append(cmd.Args, importpath+"@"+version)
