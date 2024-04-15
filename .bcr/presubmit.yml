@@ -1,5 +1,5 @@
 bcr_test_module:
-  module_path: tests/bcr
+  module_path: tests/bcr/go_mod
   matrix:
     platform:
       - debian10

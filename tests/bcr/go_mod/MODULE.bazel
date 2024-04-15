@@ -1,11 +1,11 @@
 module(
-    name = "gazelle_bcr_tests",
+    name = "gazelle_bcr_go_mod_tests",
 )
 
 bazel_dep(name = "gazelle", version = "")
 local_path_override(
     module_name = "gazelle",
-    path = "../..",
+    path = "../../..",
 )
 
 bazel_dep(name = "test_dep", version = "1.0.0")

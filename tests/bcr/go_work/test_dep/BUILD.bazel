@@ -1,0 +1,8 @@
+load("@rules_go//go:def.bzl", "go_test")
+
+go_test(
+    name = "test",
+    srcs = ["test.go"],
+    visibility = ["//visibility:public"],
+    deps = ["@com_github_stretchr_testify//require"],
+)
