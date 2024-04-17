@@ -16,6 +16,12 @@ visibility([
     "//tests/bzlmod/...",
 ])
 
+def prefetch_files(module_ctx, go_mod_label):
+    go_mod_path = module_ctx.path(go_mod_label)
+    go_sum_path = module_ctx.path(go_mod_path.dirname.get_child("go.sum"))
+    if go_sum_path.exists:
+        module_ctx.path(_get_go_sum_label(go_mod_label))
+
 def deps_from_go_mod(module_ctx, go_mod_label):
     """Loads the entries from a go.mod file.
 
@@ -241,13 +247,8 @@ def sums_from_go_mod(module_ctx, go_mod_label):
     _check_go_mod_name(go_mod_label.name)
 
     # We go through a Label so that the module extension is restarted if go.sum
-    # changes. We have to use a canonical label as we may not have visibility
-    # into the module that provides the go.sum.
-    go_sum_label = Label("@@{}//{}:{}".format(
-        go_mod_label.workspace_name,
-        go_mod_label.package,
-        "go.sum",
-    ))
+    # changes.
+    go_sum_label = _get_go_sum_label(go_mod_label)
     go_sum_content = module_ctx.read(go_sum_label)
     return parse_go_sum(go_sum_content)
 
@@ -268,3 +269,10 @@ def _canonicalize_raw_version(raw_version):
     if raw_version.startswith("v"):
         return raw_version[1:]
     return raw_version
+
+def _get_go_sum_label(go_mod_label):
+    return Label("@@{}//{}:{}".format(
+        go_mod_label.workspace_name,
+        go_mod_label.package,
+        "go.sum",
+    ))
