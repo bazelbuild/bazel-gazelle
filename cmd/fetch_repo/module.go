@@ -17,8 +17,9 @@ package main
 
 import (
 	"fmt"
-	"golang.org/x/mod/sumdb/dirhash"
 	"os"
+
+	"golang.org/x/mod/sumdb/dirhash"
 )
 
 func fetchModule(dest, importpath, version, sum string) error {
@@ -33,7 +34,6 @@ func fetchModule(dest, importpath, version, sum string) error {
 	// so we create a dummy module in the current directory (which should be
 	// empty).
 	w, err := os.OpenFile("go.mod", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o666)
-
 	if err != nil {
 		return fmt.Errorf("error creating temporary go.mod: %v", err)
 	}
@@ -46,7 +46,7 @@ func fetchModule(dest, importpath, version, sum string) error {
 		return fmt.Errorf("error closing temporary go.mod: %v", err)
 	}
 
-	var dl = GoModDownloadResult{}
+	dl := GoModDownloadResult{}
 	err = runGoModDownload(&dl, dest, importpath, version)
 	os.Remove("go.mod")
 	if err != nil {

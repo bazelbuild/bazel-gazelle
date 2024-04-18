@@ -138,6 +138,7 @@ use_repo(
     # "in_gopkg_yaml_v3",
     # Only used for testing.
     "bazel_gazelle_go_repository_config",
+    "org_example_hello",
 )
 
 # Use an isolated usage to bring in Go tools from the tools package with their own dependency

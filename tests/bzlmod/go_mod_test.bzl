@@ -14,6 +14,7 @@ github.com/bmatcuk/doublestar/v4 v4.0.2 // indirect
 
 replace github.com/go-fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.2
 replace github.com/bmatcuk/doublestar/v4 v4.0.2 => github.com/bmatcuk/doublestar/v4 v4.0.3
+replace example.org/hello => ../fixtures/hello
 
 module github.com/bazelbuild/bazel-gazelle
 
@@ -30,8 +31,9 @@ _EXPECTED_GO_MOD_PARSE_RESULT = struct(
     go = (1, 18),
     module = "github.com/bazelbuild/bazel-gazelle",
     replace_map = {
-        "github.com/go-fsnotify/fsnotify": struct(from_version = None, to_path = "github.com/fsnotify/fsnotify", version = "1.4.2"),
-        "github.com/bmatcuk/doublestar/v4": struct(from_version = "4.0.2", to_path = "github.com/bmatcuk/doublestar/v4", version = "4.0.3"),
+        "github.com/go-fsnotify/fsnotify": struct(local_path = None, from_version = None, to_path = "github.com/fsnotify/fsnotify", version = "1.4.2"),
+        "github.com/bmatcuk/doublestar/v4": struct(local_path = None, from_version = "4.0.2", to_path = "github.com/bmatcuk/doublestar/v4", version = "4.0.3"),
+        "example.org/hello": struct(local_path = "../fixtures/hello", from_version = None, to_path = "example.org/hello", version = "{"),
     },
     require = (
         struct(indirect = False, path = "github.com/bazelbuild/buildtools", version = "v0.0.0-20220531122519-a43aed7014c8"),
@@ -111,6 +113,7 @@ use (
 
 replace github.com/go-fsnotify/fsnotify => github.com/fsnotify/fsnotify v1.4.2
 replace github.com/bmatcuk/doublestar/v4 v4.0.2 => github.com/bmatcuk/doublestar/v4 v4.0.3
+replace example.org/hello => ../fixtures/hello
 """
 
 _EXPECTED_GO_WORK_PARSE_RESULT = struct(
@@ -121,12 +124,14 @@ _EXPECTED_GO_WORK_PARSE_RESULT = struct(
         struct(_is_dev_dependency = False, go_mod = Label("//bar/baz/go_mod_three:go.mod")),
     ],
     module_tags = [
-        struct(indirect = False, _parent_label = Label("//:go.work"), path = "github.com/fsnotify/fsnotify", version = "1.4.2"),
-        struct(indirect = False, _parent_label = Label("//:go.work"), path = "github.com/bmatcuk/doublestar/v4", version = "4.0.3"),
+        struct(indirect = False, _parent_label = Label("//:go.work"), local_path = None, path = "github.com/fsnotify/fsnotify", version = "1.4.2"),
+        struct(indirect = False, _parent_label = Label("//:go.work"), local_path = None, path = "github.com/bmatcuk/doublestar/v4", version = "4.0.3"),
+        struct(indirect = False, _parent_label = Label("//:go.work"), local_path = "../fixtures/hello", path = "example.org/hello", version = "{"),
     ],
     replace_map = {
-        "github.com/go-fsnotify/fsnotify": struct(from_version = None, to_path = "github.com/fsnotify/fsnotify", version = "1.4.2"),
-        "github.com/bmatcuk/doublestar/v4": struct(from_version = "4.0.2", to_path = "github.com/bmatcuk/doublestar/v4", version = "4.0.3"),
+        "github.com/go-fsnotify/fsnotify": struct(local_path = None, from_version = None, to_path = "github.com/fsnotify/fsnotify", version = "1.4.2"),
+        "github.com/bmatcuk/doublestar/v4": struct(local_path = None, from_version = "4.0.2", to_path = "github.com/bmatcuk/doublestar/v4", version = "4.0.3"),
+        "example.org/hello": struct(local_path = "../fixtures/hello", from_version = None, to_path = "example.org/hello", version = "{"),
     },
     use = [
         "./go_mod_one",

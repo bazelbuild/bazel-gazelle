@@ -34,6 +34,7 @@ import (
 var (
 	// Common flags
 	importpath = flag.String("importpath", "", "Go importpath to the repository fetch")
+	path       = flag.String("path", "", "absolute or relative path to a local go module")
 	dest       = flag.String("dest", "", "destination directory")
 
 	// Repository flags
@@ -54,9 +55,11 @@ func main() {
 	log.SetPrefix("fetch_repo: ")
 
 	flag.Parse()
-	if *importpath == "" {
-		log.Fatal("-importpath must be set")
+
+	if *importpath == "" && *path == "" {
+		log.Fatal("-importpath or -path must be set")
 	}
+
 	if *dest == "" {
 		log.Fatal("-dest must be set")
 	}
@@ -64,7 +67,29 @@ func main() {
 		log.Fatal("fetch_repo does not accept positional arguments")
 	}
 
-	if *version != "" {
+	if *path != "" {
+		if *importpath != "" {
+			log.Fatal("-importpath must not be set")
+		}
+		if *remote != "" {
+			log.Fatal("-remote must not be set in module path mode")
+		}
+		if *cmd != "" {
+			log.Fatal("-vcs must not be set in module path mode")
+		}
+		if *rev != "" {
+			log.Fatal("-rev must not be set in module path mode")
+		}
+		if *version != "" {
+			log.Fatal("-version must not be set in module path mode")
+		}
+		if *sum != "" {
+			log.Fatal("-sum must not be set in module path mode")
+		}
+		if err := moduleFromPath(*path, *dest); err != nil {
+			log.Fatal(err)
+		}
+	} else if *version != "" {
 		if *remote != "" {
 			log.Fatal("-remote must not be set in module mode")
 		}

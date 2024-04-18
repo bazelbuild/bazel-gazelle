@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load(":semver.bzl", "COMPARES_HIGHEST_SENTINEL")
+
 visibility([
     "//tests/bzlmod/...",
 ])
@@ -28,6 +30,9 @@ def use_spec_to_label(repo_name, use_directive):
     if use_directive.startswith("../") or "/../" in use_directive or use_directive.endswith("/.."):
         fail("go.work use directive: '{}' contains '..' which is not currently supported.".format(use_directive))
 
+    if use_directive.startswith("/"):
+        fail("go.work use directive: '{}' is an absolute path, which is not currently supported.".format(use_directive))
+
     if use_directive.startswith("./"):
         use_directive = use_directive[2:]
 
@@ -35,6 +40,14 @@ def use_spec_to_label(repo_name, use_directive):
         use_directive = use_directive[:-1]
 
     return Label("@@{}//{}:go.mod".format(repo_name, use_directive))
+
+def go_work_from_label(module_ctx, go_work_label):
+    """Loads deps from a go.work file"""
+    go_work_path = module_ctx.path(go_work_label)
+    go_work_content = module_ctx.read(go_work_path)
+    go_work = parse_go_work(go_work_content, go_work_label)
+
+    return _relativize_replace_paths(go_work, go_work_path)
 
 def parse_go_work(content, go_work_label):
     # see: https://go.dev/ref/mod#go-work-file
@@ -91,7 +104,7 @@ def parse_go_work(content, go_work_label):
     go_mods = [use_spec_to_label(go_work_label.workspace_name, use) for use in state["use"]]
     from_file_tags = [struct(go_mod = go_mod, _is_dev_dependency = False) for go_mod in go_mods]
 
-    module_tags = [struct(version = mod.version, path = mod.to_path, _parent_label = go_work_label, indirect = False) for mod in state["replace"].values()]
+    module_tags = [struct(version = mod.version, path = mod.to_path, _parent_label = go_work_label, local_path = mod.local_path, indirect = False) for mod in state["replace"].values()]
 
     return struct(
         go = (int(major), int(minor)),
@@ -100,6 +113,39 @@ def parse_go_work(content, go_work_label):
         module_tags = module_tags,
         use = state["use"],
     )
+
+# this exists because we are unable to create a path object in unit tests, we
+# must do this as a post-process step or we cannot unit test go_mod parsing
+def _relativize_replace_paths(go_mod, go_mod_path):
+    new_replace_map = {}
+
+    for key in go_mod.replace_map:
+        value = go_mod.replace_map[key]
+
+        local_path = value.local_path
+
+        if local_path:
+            # drop the go.mod from the path, to get the directory
+            directory = go_mod_path.dirname
+
+            # now that we have the directory, we can use the use replace directive to get the full path
+            local_path = str(directory.get_child(local_path))
+
+        new_replace_map[key] = struct(
+            from_version = value.from_version,
+            to_path = value.to_path,
+            version = value.version,
+            local_path = local_path,
+        )
+
+    new_go_mod = {
+        attr: getattr(go_mod, attr)
+        for attr in dir(go_mod)
+        if not type(getattr(go_mod, attr)) == 'builtin_function_or_method'
+    }
+
+    new_go_mod["replace_map"] = new_replace_map
+    return struct(**new_go_mod)
 
 def deps_from_go_mod(module_ctx, go_mod_label):
     """Loads the entries from a go.mod file.
@@ -118,6 +164,7 @@ def deps_from_go_mod(module_ctx, go_mod_label):
     go_mod_path = module_ctx.path(go_mod_label)
     go_mod_content = module_ctx.read(go_mod_path)
     go_mod = parse_go_mod(go_mod_content, go_mod_path)
+    go_mod = _relativize_replace_paths(go_mod, go_mod_path)
 
     if go_mod.go[0] != 1 or go_mod.go[1] < 17:
         # go.mod files only include entries for all transitive dependencies as
@@ -130,6 +177,7 @@ def deps_from_go_mod(module_ctx, go_mod_label):
             path = require.path,
             version = require.version,
             indirect = require.indirect,
+            local_path = None,
             _parent_label = go_mod_label,
         ))
 
@@ -225,11 +273,6 @@ def _parse_directive(state, directive, tokens, comment, path, line_no):
     # TODO: Handle exclude.
 
 def _parse_replace_directive(state, tokens, path, line_no):
-    # A replace directive might use a local file path beginning with ./ or ../
-    # These are not supported with gazelle~go_deps.
-    if (len(tokens) == 3 and tokens[2][0] == ".") or (len(tokens) > 3 and tokens[3][0] == "."):
-        fail("{}:{}: local file path not supported in replace directive: '{}'".format(path, line_no, tokens[2]))
-
     # replacements key off of the from_path
     from_path = tokens[0]
 
@@ -238,23 +281,38 @@ def _parse_replace_directive(state, tokens, path, line_no):
         state["replace"][from_path] = struct(
             from_version = None,
             to_path = tokens[2],
+            local_path = None,
             version = _canonicalize_raw_version(tokens[3]),
         )
-        # pattern: replace from_path from_version => to_path to_version
 
+        # pattern: replace from_path from_version => to_path to_version
     elif len(tokens) == 5 and tokens[2] == "=>":
         state["replace"][from_path] = struct(
             from_version = _canonicalize_raw_version(tokens[1]),
             to_path = tokens[3],
             version = _canonicalize_raw_version(tokens[4]),
+            local_path = None,
+        )
+
+        # pattern: replace from_path from_version => file_path
+    elif len(tokens) == 4 and tokens[2] == "=>":
+        state["replace"][from_path] = struct(
+            from_version = _canonicalize_raw_version(tokens[1]),
+            to_path = from_path,
+            local_path = tokens[3],
+            version = COMPARES_HIGHEST_SENTINEL
+        )
+
+        # pattern: replace from_path => to_path
+    elif len(tokens) == 3 and tokens[1] == "=>":
+        state["replace"][from_path] = struct(
+            from_version = None,
+            to_path = from_path,
+            local_path = tokens[2],
+            version = COMPARES_HIGHEST_SENTINEL
         )
     else:
-        fail(
-            "{}:{}: replace directive must follow pattern: ".format(path, line_no) +
-            "'replace from_path from_version => to_path to_version' or " +
-            "'replace from_path => to_path to_version'",
-            "but got: '{} {} {}'".format(*tokens),
-        )
+        fail("{}:{}: unexpected tokens '{}'".format(path, line_no, tokens))
 
 def _tokenize_line(line, path, line_no):
     tokens = []
