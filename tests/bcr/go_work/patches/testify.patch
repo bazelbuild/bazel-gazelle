@@ -1,0 +1,13 @@
+diff --git a/require/require.go b/require/require.go
+index a6e1b7c..bc21879 100644
+--- a/require/require.go
++++ b/require/require.go
+@@ -12,6 +12,8 @@ import (
+ 	time "time"
+ )
+
++const Hello = "hello"
++
+ // Condition uses a Comparison to assert a complex condition.
+ func Condition(t TestingT, comp assert.Comparison, msgAndArgs ...interface{}) {
+ 	if h, ok := t.(tHelper); ok {

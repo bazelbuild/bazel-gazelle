@@ -1,0 +1,13 @@
+diff --git a/labels/labels.go b/labels/labels.go
+index 7564621..aba07c0 100644
+--- a/labels/labels.go
++++ b/labels/labels.go
+@@ -23,6 +23,8 @@ import (
+ 	"strings"
+ )
+ 
++const Patched = "hello"
++
+ // Label represents a Bazel target label.
+ type Label struct {
+ 	Repository string // Repository of the target, can be empty if the target belongs to the current repository

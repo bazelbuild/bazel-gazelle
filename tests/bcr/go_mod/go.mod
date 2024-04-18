@@ -1,5 +1,5 @@
 // This will stop go mod from descending into this directory.
-module github.com/bazelbuild/bazel-gazelle/tests/bcr
+module github.com/bazelbuild/bazel-gazelle/tests/bcr/go_mod
 
 go 1.19
 
