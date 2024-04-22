@@ -192,7 +192,7 @@ def _go_repository_impl(ctx):
         fail("one of urls, commit, tag, or version must be specified")
 
     env = read_cache_env(ctx, go_env_cache)
-    env_keys = [
+    go_env_keys = [
         # Respect user proxy and sumdb settings for privacy.
         # TODO(jayconrod): gazelle in go_repository mode should probably
         # not go out to the network at all. This means *the build*
@@ -203,7 +203,8 @@ def _go_repository_impl(ctx):
         "GOPRIVATE",
         "GOSUMDB",
         "GONOSUMDB",
-
+    ]
+    env_keys = go_env_keys + [
         # PATH is needed to locate git and other vcs tools.
         "PATH",
 
@@ -245,6 +246,7 @@ def _go_repository_impl(ctx):
     env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
     if fetch_repo_args:
+        env.update({ k: ctx.attr.go_env[k] for k in go_env_keys if k in ctx.attr.go_env })
         # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
         # attribute of go_repository, so we don't need to look it up.
         fetch_repo_env = dict(env)
@@ -449,6 +451,32 @@ go_repository = repository_rule(
             NOTE: There is no `go_repository` equivalent to file path `replace`
             directives. Use `local_repository` instead.""",
         ),
+        "go_env": attr.string_dict(
+            doc = """A dictionary of GO environment variables to set when running `go mod download`.
+            Values will also be read from your shell's environment.
+
+            Valid keys are:
+                GOPROXY
+                GONOPROXY
+                GOPRIVATE
+                GOSUMDB
+                GONOSUMDB
+            """,
+        ),
+        "go_env": attr.string_dict(
+            doc = """A dictionary of GO environment variables to set when running `go mod download`.
+            Values will also be read from your shell's environment.
+
+            Valid keys are:
+                GOPROXY
+                GONOPROXY
+                GOPRIVATE
+                GOSUMDB
+                GONOSUMDB
+            """,
+        ),
+
+
 
         # Attributes for a repository that needs automatic build file generation
         "build_external": attr.string(
