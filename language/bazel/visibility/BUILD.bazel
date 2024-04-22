@@ -28,6 +28,7 @@ alias(
 go_test(
     name = "visibility_test",
     srcs = ["lang_test.go"],
+    importpath = "github.com/bazelbuild/bazel-gazelle/language/bazel/visibility_test",
     deps = [
         ":visibility",
         "//config",

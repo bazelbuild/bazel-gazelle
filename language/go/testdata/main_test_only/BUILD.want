@@ -4,4 +4,5 @@ go_test(
     name = "main_test_only_test",
     srcs = ["foo_test.go"],
     _gazelle_imports = [],
+    importpath = "example.com/repo/main_test_only",
 )

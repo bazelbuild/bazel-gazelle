@@ -62,4 +62,5 @@ go_test(
         "suffix_linux_test.go",
     ],
     _gazelle_imports = ["example.com/repo/platforms"],
+    importpath = "example.com/repo/platforms_test",
 )

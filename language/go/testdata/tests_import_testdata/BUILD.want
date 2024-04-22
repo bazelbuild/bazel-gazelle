@@ -10,4 +10,5 @@ go_test(
         "example.com/repo/tests_import_testdata/testdata/pkg/sub",
         "testing",
     ],
+    importpath = "example.com/repo/tests_import_testdata",
 )

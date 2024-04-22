@@ -549,8 +549,14 @@ func (g *generator) generateTests(pkg *goPackage, library string) []*rule.Rule {
 			}
 		}
 		var embed string
+		importPath := pkg.importPath
 		if test.hasInternalTest {
 			embed = library
+		} else {
+			importPath = importPath + "_test"
+		}
+		if embed == "" {
+			goTest.SetAttr("importpath", importPath)
 		}
 		g.setCommonAttrs(goTest, pkg.rel, nil, test, embed)
 		if pkg.hasTestdata {
