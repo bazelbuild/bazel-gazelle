@@ -193,6 +193,8 @@ def _go_repository_impl(ctx):
 
     env = read_cache_env(ctx, go_env_cache)
     env_keys = [
+        # keep sorted
+
         # Respect user proxy and sumdb settings for privacy.
         # TODO(jayconrod): gazelle in go_repository mode should probably
         # not go out to the network at all. This means *the build*
