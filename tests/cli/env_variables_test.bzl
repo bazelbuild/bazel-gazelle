@@ -1,5 +1,5 @@
-load("@bazel_skylib//rules:analysis_test.bzl", "analysis_test")
 load("@bazel_skylib//lib:unittest.bzl", "analysistest", "asserts", "unittest")
+load("@bazel_skylib//rules:analysis_test.bzl", "analysis_test")
 load("//:def.bzl", "gazelle")
 
 def _invalid_var_failure_test_impl(ctx):

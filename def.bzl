@@ -13,12 +13,16 @@
 # limitations under the License.
 
 load(
+    "@bazel_gazelle_is_bazel_module//:defs.bzl",
+    "GAZELLE_IS_BAZEL_MODULE",
+)
+load(
     "@bazel_skylib//lib:shell.bzl",
     "shell",
 )
 load(
-    "@bazel_gazelle_is_bazel_module//:defs.bzl",
-    "GAZELLE_IS_BAZEL_MODULE",
+    "//internal:gazelle_binary.bzl",
+    _gazelle_binary = "gazelle_binary_wrapper",
 )
 load(
     "//internal:go_repository.bzl",
@@ -28,10 +32,6 @@ load(
     "//internal:overlay_repository.bzl",
     _git_repository = "git_repository",
     _http_archive = "http_archive",
-)
-load(
-    "//internal:gazelle_binary.bzl",
-    _gazelle_binary = "gazelle_binary_wrapper",
 )
 load(
     "//internal/generationtest:generationtest.bzl",
