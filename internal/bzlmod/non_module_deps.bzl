@@ -13,6 +13,14 @@
 # limitations under the License.
 
 load(
+    "@bazel_gazelle_go_repository_config//:go_env.bzl",
+    "GO_ENV",
+)
+load(
+    "@go_host_compatible_sdk_label//:defs.bzl",
+    "HOST_COMPATIBLE_SDK",
+)
+load(
     "//internal:go_repository_cache.bzl",
     "go_repository_cache",
 )
@@ -27,14 +35,6 @@ load(
 load(
     "//internal/bzlmod:utils.bzl",
     "extension_metadata",
-)
-load(
-    "@go_host_compatible_sdk_label//:defs.bzl",
-    "HOST_COMPATIBLE_SDK",
-)
-load(
-    "@bazel_gazelle_go_repository_config//:go_env.bzl",
-    "GO_ENV",
 )
 
 visibility("//")

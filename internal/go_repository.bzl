@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "patch", "read_user_netrc", "use_netrc")
 load("//internal:common.bzl", "env_execute", "executable_extension")
 load("//internal:go_repository_cache.bzl", "read_cache_env")
-load("@bazel_tools//tools/build_defs/repo:utils.bzl", "patch", "read_user_netrc", "use_netrc")
 
 _DOC = """
 `go_repository` downloads a Go project and generates build files with Gazelle
@@ -200,11 +200,11 @@ def _go_repository_impl(ctx):
         # not go out to the network at all. This means *the build*
         # goes out to the network. We tolerate this for downloading
         # archives, but finding module roots is a bit much.
-        "GOPROXY",
         "GONOPROXY",
-        "GOPRIVATE",
-        "GOSUMDB",
         "GONOSUMDB",
+        "GOPRIVATE",
+        "GOPROXY",
+        "GOSUMDB",
 
         # PATH is needed to locate git and other vcs tools.
         "PATH",
@@ -213,23 +213,23 @@ def _go_repository_impl(ctx):
         "HOME",
 
         # Settings below are used by vcs tools.
-        "SSH_AUTH_SOCK",
-        "SSL_CERT_FILE",
-        "SSL_CERT_DIR",
-        "HTTP_PROXY",
+        "GIT_CONFIG",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_GLOBAL",
+        "GIT_CONFIG_NOSYSTEM",
+        "GIT_CONFIG_SYSTEM",
+        "GIT_SSH",
+        "GIT_SSH_COMMAND",
+        "GIT_SSL_CAINFO",
         "HTTPS_PROXY",
+        "HTTP_PROXY",
         "NO_PROXY",
+        "SSH_AUTH_SOCK",
+        "SSL_CERT_DIR",
+        "SSL_CERT_FILE",
         "http_proxy",
         "https_proxy",
         "no_proxy",
-        "GIT_CONFIG",
-        "GIT_CONFIG_GLOBAL",
-        "GIT_CONFIG_SYSTEM",
-        "GIT_CONFIG_NOSYSTEM",
-        "GIT_SSL_CAINFO",
-        "GIT_SSH",
-        "GIT_SSH_COMMAND",
-        "GIT_CONFIG_COUNT",
     ]
 
     # Git allows passing configuration through environmental variables, this will be picked
