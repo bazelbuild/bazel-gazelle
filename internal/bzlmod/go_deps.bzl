@@ -19,8 +19,8 @@ load(
     "DEFAULT_BUILD_FILE_GENERATION_BY_PATH",
     "DEFAULT_DIRECTIVES_BY_PATH",
 )
-load(":go_mod.bzl", "deps_from_go_mod", "parse_go_work", "sums_from_go_mod", "sums_from_go_work")
-load(":semver.bzl", "semver")
+load(":go_mod.bzl", "deps_from_go_mod", "go_work_from_label", "sums_from_go_mod", "sums_from_go_work")
+load(":semver.bzl", "semver", "COMPARES_HIGHEST_SENTINEL")
 load(
     ":utils.bzl",
     "drop_nones",
@@ -82,12 +82,6 @@ _GAZELLE_ATTRS = {
         whitespace.""",
     ),
 }
-
-def go_work_from_label(module_ctx, go_work_label):
-    """Loads deps from a go.work file"""
-    go_work_path = module_ctx.path(go_work_label)
-    go_work_content = module_ctx.read(go_work_path)
-    return parse_go_work(go_work_content, go_work_label)
 
 def _fail_on_non_root_overrides(module_ctx, module, tag_class):
     if module.is_root:
@@ -299,6 +293,10 @@ def check_for_version_conflict(version, previous, module_tag, module_name_to_go_
         # version is the same, skip because we won't error
         return
 
+    if hasattr(module_tag, "local_path"):
+        # overrides are not considered for version conflicts
+        return
+
     # When using go.work, duplicate dependency versions are possible.
     # This can cause issues, so we fail with a hopefully actionable error.
     current_label = module_tag._parent_label
@@ -435,7 +433,10 @@ def _go_deps_impl(module_ctx):
             ]
 
             if module.is_root or getattr(module_ctx, "is_isolated", False):
-                replace_map.update(go_mod_replace_map)
+                # for the replace_map, first in wins
+                for mod_path, mod in go_mod_replace_map.items():
+                    if not mod_path in replace_map:
+                        replace_map[mod_path] = mod
             else:
                 # Register this Bazel module as providing the specified Go module. It participates
                 # in version resolution using its registry version, which uses a relaxed variant of
@@ -507,10 +508,21 @@ def _go_deps_impl(module_ctx):
             paths[module_tag.path] = struct(version = version, module_tag = module_tag)
 
             if module_tag.path not in module_resolutions or version > module_resolutions[module_tag.path].version:
+                to_path = None
+                local_path = None
+
+                if module_tag.path in replace_map:
+                    replacement = replace_map[module_tag.path]
+
+                    to_path = replacement.to_path
+                    local_path = replacement.local_path
+
                 module_resolutions[module_tag.path] = struct(
                     repo_name = _repo_name(module_tag.path),
                     version = version,
                     raw_version = raw_version,
+                    to_path = to_path,
+                    local_path = local_path,
                 )
 
     _fail_on_unmatched_overrides(archive_overrides.keys(), module_resolutions, "archive_overrides")
@@ -585,7 +597,6 @@ def _go_deps_impl(module_ctx):
             # Do not create a go_repository for a dep shared with the non-isolated instance of
             # go_deps.
             continue
-
         go_repository_args = {
             "name": module.repo_name,
             "importpath": path,
@@ -604,6 +615,12 @@ def _go_deps_impl(module_ctx):
                 "sha256": archive_override.sha256,
                 "patches": _get_patches(path, archive_overrides),
                 "patch_args": _get_patch_args(path, archive_overrides),
+            })
+        elif module.local_path:
+            go_repository_args.update({
+                # the version is now meaningless
+                "version": None,
+                "local_path": module.local_path,
             })
         else:
             go_repository_args.update({
@@ -659,7 +676,11 @@ def _get_sum_from_module(path, module, sums):
         entry = (module.replace, module.raw_version)
 
     if entry not in sums:
-        fail("No sum for {}@{} found. You may need to run: bazel run @rules_go//go -- mod tidy".format(path, module.raw_version))
+        if module.raw_version == COMPARES_HIGHEST_SENTINEL:
+            # replacement have no sums, so we can skip this
+            return None
+        elif module.local_path== None:
+            fail("No sum for {}@{} from {} found. You may need to run: bazel run @rules_go//go -- mod tidy".format(path, module.raw_version, "parent-label-todo"))  #module.parent_label))
 
     return sums[entry]
 
@@ -706,6 +727,10 @@ _module_tag = tag_class(
         ),
         "build_naming_convention": attr.string(doc = """Removed, do not use""", default = ""),
         "build_file_proto_mode": attr.string(doc = """Removed, do not use""", default = ""),
+        "local_path": attr.string(
+            doc = """For when a module is replaced by one residing in a local directory path """,
+            mandatory = False,
+        ),
     },
 )
 
