@@ -586,7 +586,7 @@ The following flags are accepted:
 | :flag:`-cpuprofile filename`                                      | :value:`""`                            |
 +-------------------------------------------------------------------+----------------------------------------+
 | If specified, gazelle uses [runtime/pprof](https://pkg.go.dev/runtime/pprof#StartCPUProfile) to collect    |
-| CPU profiling information from the command and save it to the given file.                                          |
+| CPU profiling information from the command and save it to the given file.                                  |
 |                                                                                                            |
 | By default, this is disabled                                                                               |
 +-------------------------------------------------------------------+----------------------------------------+
