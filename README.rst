@@ -44,6 +44,7 @@ Gazelle build file generator
 .. role:: cmd(code)
 .. role:: flag(code)
 .. role:: direc(code)
+.. role:: kbd
 .. role:: param(kbd)
 .. role:: type(emphasis)
 .. role:: value(code)
@@ -137,7 +138,7 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Starlark
 
-  `bazel-skylib`_ has an extension for generating ``bzl_library`` rules. See `bazel_skylib//gazelle/bzl`_.
+  `bazel-skylib`_ has an extension for generating ``bzl_library`` rules. See `bazel_skylib/gazelle/bzl`_.
 
 * Swift
 
@@ -641,7 +642,7 @@ The following flags are accepted:
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Import repositories from a file as `go_repository`_ rules. These rules will be added to the bottom of the WORKSPACE file or merged with existing rules. |
 |                                                                                                                                                         |
-| The lock file format is inferred from the file name. ``go.mod`` and ``go.work` are all supported.                                                       |
+| The lock file format is inferred from the file name. ``go.mod`` and ``go.work`` are all supported.                                                      |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-repo_root dir`                                                                                   |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
@@ -1065,7 +1066,7 @@ parts of build files from being modified. ``# keep`` may be written before
 a rule, before an attribute, or after a string within a list.
 
 ``# keep`` comments might take one of 2 forms; the ``# keep`` literal or a
-description prefixed by ``# keep: ``.
+description prefixed by ``# keep:``.
 
 Example
 ^^^^^^^
