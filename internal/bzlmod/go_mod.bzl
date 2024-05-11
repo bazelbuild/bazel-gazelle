@@ -39,6 +39,9 @@ def use_spec_to_label(repo_name, use_directive):
     if use_directive.endswith("/"):
         use_directive = use_directive[:-1]
 
+    if use_directive == ".":
+        use_directive = ""
+
     return Label("@@{}//{}:go.mod".format(repo_name, use_directive))
 
 def go_work_from_label(module_ctx, go_work_label):
@@ -141,7 +144,7 @@ def _relativize_replace_paths(go_mod, go_mod_path):
     new_go_mod = {
         attr: getattr(go_mod, attr)
         for attr in dir(go_mod)
-        if not type(getattr(go_mod, attr)) == 'builtin_function_or_method'
+        if not type(getattr(go_mod, attr)) == "builtin_function_or_method"
     }
 
     new_go_mod["replace_map"] = new_replace_map
@@ -300,7 +303,7 @@ def _parse_replace_directive(state, tokens, path, line_no):
             from_version = _canonicalize_raw_version(tokens[1]),
             to_path = from_path,
             local_path = tokens[3],
-            version = COMPARES_HIGHEST_SENTINEL
+            version = COMPARES_HIGHEST_SENTINEL,
         )
 
         # pattern: replace from_path => to_path
@@ -309,7 +312,7 @@ def _parse_replace_directive(state, tokens, path, line_no):
             from_version = None,
             to_path = from_path,
             local_path = tokens[2],
-            version = COMPARES_HIGHEST_SENTINEL
+            version = COMPARES_HIGHEST_SENTINEL,
         )
     else:
         fail("{}:{}: unexpected tokens '{}'".format(path, line_no, tokens))
