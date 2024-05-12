@@ -478,8 +478,11 @@ func (g *generator) generateLib(pkg *goPackage, embed string) *rule.Rule {
 	}
 	var visibility []string
 	if pkg.isCommand() {
-		// Libraries made for a go_binary should not be exposed to the public.
+		// By default, libraries made for a go_binary should not be exposed to the public.
 		visibility = []string{"//visibility:private"}
+		if len(getGoConfig(g.c).goVisibility) > 0 {
+			visibility = getGoConfig(g.c).goVisibility
+		}
 	} else {
 		visibility = g.commonVisibility(pkg.importPath)
 	}
