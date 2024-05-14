@@ -128,7 +128,7 @@ def _go_repository_impl(ctx):
     go_env_cache = str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env")))
     if not ctx.attr.urls:
         fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
-    generate = ctx.attr.build_file_generation == "on"
+    generate = ctx.attr.build_file_generation in ["on", "clean"]
     _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
     if generate:
         gazelle_path = ctx.path(Label(_gazelle))
@@ -192,6 +192,10 @@ def _go_repository_impl(ctx):
         ]
     else:
         fail("one of urls, commit, tag, or version must be specified")
+
+    # Clean existing build files if requested
+    if ctx.attr.build_file_generation == "clean":
+        fetch_repo_args += ["-clean"]
 
     env = read_cache_env(ctx, go_env_cache)
     env_keys = [
@@ -515,15 +519,17 @@ go_repository = repository_rule(
         ),
         "build_file_generation": attr.string(
             default = "auto",
-            doc = """One of `"auto"`, `"on"`, `"off"`.
+            doc = """One of `"auto"`, `"on"`, `"off"`, `"clean"`.
 
             Whether Gazelle should generate build files in the repository. In `"auto"`
             mode, Gazelle will run if there is no build file in the repository root
-            directory.""",
+            directory. In `"clean"` mode, Gazelle will first remove any existing build
+            files.""",
             values = [
                 "on",
                 "auto",
                 "off",
+                "clean",
             ],
         ),
         "build_naming_convention": attr.string(

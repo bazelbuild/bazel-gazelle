@@ -13,6 +13,7 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/cloudflare/circl/dh/x25519"
 	"github.com/fmeum/dep_on_gazelle"
+	"github.com/google/go-jsonnet"
 	"github.com/google/safetext/yamltemplate"
 	"github.com/stretchr/testify/require"
 
@@ -36,6 +37,11 @@ func TestBuildFileGeneration(t *testing.T) {
 	// github.com/google/safetext@v0.0.0-20220905092116-b49f7bc46da2 requires overwriting the BUILD
 	// files it provides as well as directives.
 	yamltemplate.HTMLEscapeString("<b>foo</b>")
+}
+
+func TestCleanBuildFileGeneration(t *testing.T) {
+	// github.com/google/go-jsonnet@v0.20.0 requires fully replacing the BUILD files it provides
+	jsonnet.Version()
 }
 
 func TestGeneratedFilesPreferredOverProtos(t *testing.T) {

@@ -36,6 +36,7 @@ var (
 	importpath = flag.String("importpath", "", "Go importpath to the repository fetch")
 	path       = flag.String("path", "", "absolute or relative path to a local go module")
 	dest       = flag.String("dest", "", "destination directory")
+	clean      = flag.Bool("clean", false, "remove existing bazel build files")
 
 	// Repository flags
 	remote = flag.String("remote", "", "The URI of the remote repository. Must be used with the --vcs flag.")
@@ -119,6 +120,12 @@ func main() {
 			log.Fatal("-rev must be set in repository mode")
 		}
 		if err := fetchRepo(*dest, *remote, *cmd, *importpath, *rev); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if *clean {
+		if err := cleanBuildFiles(*dest); err != nil {
 			log.Fatal(err)
 		}
 	}
