@@ -36,6 +36,7 @@ var (
 	importpath = flag.String("importpath", "", "Go importpath to the repository fetch")
 	path       = flag.String("path", "", "absolute or relative path to a local go module")
 	dest       = flag.String("dest", "", "destination directory")
+	no_fetch   = flag.Bool("no-fetch", false, "files already exist, do not fetch")
 	clean      = flag.Bool("clean", false, "remove existing bazel build files")
 
 	// Repository flags
@@ -57,8 +58,8 @@ func main() {
 
 	flag.Parse()
 
-	if *importpath == "" && *path == "" {
-		log.Fatal("-importpath or -path must be set")
+	if *importpath == "" && *path == "" && !*no_fetch {
+		log.Fatal("-importpath, -path, or -no-fetch must be set")
 	}
 
 	if *dest == "" {
@@ -68,7 +69,9 @@ func main() {
 		log.Fatal("fetch_repo does not accept positional arguments")
 	}
 
-	if *path != "" {
+	if *no_fetch {
+		// Nothing to do
+	} else if *path != "" {
 		if *importpath != "" {
 			log.Fatal("-importpath must not be set")
 		}

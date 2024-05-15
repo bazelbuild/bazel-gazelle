@@ -126,15 +126,22 @@ def _go_repository_impl(ctx):
     # Declare Label dependencies at the top of function to avoid unnecessary fetching:
     # https://docs.bazel.build/versions/main/skylark/repository_rules.html#when-is-the-implementation-function-executed
     go_env_cache = str(ctx.path(Label("@bazel_gazelle_go_repository_cache//:go.env")))
-    if not ctx.attr.urls:
-        fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
+    fetch_repo = str(ctx.path(Label("@bazel_gazelle_go_repository_tools//:bin/fetch_repo{}".format(executable_extension(ctx)))))
     generate = ctx.attr.build_file_generation in ["on", "clean"]
     _gazelle = "@bazel_gazelle_go_repository_tools//:bin/gazelle{}".format(executable_extension(ctx))
     if generate:
         gazelle_path = ctx.path(Label(_gazelle))
 
     if ctx.attr.local_path:
-        pass
+        if hasattr(ctx, "watch_tree"):
+            # https://github.com/bazelbuild/bazel/commit/fffa0affebbacf1961a97ef7cd248be64487d480
+            ctx.watch_tree(ctx.attr.local_path)
+        else:
+            print("""
+  WARNING: go.mod replace directives to module paths is only supported in bazel 7.1.0-rc1 or later,
+          Because of this changes to %s will not be detected by your version of Bazel.""" % ctx.attr.local_path)
+
+        fetch_repo_args = ["--path", ctx.attr.local_path, "--dest", ctx.path("")]
     elif ctx.attr.urls:
         # HTTP mode
         for key in ("commit", "tag", "vcs", "remote", "version", "sum", "replace"):
@@ -153,6 +160,7 @@ def _go_repository_impl(ctx):
                 path = ctx.attr.importpath,
                 sha256 = result.sha256,
             ))
+        fetch_repo_args = ["-dest", ctx.path(""), "-no-fetch"]
     elif ctx.attr.commit or ctx.attr.tag:
         # repository mode
         if ctx.attr.commit:
@@ -192,10 +200,6 @@ def _go_repository_impl(ctx):
         ]
     else:
         fail("one of urls, commit, tag, or version must be specified")
-
-    # Clean existing build files if requested
-    if ctx.attr.build_file_generation == "clean":
-        fetch_repo_args += ["-clean"]
 
     env = read_cache_env(ctx, go_env_cache)
     env_keys = [
@@ -256,49 +260,26 @@ def _go_repository_impl(ctx):
 
     env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
-    if ctx.attr.local_path:
-        local_path_env = dict(env)
-        local_path_env["GOSUMDB"] = "off"
+    # Clean existing build files if requested
+    if ctx.attr.build_file_generation == "clean":
+        fetch_repo_args += ["-clean"]
 
-        # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
-        local_path_env["GO111MODULE"] = "on"
+    # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
+    # attribute of go_repository, so we don't need to look it up.
+    fetch_repo_env = dict(env)
+    fetch_repo_env["GOSUMDB"] = "off"
 
-        if hasattr(ctx, "watch_tree"):
-            # https://github.com/bazelbuild/bazel/commit/fffa0affebbacf1961a97ef7cd248be64487d480
-            ctx.watch_tree(ctx.attr.local_path)
-        else:
-            print("""
-  WARNING: go.mod replace directives to module paths is only supported in bazel 7.1.0-rc1 or later,
-          Because of this changes to %s will not be detected by your version of Bazel.""" % ctx.attr.local_path)
+    # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
+    fetch_repo_env["GO111MODULE"] = "on"
 
-        command = [fetch_repo, "--path", ctx.attr.local_path, "--dest", ctx.path("")]
-        result = env_execute(
-            ctx,
-            command,
-            environment = local_path_env,
-            timeout = _GO_REPOSITORY_TIMEOUT,
-        )
-
-        if result.return_code:
-            fail(command)
-
-    if fetch_repo_args:
-        # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
-        # attribute of go_repository, so we don't need to look it up.
-        fetch_repo_env = dict(env)
-        fetch_repo_env["GOSUMDB"] = "off"
-
-        # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
-        fetch_repo_env["GO111MODULE"] = "on"
-
-        result = env_execute(
-            ctx,
-            [fetch_repo] + fetch_repo_args,
-            environment = fetch_repo_env,
-            timeout = _GO_REPOSITORY_TIMEOUT,
-        )
-        if result.return_code:
-            fail("%s: %s" % (ctx.name, result.stderr))
+    result = env_execute(
+        ctx,
+        [fetch_repo] + fetch_repo_args,
+        environment = fetch_repo_env,
+        timeout = _GO_REPOSITORY_TIMEOUT,
+    )
+    if result.return_code:
+        fail("%s: %s" % (ctx.name, result.stderr))
 
     # Repositories are fetched. Determine if build file generation is needed.
     build_file_names = ctx.attr.build_file_name.split(",")
