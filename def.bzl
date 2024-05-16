@@ -130,7 +130,7 @@ _gazelle_runner = rule(
             allow_single_file = True,
             default = "//cmd/gazelle",
             executable = True,
-            cfg = "exec",
+            cfg = "target",
         ),
         "command": attr.string(
             values = [
