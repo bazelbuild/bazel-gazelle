@@ -548,14 +548,16 @@ func (g *generator) generateProto(mode proto.Mode, targets []protoTarget, import
 	if len(targets) == 1 {
 		goProtoLibrary.SetPrivateAttr(config.GazelleImportsKey, targets[0].imports.build())
 	} else {
-		protoSources := make(map[string]bool)
+		protoSources := make(map[string]struct{})
 		for _, target := range targets {
 			for _, src := range target.sources.build().Generic {
 				// if src starts with the repo root plus a slash, trim it
+				// so that src is relative to the repo root, which is
+				// needed for the dep resolution to work correctly
 				if strings.HasPrefix(src, g.c.RepoRoot+"/") {
 					src = src[len(g.c.RepoRoot)+1:]
 				}
-				protoSources[src] = true
+				protoSources[src] = struct{}{}
 			}
 		}
 		var combinedImports platformStringsBuilder
