@@ -159,8 +159,7 @@ func (m testMode) String() string {
 	case fileTestMode:
 		return "file"
 	default:
-		log.Panicf("unknown mode %d", m)
-		return ""
+		return "unknown"
 	}
 }
 
