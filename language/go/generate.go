@@ -37,7 +37,6 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	// files and generate go_proto_library rules.
 	c := args.Config
 	pcMode := getProtoMode(c)
-	fileMode := pcMode == proto.FileMode
 
 	// This is a collection of proto_library rule names that have a corresponding
 	// go_proto_library rule already generated.
@@ -188,7 +187,7 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 	var rules []*rule.Rule
 	var protoEmbeds []string
 	var protoEmbed string
-	if fileMode {
+	if pcMode == proto.FileMode {
 		// get the list of protoRuleNames that are not already in goProtoRules
 		var newProtoRuleNames []string
 		for _, name := range protoRuleNames {
