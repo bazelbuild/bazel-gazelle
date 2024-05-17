@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "patch", "read_user_netrc", "use_netrc")
 load("//internal:common.bzl", "env_execute", "executable_extension")
 load("//internal:go_repository_cache.bzl", "read_cache_env")
-load("@bazel_tools//tools/build_defs/repo:utils.bzl", "patch", "read_user_netrc", "use_netrc")
 
 _DOC = """
 `go_repository` downloads a Go project and generates build files with Gazelle
@@ -133,7 +133,9 @@ def _go_repository_impl(ctx):
     if generate:
         gazelle_path = ctx.path(Label(_gazelle))
 
-    if ctx.attr.urls:
+    if ctx.attr.local_path:
+        pass
+    elif ctx.attr.urls:
         # HTTP mode
         for key in ("commit", "tag", "vcs", "remote", "version", "sum", "replace"):
             if getattr(ctx.attr, key):
@@ -178,7 +180,7 @@ def _go_repository_impl(ctx):
         for key in ("urls", "strip_prefix", "type", "sha256", "commit", "tag", "vcs", "remote"):
             if getattr(ctx.attr, key):
                 fail("cannot specify both version and %s" % key)
-        if not ctx.attr.sum:
+        if ctx.attr.version and not ctx.attr.sum:
             fail("if version is specified, sum must also be")
 
         fetch_path = ctx.attr.replace if ctx.attr.replace else ctx.attr.importpath
@@ -193,16 +195,18 @@ def _go_repository_impl(ctx):
 
     env = read_cache_env(ctx, go_env_cache)
     env_keys = [
+        # keep sorted
+
         # Respect user proxy and sumdb settings for privacy.
         # TODO(jayconrod): gazelle in go_repository mode should probably
         # not go out to the network at all. This means *the build*
         # goes out to the network. We tolerate this for downloading
         # archives, but finding module roots is a bit much.
-        "GOPROXY",
         "GONOPROXY",
-        "GOPRIVATE",
-        "GOSUMDB",
         "GONOSUMDB",
+        "GOPRIVATE",
+        "GOPROXY",
+        "GOSUMDB",
 
         # PATH is needed to locate git and other vcs tools.
         "PATH",
@@ -211,19 +215,23 @@ def _go_repository_impl(ctx):
         "HOME",
 
         # Settings below are used by vcs tools.
-        "SSH_AUTH_SOCK",
-        "SSL_CERT_FILE",
-        "SSL_CERT_DIR",
-        "HTTP_PROXY",
+        "GIT_CONFIG",
+        "GIT_CONFIG_COUNT",
+        "GIT_CONFIG_GLOBAL",
+        "GIT_CONFIG_NOSYSTEM",
+        "GIT_CONFIG_SYSTEM",
+        "GIT_SSH",
+        "GIT_SSH_COMMAND",
+        "GIT_SSL_CAINFO",
         "HTTPS_PROXY",
+        "HTTP_PROXY",
         "NO_PROXY",
+        "SSH_AUTH_SOCK",
+        "SSL_CERT_DIR",
+        "SSL_CERT_FILE",
         "http_proxy",
         "https_proxy",
         "no_proxy",
-        "GIT_SSL_CAINFO",
-        "GIT_SSH",
-        "GIT_SSH_COMMAND",
-        "GIT_CONFIG_COUNT",
     ]
 
     # Git allows passing configuration through environmental variables, this will be picked
@@ -244,6 +252,32 @@ def _go_repository_impl(ctx):
 
     env.update({k: ctx.os.environ[k] for k in env_keys if k in ctx.os.environ})
 
+    if ctx.attr.local_path:
+        local_path_env = dict(env)
+        local_path_env["GOSUMDB"] = "off"
+
+        # Override external GO111MODULE, because it is needed by module mode, no-op in repository mode
+        local_path_env["GO111MODULE"] = "on"
+
+        if hasattr(ctx, "watch_tree"):
+            # https://github.com/bazelbuild/bazel/commit/fffa0affebbacf1961a97ef7cd248be64487d480
+            ctx.watch_tree(ctx.attr.local_path)
+        else:
+            print("""
+  WARNING: go.mod replace directives to module paths is only supported in bazel 7.1.0-rc1 or later,
+          Because of this changes to %s will not be detected by your version of Bazel.""" % ctx.attr.local_path)
+
+        command = [fetch_repo, "--path", ctx.attr.local_path, "--dest", ctx.path("")]
+        result = env_execute(
+            ctx,
+            command,
+            environment = local_path_env,
+            timeout = _GO_REPOSITORY_TIMEOUT,
+        )
+
+        if result.return_code:
+            fail(command)
+
     if fetch_repo_args:
         # Disable sumdb in fetch_repo. In module mode, the sum is a mandatory
         # attribute of go_repository, so we don't need to look it up.
@@ -260,9 +294,7 @@ def _go_repository_impl(ctx):
             timeout = _GO_REPOSITORY_TIMEOUT,
         )
         if result.return_code:
-            fail("failed to fetch %s: %s" % (ctx.name, result.stderr))
-        if ctx.attr.debug_mode and result.stderr:
-            print("fetch_repo: " + result.stderr)
+            fail("%s: %s" % (ctx.name, result.stderr))
 
     # Repositories are fetched. Determine if build file generation is needed.
     build_file_names = ctx.attr.build_file_name.split(",")
@@ -314,7 +346,7 @@ def _go_repository_impl(ctx):
             "-repo_config",
             repo_config,
         ]
-        if ctx.attr.version:
+        if ctx.attr.version or ctx.attr.local_path:
             cmd.append("-go_repository_module_mode")
         if ctx.attr.build_file_name:
             cmd.extend(["-build_file_name", ctx.attr.build_file_name])
@@ -426,6 +458,11 @@ go_repository = repository_rule(
         ),
         "auth_patterns": attr.string_dict(
             doc = _AUTH_PATTERN_DOC,
+        ),
+
+        # Attributes for a module that should be loaded from the local file system.
+        "local_path": attr.string(
+            doc = """ If specified, `go_repository` will load the module from this local directory""",
         ),
 
         # Attributes for a module that should be downloaded with the Go toolchain.

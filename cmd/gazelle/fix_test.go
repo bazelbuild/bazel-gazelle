@@ -407,3 +407,250 @@ go_library(
 
 	testtools.CheckFiles(t, dir, fixture)
 }
+
+func TestFix_MapKind_Argument(t *testing.T) {
+	for name, tc := range map[string]struct {
+		before []testtools.FileSpec
+		after  []testtools.FileSpec
+	}{
+		"same-name": {
+			before: []testtools.FileSpec{
+				{
+					Path: "BUILD.bazel",
+					Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+# gazelle:map_kind go_binary go_binary //my:custom.bzl
+
+maybe(
+    go_binary,
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["some.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)`,
+				},
+				{
+					Path:    "some.go",
+					Content: `package some`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "BUILD.bazel",
+					Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//my:custom.bzl", "go_binary")
+
+# gazelle:map_kind go_binary go_binary //my:custom.bzl
+
+maybe(
+    go_binary,
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["some.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)`,
+				},
+			},
+		},
+		"different-name": {
+			before: []testtools.FileSpec{
+				{
+					Path: "BUILD.bazel",
+					Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
+
+# gazelle:map_kind go_binary custom_go_binary //my:custom.bzl
+
+maybe(
+    go_binary,
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["some.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)`,
+				},
+				{
+					Path:    "some.go",
+					Content: `package some`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "BUILD.bazel",
+					Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("//my:custom.bzl", "custom_go_binary")
+
+# gazelle:map_kind go_binary custom_go_binary //my:custom.bzl
+
+maybe(
+    custom_go_binary,
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["some.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)`,
+				},
+			},
+		},
+		"non-loaded-symbol": {
+			before: []testtools.FileSpec{
+				{
+					Path: "BUILD.bazel",
+					Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+custom_go_library = go_library
+
+# This will be ignored because it's not a directly loaded symbol when used:
+# gazelle:map_kind custom_go_library custom_go_library //my:custom.bzl
+
+maybe(
+    custom_go_library,
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["some.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+				{
+					Path:    "some.go",
+					Content: `package some`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "BUILD.bazel",
+					Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+custom_go_library = go_library
+
+# This will be ignored because it's not a directly loaded symbol when used:
+# gazelle:map_kind custom_go_library custom_go_library //my:custom.bzl
+
+maybe(
+    custom_go_library,
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["some.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+		"not-arg-0": {
+			before: []testtools.FileSpec{
+				{
+					Path: "BUILD.bazel",
+					Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@other_rules//:def.bzl", "something_custom")
+
+# gazelle:map_kind something_custom something_custom //my:custom.bzl
+
+maybe(
+    go_library,
+    something_custom,
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["some.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+				{
+					Path:    "some.go",
+					Content: `package some`,
+				},
+			},
+			after: []testtools.FileSpec{
+				{
+					Path: "BUILD.bazel",
+					Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@other_rules//:def.bzl", "something_custom")
+
+# gazelle:map_kind something_custom something_custom //my:custom.bzl
+
+maybe(
+    go_library,
+    something_custom,
+    name = "nofix",
+    library = ":go_default_library",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["some.go"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+)
+`,
+				},
+			},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir, cleanup := testtools.CreateFiles(t, tc.before)
+			defer cleanup()
+
+			if err := run(dir, []string{
+				"-repo_root", dir,
+				"-go_prefix", "example.com/repo",
+				dir,
+			}); err != nil {
+				t.Fatalf("run failed: %v", err)
+			}
+
+			testtools.CheckFiles(t, dir, tc.after)
+		})
+	}
+}

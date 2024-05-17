@@ -1,0 +1,10 @@
+go 1.21
+
+use (
+	.
+	./pkg
+	./proto
+	./tools
+)
+
+replace example.org/hello => ../../fixtures/hello

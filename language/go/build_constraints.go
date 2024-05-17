@@ -307,13 +307,13 @@ func matchAuto(tokens []string) (*buildTags, error) {
 	return newBuildTags(x)
 }
 
-// isIgnoredTag returns whether the tag is "cgo" or is a release tag.
+// isIgnoredTag returns whether the tag is "cgo", "purego", "race", "msan"  or is a release tag.
 // Release tags match the pattern "go[0-9]\.[0-9]+".
 // Gazelle won't consider whether an ignored tag is satisfied when evaluating
 // build constraints for a file and will instead defer to the compiler at compile
 // time.
 func isIgnoredTag(tag string) bool {
-	if tag == "cgo" || tag == "race" || tag == "msan" {
+	if tag == "cgo" || tag == "purego" || tag == "race" || tag == "msan" {
 		return true
 	}
 	if len(tag) < 5 || !strings.HasPrefix(tag, "go") {

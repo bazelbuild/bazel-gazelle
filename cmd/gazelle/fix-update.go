@@ -38,6 +38,7 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/walk"
+	"github.com/bazelbuild/buildtools/build"
 )
 
 // updateConfig holds configuration information needed to run the fix and
@@ -369,17 +370,47 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		if f != nil {
 			allRules = append(allRules, f.Rules...)
 		}
-		for _, r := range allRules {
-			repl, err := lookupMapKindReplacement(c.KindMap, r.Kind())
+
+		maybeRecordReplacement := func(ruleKind string) (*string, error) {
+			repl, err := lookupMapKindReplacement(c.KindMap, ruleKind)
 			if err != nil {
-				errorsFromWalk = append(errorsFromWalk, fmt.Errorf("looking up mapped kind: %w", err))
-				continue
+				return nil, err
 			}
 			if repl != nil {
-				mappedKindInfo[repl.KindName] = kinds[r.Kind()]
+				mappedKindInfo[repl.KindName] = kinds[ruleKind]
 				mappedKinds = append(mappedKinds, *repl)
 				mrslv.MappedKind(rel, *repl)
-				r.SetKind(repl.KindName)
+				return &repl.KindName, nil
+			}
+			return nil, nil
+		}
+
+		for _, r := range allRules {
+			if replacementName, err := maybeRecordReplacement(r.Kind()); err != nil {
+				errorsFromWalk = append(errorsFromWalk, fmt.Errorf("looking up mapped kind: %w", err))
+			} else if replacementName != nil {
+				r.SetKind(*replacementName)
+			}
+
+			for i, arg := range r.Args() {
+				// Only check the first arg - this supports the maybe(java_library, ...) pattern,
+				// but avoids potential false positives from other uses of symbols.
+				if i != 0 {
+					break
+				}
+				if ident, ok := arg.(*build.Ident); ok {
+					// Don't allow re-mapping symbols that aren't known loads of a plugin.
+					if _, knownKind := kinds[ident.Name]; !knownKind {
+						continue
+					}
+					if replacementName, err := maybeRecordReplacement(ident.Name); err != nil {
+						errorsFromWalk = append(errorsFromWalk, fmt.Errorf("looking up mapped kind: %w", err))
+					} else if replacementName != nil {
+						if err := r.UpdateArg(i, &build.Ident{Name: *replacementName}); err != nil {
+							log.Panicf("%s: %v", rel, err)
+						}
+					}
+				}
 			}
 		}
 		for _, r := range empty {

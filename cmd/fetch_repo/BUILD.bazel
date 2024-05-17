@@ -3,8 +3,11 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 go_library(
     name = "fetch_repo_lib",
     srcs = [
+        "copy_tree.go",
         "fetch_repo.go",
+        "go_mod_download.go",
         "module.go",
+        "path.go",
         "vcs.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/fetch_repo",
@@ -33,9 +36,12 @@ filegroup(
     testonly = True,
     srcs = [
         "BUILD.bazel",
+        "copy_tree.go",
         "fetch_repo.go",
         "fetch_repo_test.go",
+        "go_mod_download.go",
         "module.go",
+        "path.go",
         "vcs.go",
     ],
     visibility = ["//visibility:public"],

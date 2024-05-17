@@ -17,10 +17,10 @@ visibility([
 ])
 
 # Compares lower than any non-numeric identifier.
-_COMPARES_LOWEST_SENTINEL = ""
+COMPARES_LOWEST_SENTINEL = ""
 
 # Compares higher than any valid non-numeric identifier (containing only [A-Za-z0-9-]).
-_COMPARES_HIGHEST_SENTINEL = "{"
+COMPARES_HIGHEST_SENTINEL = "{"
 
 def _identifier_to_comparable(ident, *, numeric_only):
     if not ident:
@@ -33,7 +33,9 @@ def _identifier_to_comparable(ident, *, numeric_only):
         # "Identifiers consisting of only digits are compared numerically."
         # 11.4.3:
         # "Numeric identifiers always have lower precedence than non-numeric identifiers."
-        return (_COMPARES_LOWEST_SENTINEL, int(ident))
+        return (COMPARES_LOWEST_SENTINEL, int(ident))
+    elif ident == COMPARES_HIGHEST_SENTINEL:
+        return (ident,)
     elif numeric_only:
         fail("Expected a numeric identifier, got: " + ident)
     else:
@@ -64,10 +66,10 @@ def _semver_to_comparable(v, *, relaxed = False):
     else:
         # 11.3:
         # "When major, minor, and patch are equal, a pre-release version has lower precedence than a normal version."
-        prerelease = [(_COMPARES_HIGHEST_SENTINEL,)]
+        prerelease = [(COMPARES_HIGHEST_SENTINEL,)]
 
     release = release_str.split(".")
-    if not relaxed and len(release) != 3:
+    if not v == COMPARES_HIGHEST_SENTINEL and not relaxed and len(release) != 3:
         fail("Semantic version strings must have exactly three dot-separated components, got: " + v)
 
     return (

@@ -63,6 +63,13 @@ y_library(name = "bar")
 	loadMaybe.Insert(f, 0)
 	baz := NewRule("maybe", "baz")
 	baz.AddArg(&bzl.LiteralExpr{Token: "z"})
+	baz.AddArg(&bzl.LiteralExpr{Token: "z"})
+	if err := baz.UpdateArg(0, &bzl.LiteralExpr{Token: "z0"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := baz.UpdateArg(10, &bzl.LiteralExpr{Token: "blah"}); err == nil {
+		t.Fatalf("want error because tried to modify an arg outside of arg bounds, got nil")
+	}
 	baz.SetAttr("srcs", GlobValue{
 		Patterns: []string{"**"},
 		Excludes: []string{"*.pem"},
@@ -85,6 +92,7 @@ y_library(
 )
 
 maybe(
+    z0,
     z,
     name = "baz",
     srcs = glob(
@@ -484,10 +492,10 @@ def repos():
 
 	got := strings.TrimSpace(string(f.Format()))
 	want := strings.TrimSpace(`
+load("@bazel_gazelle//:deps.bzl", "go_repository")
+load("//some:maybe.bzl", "maybe")
 load("//some1:maybe4.bzl", "maybe1")
 load("//some2:maybe.bzl", "maybe2")
-load("//some:maybe.bzl", "maybe")
-load("@bazel_gazelle//:deps.bzl", "go_repository")
 load("b.bzl", "x_library")
 
 def repos():

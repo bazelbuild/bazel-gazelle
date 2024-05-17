@@ -109,11 +109,11 @@ includes the proto package name, as well as source names, imports, and options.
 [proto.Package]: https://godoc.org/github.com/bazelbuild/bazel-gazelle/language/proto#Package
 """
 
-load("gazelle_binary.bzl", _gazelle_binary = "gazelle_binary")
 load(
     "//internal/generationtest:generationtest.bzl",
     _gazelle_generation_test = "gazelle_generation_test",
 )
+load("gazelle_binary.bzl", _gazelle_binary = "gazelle_binary")
 
 gazelle_binary = _gazelle_binary
 

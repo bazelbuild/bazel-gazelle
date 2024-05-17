@@ -1,5 +1,5 @@
-load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@io_bazel_rules_go//go/tools/bazel_testing:def.bzl", "go_bazel_test")
 load(":gazelle_binary_test.bzl", "gazelle_binary_test_suite")
 
 # gazelle:exclude *_test.go

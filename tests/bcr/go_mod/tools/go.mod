@@ -1,4 +1,4 @@
-module github.com/bazelbuild/bazel-gazelle/tests/bcr/tools
+module github.com/bazelbuild/bazel-gazelle/tests/bcr/go_mod/tools
 
 go 1.21.0
 

@@ -1,11 +1,11 @@
 module(
-    name = "gazelle_bcr_tests",
+    name = "gazelle_bcr_go_work_tests",
 )
 
 bazel_dep(name = "gazelle", version = "")
 local_path_override(
     module_name = "gazelle",
-    path = "../..",
+    path = "../../..",
 )
 
 bazel_dep(name = "test_dep", version = "1.0.0")
@@ -15,7 +15,7 @@ local_path_override(
 )
 
 bazel_dep(name = "protobuf", version = "23.1", repo_name = "my_protobuf")
-bazel_dep(name = "rules_go", version = "0.42.0", repo_name = "my_rules_go")
+bazel_dep(name = "rules_go", version = "0.44.0", repo_name = "my_rules_go")
 bazel_dep(name = "rules_proto", version = "6.0.0-rc2", repo_name = "my_rules_proto")
 
 go_sdk = use_extension("@my_rules_go//go:extensions.bzl", "go_sdk")
@@ -31,8 +31,8 @@ go_deps.config(
     },
 )
 
-# Validate a go.mod replace directive works.
-go_deps.from_file(go_mod = "//:go.mod")
+# Validate a full go workspace
+go_deps.from_file(go_work = "//:go.work")
 go_deps.gazelle_default_attributes(
     build_file_generation = "on",
     directives = [
@@ -63,8 +63,8 @@ go_deps.gazelle_override(
 # respected.
 go_deps.module(
     path = "github.com/stretchr/testify",
-    sum = "h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=",
-    version = "v1.8.0",
+    sum = "h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=",
+    version = "v1.8.4",
 )
 go_deps.gazelle_override(
     directives = [
@@ -125,6 +125,7 @@ go_deps.module(
 )
 use_repo(
     go_deps,
+    "com_github_99designs_gqlgen",
     "com_github_bazelbuild_buildtools",
     "com_github_bmatcuk_doublestar_v4",
     "com_github_datadog_sketches_go",
@@ -134,10 +135,9 @@ use_repo(
     "com_github_stretchr_testify",
     "org_golang_google_protobuf",
     "org_golang_x_sys",
-    # It is not necessary to list transitive dependencies here, only direct ones.
-    # "in_gopkg_yaml_v3",
     # Only used for testing.
     "bazel_gazelle_go_repository_config",
+    "org_example_hello",
 )
 
 # Use an isolated usage to bring in Go tools from the tools package with their own dependency

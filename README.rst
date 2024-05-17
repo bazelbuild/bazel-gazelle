@@ -4,6 +4,7 @@ Gazelle build file generator
 .. All external links are here
 .. _a gazelle extension: https://github.com/bazel-contrib/rules_jvm/tree/main/java/gazelle
 .. _Kotlin Support: https://github.com/aspect-build/aspect-cli/blob/main/gazelle/kotlin/
+.. _JavaScript and TypeScript Support: https://github.com/aspect-build/aspect-cli/blob/main/gazelle/js/
 .. _Architecture of Gazelle: Design.rst
 .. _Repository rules: repository.md
 .. _go_repository: repository.md#go_repository
@@ -43,6 +44,7 @@ Gazelle build file generator
 .. role:: cmd(code)
 .. role:: flag(code)
 .. role:: direc(code)
+.. role:: kbd
 .. role:: param(kbd)
 .. role:: type(emphasis)
 .. role:: value(code)
@@ -104,6 +106,8 @@ Gazelle can generate Bazel BUILD files for many languages:
   generating ``java_library``, ``java_binary``, ``java_test``, and ``java_test_suite`` rules.
 
 * JavaScript / TypeScript
+  
+  Aspect provides `JavaScript and TypeScript Support`_ in aspect-cli (also usable separately).
 
   BenchSci's `rules_nodejs_gazelle`_ supports generating `ts_project`, `js_library`, `jest_test`,
   and `web_asset` rules, and is able to support module bundlers like Webpack and Next.js
@@ -112,8 +116,7 @@ Gazelle can generate Bazel BUILD files for many languages:
 * Kotlin
 
   Aspect Build provides some `Kotlin Support`_ in the repo of their aspect-cli (also usable separately).
-  Still under development, please check the README for
-  currently available features.
+  Still under development, please check the README for currently available features.
 
 * Protocol Buffers
 
@@ -135,7 +138,7 @@ Gazelle can generate Bazel BUILD files for many languages:
 
 * Starlark
 
-  `bazel-skylib`_ has an extension for generating ``bzl_library`` rules. See `bazel_skylib//gazelle/bzl`_.
+  `bazel-skylib`_ has an extension for generating ``bzl_library`` rules. See `bazel_skylib/gazelle/bzl`_.
 
 * Swift
 
@@ -169,10 +172,10 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        integrity = "sha256-fHbWI2so/2laoozzX5XeMXqUcv0fsUrHl8m/aE8Js3w=",
+        sha256 = "80a98277ad1311dacd837f9b16db62887702e9f1d1c4c9f796d0121a46c8e184",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.44.2/rules_go-v0.44.2.zip",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.44.2/rules_go-v0.44.2.zip",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.46.0/rules_go-v0.46.0.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.46.0/rules_go-v0.46.0.zip",
         ],
     )
 
@@ -584,7 +587,7 @@ The following flags are accepted:
 | :flag:`-cpuprofile filename`                                      | :value:`""`                            |
 +-------------------------------------------------------------------+----------------------------------------+
 | If specified, gazelle uses [runtime/pprof](https://pkg.go.dev/runtime/pprof#StartCPUProfile) to collect    |
-| CPU profiling information from the command and save it to the given file.                                          |
+| CPU profiling information from the command and save it to the given file.                                  |
 |                                                                                                            |
 | By default, this is disabled                                                                               |
 +-------------------------------------------------------------------+----------------------------------------+
@@ -606,6 +609,9 @@ to either the WORKSPACE (by default) or a .bzl file macro function.  It can be
 used to add new repository rules or update existing rules to the specified
 version. It can also import repository rules from a ``go.mod`` or a ``go.work``
 file.
+
+WARNING: This command is mainly used for managing external Go dependencies in Bazel's WORKSPACE mode.
+For managing external Go dependencies in Bazel's BzlMod mode, please check: https://github.com/bazelbuild/rules_go/blob/master/docs/go/core/bzlmod.md#external-dependencies
 
 .. code:: bash
 
@@ -636,7 +642,7 @@ The following flags are accepted:
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | Import repositories from a file as `go_repository`_ rules. These rules will be added to the bottom of the WORKSPACE file or merged with existing rules. |
 |                                                                                                                                                         |
-| The lock file format is inferred from the file name. ``go.mod`` and ``go.work` are all supported.                                                       |
+| The lock file format is inferred from the file name. ``go.mod`` and ``go.work`` are all supported.                                                      |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
 | :flag:`-repo_root dir`                                                                                   |                                              |
 +----------------------------------------------------------------------------------------------------------+----------------------------------------------+
@@ -1060,7 +1066,7 @@ parts of build files from being modified. ``# keep`` may be written before
 a rule, before an attribute, or after a string within a list.
 
 ``# keep`` comments might take one of 2 forms; the ``# keep`` literal or a
-description prefixed by ``# keep: ``.
+description prefixed by ``# keep:``.
 
 Example
 ^^^^^^^

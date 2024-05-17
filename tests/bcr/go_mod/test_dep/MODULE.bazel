@@ -28,7 +28,6 @@ go_deps.module_override(
     ],
     path = "github.com/stretchr/testify",
 )
-
 go_deps.module(
     indirect = True,
     path = "gopkg.in/yaml.v3",
@@ -36,10 +35,10 @@ go_deps.module(
     version = "v3.0.1",
 )
 go_deps.gazelle_override(
-    path = "gopkg.in/yaml.v3",
     directives = [
         "gazelle:go_naming_convention import",
     ],
+    path = "gopkg.in/yaml.v3",
 )
 go_deps.module(
     indirect = True,

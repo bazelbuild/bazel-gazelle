@@ -5,8 +5,8 @@ resulting documentation markdown files, to prevent users trying to load()
 the stardoc repository, which is not a dependency users should install.
 """
 
-load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@bazel_skylib//rules:diff_test.bzl", "diff_test")
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
 load("@io_bazel_stardoc//stardoc:stardoc.bzl", "stardoc")
 
 # gazelle:ignore

@@ -16,17 +16,8 @@ limitations under the License.
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"go/build"
-	"io"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 
 	"golang.org/x/mod/sumdb/dirhash"
 )
@@ -37,26 +28,6 @@ func fetchModule(dest, importpath, version, sum string) error {
 		return fmt.Errorf("%q is not a valid semantic version", version)
 	} else if isSemverPrefix(version) {
 		return fmt.Errorf("-version must be a complete semantic version. %q is a prefix.", version)
-	}
-
-	// Locate the go binary. If GOROOT is set, we'll use that one; otherwise,
-	// we'll use PATH.
-	goPath := "go"
-	if runtime.GOOS == "windows" {
-		goPath += ".exe"
-	}
-	if goroot, ok := os.LookupEnv("GOROOT"); ok {
-		goPath = filepath.Join(goroot, "bin", goPath)
-	}
-
-	// Check whether -modcacherw is supported.
-	// Assume that fetch_repo was built with the same version of Go we're running.
-	modcacherw := false
-	for _, tag := range build.Default.ReleaseTags {
-		if tag == "go1.14" {
-			modcacherw = true
-			break
-		}
 	}
 
 	// Download the module. In Go 1.11, this command must be run in a module,
@@ -75,100 +46,32 @@ func fetchModule(dest, importpath, version, sum string) error {
 		return fmt.Errorf("error closing temporary go.mod: %v", err)
 	}
 
-	buf := &bytes.Buffer{}
-	bufErr := &bytes.Buffer{}
-	cmd := exec.Command(goPath, "mod", "download", "-json")
-	if modcacherw {
-		cmd.Args = append(cmd.Args, "-modcacherw")
-	}
-	cmd.Args = append(cmd.Args, importpath+"@"+version)
-	cmd.Stdout = buf
-	cmd.Stderr = bufErr
-	dlErr := cmd.Run()
+	dl := GoModDownloadResult{}
+	err = runGoModDownload(&dl, dest, importpath, version)
 	os.Remove("go.mod")
-	if dlErr != nil {
-		if _, ok := dlErr.(*exec.ExitError); !ok {
-			if bufErr.Len() > 0 {
-				return fmt.Errorf("%s %s: %s", cmd.Path, strings.Join(cmd.Args, " "), bufErr.Bytes())
-			} else {
-				return fmt.Errorf("%s %s: %v", cmd.Path, strings.Join(cmd.Args, " "), dlErr)
-			}
-		}
-	}
-
-	// Parse the JSON output.
-	var dl struct{ Dir, Sum, Error string }
-	if err := json.Unmarshal(buf.Bytes(), &dl); err != nil {
-		if bufErr.Len() > 0 {
-			return fmt.Errorf("%s %s: %s", cmd.Path, strings.Join(cmd.Args, " "), bufErr.Bytes())
-		} else {
-			return fmt.Errorf("%s %s: %v", cmd.Path, strings.Join(cmd.Args, " "), err)
-		}
-	}
-	if dl.Error != "" {
-		return errors.New(dl.Error)
-	}
-	if dlErr != nil {
-		return dlErr
-	}
-	if dl.Sum != sum {
-		return fmt.Errorf("downloaded module with sum %s; expected sum %s", dl.Sum, sum)
+	if err != nil {
+		return err
 	}
 
 	// Copy the module to the destination.
-	err = copyTree(dest, dl.Dir)
-	if err != nil {
+	if err := copyTree(dest, dl.Dir); err != nil {
 		return fmt.Errorf("failed copying repo: %w", err)
 	}
 
-	// Verify sum
+	// Verify sum of the directory itself against the go.sum.
 	repoSum, err := dirhash.HashDir(dest, importpath+"@"+version, dirhash.Hash1)
 	if err != nil {
 		return fmt.Errorf("failed computing sum: %w", err)
 	}
 
 	if repoSum != sum {
+		if goModCache := os.Getenv("GOMODCACHE"); goModCache != "" {
+			return fmt.Errorf("resulting module with sum %s; expected sum %s, Please try clearing your module cache directory %q", repoSum, sum, goModCache)
+		}
 		return fmt.Errorf("resulting module with sum %s; expected sum %s", repoSum, sum)
 	}
 
 	return nil
-}
-
-func copyTree(destRoot, srcRoot string) error {
-	return filepath.Walk(srcRoot, func(src string, info os.FileInfo, e error) (err error) {
-		if e != nil {
-			return e
-		}
-		rel, err := filepath.Rel(srcRoot, src)
-		if err != nil {
-			return err
-		}
-		if rel == "." {
-			return nil
-		}
-		dest := filepath.Join(destRoot, rel)
-
-		if info.IsDir() {
-			return os.Mkdir(dest, 0o777)
-		} else {
-			r, err := os.Open(src)
-			if err != nil {
-				return err
-			}
-			defer r.Close()
-			w, err := os.Create(dest)
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if cerr := w.Close(); err == nil && cerr != nil {
-					err = cerr
-				}
-			}()
-			_, err = io.Copy(w, r)
-			return err
-		}
-	})
 }
 
 // semantic version parsing functions below this point were copied from
