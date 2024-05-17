@@ -917,8 +917,8 @@ import "bar.proto";`,
 	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
 		Path: config.DefaultValidBuildFileNames[0],
 		Content: `
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
 
 # gazelle:proto file
 
