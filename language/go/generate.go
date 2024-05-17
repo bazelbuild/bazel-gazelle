@@ -568,22 +568,6 @@ func (g *generator) generateProto(mode proto.Mode, targets []protoTarget, import
 					combinedImports.addGenericString(genericString)
 				}
 			}
-			//// handle OS
-			//for osName, osStrings := range builtImports.OS {
-			//	combinedImports.addOSString(osName, osStrings, constraintPrefix)
-			//}
-			//// handle Arch
-			//for archName, archStrings := range builtImports.Arch {
-			//	combinedImports.addArchString(archName, archStrings, constraintPrefix)
-			//}
-			//// handle Platform -- not entirely sure if this is correct, but it seems to work
-			//for platformName, platformStrings := range builtImports.Platform {
-			//	for _, platformString := range platformStrings {
-			//		combinedImports.addPlatformString(platformString, []rule.Platform{platformName}, constraintPrefix)
-			//	}
-			//
-			//}
-
 		}
 
 		goProtoLibrary.SetPrivateAttr(config.GazelleImportsKey, combinedImports.build())
