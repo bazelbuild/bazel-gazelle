@@ -28,10 +28,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bazelbuild/bazel-gazelle/internal/module"
-
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
+	"github.com/bazelbuild/bazel-gazelle/internal/module"
 	"github.com/bazelbuild/bazel-gazelle/internal/version"
 	"github.com/bazelbuild/bazel-gazelle/language/proto"
 	"github.com/bazelbuild/bazel-gazelle/repo"
