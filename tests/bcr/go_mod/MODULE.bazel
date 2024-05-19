@@ -26,6 +26,7 @@ bazel_dep(name = "circl", version = "1.3.7")
 
 go_deps = use_extension("@gazelle//:extensions.bzl", "go_deps")
 go_deps.config(
+    debug_mode = True,
     go_env = {
         "GOPRIVATE": "example.com/*",
     },
