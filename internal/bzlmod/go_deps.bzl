@@ -20,7 +20,7 @@ load(
     "DEFAULT_DIRECTIVES_BY_PATH",
 )
 load(":go_mod.bzl", "deps_from_go_mod", "go_work_from_label", "sums_from_go_mod", "sums_from_go_work")
-load(":semver.bzl", "semver", "COMPARES_HIGHEST_SENTINEL")
+load(":semver.bzl", "COMPARES_HIGHEST_SENTINEL", "semver")
 load(
     ":utils.bzl",
     "drop_nones",
@@ -352,6 +352,7 @@ def _go_deps_impl(module_ctx):
     outdated_direct_dep_printer = print
     go_env = {}
     dep_files = []
+    debug_mode = False
     for module in module_ctx.modules:
         if len(module.tags.config) > 1:
             fail(
@@ -371,6 +372,7 @@ def _go_deps_impl(module_ctx):
             elif check_direct_deps == "error":
                 outdated_direct_dep_printer = fail
             go_env = mod_config.go_env
+            debug_mode = mod_config.debug_mode
 
         _process_overrides(module_ctx, module, "gazelle_override", gazelle_overrides, _process_gazelle_override)
         _process_overrides(module_ctx, module, "module_override", module_overrides, _process_module_override, archive_overrides)
@@ -605,6 +607,7 @@ def _go_deps_impl(module_ctx):
             "build_extra_args": _get_build_extra_args(path, gazelle_overrides, gazelle_default_attributes),
             "patches": _get_patches(path, module_overrides),
             "patch_args": _get_patch_args(path, module_overrides),
+            "debug_mode": debug_mode,
         }
 
         archive_override = archive_overrides.get(path)
@@ -679,7 +682,7 @@ def _get_sum_from_module(path, module, sums):
         if module.raw_version == COMPARES_HIGHEST_SENTINEL:
             # replacement have no sums, so we can skip this
             return None
-        elif module.local_path== None:
+        elif module.local_path == None:
             fail("No sum for {}@{} from {} found. You may need to run: bazel run @rules_go//go -- mod tidy".format(path, module.raw_version, "parent-label-todo"))  #module.parent_label))
 
     return sums[entry]
@@ -702,6 +705,7 @@ _config_tag = tag_class(
         "go_env": attr.string_dict(
             doc = "The environment variables to use when fetching Go dependencies or running the `@rules_go//go` tool.",
         ),
+        "debug_mode": attr.bool(doc = "Whether or not to print stdout and stderr messages from gazelle", default = False),
     },
 )
 
