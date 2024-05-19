@@ -275,9 +275,6 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 		rules = append(rules, lib)
 		g.maybePublishToolLib(lib, pkg)
-		if r := g.maybeGenerateExtraLib(lib, pkg); r != nil {
-			rules = append(rules, r)
-		}
 		if r := g.maybeGenerateAlias(pkg, libName); r != nil {
 			g.maybePublishToolLib(r, pkg)
 			rules = append(rules, r)
@@ -570,66 +567,6 @@ func (g *generator) maybePublishToolLib(lib *rule.Rule, pkg *goPackage) {
 		// Imported by nogo main. We add a visibility exception.
 		lib.SetAttr("visibility", []string{"//visibility:public"})
 	}
-}
-
-// maybeGenerateExtraLib generates extra equivalent library targets for
-// certain protobuf libraries. These "_gen" targets depend on Well Known Types
-// built with go_proto_library and are used together with go_proto_library.
-// The original targets are used when proto rule generation is disabled.
-func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.Rule {
-	gc := getGoConfig(g.c)
-	if gc.prefix != "github.com/golang/protobuf" || gc.prefixRel != "" {
-		return nil
-	}
-
-	var r *rule.Rule
-	switch pkg.importPath {
-	case "github.com/golang/protobuf/descriptor":
-		r = rule.NewRule("go_library", "go_default_library_gen")
-		r.SetAttr("srcs", pkg.library.sources.buildFlat())
-		r.SetAttr("importpath", pkg.importPath)
-		r.SetAttr("visibility", []string{"//visibility:public"})
-		r.SetAttr("deps", []string{
-			"//proto:go_default_library",
-			"@io_bazel_rules_go//proto/wkt:descriptor_go_proto",
-			"@org_golang_google_protobuf//reflect/protodesc:go_default_library",
-			"@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
-			"@org_golang_google_protobuf//runtime/protoimpl:go_default_library",
-		})
-
-	case "github.com/golang/protobuf/jsonpb":
-		r = rule.NewRule("alias", "go_default_library_gen")
-		r.SetAttr("actual", ":go_default_library")
-		r.SetAttr("visibility", []string{"//visibility:public"})
-
-	case "github.com/golang/protobuf/protoc-gen-go/generator":
-		r = rule.NewRule("go_library", "go_default_library_gen")
-		r.SetAttr("srcs", pkg.library.sources.buildFlat())
-		r.SetAttr("importpath", pkg.importPath)
-		r.SetAttr("visibility", []string{"//visibility:public"})
-		r.SetAttr("deps", []string{
-			"//proto:go_default_library",
-			"//protoc-gen-go/generator/internal/remap:go_default_library",
-			"@io_bazel_rules_go//proto/wkt:compiler_plugin_go_proto",
-			"@io_bazel_rules_go//proto/wkt:descriptor_go_proto",
-		})
-
-	case "github.com/golang/protobuf/ptypes":
-		r = rule.NewRule("go_library", "go_default_library_gen")
-		r.SetAttr("srcs", pkg.library.sources.buildFlat())
-		r.SetAttr("importpath", pkg.importPath)
-		r.SetAttr("visibility", []string{"//visibility:public"})
-		r.SetAttr("deps", []string{
-			"//proto:go_default_library",
-			"@io_bazel_rules_go//proto/wkt:any_go_proto",
-			"@io_bazel_rules_go//proto/wkt:duration_go_proto",
-			"@io_bazel_rules_go//proto/wkt:timestamp_go_proto",
-			"@org_golang_google_protobuf//reflect/protoreflect:go_default_library",
-			"@org_golang_google_protobuf//reflect/protoregistry:go_default_library",
-		})
-	}
-
-	return r
 }
 
 func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embed string) {
