@@ -275,6 +275,9 @@ func (gl *goLang) GenerateRules(args language.GenerateArgs) language.GenerateRes
 		}
 		rules = append(rules, lib)
 		g.maybePublishToolLib(lib, pkg)
+		if r := g.maybeGenerateExtraLib(lib, pkg); r != nil {
+			rules = append(rules, r)
+		}
 		if r := g.maybeGenerateAlias(pkg, libName); r != nil {
 			g.maybePublishToolLib(r, pkg)
 			rules = append(rules, r)
@@ -567,6 +570,42 @@ func (g *generator) maybePublishToolLib(lib *rule.Rule, pkg *goPackage) {
 		// Imported by nogo main. We add a visibility exception.
 		lib.SetAttr("visibility", []string{"//visibility:public"})
 	}
+}
+
+// maybeGenerateExtraLib generates extra equivalent library targets for
+// certain protobuf libraries. Historically, these "_gen" targets depend on Well Known Types
+// built with go_proto_library and are used together with go_proto_library.
+// However, these are no longer needed and are kept as aliases to be backward-compatible
+func (g *generator) maybeGenerateExtraLib(lib *rule.Rule, pkg *goPackage) *rule.Rule {
+	gc := getGoConfig(g.c)
+	if gc.prefix != "github.com/golang/protobuf" || gc.prefixRel != "" {
+		return nil
+	}
+
+	var r *rule.Rule
+	switch pkg.importPath {
+	case "github.com/golang/protobuf/descriptor":
+		r = rule.NewRule("alias", "go_default_library_gen")
+		r.SetAttr("actual", ":go_default_library")
+		r.SetAttr("visibility", []string{"//visibility:public"})
+
+	case "github.com/golang/protobuf/jsonpb":
+		r = rule.NewRule("alias", "go_default_library_gen")
+		r.SetAttr("actual", ":go_default_library")
+		r.SetAttr("visibility", []string{"//visibility:public"})
+
+	case "github.com/golang/protobuf/protoc-gen-go/generator":
+		r = rule.NewRule("alias", "go_default_library_gen")
+		r.SetAttr("actual", ":go_default_library")
+		r.SetAttr("visibility", []string{"//visibility:public"})
+
+	case "github.com/golang/protobuf/ptypes":
+		r = rule.NewRule("alias", "go_default_library_gen")
+		r.SetAttr("actual", ":go_default_library")
+		r.SetAttr("visibility", []string{"//visibility:public"})
+	}
+
+	return r
 }
 
 func (g *generator) setCommonAttrs(r *rule.Rule, pkgRel string, visibility []string, target goTarget, embed string) {
