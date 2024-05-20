@@ -866,6 +866,244 @@ go_library(
 	}})
 }
 
+func TestProtoFileMode(t *testing.T) {
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{
+			Path: config.DefaultValidBuildFileNames[0],
+			Content: `
+# gazelle:proto file
+
+proto_library(
+    name = "bar_proto",
+    srcs = ["bar.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "repo_go_proto",
+    importpath = "example.com/repo",
+    proto = ":bar_proto",
+    visibility = ["//visibility:public"],
+)
+
+`,
+		},
+		{
+			Path: "foo.proto",
+			Content: `syntax = "proto3";
+import "bar.proto";`,
+		},
+		{
+			Path:    "bar.proto",
+			Content: `syntax = "proto3";`,
+		},
+		{
+			Path:    "baz.proto",
+			Content: `syntax = "proto3";`,
+		},
+	}
+
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{
+		"update", "-go_prefix", "example.com/repo",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: config.DefaultValidBuildFileNames[0],
+		Content: `
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+# gazelle:proto file
+
+proto_library(
+    name = "bar_proto",
+    srcs = ["bar.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "repo_go_proto",
+    importpath = "example.com/repo",
+    protos = [
+        ":bar_proto",
+        ":baz_proto",
+        ":foo_proto",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "baz_proto",
+    srcs = ["baz.proto"],
+    visibility = ["//visibility:public"],
+)
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+    deps = [":bar_proto"],
+)
+`,
+	}})
+}
+
+func TestProtoFileModeRemoveGoDefaultLibrary(t *testing.T) {
+	files := []testtools.FileSpec{
+		{Path: "WORKSPACE"},
+		{
+			Path: config.DefaultValidBuildFileNames[0],
+			Content: `
+# gazelle:proto file
+
+proto_library(
+    name = "bar_proto",
+    srcs = ["bar.proto"],
+	deps = ["//somedir:foo_proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "bar_go_proto",
+    importpath = "example.com/repo",
+    proto = ":bar_proto",
+	deps = ["//somedir:go_default_library"],
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+	name = "go_default_library",
+	embed = [":bar_go_proto"],
+	srcs = ["bar.go"],
+	importpath = "example.com/repo",
+	deps = ["//somedir:go_default_library"],
+	visibility = ["//visibility:public"],
+)
+
+`,
+		},
+		{
+			Path: "bar.proto",
+			Content: `syntax = "proto3";
+import "somedir/foo.proto";
+`,
+		},
+		{
+			Path: "bar.go",
+			Content: `package repo
+import _ "example.com/repo/somedir/foo"`,
+		},
+		{
+			Path: "somedir/" + config.DefaultValidBuildFileNames[0],
+			Content: `
+# gazelle:proto file
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "foo_go_proto",
+    importpath = "example.com/repo/somedir/foo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+)
+
+go_library(
+    name = "go_default_library",
+    embed = [":foo_go_proto"],
+    importpath = "example.com/repo/somedir/foo",
+    visibility = ["//visibility:public"],
+)
+
+`,
+		},
+		{
+			Path: "somedir/foo.proto",
+			Content: `syntax = "proto3";
+option go_package = "example.com/repo/somedir/foo";
+`,
+		},
+	}
+
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	args := []string{
+		"update", "-go_prefix", "example.com/repo",
+	}
+	if err := runGazelle(dir, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, dir, []testtools.FileSpec{{
+		Path: config.DefaultValidBuildFileNames[0],
+		Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+# gazelle:proto file
+
+proto_library(
+    name = "bar_proto",
+    srcs = ["bar.proto"],
+    visibility = ["//visibility:public"],
+    deps = ["//somedir:foo_proto"],
+)
+
+go_proto_library(
+    name = "bar_go_proto",
+    importpath = "example.com/repo",
+    proto = ":bar_proto",
+    visibility = ["//visibility:public"],
+    deps = ["//somedir:foo_go_proto"],
+)
+
+go_library(
+    name = "go_default_library",
+    srcs = ["bar.go"],
+    embed = [":bar_go_proto"],
+    importpath = "example.com/repo",
+    visibility = ["//visibility:public"],
+    deps = ["//somedir:foo_go_proto"],
+)
+
+`,
+	},
+		{
+			Path: "somedir/" + config.DefaultValidBuildFileNames[0],
+			Content: `
+load("@io_bazel_rules_go//proto:def.bzl", "go_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+
+# gazelle:proto file
+
+proto_library(
+    name = "foo_proto",
+    srcs = ["foo.proto"],
+    visibility = ["//visibility:public"],
+)
+
+go_proto_library(
+    name = "foo_go_proto",
+    importpath = "example.com/repo/somedir/foo",
+    proto = ":foo_proto",
+    visibility = ["//visibility:public"],
+)
+`,
+		}})
+}
+
 func TestEmptyGoPrefix(t *testing.T) {
 	files := []testtools.FileSpec{
 		{Path: "WORKSPACE"},

@@ -1,0 +1,4 @@
+syntax = "proto3";
+
+package proto_file_mode.multiple_go_packages.bar;
+option go_package = "example.com/repo/proto_file_mode/multiple_go_packages/bar";

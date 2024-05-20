@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package proto_file_mode.abc;
+import "abc/a.proto";
+
+service Bar {
+  rpc Create(CreateBarRequest) returns (CreateBarResponse);
+}
+
+message CreateBarRequest {
+  string name = 1;
+}
+
+message CreateBarResponse {
+  string id = 1;
+}
+
