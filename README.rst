@@ -266,9 +266,10 @@ To verify that all BUILD files are update-to-date, you can use the ``gazelle_tes
 
   gazelle_test(
       name = "gazelle_test",
-      no_sandbox = True,
       workspace = "//:BUILD.bazel", # a file in the workspace root, where the gazelle will be run
   )
+
+However, please note that gazelle_test cannot be cached.
 
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~

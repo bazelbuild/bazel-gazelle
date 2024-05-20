@@ -227,10 +227,7 @@ def gazelle(name, **kwargs):
         data = kwargs["data"] if "data" in kwargs else [],
     )
 
-def gazelle_test(name, no_sandbox = False, **kwargs):
-    if not no_sandbox:
-        fail("gazelle_test can only be used with no_sandbox = True.")
-
+def gazelle_test(name, **kwargs):
     runner_name, visibility = _gazelle_kwargs_prepare(name, kwargs)
 
     _gazelle_test_runner(

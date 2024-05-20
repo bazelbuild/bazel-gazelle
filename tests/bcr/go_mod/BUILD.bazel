@@ -6,6 +6,5 @@ gazelle(name = "gazelle")
 
 gazelle_test(
     name = "gazelle_test",
-    no_sandbox = True,
     workspace = "//:BUILD.bazel",
 )
