@@ -176,30 +176,5 @@ func (*protoLang) CrossResolve(c *config.Config, ix *resolve.RuleIndex, imp reso
 			return []resolve.FindResult{{Label: l}}
 		}
 	}
-	if imp.Lang == "go" && pc.Mode.ShouldUseKnownImports() {
-		// These are commonly used libraries that depend on Well Known Types.
-		// They depend on the generated versions of these protos to avoid conflicts.
-		// However, since protoc-gen-go depends on these libraries, we generate
-		// its rules in disable_global mode (to avoid cyclic dependency), so the
-		// "go_default_library" versions of these libraries depend on the
-		// pre-generated versions of the proto libraries.
-		switch imp.Imp {
-		case "github.com/golang/protobuf/proto":
-			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "proto", "go_default_library")}}
-		case "github.com/golang/protobuf/jsonpb":
-			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "jsonpb", "go_default_library_gen")}}
-		case "github.com/golang/protobuf/descriptor":
-			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "descriptor", "go_default_library_gen")}}
-		case "github.com/golang/protobuf/ptypes":
-			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "ptypes", "go_default_library_gen")}}
-		case "github.com/golang/protobuf/protoc-gen-go/generator":
-			return []resolve.FindResult{{Label: label.New("com_github_golang_protobuf", "protoc-gen-go/generator", "go_default_library_gen")}}
-		case "google.golang.org/grpc":
-			return []resolve.FindResult{{Label: label.New("org_golang_google_grpc", "", "go_default_library")}}
-		}
-		if l, ok := knownGoProtoImports[imp.Imp]; ok {
-			return []resolve.FindResult{{Label: l}}
-		}
-	}
 	return nil
 }

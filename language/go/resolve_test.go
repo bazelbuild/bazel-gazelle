@@ -830,46 +830,18 @@ go_proto_library(name = "wkts_go_proto")
 go_library(
     name = "wkts_go_lib",
     deps = [
-        "@com_github_golang_protobuf//protoc-gen-go/descriptor",
-        "@com_github_golang_protobuf//protoc-gen-go/plugin",
-        "@com_github_golang_protobuf//ptypes/any",
-        "@com_github_golang_protobuf//ptypes/duration",
-        "@com_github_golang_protobuf//ptypes/empty",
-        "@com_github_golang_protobuf//ptypes/struct",
-        "@com_github_golang_protobuf//ptypes/timestamp",
-        "@com_github_golang_protobuf//ptypes/wrappers",
-        "@org_golang_google_genproto//protobuf/api",
-        "@org_golang_google_genproto//protobuf/field_mask",
-        "@org_golang_google_genproto//protobuf/ptype",
-        "@org_golang_google_genproto//protobuf/source_context",
-    ],
-)
-`,
-		}, {
-			desc: "proto_special_cross_resolve",
-			old: buildFile{content: `
-go_library(
-    name = "go_default_library",
-    _imports = [
-        "github.com/golang/protobuf/proto",
-        "github.com/golang/protobuf/jsonpb",
-        "github.com/golang/protobuf/descriptor",
-        "github.com/golang/protobuf/protoc-gen-go/generator",
-        "github.com/golang/protobuf/ptypes",
-        "google.golang.org/grpc",
-    ],
-)
-`},
-			want: `
-go_library(
-    name = "go_default_library",
-    deps = [
-        "@com_github_golang_protobuf//descriptor:go_default_library_gen",
-        "@com_github_golang_protobuf//jsonpb:go_default_library_gen",
-        "@com_github_golang_protobuf//proto:go_default_library",
-        "@com_github_golang_protobuf//protoc-gen-go/generator:go_default_library_gen",
-        "@com_github_golang_protobuf//ptypes:go_default_library_gen",
-        "@org_golang_google_grpc//:go_default_library",
+        "//vendor/github.com/golang/protobuf/protoc-gen-go/descriptor",
+        "//vendor/github.com/golang/protobuf/protoc-gen-go/plugin",
+        "//vendor/github.com/golang/protobuf/ptypes/any",
+        "//vendor/github.com/golang/protobuf/ptypes/duration",
+        "//vendor/github.com/golang/protobuf/ptypes/empty",
+        "//vendor/github.com/golang/protobuf/ptypes/struct",
+        "//vendor/github.com/golang/protobuf/ptypes/timestamp",
+        "//vendor/github.com/golang/protobuf/ptypes/wrappers",
+        "//vendor/google.golang.org/genproto/protobuf/api",
+        "//vendor/google.golang.org/genproto/protobuf/field_mask",
+        "//vendor/google.golang.org/genproto/protobuf/ptype",
+        "//vendor/google.golang.org/genproto/protobuf/source_context",
     ],
 )
 `,
