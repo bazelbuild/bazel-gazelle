@@ -28,6 +28,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/bazelbuild/buildtools/build"
+
 	"github.com/bazelbuild/bazel-gazelle/config"
 	gzflag "github.com/bazelbuild/bazel-gazelle/flag"
 	"github.com/bazelbuild/bazel-gazelle/internal/wspace"
@@ -38,7 +40,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/resolve"
 	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/walk"
-	"github.com/bazelbuild/buildtools/build"
 )
 
 // updateConfig holds configuration information needed to run the fix and
@@ -125,7 +126,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		if !filepath.IsAbs(dir) {
 			dir = filepath.Join(c.WorkDir, dir)
 		}
-		dir, err := filepath.EvalSymlinks(dir)
+		dir, err = filepath.EvalSymlinks(dir)
 		if err != nil {
 			return fmt.Errorf("%s: failed to resolve symlinks: %v", arg, err)
 		}
@@ -220,7 +221,7 @@ func (ucr *updateConfigurer) KnownDirectives() []string { return nil }
 
 func (ucr *updateConfigurer) Configure(c *config.Config, rel string, f *rule.File) {}
 
-// visitRecord stores information about about a directory visited with
+// visitRecord stores information about a directory visited with
 // packages.Walk.
 type visitRecord struct {
 	// pkgRel is the slash-separated path to the visited directory, relative to
@@ -289,7 +290,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	}
 	ruleIndex := resolve.NewRuleIndex(mrslv.Resolver, exts...)
 
-	if err := fixRepoFiles(c, loads); err != nil {
+	if err = fixRepoFiles(c, loads); err != nil {
 		return err
 	}
 
@@ -372,7 +373,8 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		}
 
 		maybeRecordReplacement := func(ruleKind string) (*string, error) {
-			repl, err := lookupMapKindReplacement(c.KindMap, ruleKind)
+			var repl *config.MappedKind
+			repl, err = lookupMapKindReplacement(c.KindMap, ruleKind)
 			if err != nil {
 				return nil, err
 			}
@@ -463,8 +465,8 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 
 	if len(errorsFromWalk) > 1 {
 		var additionalErrors []string
-		for _, error := range errorsFromWalk[1:] {
-			additionalErrors = append(additionalErrors, error.Error())
+		for _, err = range errorsFromWalk[1:] {
+			additionalErrors = append(additionalErrors, err.Error())
 		}
 
 		return fmt.Errorf("encountered multiple errors: %w, %v", errorsFromWalk[0], strings.Join(additionalErrors, ", "))
@@ -480,7 +482,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 			err = cerr
 		}
 	}()
-	if err := maybePopulateRemoteCacheFromGoMod(c, rc); err != nil {
+	if err = maybePopulateRemoteCacheFromGoMod(c, rc); err != nil {
 		log.Print(err)
 	}
 	for _, v := range visits {
