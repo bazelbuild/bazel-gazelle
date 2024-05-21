@@ -14,9 +14,8 @@ local_path_override(
     path = "test_dep",
 )
 
-include("//segments:dir/go.MODULE.bazel")
-
 bazel_dep(name = "protobuf", version = "23.1", repo_name = "my_protobuf")
+bazel_dep(name = "rules_go", version = "0.42.0", repo_name = "my_rules_go")
 bazel_dep(name = "rules_proto", version = "6.0.0-rc2", repo_name = "my_rules_proto")
 
 go_sdk = use_extension("@my_rules_go//go:extensions.bzl", "go_sdk")
