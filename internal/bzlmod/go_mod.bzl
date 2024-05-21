@@ -99,6 +99,8 @@ def parse_go_work(content, go_work_label):
                 continue
             else:
                 state["use"].append(tokens[1])
+        elif tokens[0] == "toolchain":
+            continue
         else:
             fail("{}:{}: unexpected directive '{}'".format(go_work_label.name, line_no, tokens[0]))
 
