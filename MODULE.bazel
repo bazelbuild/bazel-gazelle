@@ -1,6 +1,6 @@
 module(
     name = "gazelle",
-    version = "0.36.0",
+    version = "0.37.0",
     repo_name = "bazel_gazelle",
 )
 
