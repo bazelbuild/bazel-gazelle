@@ -79,8 +79,7 @@ func collectApparentNames(repoRoot, relPath string) (map[string]string, error) {
 			apparentNames[name] = apparentName
 		}
 		for _, includeLabel := range includeLabels {
-			var l label.Label
-			l, err = label.Parse(includeLabel)
+			l, err := label.Parse(includeLabel)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse include label %q: %v", includeLabel, err)
 			}
@@ -97,7 +96,7 @@ func collectApparentNamesAndIncludes(f *build.File) (map[string]string, []string
 	var includeLabels []string
 
 	for _, dep := range f.Rules("") {
-		if dep.Name() == "" {
+		if dep.ExplicitName() == "" {
 			if ident, ok := dep.Call.X.(*build.Ident); !ok || ident.Name != "include" {
 				continue
 			}

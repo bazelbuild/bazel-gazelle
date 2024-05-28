@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "module",
@@ -17,6 +17,7 @@ filegroup(
     srcs = [
         "BUILD.bazel",
         "module.go",
+        "module_test.go",
     ],
     visibility = ["//visibility:public"],
 )
@@ -25,4 +26,18 @@ alias(
     name = "go_default_library",
     actual = ":module",
     visibility = ["//:__subpackages__"],
+)
+
+go_test(
+    name = "module_test",
+    srcs = ["module_test.go"],
+    data = glob(
+        ["testdata/**"],
+        allow_empty = True,
+    ),
+    embed = [":module"],
+    deps = [
+        "@com_github_google_go_cmp//cmp",
+        "@io_bazel_rules_go//go/runfiles:go_default_library",
+    ],
 )

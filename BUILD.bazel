@@ -9,8 +9,10 @@ load("//:def.bzl", "gazelle", "gazelle_binary")
 # gazelle:exclude .bazelci
 # gazelle:exclude .bcr
 # gazelle:exclude .idea
+# gazelle:exclude .ijwb
 # gazelle:exclude .github
 # gazelle:exclude .vscode
+# gazelle:exclude internal/module/testdata
 # gazelle:go_naming_convention import_alias
 gazelle(
     name = "gazelle",
