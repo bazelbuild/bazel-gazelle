@@ -18,9 +18,11 @@ limitations under the License.
 package module
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/buildtools/build"
 )
 
@@ -29,17 +31,9 @@ import (
 // See https://bazel.build/external/module#repository_names_and_strict_deps for more information on
 // apparent names.
 func ExtractModuleToApparentNameMapping(repoRoot string) (func(string) string, error) {
-	moduleFile, err := parseModuleFile(repoRoot)
+	moduleToApparentName, err := collectApparentNames(repoRoot, "MODULE.bazel")
 	if err != nil {
 		return nil, err
-	}
-	var moduleToApparentName map[string]string
-	if moduleFile != nil {
-		moduleToApparentName = collectApparentNames(moduleFile)
-	} else {
-		// If there is no MODULE.bazel file, return a function that always returns the empty string.
-		// Languages will know to fall back to the WORKSPACE names of repos.
-		moduleToApparentName = make(map[string]string)
 	}
 
 	return func(moduleName string) string {
@@ -47,12 +41,10 @@ func ExtractModuleToApparentNameMapping(repoRoot string) (func(string) string, e
 	}, nil
 }
 
-func parseModuleFile(repoRoot string) (*build.File, error) {
-	path := filepath.Join(repoRoot, "MODULE.bazel")
+func parseModuleSegment(repoRoot, relPath string) (*build.File, error) {
+	path := filepath.Join(repoRoot, relPath)
 	bytes, err := os.ReadFile(path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	} else if err != nil {
+	if err != nil {
 		return nil, err
 	}
 	return build.ParseModule(path, bytes)
@@ -61,11 +53,59 @@ func parseModuleFile(repoRoot string) (*build.File, error) {
 // Collects the mapping of module names (e.g. "rules_go") to user-configured apparent names (e.g.
 // "my_rules_go"). See https://bazel.build/external/module#repository_names_and_strict_deps for more
 // information on apparent names.
-func collectApparentNames(m *build.File) map[string]string {
+func collectApparentNames(repoRoot, relPath string) (map[string]string, error) {
 	apparentNames := make(map[string]string)
+	seenFiles := make(map[string]struct{})
+	filesToProcess := []string{relPath}
 
-	for _, dep := range m.Rules("") {
-		if dep.Name() == "" {
+	for len(filesToProcess) > 0 {
+		f := filesToProcess[0]
+		filesToProcess = filesToProcess[1:]
+		if _, seen := seenFiles[f]; seen {
+			continue
+		}
+		seenFiles[f] = struct{}{}
+		bf, err := parseModuleSegment(repoRoot, f)
+		if err != nil {
+			if f == "MODULE.bazel" && os.IsNotExist(err) {
+				// If there is no MODULE.bazel file, return an empty map but no error.
+				// Languages will know to fall back to the WORKSPACE names of repos.
+				return nil, nil
+			}
+			return nil, err
+		}
+		names, includeLabels := collectApparentNamesAndIncludes(bf)
+		for name, apparentName := range names {
+			apparentNames[name] = apparentName
+		}
+		for _, includeLabel := range includeLabels {
+			l, err := label.Parse(includeLabel)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse include label %q: %v", includeLabel, err)
+			}
+			p := filepath.Join(filepath.FromSlash(l.Pkg), filepath.FromSlash(l.Name))
+			filesToProcess = append(filesToProcess, p)
+		}
+	}
+
+	return apparentNames, nil
+}
+
+func collectApparentNamesAndIncludes(f *build.File) (map[string]string, []string) {
+	apparentNames := make(map[string]string)
+	var includeLabels []string
+
+	for _, dep := range f.Rules("") {
+		if dep.ExplicitName() == "" {
+			if ident, ok := dep.Call.X.(*build.Ident); !ok || ident.Name != "include" {
+				continue
+			}
+			if len(dep.Call.List) != 1 {
+				continue
+			}
+			if str, ok := dep.Call.List[0].(*build.StringExpr); ok {
+				includeLabels = append(includeLabels, str.Value)
+			}
 			continue
 		}
 		if dep.Kind() != "module" && dep.Kind() != "bazel_dep" {
@@ -82,5 +122,5 @@ func collectApparentNames(m *build.File) map[string]string {
 		}
 	}
 
-	return apparentNames
+	return apparentNames, includeLabels
 }
