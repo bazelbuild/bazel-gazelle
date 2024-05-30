@@ -78,17 +78,7 @@ if [ -z "$gazelle_path" ]; then
   exit 1
 fi
 if [[ -n "${TEST_WORKSPACE+x}" && -n "$WORKSPACE" ]]; then
-  # references https://github.com/bazelbuild/buildtools/blob/1429e15ae755a6762d0edf9198062dc6ed04408d/buildifier/runner.bash.template#L17-L26
-  # use `realpath` if available and `readlink` otherwise (typically macOS)
-  if command -v realpath &> /dev/null; then
-    WORKSPACE_LINK="$(realpath ${WORKSPACE})"
-  elif command -v readlink &> /dev/null; then
-    WORKSPACE_LINK="$(readlink ${WORKSPACE})"
-  else
-    echo "Unable to resolve symlink (WORKSPACE: ${WORKSPACE})"
-    exit 1
-  fi
-  BUILD_WORKSPACE_DIRECTORY="$(dirname "$WORKSPACE_LINK")"
+  BUILD_WORKSPACE_DIRECTORY="$(dirname "$(readlink ${WORKSPACE})")"
   export BUILD_WORKSPACE_DIRECTORY
 fi
 if [ -z "${BUILD_WORKSPACE_DIRECTORY-}" ]; then
