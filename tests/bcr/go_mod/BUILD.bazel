@@ -1,5 +1,10 @@
-load("@gazelle//:def.bzl", "gazelle")
+load("@gazelle//:def.bzl", "gazelle", "gazelle_test")
 
 # gazelle:go_naming_convention import
 # gazelle:go_naming_convention_external import
 gazelle(name = "gazelle")
+
+gazelle_test(
+    name = "gazelle_test",
+    workspace = "//:BUILD.bazel",
+)

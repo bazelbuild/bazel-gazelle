@@ -33,6 +33,7 @@ GAZELLE_PATH=@@GAZELLE_PATH@@
 ARGS=@@ARGS@@
 GOTOOL=@@GOTOOL@@
 REPO_CONFIG_PATH=@@REPO_CONFIG_PATH@@
+WORKSPACE="@@WORKSPACE@@"
 
 @@ENV@@
 
@@ -75,6 +76,10 @@ gazelle_path=$(rlocation "$GAZELLE_PATH")
 if [ -z "$gazelle_path" ]; then
   echo "error: could not locate gazelle binary" >&2
   exit 1
+fi
+if [[ -n "${TEST_WORKSPACE+x}" && -n "$WORKSPACE" ]]; then
+  BUILD_WORKSPACE_DIRECTORY="$(dirname "$(readlink ${WORKSPACE})")"
+  export BUILD_WORKSPACE_DIRECTORY
 fi
 if [ -z "${BUILD_WORKSPACE_DIRECTORY-}" ]; then
   echo "error: BUILD_WORKSPACE_DIRECTORY not set" >&2

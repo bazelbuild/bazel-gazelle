@@ -258,6 +258,19 @@ You can also pass additional arguments to Gazelle after a ``--`` argument.
 After running ``update-repos``, you might want to run ``bazel run //:gazelle`` again, as the
 ``update-repos`` command can affect the output of a normal run of Gazelle.
 
+To verify that all BUILD files are update-to-date, you can use the ``gazelle_test`` rule.
+
+.. code:: bzl
+
+  load("@bazel_gazelle//:def.bzl", "gazelle_test")
+
+  gazelle_test(
+      name = "gazelle_test",
+      workspace = "//:BUILD.bazel", # a file in the workspace root, where the gazelle will be run
+  )
+
+However, please note that gazelle_test cannot be cached.
+
 Running Gazelle with Go
 ~~~~~~~~~~~~~~~~~~~~~~~
 
