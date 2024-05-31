@@ -18,6 +18,7 @@ limitations under the License.
 package walk
 
 import (
+	"context"
 	"io/fs"
 	"log"
 	"os"
@@ -307,8 +308,15 @@ func loadBuildFile(c *config.Config, pkg, dir string, ents []fs.DirEntry) (*rule
 	return rule.LoadFile(path, pkg)
 }
 
+type ConfigureParams struct {
+	Config  *config.Config
+	Rel     string
+	File    *rule.File
+	DirEnts []fs.DirEntry
+}
+
 type Configurer2 interface {
-	Configure2(c *config.Config, rel string, f *rule.File, ents []fs.DirEntry)
+	Configure2(ctx context.Context, params ConfigureParams)
 }
 
 func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *config.Config, rel string, f *rule.File, ents []fs.DirEntry) *config.Config {
@@ -329,7 +337,12 @@ func configure(cexts []config.Configurer, knownDirectives map[string]bool, c *co
 	}
 	for _, cext := range cexts {
 		if maybeC2, ok := cext.(Configurer2); ok {
-			maybeC2.Configure2(c, rel, f, ents)
+			maybeC2.Configure2(context.Background(), ConfigureParams{
+				Config:  c,
+				Rel:     rel,
+				File:    f,
+				DirEnts: ents,
+			})
 		} else {
 			cext.Configure(c, rel, f)
 		}
