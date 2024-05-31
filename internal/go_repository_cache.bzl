@@ -135,6 +135,12 @@ def _detect_host_platform(ctx):
 
     elif ctx.os.name == "mac os x":
         host = "darwin_amd64"
+        res = ctx.execute(["uname", "-m"])
+        if res.return_code == 0:
+            uname = res.stdout.strip()
+            if uname == "arm64":
+                host = "darwin_arm64"
+                
     elif ctx.os.name.startswith("windows"):
         host = "windows_amd64"
     elif ctx.os.name == "freebsd":
