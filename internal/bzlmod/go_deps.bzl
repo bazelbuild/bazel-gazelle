@@ -48,7 +48,7 @@ https://github.com/bazelbuild/bazel-gazelle/tree/master/internal/bzlmod/default_
 _GAZELLE_ATTRS = {
     "build_file_generation": attr.string(
         default = "on",
-        doc = """One of `"auto"`, `"on"` (default), `"off"`.
+        doc = """One of `"auto"`, `"on"` (default), `"off"`, `"clean"`.
 
         Whether Gazelle should generate build files for the Go module.
 
@@ -60,11 +60,14 @@ _GAZELLE_ATTRS = {
         In `"auto"` mode, Gazelle will run if there is no build file in the Go
         module's root directory.
 
+        In `"clean"` mode, Gazelle will first remove any existing build files.
+
         """,
         values = [
             "auto",
             "off",
             "on",
+            "clean",
         ],
     ),
     "build_extra_args": attr.string_list(

@@ -103,6 +103,12 @@ go_deps.archive_override(
     ],
 )
 
+# Test a module that ships with its own BUILD files and first needs rewriting
+go_deps.gazelle_override(
+    build_file_generation = "clean",
+    path = "github.com/google/go-jsonnet",
+)
+
 # Transitive dependencies have to be listed here explicitly.
 go_deps.module(
     indirect = True,
@@ -131,6 +137,7 @@ use_repo(
     "com_github_datadog_sketches_go",
     "com_github_envoyproxy_protoc_gen_validate",
     "com_github_fmeum_dep_on_gazelle",
+    "com_github_google_go_jsonnet",
     "com_github_google_safetext",
     "com_github_stretchr_testify",
     "org_golang_google_protobuf",
