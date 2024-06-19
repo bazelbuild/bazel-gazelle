@@ -135,8 +135,12 @@ func (c *Configurer) loadBazelIgnore(repoRoot string, wc *walkConfig) error {
 			log.Printf("the .bazelignore exclusion pattern must not be a glob %s", ignore)
 			continue
 		}
-		// Ensure we remove trailing slashes or the exclude matching won't work correctly
-		wc.excludes = append(wc.excludes, strings.TrimSuffix(ignore, "/"))
+
+		// Clean the path to remove any extra '.', './' etc otherwise
+		// the exclude matching won't work correctly.
+		ignore = path.Clean(ignore)
+
+		wc.excludes = append(wc.excludes, ignore)
 	}
 	return nil
 }
