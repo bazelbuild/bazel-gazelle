@@ -137,6 +137,13 @@ def gazelle_dependencies(
     )
     _maybe(
         go_repository,
+        name = "com_github_charlievieth_fastwalk",
+        importpath = "github.com/charlievieth/fastwalk",
+        sum = "h1:eNWFaNPe5srPqQ5yyDbhAf11paeZaHWcihRhpuYFfSg=",
+        version = "v1.0.3",
+    )
+    _maybe(
+        go_repository,
         name = "com_github_chzyer_logex",
         importpath = "github.com/chzyer/logex",
         sum = "h1:Swpa1K6QvQznwJRcfTfQJmTE72DqScAa40E+fbHEXEE=",
