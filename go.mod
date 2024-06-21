@@ -1,6 +1,6 @@
 module github.com/bazelbuild/bazel-gazelle
 
-go 1.21.4
+go 1.21
 
 require (
 	github.com/bazelbuild/buildtools v0.0.0-20240313121412-66c605173954
