@@ -10,6 +10,7 @@ GO_REPOSITORY_TOOLS_SRCS = [
     Label("//cmd/fetch_repo:BUILD.bazel"),
     Label("//cmd/fetch_repo:clean.go"),
     Label("//cmd/fetch_repo:copy_tree.go"),
+    Label("//cmd/fetch_repo:errorscompat.go"),
     Label("//cmd/fetch_repo:fetch_repo.go"),
     Label("//cmd/fetch_repo:go_mod_download.go"),
     Label("//cmd/fetch_repo:module.go"),
