@@ -47,7 +47,7 @@ def _go_repository_config_impl(ctx):
                     config_label = str(ctx.attr.config)
                     macro_label_prefix = config_label[:config_label.find("//")]
                     macro_label_str = macro_label_prefix + "//:" + f
-                    ctx.path(Label(macro_label))
+                    ctx.path(Label(macro_label_str))
 
     else:
         ctx.file(
