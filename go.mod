@@ -10,7 +10,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/pmezard/go-difflib v1.0.0
 	golang.org/x/mod v0.16.0
-	golang.org/x/sync v0.6.0
+	golang.org/x/sync v0.7.0
 	golang.org/x/tools/go/vcs v0.1.0-deprecated
 )
 
