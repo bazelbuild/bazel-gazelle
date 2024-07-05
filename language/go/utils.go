@@ -31,6 +31,7 @@ import (
 
 	"github.com/bazelbuild/bazel-gazelle/label"
 	"github.com/bazelbuild/bazel-gazelle/rule"
+	"golang.org/x/tools/go/packages"
 )
 
 // goListModules invokes "go list" in a directory containing a go.mod file.
@@ -49,16 +50,8 @@ var goModDownload = func(dir string, args []string) ([]byte, error) {
 // modulesFromList is an abstraction to preserve the output of `go list`.
 // The output schema is documented at https://go.dev/ref/mod#go-list-m
 type moduleFromList struct {
-	Path, Version, Sum string
-	Main               bool
-	Replace            *struct {
-		Path, Version string
-	}
-	Error *moduleError
-}
-
-type moduleError struct {
-	Err string
+	packages.Module
+	Sum string
 }
 
 // moduleFromDownload is an abstraction to preserve the output of `go mod download`.
