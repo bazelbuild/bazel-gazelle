@@ -112,7 +112,7 @@ def gazelle_dependencies(
         name = "com_github_bazelbuild_rules_go",
         importpath = "github.com/bazelbuild/rules_go",
         sum = "h1:CTefzjN/D3Cdn3rkrM6qMWuQj59OBcuOjyIp3m4hZ7s=",
-        version = "v0.46.0",
+        version = "v0.48.1",
     )
     _maybe(
         go_repository,
