@@ -97,6 +97,10 @@ type ImportReposArgs struct {
 	// filled in.
 	Prune bool
 
+	// Solely rely on config file (and coupled lock file) to generate
+	// repository rules without making any additional network calls.
+	ParseOnly bool
+
 	// Cache stores information fetched from the network and ensures that
 	// the same request isn't made multiple times.
 	Cache *repo.RemoteCache

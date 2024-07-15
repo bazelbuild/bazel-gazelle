@@ -69,6 +69,9 @@ func (*goLang) CanImport(path string) bool {
 
 func (*goLang) ImportRepos(args language.ImportReposArgs) language.ImportReposResult {
 	res := repoImportFuncs[filepath.Base(args.Path)](args)
+	if res.Error != nil {
+		return res
+	}
 	for _, r := range res.Gen {
 		setBuildAttrs(getGoConfig(args.Config), r)
 	}
