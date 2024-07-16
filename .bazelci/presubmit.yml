@@ -107,6 +107,9 @@ tasks:
     - "..."
     test_targets:
     - "..."
+    # TODO: This is currently timing out due to infrastructure issues. We should
+    # unblock development by temporarily disabling on MacOS.
+    - "-//internal:bazel_test"
   macos_bzlmod:
     name: Mac OS with Bzlmod
     platform: macos
