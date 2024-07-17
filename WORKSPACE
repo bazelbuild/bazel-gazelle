@@ -34,7 +34,7 @@ load("@bazel_features//:deps.bzl", "bazel_features_deps")
 
 bazel_features_deps()
 
-load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@io_bazel_rules_go//go:deps.bzl", "go_download_sdk", "go_register_toolchains", "go_rules_dependencies")
 
 go_rules_dependencies()
 
@@ -43,9 +43,14 @@ go_register_toolchains(
     version = "1.22.0",
 )
 
+go_download_sdk(
+    name = "go_compat_sdk",
+    version = "1.18.10",
+)
+
 load("//:deps.bzl", "gazelle_dependencies")
 
-gazelle_dependencies()
+gazelle_dependencies(go_sdk = "go_sdk")
 
 # For API doc generation
 # This is a dev dependency, users should not need to install it

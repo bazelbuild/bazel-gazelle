@@ -205,6 +205,10 @@ foo/*
 
 # Random comment followed by a line
 a.file
+
+# Paths can have a ./ prefix
+./b.file
+././blah/../ugly/c.file
 `,
 		},
 		{Path: ".dot"},       // not ignored
@@ -228,6 +232,8 @@ a.file
 		{Path: "dir2/a/b"},        // ignored by .bazelignore 'dir2/a/b'
 		{Path: "dir3/g/h"},        // ignored by .bazelignore 'dir3/'
 		{Path: "a.file"},          // ignored by .bazelignore 'a.file'
+		{Path: "b.file"},          // ignored by .bazelignore './b.file'
+		{Path: "ugly/c.file"},     // ignored by .bazelignore '././blah/../ugly/c.file'
 	})
 	defer cleanup()
 

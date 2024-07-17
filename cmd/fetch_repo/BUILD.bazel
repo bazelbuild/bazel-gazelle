@@ -1,10 +1,11 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_cross_binary", "go_library", "go_test")
 
 go_library(
     name = "fetch_repo_lib",
     srcs = [
         "clean.go",
         "copy_tree.go",
+        "errorscompat.go",
         "fetch_repo.go",
         "go_mod_download.go",
         "module.go",
@@ -25,6 +26,13 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
+# Verify that fetch_repo builds with Go 1.18.
+go_cross_binary(
+    name = "fetch_repo_go1.18",
+    sdk_version = "1.18",
+    target = ":fetch_repo",
+)
+
 go_test(
     name = "fetch_repo_test",
     srcs = ["fetch_repo_test.go"],
@@ -39,6 +47,7 @@ filegroup(
         "BUILD.bazel",
         "clean.go",
         "copy_tree.go",
+        "errorscompat.go",
         "fetch_repo.go",
         "fetch_repo_test.go",
         "go_mod_download.go",

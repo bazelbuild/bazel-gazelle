@@ -61,7 +61,7 @@ func runGoModDownload(dl *GoModDownloadResult, dest string, importpath string, v
 		return fmt.Errorf("go mod download output format: `%s %s`: parsing JSON: %q error: %w", cmd.Path, strings.Join(cmd.Args, " "), buf.String(), err)
 	}
 	if dl.Error != "" {
-		return errors.Join(errors.New(dl.Error), dlErr)
+		return Join(errors.New(dl.Error), dlErr)
 	}
 	if dlErr != nil {
 		return dlErr

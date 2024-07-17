@@ -106,7 +106,7 @@ Gazelle can generate Bazel BUILD files for many languages:
   generating ``java_library``, ``java_binary``, ``java_test``, and ``java_test_suite`` rules.
 
 * JavaScript / TypeScript
-  
+
   Aspect provides `JavaScript and TypeScript Support`_ in aspect-cli (also usable separately).
 
   BenchSci's `rules_nodejs_gazelle`_ supports generating `ts_project`, `js_library`, `jest_test`,
@@ -172,19 +172,19 @@ should look like this:
 
     http_archive(
         name = "io_bazel_rules_go",
-        sha256 = "80a98277ad1311dacd837f9b16db62887702e9f1d1c4c9f796d0121a46c8e184",
+        integrity = "sha256-M6zErg9wUC20uJPJ/B3Xqb+ZjCPn/yxFF3QdQEmpdvg=",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.46.0/rules_go-v0.46.0.zip",
-            "https://github.com/bazelbuild/rules_go/releases/download/v0.46.0/rules_go-v0.46.0.zip",
+            "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.48.0/rules_go-v0.48.0.zip",
+            "https://github.com/bazelbuild/rules_go/releases/download/v0.48.0/rules_go-v0.48.0.zip",
         ],
     )
 
     http_archive(
         name = "bazel_gazelle",
-        integrity = "sha256-MpOL2hbmcABjA1R5Bj2dJMYO2o15/Uc5Vj9Q0zHLMgk=",
+        integrity = "sha256-12v3pg/YsFBEQJDfooN6Tq+YKeEWVhjuNdzspcvfWNU=",
         urls = [
-            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz",
-            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.35.0/bazel-gazelle-v0.35.0.tar.gz",
+            "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.37.0/bazel-gazelle-v0.37.0.tar.gz",
+            "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.37.0/bazel-gazelle-v0.37.0.tar.gz",
         ],
     )
 
@@ -376,6 +376,10 @@ you're using a compatible version.
 | 0.34                | 0.41                         | n/a                          |
 +---------------------+------------------------------+------------------------------+
 | 0.35                | 0.41                         | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.36                | 0.41                         | n/a                          |
++---------------------+------------------------------+------------------------------+
+| 0.37                | 0.41                         | n/a                          |
 +---------------------+------------------------------+------------------------------+
 
 Usage

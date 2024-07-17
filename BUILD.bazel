@@ -1,6 +1,6 @@
 load("@bazel_gazelle_is_bazel_module//:defs.bzl", "GAZELLE_IS_BAZEL_MODULE")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-load("@io_bazel_rules_go//go:def.bzl", "nogo")
+load("@io_bazel_rules_go//go:def.bzl", "go_cross_binary", "nogo")
 load("//:def.bzl", "gazelle", "gazelle_binary")
 
 # gazelle:prefix github.com/bazelbuild/bazel-gazelle
@@ -36,6 +36,12 @@ gazelle_binary(
         "//internal/language/test_filegroup",
         "@bazel_skylib_gazelle_plugin//bzl" if GAZELLE_IS_BAZEL_MODULE else "@bazel_skylib//gazelle/bzl",
     ],
+)
+
+go_cross_binary(
+    name = "gazelle_local_go1.18",
+    sdk_version = "1.18",
+    target = ":gazelle_local",
 )
 
 nogo(
