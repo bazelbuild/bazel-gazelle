@@ -38,6 +38,11 @@ func TestFixLoads(t *testing.T) {
 			Symbols: []string{
 				"foo_binary",
 				"foo_library",
+			},
+		},
+		{
+			Name: "@foo",
+			Symbols: []string{
 				"foo_test",
 			},
 		},
@@ -173,8 +178,8 @@ foo_library(name = "a_lib")
     name = "a",
 )
 `,
-			want: `load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("@foo", "foo_binary")
+			want: `load("@foo", "foo_binary")
+load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 maybe(
     foo_binary,
@@ -227,7 +232,7 @@ selects.config_setting_group(
 			f.Sync()
 
 			want := strings.TrimSpace(tc.want)
-			got := strings.TrimSpace(string(bzl.Format(f.File)))
+			got := strings.TrimSpace(string(bzl.FormatWithoutRewriting(f.File)))
 			if diff := cmp.Diff(want, got); diff != "" {
 				t.Errorf("FixLoads() mismatch (-want +got):\n%s", diff)
 			}

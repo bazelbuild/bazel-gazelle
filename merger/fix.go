@@ -123,6 +123,7 @@ func FixLoads(f *rule.File, knownLoads []rule.LoadInfo) {
 			if load != nil {
 				index := newLoadIndex(f, known.After)
 				load.Insert(f, index)
+				loads = append(loads, load)
 			}
 		}
 	}
