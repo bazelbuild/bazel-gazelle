@@ -110,10 +110,35 @@ import "second.proto";`,
 			want: FileInfo{
 				HasServices: true,
 			},
-		}, {
+		},
+		{
+			desc:  "service multiple spaces",
+			name:  "service.proto",
+			proto: `service      ChatService   {}`,
+			want: FileInfo{
+				HasServices: true,
+			},
+		},
+		{
+			desc:  "service no space for bracket after service name",
+			name:  "service.proto",
+			proto: `service      ChatService{}`,
+			want: FileInfo{
+				HasServices: true,
+			},
+		},
+		{
+			desc:  "service no space before service name not matched",
+			name:  "service.proto",
+			proto: `serviceChatService {}`,
+			want: FileInfo{
+				HasServices: false,
+			},
+		},
+		{
 			desc:  "service as name",
 			name:  "service.proto",
-			proto: `message ServiceAccount { string service = 1; }`,
+			proto: `message serviceAccount { string service = 1; }`,
 			want: FileInfo{
 				HasServices: false,
 			},
