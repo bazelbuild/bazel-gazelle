@@ -30,6 +30,8 @@ func TestProtoRegexpGroupNames(t *testing.T) {
 		"optkey":  optkeySubexpIndex,
 		"optval":  optvalSubexpIndex,
 		"service": serviceSubexpIndex,
+		"message": messageSubexpIndex,
+		"enum": enumSubexpIndex,
 	}
 	for name, index := range nameMap {
 		if names[index] != name {
@@ -109,6 +111,7 @@ import "second.proto";`,
 			proto: `service ChatService {}`,
 			want: FileInfo{
 				HasServices: true,
+				Services: []string{"ChatService"},
 			},
 		},
 		{
@@ -117,6 +120,7 @@ import "second.proto";`,
 			proto: `service      ChatService   {}`,
 			want: FileInfo{
 				HasServices: true,
+				Services: []string{"ChatService"},
 			},
 		},
 		{
@@ -125,6 +129,7 @@ import "second.proto";`,
 			proto: `service      ChatService{}`,
 			want: FileInfo{
 				HasServices: true,
+				Services: []string{"ChatService"},
 			},
 		},
 		{
@@ -141,6 +146,80 @@ import "second.proto";`,
 			proto: `message serviceAccount { string service = 1; }`,
 			want: FileInfo{
 				HasServices: false,
+				Messages: []string{"serviceAccount"},
+			},
+		},{
+			desc: "multiple service names",
+			name:  "service.proto",
+			proto: `service ServiceA { string service = 1; }
+
+			service    ServiceB    { string service = 1; }
+
+			service ServiceC{ string service = 1; }
+
+			serviceServiceD { string service = 1; }
+
+			service message { string service = 1; }
+
+			service enum { string service = 1; }
+			`,
+			want: FileInfo{
+				HasServices: true,
+				Services: []string{"ServiceA", "ServiceB", "ServiceC", "message", "enum"},
+			},
+		},{
+			desc: "multiple message names",
+			name:  "messages.proto",
+			proto: `message MessageA { string message = 1; }
+
+			message    MessageB    { string message = 1; }
+
+			message MessageC{ string message = 1; }
+
+			messageMessageD { string message = 1; }
+
+			message service { string service = 1; }
+
+			message enum { string service = 1; }
+			`,
+			want: FileInfo{
+				Messages: []string{"MessageA", "MessageB", "MessageC", "service", "enum"},
+			},
+		},{
+			desc: "multiple enum names",
+			name:  "enums.proto",
+			proto: `enum EnumA {
+			    ENUM_VALUE_A = 1;
+			    ENUM_VALUE_B = 2;
+			}
+
+			enum    EnumB    {
+			    ENUM_VALUE_C = 1;
+			    ENUM_VALUE_D = 2;
+			}
+
+			enum EnumC{
+			    ENUM_VALUE_E = 1;
+			    ENUM_VALUE_F = 2;
+			}
+
+			enumEnumD {
+			    ENUM_VALUE_G = 1;
+			    ENUM_VALUE_H = 2;
+			}
+
+			enum service {
+			    ENUM_VALUE_I = 1;
+			    ENUM_VALUE_J = 2;
+			}
+
+			enum message {
+			    ENUM_VALUE_K = 1;
+			    ENUM_VALUE_L = 2;
+			}
+			`,
+			want: FileInfo{
+				Enums: []string{"EnumA", "EnumB", "EnumC", "service", "message"},
 			},
 		},
 	} {
@@ -162,6 +241,9 @@ import "second.proto";`,
 				Imports:     got.Imports,
 				Options:     got.Options,
 				HasServices: got.HasServices,
+				Services:    got.Services,
+				Messages:    got.Messages,
+				Enums:       got.Enums,
 			}
 			if !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("got %#v; want %#v", got, tc.want)
