@@ -395,7 +395,7 @@ package_info(
     package_name = {package_name},
     package_url = {package_url},
     package_version = {package_version},
-    visibility = ["//visibility:private"],
+    visibility = ["//:__subpackages__"],
 )
 """.format(
         package_name = repr(package_name),
