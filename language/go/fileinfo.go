@@ -211,7 +211,7 @@ func otherFileInfo(path string) fileInfo {
 // will be returned.
 // This function is intended to match go/build.Context.Import.
 // TODD(#53): extract canonical import path
-func goFileInfo(path, rel string) fileInfo {
+func goFileInfo(path, srcdir string) fileInfo {
 	info := fileNameInfo(path)
 	fset := token.NewFileSet()
 	pf, err := parser.ParseFile(fset, info.path, nil, parser.ImportsOnly|parser.ParseComments)
@@ -254,7 +254,7 @@ func goFileInfo(path, rel string) fileInfo {
 					cg = d.Doc
 				}
 				if cg != nil {
-					if err := saveCgo(&info, rel, cg); err != nil {
+					if err := saveCgo(&info, srcdir, cg); err != nil {
 						log.Printf("%s: error reading go file: %v", info.path, err)
 					}
 				}
@@ -317,7 +317,7 @@ func goFileInfo(path, rel string) fileInfo {
 // saveCgo extracts CFLAGS, CPPFLAGS, CXXFLAGS, and LDFLAGS directives
 // from a comment above a "C" import. This is intended to match logic in
 // go/build.Context.saveCgo.
-func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
+func saveCgo(info *fileInfo, srcdir string, cg *ast.CommentGroup) error {
 	text := cg.Text()
 	for _, line := range strings.Split(text, "\n") {
 		orig := line
@@ -355,7 +355,7 @@ func saveCgo(info *fileInfo, rel string, cg *ast.CommentGroup) error {
 		}
 
 		for i, opt := range opts {
-			if opt, ok = expandSrcDir(opt, rel); !ok {
+			if opt, ok = expandSrcDir(opt, srcdir); !ok {
 				return fmt.Errorf("%s: malformed #cgo argument: %s", info.path, orig)
 			}
 			opts[i] = opt
@@ -478,8 +478,10 @@ func expandSrcDir(str string, srcdir string) (string, bool) {
 // See golang.org/issue/6038.
 // The @ is for OS X. See golang.org/issue/13720.
 // The % is for Jenkins. See golang.org/issue/16959.
+// The ~ is for Bzlmod as it is used as a separator in repository names. It is special in shells (which we don't pass
+// it to) and on Windows (where it can still be part of legitimate short paths).
 const (
-	safeString = "+-.,/0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz:$@%"
+	safeString = "+-.,/0123456789=ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz:$@%~"
 	safeSpaces = " "
 )
 
