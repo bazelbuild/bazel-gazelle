@@ -1,3 +1,4 @@
+load("@bazel_features//:features.bzl", "bazel_features")
 load("@rules_license//rules:providers.bzl", "PackageInfo")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:truth.bzl", "subjects")
@@ -14,6 +15,12 @@ def _test_package_info(name):
     )
 
 def _test_package_info_impl(env, target):
+    # The package_info functionality requires REPO.bazel support, which is only
+    # available in Bazel 7 and higher. Use this unrelated feature launched in
+    # Bazel 7 as a hacky signal to skip the test if the feature is not
+    # available.
+    if not bazel_features.proto.starlark_proto_info:
+        return
     env.expect.that_target(target).has_provider(PackageInfo)
     subject = env.expect.that_target(target).provider(PackageInfo)
     subject.package_name().equals("github.com/fmeum/dep_on_gazelle")
