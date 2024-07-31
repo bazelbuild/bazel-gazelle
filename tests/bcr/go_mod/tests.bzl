@@ -25,7 +25,7 @@ def _package_info_aspect_impl(_, ctx):
         attr = ctx.rule.attr.applicable_licenses
     elif hasattr(ctx.rule.attr, "package_metadata"):
         attr = ctx.rule.attr.package_metadata
-    if PackageInfo in attr[0]:
+    if attr and PackageInfo in attr[0]:
         return [attr[0][PackageInfo]]
     return []
 
