@@ -94,7 +94,6 @@ tasks:
     test_targets:
     - "..."
     - "-//internal:bazel_test"
-    - "-//cmd/gazelle:gazelle_test"
   macos_arm64:
     name: Mac OS Arm 64 with WORKSPACE
     platform: macos_arm64
@@ -119,7 +118,6 @@ tasks:
     test_targets:
     - "..."
     - "-//internal:bazel_test"
-    - "-//cmd/gazelle:gazelle_test"
   macos:
     name: Mac OS with WORKSPACE
     platform: macos
@@ -143,13 +141,9 @@ tasks:
     test_targets:
     - "--"
     - "..."
-    - "-//cmd/gazelle:gazelle_test"
     # autogazelle is only supported on UNIX-like platforms.
     # It requires UNIX domain sockets.
     - "-//cmd/autogazelle/..."
-    # Stardoc produces different line-endings on windows,
-    # so the documentation it generates doesn't match the checked in files
-    - "-//docs:all"
     # Fails to execute, apparently due to command-line length limit.
     - "-//internal:bazel_test"
     # gazelle prints file paths with backward slashes on windows,
@@ -174,9 +168,6 @@ tasks:
     # autogazelle is only supported on UNIX-like platforms.
     # It requires UNIX domain sockets.
     - "-//cmd/autogazelle/..."
-    # Stardoc produces different line-endings on windows,
-    # so the documentation it generates doesn't match the checked in files
-    - "-//docs:all"
     # Fails to execute, apparently due to command-line length limit.
     - "-//internal:bazel_test"
     # gazelle prints file paths with backward slashes on windows,

@@ -27,7 +27,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
     ```
     |-- <testDataPath>
         |-- some_test
-            |-- WORKSPACE
+            |-- WORKSPACE or MODULE.bazel or REPO.bazel
             |-- README.md --> README describing what the test does.
             |-- arguments.txt --> newline delimited list of arguments to pass in (ignored if empty).
             |-- expectedStdout.txt --> Expected stdout for this test.
@@ -46,6 +46,7 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
         gazelle_binary: The name of the gazelle binary target. For example, //path/to:my_gazelle.
         test_data: A list of target of the test data files you will pass to the test.
             This can be a https://bazel.build/reference/be/general#filegroup.
+            Only test data files in the same repository as the gazelle_binary are supported.
         build_in_suffix: The suffix for the input BUILD.bazel files. Defaults to .in.
             By default, will use files named BUILD.in as the BUILD files before running gazelle.
         build_out_suffix: The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out.
@@ -59,10 +60,11 @@ def gazelle_generation_test(name, gazelle_binary, test_data, build_in_suffix = "
         srcs = [Label("//internal/generationtest:generation_test.go")],
         deps = [
             Label("//testtools"),
+            Label("@io_bazel_rules_go//go/runfiles"),
             Label("@io_bazel_rules_go//go/tools/bazel:go_default_library"),
         ],
         args = [
-            "-gazelle_binary_path=$(rootpath %s)" % gazelle_binary,
+            "-gazelle_binary_path=$(rlocationpath %s)" % gazelle_binary,
             "-build_in_suffix=%s" % build_in_suffix,
             "-build_out_suffix=%s" % build_out_suffix,
             "-timeout=%ds" % gazelle_timeout_seconds,

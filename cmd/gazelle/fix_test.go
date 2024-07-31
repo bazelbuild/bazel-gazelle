@@ -19,13 +19,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
-	"github.com/bazelbuild/rules_go/go/tools/bazel"
+	"github.com/bazelbuild/rules_go/go/runfiles"
 )
 
 var goSdk = flag.String("go_sdk", "", "name of the go_sdk repository when invoked by Bazel")
@@ -64,25 +65,13 @@ func TestMain(m *testing.M) {
 	if *goSdk != "" {
 		// This flag is only set when the test is run by Bazel. Figure out where
 		// the Go binary is and set GOROOT appropriately.
-		entries, err := bazel.ListRunfiles()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
-		}
-
-		var goToolPath string
-		ext := ""
+		goBasename := "go"
 		if runtime.GOOS == "windows" {
-			ext = ".exe"
+			goBasename += ".exe"
 		}
-		for _, entry := range entries {
-			if entry.Workspace == *goSdk && entry.ShortPath == "bin/go"+ext {
-				goToolPath = entry.Path
-				break
-			}
-		}
-		if goToolPath == "" {
-			fmt.Fprintln(os.Stderr, "could not locate go tool")
+		goToolPath, err := runfiles.Rlocation(path.Join(*goSdk, "bin", goBasename))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not locate go tool: %v\n", err)
 			return
 		}
 		os.Setenv("GOROOT", filepath.Dir(filepath.Dir(goToolPath)))
