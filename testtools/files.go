@@ -368,7 +368,7 @@ Run %s to update BUILD.out and expected{Stdout,Stderr,ExitCode}.txt files.
 			for _, err := range errs {
 				t.Log(err)
 			}
-			t.FailNow()
+			t.Fail()
 		}
 
 		CheckFiles(t, testdataDir, goldens)

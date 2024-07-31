@@ -36,6 +36,10 @@ type FileInfo struct {
 	Imports []string
 
 	HasServices bool
+
+	Services []string
+	Messages []string
+	Enums []string
 }
 
 // Option represents a top-level option statement in a .proto file. Only
@@ -77,6 +81,32 @@ func protoFileInfo(dir, name string) FileInfo {
 		case match[serviceSubexpIndex] != nil:
 			info.HasServices = true
 
+			// match is of the format "service ServiceName {".
+			// extract just the service name
+			fullMatch := string(match[serviceSubexpIndex])
+			if serviceName, ok := extractObjectName(fullMatch); ok {
+				info.Services = append(info.Services, serviceName)
+			}
+
+		case match[messageSubexpIndex] != nil:
+			// match is of the format "message MessageName {".
+			// extract just the message name
+			fullMatch := string(match[messageSubexpIndex])
+			if messageName, ok := extractObjectName(fullMatch); ok {
+				info.Messages = append(info.Messages, messageName)
+			}
+
+
+
+		case match[enumSubexpIndex] != nil:
+			// match is of the format "enum EnumName {".
+			// extract just the enum name
+			fullMatch := string(match[enumSubexpIndex])
+			if enumName, ok := extractObjectName(fullMatch); ok {
+				info.Enums = append(info.Enums, enumName)
+			}
+
+
 		default:
 			// Comment matched. Nothing to extract.
 		}
@@ -92,6 +122,8 @@ const (
 	optkeySubexpIndex  = 3
 	optvalSubexpIndex  = 4
 	serviceSubexpIndex = 5
+	messageSubexpIndex = 6
+	enumSubexpIndex = 7
 )
 
 // Based on https://developers.google.com/protocol-buffers/docs/reference/proto3-spec
@@ -106,9 +138,11 @@ func buildProtoRegexp() *regexp.Regexp {
 	importStmt := `\bimport\s*(?:public|weak)?\s*(?P<import>` + strLit + `)\s*;`
 	packageStmt := `\bpackage\s*(?P<package>` + fullIdent + `)\s*;`
 	optionStmt := `\boption\s*(?P<optkey>` + fullIdent + `)\s*=\s*(?P<optval>` + strLit + `)\s*;`
-	serviceStmt := `(?P<service>service\s*` + ident + `\s*{)`
+	serviceStmt := `(?P<service>service\s+` + ident + `\s*{)`
+	messageStmt := `(?P<message>message\s+` + ident + `\s*{)`
+	enumStmt := `(?P<enum>enum\s+` + ident + `\s*{)`
 	comment := `//[^\n]*`
-	protoReSrc := strings.Join([]string{importStmt, packageStmt, optionStmt, serviceStmt, comment}, "|")
+	protoReSrc := strings.Join([]string{importStmt, packageStmt, optionStmt, serviceStmt, messageStmt, enumStmt, comment}, "|")
 	return regexp.MustCompile(protoReSrc)
 }
 
@@ -136,3 +170,13 @@ func unquoteProtoString(q []byte) string {
 	}
 	return s
 }
+
+func extractObjectName(fullMatch string) (response string, ok bool) {
+	fields := strings.Fields(fullMatch)
+	if len(fields) < 2 {
+	  // expect as least two fields. Input is malformed
+	  return "", false
+	}
+
+	return strings.TrimSuffix(fields[1], "{"), true
+  }

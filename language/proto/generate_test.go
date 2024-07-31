@@ -175,6 +175,7 @@ func TestGeneratePackage(t *testing.T) {
 					"protos/sub/sub.proto",
 				},
 				HasServices: true,
+				Services: []string{"Quux"},
 			},
 		},
 		Imports: map[string]bool{
@@ -235,6 +236,7 @@ func TestFileModeImports(t *testing.T) {
 				Path:        filepath.Join(dir, "foo.proto"),
 				Name:        "foo.proto",
 				PackageName: "file_mode",
+				Messages: []string{"Foo"},
 			},
 		},
 		Imports: map[string]bool{},
@@ -252,6 +254,7 @@ func TestFileModeImports(t *testing.T) {
 				Imports: []string{
 					"file_mode/foo.proto",
 				},
+				Messages: []string{"Bar"},
 			},
 		},
 		// Imports should contain foo.proto. This is specific to file mode.
