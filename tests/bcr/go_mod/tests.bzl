@@ -10,16 +10,15 @@ def _test_package_info(name):
         extra_target_under_test_aspects = [
             _package_info_aspect,
         ],
+        provider_subject_factories = [_PackageInfoSubjectFactory],
     )
 
 def _test_package_info_impl(env, target):
     env.expect.that_target(target).has_provider(PackageInfo)
-    if not PackageInfo in target:
-        return
-    info = target[PackageInfo]
-    env.expect.that_str(info.package_name).equals("github.com/fmeum/dep_on_gazelle")
-    env.expect.that_str(info.package_version).equals("1.0.0")
-    env.expect.that_str(info.package_url).equals("https://github.com/fmeum/dep_on_gazelle")
+    subject = env.expect.that_target(target).provider(PackageInfo)
+    subject.package_name().equals("github.com/fmeum/dep_on_gazelle")
+    subject.package_version().equals("1.0.0")
+    subject.package_url().equals("https://github.com/fmeum/dep_on_gazelle")
 
 def _package_info_aspect_impl(_, ctx):
     if hasattr(ctx.rule.attr, "applicable_licenses"):
@@ -33,6 +32,20 @@ def _package_info_aspect_impl(_, ctx):
 _package_info_aspect = aspect(
     implementation = _package_info_aspect_impl,
     doc = "Forwards metadata annotations on the target via the PackageInfo provider.",
+)
+
+_PackageInfoSubjectFactory = struct(
+    type = PackageInfo,
+    name = "PackageInfo",
+    factory = lambda actual, *, meta: subjects.struct(
+        actual,
+        meta = meta,
+        attrs = {
+            "package_name": subjects.str,
+            "package_version": subjects.str,
+            "package_url": subjects.str,
+        },
+    ),
 )
 
 def starlark_tests(name):
