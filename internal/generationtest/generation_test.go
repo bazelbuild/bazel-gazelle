@@ -60,6 +60,14 @@ func TestFullGeneration(t *testing.T) {
 
 	// Collect tests in the same repo as the gazelle binary.
 	repo := strings.Split(*gazelleBinaryPath, "/")[0]
+	_, err = r.Open(*gazelleBinaryPath)
+	if err != nil {
+		t.Fatalf("Failed to open gazelle binary %s in runfiles. Error: %v", *gazelleBinaryPath, err)
+	}
+	fs.WalkDir(r, ".", func(p string, d fs.DirEntry, err error) error {
+		println("p: ", p)
+		return nil
+	})
 	err = fs.WalkDir(r, repo, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -67,6 +75,7 @@ func TestFullGeneration(t *testing.T) {
 		if d.IsDir() {
 			return nil
 		}
+		println("p: ", p)
 		// Each repo boundary file marks a test case.
 		if d.Name() == "WORKSPACE" || d.Name() == "MODULE.bazel" || d.Name() == "REPO.bazel" {
 			repoRelativeDir := path.Dir(strings.TrimPrefix(p, repo+"/"))
