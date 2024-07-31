@@ -300,11 +300,13 @@ def _go_repository_impl(ctx):
     if generate:
         # Build file generation is needed. Populate Gazelle directive at root build file
         build_file_name = existing_build_file or build_file_names[0]
-        if len(ctx.attr.build_directives) > 0:
-            ctx.file(
-                build_file_name,
-                "\n".join(["# " + d for d in ctx.attr.build_directives]),
-            )
+        ctx.file(
+            build_file_name,
+            "\n".join(["# " + d for d in ctx.attr.build_directives] + [_generate_package_info(
+                importpath = ctx.attr.importpath,
+                version = ctx.attr.version,
+            )]),
+        )
 
         # Run Gazelle
         if gazelle_path == None:
@@ -360,6 +362,30 @@ def _go_repository_impl(ctx):
 
     # Apply patches if necessary.
     patch(ctx)
+
+    if generate:
+        ctx.file("REPO.bazel", """\
+repo(default_package_metadata = ["//:gazelle_generated_package_info"])
+""")
+
+def _generate_package_info(*, importpath, version):
+    package_name = importpath
+    package_url = "https://" + importpath
+    package_version = version.removeprefix("v")
+    return """\
+load("@rules_license//rules:package_info.bzl", "package_info")
+
+package_info(
+    name = "gazelle_generated_package_info",
+    package_name = {package_name},
+    package_url = {package_url},
+    package_version = {package_version},
+)
+""".format(
+        package_name = repr(package_name),
+        package_url = repr(package_url),
+        package_version = repr(package_version),
+    )
 
 go_repository = repository_rule(
     implementation = _go_repository_impl,
