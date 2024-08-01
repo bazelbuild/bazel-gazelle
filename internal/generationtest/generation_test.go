@@ -17,16 +17,22 @@ package generationtest
 
 import (
 	"flag"
+	"io"
+	"io/fs"
+	"os"
+	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/bazelbuild/bazel-gazelle/testtools"
+	"github.com/bazelbuild/rules_go/go/runfiles"
 	"github.com/bazelbuild/rules_go/go/tools/bazel"
 )
 
 var (
-	gazelleBinaryPath = flag.String("gazelle_binary_path", "", "Path to the gazelle binary to test.")
+	gazelleBinaryPath = flag.String("gazelle_binary_path", "", "Runfiles path of the gazelle binary to test.")
 	buildInSuffix     = flag.String("build_in_suffix", ".in", "The suffix on the test input BUILD.bazel files. Defaults to .in. "+
 		" By default, will use files named BUILD.in as the BUILD files before running gazelle.")
 	buildOutSuffix = flag.String("build_out_suffix", ".out", "The suffix on the expected BUILD.bazel files after running gazelle. Defaults to .out. "+
@@ -38,42 +44,98 @@ var (
 // workspaces and confirms that the generated BUILD files match expectation.
 func TestFullGeneration(t *testing.T) {
 	tests := []*testtools.TestGazelleGenerationArgs{}
-	runfiles, err := bazel.ListRunfiles()
+	r, err := runfiles.New()
 	if err != nil {
-		t.Fatalf("bazel.ListRunfiles() error: %v", err)
+		t.Fatalf("Failed to create runfiles: %v", err)
 	}
-	// Convert workspace relative path for gazelle binary into an absolute path.
-	// E.g. path/to/gazelle_binary -> /absolute/path/to/workspace/path/to/gazelle/binary.
-	absoluteGazelleBinary, err := bazel.Runfile(*gazelleBinaryPath)
+	gazelleBinary, err := r.Rlocation(*gazelleBinaryPath)
 	if err != nil {
-		t.Fatalf("Could not convert gazelle binary path %s to absolute path. Error: %v", *gazelleBinaryPath, err)
+		t.Fatalf("Failed to find gazelle binary %s in runfiles. Error: %v", *gazelleBinaryPath, err)
 	}
-	for _, f := range runfiles {
-		// Look through runfiles for WORKSPACE files. Each WORKSPACE is a test case.
-		if filepath.Base(f.Path) == "WORKSPACE" {
-			// absolutePathToTestDirectory is the absolute
-			// path to the test case directory. For example, /home/<user>/wksp/path/to/test_data/my_test_case
-			absolutePathToTestDirectory := filepath.Dir(f.Path)
-			// relativePathToTestDirectory is the workspace relative path
-			// to this test case directory. For example, path/to/test_data/my_test_case
-			relativePathToTestDirectory := filepath.Dir(f.ShortPath)
+
+	testDir, err := bazel.NewTmpDir("gazelle_generation_test")
+	if err != nil {
+		t.Fatalf("Failed to create temporary directory: %v", err)
+	}
+
+	// Collect tests in the same repo as the gazelle binary.
+	repo := strings.Split(*gazelleBinaryPath, "/")[0]
+	_, err = r.Open(*gazelleBinaryPath)
+	if err != nil {
+		t.Fatalf("Failed to open gazelle binary %s in runfiles. Error: %v", *gazelleBinaryPath, err)
+	}
+	fs.WalkDir(r, ".", func(p string, d fs.DirEntry, err error) error {
+		println("p: ", p)
+		return nil
+	})
+	err = fs.WalkDir(r, repo, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		println("p: ", p)
+		// Each repo boundary file marks a test case.
+		if d.Name() == "WORKSPACE" || d.Name() == "MODULE.bazel" || d.Name() == "REPO.bazel" {
+			repoRelativeDir := path.Dir(strings.TrimPrefix(p, repo+"/"))
 			// name is the name of the test directory. For example, my_test_case.
 			// The name of the directory doubles as the name of the test.
-			name := filepath.Base(absolutePathToTestDirectory)
+			name := filepath.Base(repoRelativeDir)
+			absolutePath := filepath.Join(testDir, filepath.FromSlash(repoRelativeDir))
 
 			tests = append(tests, &testtools.TestGazelleGenerationArgs{
 				Name:                 name,
-				TestDataPathAbsolute: absolutePathToTestDirectory,
-				TestDataPathRelative: relativePathToTestDirectory,
-				GazelleBinaryPath:    absoluteGazelleBinary,
+				TestDataPathRelative: repoRelativeDir,
+				TestDataPathAbsolute: absolutePath,
+				GazelleBinaryPath:    gazelleBinary,
 				BuildInSuffix:        *buildInSuffix,
 				BuildOutSuffix:       *buildOutSuffix,
 				Timeout:              *timeout,
 			})
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Failed to collect tests in runfiles: %v", err)
 	}
 	if len(tests) == 0 {
 		t.Fatal("no tests found")
+	}
+
+	// Copy all files under test repos to the temporary directory.
+	for _, test := range tests {
+		err = fs.WalkDir(r, path.Join(repo, test.TestDataPathRelative), func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			f, err := r.Open(p)
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			targetPath := filepath.Join(testDir, filepath.FromSlash(strings.TrimPrefix(p, repo+"/")))
+			if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+				return err
+			}
+			out, err := os.Create(targetPath)
+			if err != nil {
+				return err
+			}
+			defer out.Close()
+
+			if _, err := io.Copy(out, f); err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("Failed to copy tests from runfiles: %v", err)
+		}
 	}
 
 	for _, args := range tests {

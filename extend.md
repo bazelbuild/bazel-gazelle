@@ -152,7 +152,7 @@ The generation test expects a file structure like the following:
 ```
 |-- <testDataPath>
     |-- some_test
-        |-- WORKSPACE
+        |-- WORKSPACE or MODULE.bazel or REPO.bazel
         |-- README.md --> README describing what the test does.
         |-- arguments.txt --> newline delimited list of arguments to pass in (ignored if empty).
         |-- expectedStdout.txt --> Expected stdout for this test.
@@ -174,7 +174,7 @@ To update the expected files, run `UPDATE_SNAPSHOTS=true bazel run //path/to:the
 | :------------- | :------------- | :------------- |
 | <a id="gazelle_generation_test-name"></a>name |  The name of the test.   |  none |
 | <a id="gazelle_generation_test-gazelle_binary"></a>gazelle_binary |  The name of the gazelle binary target. For example, //path/to:my_gazelle.   |  none |
-| <a id="gazelle_generation_test-test_data"></a>test_data |  A list of target of the test data files you will pass to the test. This can be a https://bazel.build/reference/be/general#filegroup.   |  none |
+| <a id="gazelle_generation_test-test_data"></a>test_data |  A list of target of the test data files you will pass to the test. This can be a https://bazel.build/reference/be/general#filegroup. Only test data files in the same repository as the gazelle_binary are supported.   |  none |
 | <a id="gazelle_generation_test-build_in_suffix"></a>build_in_suffix |  The suffix for the input BUILD.bazel files. Defaults to .in. By default, will use files named BUILD.in as the BUILD files before running gazelle.   |  `".in"` |
 | <a id="gazelle_generation_test-build_out_suffix"></a>build_out_suffix |  The suffix for the expected BUILD.bazel files after running gazelle. Defaults to .out. By default, will use files named check the results of the gazelle run against files named BUILD.out.   |  `".out"` |
 | <a id="gazelle_generation_test-gazelle_timeout_seconds"></a>gazelle_timeout_seconds |  <p align="center"> - </p>   |  `2` |
