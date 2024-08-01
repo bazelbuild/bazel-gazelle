@@ -40,7 +40,7 @@ go_rules_dependencies()
 
 go_register_toolchains(
     nogo = "@bazel_gazelle//:nogo",
-    version = "1.22.0",
+    version = "1.22.5",
 )
 
 go_download_sdk(
