@@ -4751,3 +4751,97 @@ require (
 		t.Fatalf("got %s ; want %s; diff %s", string(got), want, cmp.Diff(string(got), want))
 	}
 }
+
+func TestCgoFlagsHaveExternalPrefix(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path:    "external/com_example_foo_v2/go.mod",
+			Content: "module example.com/foo/v2",
+		}, {
+			Path: "external/com_example_foo_v2/cgo_static.go",
+			Content: `
+package duckdb
+
+/*
+#cgo LDFLAGS: -lstdc++ -lm -ldl -L${SRCDIR}/deps
+*/
+import "C"
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	repoRoot := filepath.Join(dir, "external", "com_example_foo_v2")
+
+	args := []string{"update", "-repo_root", repoRoot, "-go_prefix", "example.com/foo/v2", "-go_repository_mode", "-go_repository_module_mode"}
+	if err := runGazelle(repoRoot, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, repoRoot, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "foo",
+    srcs = ["cgo_static.go"],
+    cgo = True,
+    clinkopts = ["-lstdc++ -lm -ldl -Lexternal/com_example_foo_v2/deps"],
+    importpath = "example.com/foo/v2",
+    importpath_aliases = ["example.com/foo"],
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+	})
+}
+
+func TestCgoFlagsHaveDotDotPrefixWithSiblingRepositoryLayout(t *testing.T) {
+	files := []testtools.FileSpec{
+		{
+			Path:    "execroot/com_example_foo_v2/go.mod",
+			Content: "module example.com/foo/v2",
+		}, {
+			Path: "execroot/com_example_foo_v2/cgo_static.go",
+			Content: `
+package duckdb
+
+/*
+#cgo LDFLAGS: -lstdc++ -lm -ldl -L${SRCDIR}/deps
+*/
+import "C"
+`,
+		},
+	}
+	dir, cleanup := testtools.CreateFiles(t, files)
+	defer cleanup()
+
+	repoRoot := filepath.Join(dir, "execroot", "com_example_foo_v2")
+
+	args := []string{"update", "-repo_root", repoRoot, "-go_prefix", "example.com/foo/v2", "-go_repository_mode", "-go_repository_module_mode"}
+	if err := runGazelle(repoRoot, args); err != nil {
+		t.Fatal(err)
+	}
+
+	testtools.CheckFiles(t, repoRoot, []testtools.FileSpec{
+		{
+			Path: "BUILD.bazel",
+			Content: `
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "foo",
+    srcs = ["cgo_static.go"],
+    cgo = True,
+    clinkopts = ["-lstdc++ -lm -ldl -L../com_example_foo_v2/deps"],
+    importpath = "example.com/foo/v2",
+    importpath_aliases = ["example.com/foo"],
+    visibility = ["//visibility:public"],
+)
+`,
+		},
+	})
+}

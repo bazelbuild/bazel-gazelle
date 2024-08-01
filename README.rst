@@ -1008,7 +1008,9 @@ The following directives are recognized:
 |   ``import-lang`` may be omitted if it is the same as ``source-lang``.                     |
 | * ``import-string-regex`` is the regex applied to the import in the source code.           |
 |   If it matches, that import will be resolved to the label specified below.                |
-| * ``label`` is the Bazel label that Gazelle should write in ``deps``.                      |
+| * ``label`` is the Bazel label that Gazelle should write in ``deps``. The label            |
+|   can be constructed using captured strings from the subpattern matching in                |
+|   import-string-regex                                                                      |
 |                                                                                            |
 | For example:                                                                               |
 |                                                                                            |
@@ -1016,6 +1018,7 @@ The following directives are recognized:
 |                                                                                            |
 |   # gazelle:resolve_regexp go example.com/.* //foo:go_default_library                      |
 |   # gazelle:resolve_regexp proto go foo/.*\.proto //foo:foo_go_proto                       |
+|   # gazelle:resolve_regexp proto go foo/(.*)\.proto //foo/$1:foo_rule_proto                |
 |                                                                                            |
 +---------------------------------------------------+----------------------------------------+
 | :direc:`# gazelle:go_visibility label`            | n/a                                    |

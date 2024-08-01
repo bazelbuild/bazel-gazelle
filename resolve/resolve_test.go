@@ -3,9 +3,9 @@ package resolve
 import (
 	"testing"
 
-	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/label"
+	"github.com/bazelbuild/bazel-gazelle/rule"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -21,6 +21,14 @@ func TestFindRuleWithOverride_ParentTraversal(t *testing.T) {
 	}, rootCfg)
 
 	secondChildCfg := getConfig(t, "second/child/rel", nil, rootCfg)
+
+	dualResolveRegexpCfg := getConfig(t, "dual/resolve/regexp", []rule.Directive{
+		{Key: "resolve_regexp", Value: "go ^github.com/foo/(.*)$ @com_example//$1:replacement"},
+	}, rootCfg)
+
+	multipleExpDualResolveRegexpCfg := getConfig(t, "multi/dual/resolve/regexp", []rule.Directive{
+		{Key: "resolve_regexp", Value: "go ^github.com/foo/(.*)/(.*)$ @com_example//$1/bar_sub_dir/$2:replacement"},
+	}, rootCfg)
 
 	tests := []struct {
 		name      string
@@ -86,6 +94,22 @@ func TestFindRuleWithOverride_ParentTraversal(t *testing.T) {
 			want:      getTestLabel(t, "@com_example//root:replacement"),
 			wantFound: true,
 		},
+		{
+			name:       "Target resolves to label populated by regexp",
+			cfg:        dualResolveRegexpCfg,
+			importSpec: ImportSpec{Lang: "go", Imp: "github.com/foo/foo_package"},
+			lang:       "go",
+			want:       getTestLabel(t, "@com_example//foo_package:replacement"),
+			wantFound:  true,
+		},
+		{
+			name:       "Target resolves to label populated by multipe captured regexp",
+			cfg:        multipleExpDualResolveRegexpCfg,
+			importSpec: ImportSpec{Lang: "go", Imp: "github.com/foo/foo_package/baz"},
+			lang:       "go",
+			want:       getTestLabel(t, "@com_example//foo_package/bar_sub_dir/baz:replacement"),
+			wantFound:  true,
+		}, 
 	}
 
 	for _, tt := range tests {
