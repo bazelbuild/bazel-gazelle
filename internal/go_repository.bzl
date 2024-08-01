@@ -385,8 +385,10 @@ repo(default_package_metadata = ["//:gazelle_generated_package_info"])
 
 def _generate_package_info(*, importpath, version):
     package_name = importpath
-    package_url = "https://" + importpath
-    package_version = version.removeprefix("v")
+
+    # TODO: Consider adding support for custom remotes.
+    package_url = "https://" + importpath if version else None
+    package_version = version.removeprefix("v") if version else None
     return """
 load("@rules_license//rules:package_info.bzl", "package_info")
 
