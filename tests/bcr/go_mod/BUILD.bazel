@@ -1,4 +1,5 @@
 load("@gazelle//:def.bzl", "gazelle", "gazelle_test")
+load(":tests.bzl", "starlark_tests")
 
 # gazelle:go_naming_convention import
 # gazelle:go_naming_convention_external import
@@ -7,4 +8,8 @@ gazelle(name = "gazelle")
 gazelle_test(
     name = "gazelle_test",
     workspace = "//:BUILD.bazel",
+)
+
+starlark_tests(
+    name = "starlark_tests",
 )
