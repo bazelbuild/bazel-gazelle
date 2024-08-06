@@ -88,6 +88,9 @@ func TestParse(t *testing.T) {
 		{str: "@rules_python~0.0.0~pip~name_dep//:_pkg", want: Label{Repo: "rules_python~0.0.0~pip~name_dep", Name: "_pkg"}},
 		{str: "@rules_python~0.0.0~pip~name//:dep_pkg", want: Label{Repo: "rules_python~0.0.0~pip~name", Name: "dep_pkg"}},
 		{str: "@@rules_python~0.26.0~python~python_3_10_x86_64-unknown-linux-gnu//:python_runtimes", want: Label{Repo: "rules_python~0.26.0~python~python_3_10_x86_64-unknown-linux-gnu", Name: "python_runtimes"}},
+		{str: "@rules_python++pip+name_dep//:_pkg", want: Label{Repo: "rules_python++pip+name_dep", Name: "_pkg"}},
+		{str: "@rules_python++pip+name//:dep_pkg", want: Label{Repo: "rules_python++pip+name", Name: "dep_pkg"}},
+		{str: "@@rules_python++python+python_3_10_x86_64-unknown-linux-gnu//:python_runtimes", want: Label{Repo: "rules_python++python+python_3_10_x86_64-unknown-linux-gnu", Name: "python_runtimes"}},
 	} {
 		got, err := Parse(tc.str)
 		if err != nil && !tc.wantErr {
