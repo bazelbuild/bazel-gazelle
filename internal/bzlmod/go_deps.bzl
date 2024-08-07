@@ -632,11 +632,16 @@ def _go_deps_impl(module_ctx):
                 "local_path": module.local_path,
             })
         else:
-            go_repository_args.update({
-                "sum": _get_sum_from_module(path, module, sums),
+            repo_args = {
                 "replace": getattr(module, "replace", None),
                 "version": "v" + module.raw_version,
-            })
+            }
+
+            sum = _get_sum_from_module(path, module, sums)
+            if sum:
+                repo_args["sum"] = sum
+
+            go_repository_args.update(repo_args)
 
         go_repository(**go_repository_args)
 
@@ -689,7 +694,10 @@ def _get_sum_from_module(path, module, sums):
             # replacement have no sums, so we can skip this
             return None
         elif module.local_path == None:
-            fail("No sum for {}@{} from {} found. You may need to run: bazel run @rules_go//go -- mod tidy".format(path, module.raw_version, "parent-label-todo"))  #module.parent_label))
+            # When updating a dependency, its sum may not be in go.sum and we can't hard fail here
+            # since we need Bazel to tidy the module
+            print("No sum for {}@{} found, run bazel run @rules_go//go -- mod tidy to generate it".format(path, module.raw_version))  #module.parent_label))
+            return None
 
     return sums[entry]
 
