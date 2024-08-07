@@ -59,6 +59,12 @@ def _go_repository_cache_impl(ctx):
     cache_env = {
         "GOROOT": go_root,
         "GOCACHE": go_cache,
+
+        # Since v1.21.0, set GOTOOLCHAIN to "local" to use the current toolchain
+        # and avoid downloading other toolchains.
+        #
+        # See https://go.dev/doc/toolchain for more info.
+        "GOTOOLCHAIN": "local",
     }
     if go_path:
         cache_env["GOPATH"] = go_path
@@ -140,7 +146,7 @@ def _detect_host_platform(ctx):
             uname = res.stdout.strip()
             if uname == "arm64":
                 host = "darwin_arm64"
-                
+
     elif ctx.os.name.startswith("windows"):
         host = "windows_amd64"
     elif ctx.os.name == "freebsd":
