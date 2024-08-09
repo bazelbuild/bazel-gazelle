@@ -95,6 +95,7 @@ register_unittest_toolchains()
 # gazelle:repository go_repository name=com_github_bmatcuk_doublestar_v4 importpath=github.com/bmatcuk/doublestar/v4
 # gazelle:repository go_repository name=com_github_burntsushi_toml importpath=github.com/BurntSushi/toml
 # gazelle:repository go_repository name=com_github_census_instrumentation_opencensus_proto importpath=github.com/census-instrumentation/opencensus-proto
+# gazelle:repository go_repository name=com_github_charlievieth_fastwalk importpath=github.com/charlievieth/fastwalk
 # gazelle:repository go_repository name=com_github_chzyer_logex importpath=github.com/chzyer/logex
 # gazelle:repository go_repository name=com_github_chzyer_readline importpath=github.com/chzyer/readline
 # gazelle:repository go_repository name=com_github_chzyer_test importpath=github.com/chzyer/test

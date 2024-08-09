@@ -25,7 +25,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -42,7 +41,6 @@ type walkConfig struct {
 	excludes []string
 	ignore   bool
 	follow   []string
-	loadOnce *sync.Once
 }
 
 const walkName = "_walk"
@@ -65,7 +63,7 @@ func (wc *walkConfig) shouldFollow(rel, base string) bool {
 type Configurer struct{}
 
 func (*Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
-	wc := &walkConfig{loadOnce: &sync.Once{}}
+	wc := &walkConfig{}
 	c.Exts[walkName] = wc
 	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "pattern that should be ignored (may be repeated)")
 }
@@ -81,12 +79,6 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	wcCopy := &walkConfig{}
 	*wcCopy = *wc
 	wcCopy.ignore = false
-
-	wc.loadOnce.Do(func() {
-		if err := cr.loadBazelIgnore(c.RepoRoot, wcCopy); err != nil {
-			log.Printf("error loading .bazelignore: %v", err)
-		}
-	})
 
 	if f != nil {
 		for _, d := range f.Directives {
@@ -112,7 +104,7 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	c.Exts[walkName] = wcCopy
 }
 
-func (c *Configurer) loadBazelIgnore(repoRoot string, wc *walkConfig) error {
+func loadBazelIgnore(repoRoot string, wc *walkConfig) error {
 	ignorePath := path.Join(repoRoot, ".bazelignore")
 	file, err := os.Open(ignorePath)
 	if errors.Is(err, fs.ErrNotExist) {
