@@ -696,7 +696,7 @@ def _get_sum_from_module(path, module, sums):
         elif module.local_path == None:
             # When updating a dependency, its sum may not be in go.sum and we can't hard fail here
             # since we need Bazel to tidy the module
-            print("No sum for {}@{} found, run bazel run @rules_go//go -- mod tidy to generate it".format(path, module.raw_version))  #module.parent_label))
+            print("No sum for {}@{} found, run bazel run @rules_go//go -- mod tidy to generate it".format(path, module.raw_version))
             return None
 
     return sums[entry]

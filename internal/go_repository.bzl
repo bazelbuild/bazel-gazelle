@@ -189,7 +189,7 @@ def _go_repository_impl(ctx):
             if getattr(ctx.attr, key):
                 fail("cannot specify both version and %s" % key)
         if ctx.attr.version and not ctx.attr.sum:
-            fail("if version is specified, sum must also be")
+            print("No sum for {}@{} found, run bazel run @rules_go//go -- mod tidy to generate it".format(ctx.attr.importpath, ctx.attr.version))
 
         fetch_path = ctx.attr.replace if ctx.attr.replace else ctx.attr.importpath
         fetch_repo_args = [
