@@ -59,6 +59,16 @@ def _go_repository_cache_impl(ctx):
     cache_env = {
         "GOROOT": go_root,
         "GOCACHE": go_cache,
+
+        # Since Go v1.21.0, set GOTOOLCHAIN to "local" to use the current toolchain
+        # of the Go SDK. This is required to avoid `go mod download` commands
+        # download and use another Go toolchain according to the user’s environment
+        # default file (GOENV, managed by `go env -w` and `go env -u`).
+        #
+        # See https://go.dev/doc/toolchain for more info.
+        #
+        # TODO(#1858): Find a way to retrieve this value when the host's Go SDK is used and avoid to override it.
+        "GOTOOLCHAIN": "local",
     }
     if go_path:
         cache_env["GOPATH"] = go_path
@@ -140,7 +150,7 @@ def _detect_host_platform(ctx):
             uname = res.stdout.strip()
             if uname == "arm64":
                 host = "darwin_arm64"
-                
+
     elif ctx.os.name.startswith("windows"):
         host = "windows_amd64"
     elif ctx.os.name == "freebsd":
