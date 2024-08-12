@@ -123,7 +123,7 @@ def _go_repository_impl(ctx):
     fetch_repo_args = None
     gazelle_path = None
 
-    is_module_extension_repo = ctx.attr.internal_only_do_not_use_apparent_name
+    is_module_extension_repo = bool(ctx.attr.internal_only_do_not_use_apparent_name)
 
     # Declare Label dependencies at the top of function to avoid unnecessary fetching:
     # https://docs.bazel.build/versions/main/skylark/repository_rules.html#when-is-the-implementation-function-executed
