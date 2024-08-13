@@ -87,10 +87,10 @@ func TestParse(t *testing.T) {
 		{str: "@a//some/pkg/[someId]:[someId]", want: Label{Repo: "a", Pkg: "some/pkg/[someId]", Name: "[someId]"}},
 		{str: "@rules_python~0.0.0~pip~name_dep//:_pkg", want: Label{Repo: "rules_python~0.0.0~pip~name_dep", Name: "_pkg"}},
 		{str: "@rules_python~0.0.0~pip~name//:dep_pkg", want: Label{Repo: "rules_python~0.0.0~pip~name", Name: "dep_pkg"}},
-		{str: "@@rules_python~0.26.0~python~python_3_10_x86_64-unknown-linux-gnu//:python_runtimes", want: Label{Repo: "rules_python~0.26.0~python~python_3_10_x86_64-unknown-linux-gnu", Name: "python_runtimes"}},
+		{str: "@@rules_python~0.26.0~python~python_3_10_x86_64-unknown-linux-gnu//:python_runtimes", want: Label{Repo: "rules_python~0.26.0~python~python_3_10_x86_64-unknown-linux-gnu", Name: "python_runtimes", Canonical: true}},
 		{str: "@rules_python++pip+name_dep//:_pkg", want: Label{Repo: "rules_python++pip+name_dep", Name: "_pkg"}},
 		{str: "@rules_python++pip+name//:dep_pkg", want: Label{Repo: "rules_python++pip+name", Name: "dep_pkg"}},
-		{str: "@@rules_python++python+python_3_10_x86_64-unknown-linux-gnu//:python_runtimes", want: Label{Repo: "rules_python++python+python_3_10_x86_64-unknown-linux-gnu", Name: "python_runtimes"}},
+		{str: "@@rules_python++python+python_3_10_x86_64-unknown-linux-gnu//:python_runtimes", want: Label{Repo: "rules_python++python+python_3_10_x86_64-unknown-linux-gnu", Name: "python_runtimes", Canonical: true}},
 	} {
 		got, err := Parse(tc.str)
 		if err != nil && !tc.wantErr {
@@ -114,6 +114,40 @@ func TestImportPathToBazelRepoName(t *testing.T) {
 	} {
 		if got := ImportPathToBazelRepoName(path); got != want {
 			t.Errorf(`ImportPathToBazelRepoName(%q) = %q; want %q`, path, got, want)
+		}
+	}
+}
+
+func TestAbsRoundtrip(t *testing.T) {
+	for _, tc := range []struct {
+		in  string
+		out string
+	}{
+		{in: "target", out: ":target"},
+		{in: ":target"},
+		{in: "//:target"},
+		{in: "//pkg:target"},
+		{in: "@repo//:target"},
+		{in: "@repo//pkg:target"},
+		{in: "@repo", out: "@repo//:repo"},
+		{in: "@//pkg:target"},
+		{in: "@@canonical~name//:target"},
+		{in: "@@//:target"},
+	} {
+		lbl, err := Parse(tc.in)
+		if err != nil {
+			t.Errorf("Parse(%q) failed: %v", tc, err)
+			continue
+		}
+		got := lbl.String()
+		var want string
+		if len(tc.out) == 0 {
+			want = tc.in
+		} else {
+			want = tc.out
+		}
+		if got != want {
+			t.Errorf("Parse(%q).String() = %q; want %q", tc.in, got, want)
 		}
 	}
 }
