@@ -118,7 +118,7 @@ func TestImportPathToBazelRepoName(t *testing.T) {
 	}
 }
 
-func TestAbsRoundtrip(t *testing.T) {
+func TestParseStringRoundtrip(t *testing.T) {
 	for _, tc := range []struct {
 		in  string
 		out string
