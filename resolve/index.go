@@ -84,7 +84,8 @@ type RuleIndex struct {
 type ruleRecord struct {
 	rule  *rule.Rule
 	label label.Label
-	file  *rule.File
+
+	pkg string
 
 	// importedAs is a list of ImportSpecs by which this rule may be imported.
 	// Used to build a map from ImportSpecs to ruleRecords.
@@ -149,8 +150,8 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 
 	record := &ruleRecord{
 		rule:       r,
+		pkg:        f.Pkg,
 		label:      label.New(c.RepoName, f.Pkg, r.Name()),
-		file:       f,
 		importedAs: imps,
 		lang:       lang,
 	}
@@ -179,7 +180,7 @@ func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
 	if r.didCollectEmbeds {
 		return
 	}
-	resolver := ix.mrslv(r.rule, r.file.Pkg)
+	resolver := ix.mrslv(r.rule, r.pkg)
 	r.didCollectEmbeds = true
 	embedLabels := resolver.Embeds(r.rule, r.label)
 	r.embeds = embedLabels
@@ -189,7 +190,7 @@ func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
 			continue
 		}
 		ix.collectEmbeds(er)
-		erResolver := ix.mrslv(er.rule, er.file.Pkg)
+		erResolver := ix.mrslv(er.rule, er.pkg)
 		if resolver.Name() == erResolver.Name() {
 			er.embedded = true
 			r.embeds = append(r.embeds, er.embeds...)
