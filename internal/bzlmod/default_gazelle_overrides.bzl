@@ -22,6 +22,13 @@ DEFAULT_BUILD_FILE_GENERATION_BY_PATH = {
 }
 
 DEFAULT_DIRECTIVES_BY_PATH = {
+    "github.com/argoproj/argo-workflows/v3": [
+        "gazelle:proto disable",
+    ],
+    "github.com/argoproj/argo-events": [
+        "gazelle:proto disable",
+        "gazelle:go_naming_convention import_alias",
+    ],
     "github.com/census-instrumentation/opencensus-proto": [
         "gazelle:proto disable",
     ],
@@ -29,6 +36,10 @@ DEFAULT_DIRECTIVES_BY_PATH = {
         "gazelle:build_file_name BUILD.bazel",
     ],
     "github.com/cockroachdb/errors": [
+        "gazelle:proto disable",
+    ],
+    "github.com/colinmarc/hdfs/v2"": [
+        "gazelle:go_naming_convention import_alias",
         "gazelle:proto disable",
     ],
     "github.com/containerd/containerd": [
@@ -63,6 +74,11 @@ DEFAULT_DIRECTIVES_BY_PATH = {
         "gazelle:proto disable",
     ],
     "github.com/googleapis/gnostic": [
+        "gazelle:proto disable",
+    ],
+    "github.com/grpc-ecosystem/grpc-gateway": [
+        "gazelle:resolve go github.com/grpc-ecosystem/grpc-gateway/internal //internal:go_default_library",
+        "gazelle:go_naming_convention import_alias",
         "gazelle:proto disable",
     ],
     "github.com/pseudomuto/protoc-gen-doc": [
