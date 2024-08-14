@@ -38,7 +38,7 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/cockroachdb/errors": [
         "gazelle:proto disable",
     ],
-    "github.com/colinmarc/hdfs/v2"": [
+    "github.com/colinmarc/hdfs/v2": [
         "gazelle:go_naming_convention import_alias",
         "gazelle:proto disable",
     ],
