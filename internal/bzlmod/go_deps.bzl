@@ -147,7 +147,7 @@ def _get_override_or_default(specific_overrides, gazelle_default_attributes, def
     return default_value
 
 def _get_directives(path, gazelle_overrides, gazelle_default_attributes):
-    return _get_override_or_default(gazelle_overrides, gazelle_default_attributes, DEFAULT_DIRECTIVES_BY_PATH, path, [], "directives")
+    return _get_override_or_default(gazelle_overrides, gazelle_default_attributes, DEFAULT_DIRECTIVES_BY_PATH, path, ["gazelle:proto disable_global"], "directives")
 
 def _get_build_file_generation(path, gazelle_overrides, gazelle_default_attributes):
     # The default value for build_file_generation is "auto" if no override is found, but will default to "on" if an override is found.
