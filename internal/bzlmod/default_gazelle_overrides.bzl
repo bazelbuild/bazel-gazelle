@@ -31,6 +31,15 @@ DEFAULT_DIRECTIVES_BY_PATH = {
     "github.com/cockroachdb/errors": [
         "gazelle:proto disable",
     ],
+    "github.com/containerd/containerd": [
+        "gazelle:proto disable",
+    ],
+    "github.com/containerd/containerd/api": [
+        "gazelle:proto disable",
+    ],
+    "github.com/containerd/ttrpc": [
+        "gazelle:proto disable",
+    ],
     "github.com/gogo/googleapis": [
         "gazelle:proto disable",
     ],
