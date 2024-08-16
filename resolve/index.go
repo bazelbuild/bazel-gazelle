@@ -79,18 +79,18 @@ type RuleIndex struct {
 	mrslv          func(r *rule.Rule, pkgRel string) Resolver
 	crossResolvers []CrossResolver
 
-	// embedded indicates whether another rule of the same language embeds this
-	// the rule. Embedded rules should not be indexed.
+	// Whether another rule of the same language embeds this rule.
+	// Embedded rules should not be indexed.
 	embedded map[label.Label]struct{}
 
-	// embeds is the transitive closure of labels for rules that each rule embeds
-	// (as determined by the Embeds method). This only includes rules in the same
-	// language (i.e., it includes a go_library embedding a go_proto_library, but
-	// not a go_proto_library embedding a proto_library).
+	// The transitive closure of labels embedded within rules (as determined by the Embeds method).
+	// This only includes rules in the same language (i.e., it includes a go_library embedding
+	// a go_proto_library, but not a go_proto_library embedding a proto_library).
 	embeds map[label.Label][]label.Label
 
-	// imports is the transitive closure of all labels for rules that each rule embeds
-	// (as determined by the Embeds method). This includes rules in other languages.
+	// The transitive closure of all imports produced by each label.
+	// This includes transitive imports from embedded labels (as determined by
+	// the Embeds method). This may include imports of other languages.
 	imports map[label.Label][]ImportSpec
 }
 
@@ -101,15 +101,13 @@ type ruleRecord struct {
 
 	pkg string
 
-	// importedAs is a list of ImportSpecs by which this rule may be imported.
-	// Used to build a map from ImportSpecs to ruleRecords.
+	// A list of ImportSpecs by which this rule may be imported.
 	importedAs []ImportSpec
 
-	// Embeds is the set of labels (of any language) that this rule directly embeds,
-	// as determined by the Embeds method.
+	// The set of labels (of any language) that this rule directly embeds.
 	embeds []label.Label
 
-	// lang records the language that this import is relevant for.
+	// The language that this rule is relevant for.
 	// Due to the presence of mapped kinds, it's otherwise
 	// impossible to know the underlying builtin rule type for an
 	// arbitrary import.
