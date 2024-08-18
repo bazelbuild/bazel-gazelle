@@ -78,6 +78,20 @@ type RuleIndex struct {
 	importMap      map[ImportSpec][]*ruleRecord
 	mrslv          func(r *rule.Rule, pkgRel string) Resolver
 	crossResolvers []CrossResolver
+
+	// Whether another rule of the same language embeds this rule.
+	// Embedded rules should not be indexed.
+	embedded map[label.Label]struct{}
+
+	// The transitive closure of labels embedded within rules (as determined by the Embeds method).
+	// This only includes rules in the same language (i.e., it includes a go_library embedding
+	// a go_proto_library, but not a go_proto_library embedding a proto_library).
+	embeds map[label.Label][]label.Label
+
+	// The transitive closure of all imports produced by each label.
+	// This includes transitive imports from embedded labels (as determined by
+	// the Embeds method). This may include imports of other languages.
+	imports map[label.Label][]ImportSpec
 }
 
 // ruleRecord contains information about a rule relevant to import indexing.
@@ -87,23 +101,13 @@ type ruleRecord struct {
 
 	pkg string
 
-	// importedAs is a list of ImportSpecs by which this rule may be imported.
-	// Used to build a map from ImportSpecs to ruleRecords.
+	// A list of ImportSpecs by which this rule may be imported.
 	importedAs []ImportSpec
 
-	// embeds is the transitive closure of labels for rules that this rule embeds
-	// (as determined by the Embeds method). This only includes rules in the same
-	// language (i.e., it includes a go_library embedding a go_proto_library, but
-	// not a go_proto_library embedding a proto_library).
+	// The set of labels (of any language) that this rule directly embeds.
 	embeds []label.Label
 
-	// embedded indicates whether another rule of the same language embeds this
-	// rule. Embedded rules should not be indexed.
-	embedded bool
-
-	didCollectEmbeds bool
-
-	// lang records the language that this import is relevant for.
+	// The language that this rule is relevant for.
 	// Due to the presence of mapped kinds, it's otherwise
 	// impossible to know the underlying builtin rule type for an
 	// arbitrary import.
@@ -136,10 +140,18 @@ func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...inte
 func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	var lang string
 	var imps []ImportSpec
+	var embeds []label.Label
+
+	l := label.New(c.RepoName, f.Pkg, r.Name())
+
 	if rslv := ix.mrslv(r, f.Pkg); rslv != nil {
 		lang = rslv.Name()
 		if passesLanguageFilter(c.Langs, lang) {
 			imps = rslv.Imports(c, r, f)
+
+			for _, e := range rslv.Embeds(r, l) {
+				embeds = append(embeds, e.Abs(l.Repo, l.Pkg))
+			}
 		}
 	}
 	// If imps == nil, the rule is not importable. If imps is the empty slice,
@@ -151,8 +163,9 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	record := &ruleRecord{
 		rule:       r,
 		pkg:        f.Pkg,
-		label:      label.New(c.RepoName, f.Pkg, r.Name()),
+		label:      l,
 		importedAs: imps,
+		embeds:     embeds,
 		lang:       lang,
 	}
 	if _, ok := ix.labelMap[record.label]; ok {
@@ -170,32 +183,44 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 // Finish must be called after all AddRule calls and before any
 // FindRulesByImport calls.
 func (ix *RuleIndex) Finish() {
+	ix.imports = make(map[label.Label][]ImportSpec)
 	for _, r := range ix.rules {
-		ix.collectEmbeds(r)
+		ix.imports[r.label] = r.importedAs
 	}
+
+	ix.collectEmbeds()
 	ix.buildImportIndex()
 }
 
-func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
-	if r.didCollectEmbeds {
+func (ix *RuleIndex) collectEmbeds() {
+	ix.embeds = make(map[label.Label][]label.Label)
+	ix.embedded = make(map[label.Label]struct{})
+
+	didCollectEmbeds := make(map[label.Label]bool)
+
+	for _, r := range ix.rules {
+		ix.collectRecordEmbeds(r, didCollectEmbeds)
+	}
+}
+func (ix *RuleIndex) collectRecordEmbeds(r *ruleRecord, didCollectEmbeds map[label.Label]bool) {
+	if _, ok := didCollectEmbeds[r.label]; ok {
 		return
 	}
 	resolver := ix.mrslv(r.rule, r.pkg)
-	r.didCollectEmbeds = true
-	embedLabels := resolver.Embeds(r.rule, r.label)
-	r.embeds = embedLabels
-	for _, e := range embedLabels {
-		er, ok := ix.findRuleByLabel(e, r.label)
+	didCollectEmbeds[r.label] = true
+	ix.embeds[r.label] = r.embeds
+	for _, e := range r.embeds {
+		er, ok := ix.labelMap[e]
 		if !ok {
 			continue
 		}
-		ix.collectEmbeds(er)
+		ix.collectRecordEmbeds(er, didCollectEmbeds)
 		erResolver := ix.mrslv(er.rule, er.pkg)
 		if resolver.Name() == erResolver.Name() {
-			er.embedded = true
-			r.embeds = append(r.embeds, er.embeds...)
+			ix.embedded[er.label] = struct{}{}
+			ix.embeds[r.label] = append(ix.embeds[r.label], ix.embeds[er.label]...)
 		}
-		r.importedAs = append(r.importedAs, er.importedAs...)
+		ix.imports[r.label] = append(ix.imports[r.label], ix.imports[er.label]...)
 	}
 }
 
@@ -203,11 +228,11 @@ func (ix *RuleIndex) collectEmbeds(r *ruleRecord) {
 func (ix *RuleIndex) buildImportIndex() {
 	ix.importMap = make(map[ImportSpec][]*ruleRecord)
 	for _, r := range ix.rules {
-		if r.embedded {
+		if _, embedded := ix.embedded[r.label]; embedded {
 			continue
 		}
 		indexed := make(map[ImportSpec]bool)
-		for _, imp := range r.importedAs {
+		for _, imp := range ix.imports[r.label] {
 			if indexed[imp] {
 				continue
 			}
@@ -215,12 +240,6 @@ func (ix *RuleIndex) buildImportIndex() {
 			ix.importMap[imp] = append(ix.importMap[imp], r)
 		}
 	}
-}
-
-func (ix *RuleIndex) findRuleByLabel(label label.Label, from label.Label) (*ruleRecord, bool) {
-	label = label.Abs(from.Repo, from.Pkg)
-	r, ok := ix.labelMap[label]
-	return r, ok
 }
 
 type FindResult struct {
@@ -255,7 +274,7 @@ func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult
 		}
 		results = append(results, FindResult{
 			Label:  m.label,
-			Embeds: m.embeds,
+			Embeds: ix.embeds[m.label],
 		})
 	}
 	return results
