@@ -73,24 +73,35 @@ type CrossResolver interface {
 // RuleIndex is a table of rules in a workspace, indexed by label and by
 // import path. Used by Resolver to map import paths to labels.
 type RuleIndex struct {
-	rules          []*ruleRecord
-	labelMap       map[label.Label]*ruleRecord
-	importMap      map[ImportSpec][]*ruleRecord
 	mrslv          func(r *rule.Rule, pkgRel string) Resolver
 	crossResolvers []CrossResolver
 
+	// The underlying state of rules. All indexing should be reproducible from this.
+	rules []*ruleRecord
+
+	// Rules indexed by label.
+	// Computed from `rules` when indexing.
+	labelMap map[label.Label]*ruleRecord
+
+	// Imports specs mapping to records producing those.
+	// Computed from `rules` when indexing.
+	importMap map[ImportSpec][]*ruleRecord
+
 	// Whether another rule of the same language embeds this rule.
 	// Embedded rules should not be indexed.
+	// Computed from `rules` when indexing.
 	embedded map[label.Label]struct{}
 
 	// The transitive closure of labels embedded within rules (as determined by the Embeds method).
 	// This only includes rules in the same language (i.e., it includes a go_library embedding
 	// a go_proto_library, but not a go_proto_library embedding a proto_library).
+	// Computed from `rules` when indexing.
 	embeds map[label.Label][]label.Label
 
 	// The transitive closure of all imports produced by each label.
 	// This includes transitive imports from embedded labels (as determined by
 	// the Embeds method). This may include imports of other languages.
+	// Computed from `rules` when indexing.
 	imports map[label.Label][]ImportSpec
 }
 
@@ -126,7 +137,6 @@ func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...inte
 		}
 	}
 	return &RuleIndex{
-		labelMap:       make(map[label.Label]*ruleRecord),
 		mrslv:          mrslv,
 		crossResolvers: crossResolvers,
 	}
@@ -168,12 +178,7 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 		embeds:     embeds,
 		lang:       lang,
 	}
-	if _, ok := ix.labelMap[record.label]; ok {
-		log.Printf("multiple rules found with label %s", record.label)
-		return
-	}
 	ix.rules = append(ix.rules, record)
-	ix.labelMap[record.label] = record
 }
 
 // Finish constructs the import index and performs any other necessary indexing
@@ -183,8 +188,16 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 // Finish must be called after all AddRule calls and before any
 // FindRulesByImport calls.
 func (ix *RuleIndex) Finish() {
+	ix.labelMap = make(map[label.Label]*ruleRecord)
 	ix.imports = make(map[label.Label][]ImportSpec)
+
 	for _, r := range ix.rules {
+		if _, ok := ix.labelMap[r.label]; ok {
+			log.Printf("multiple rules found with label %s", r.label)
+			continue
+		}
+
+		ix.labelMap[r.label] = r
 		ix.imports[r.label] = r.importedAs
 	}
 
