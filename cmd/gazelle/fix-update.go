@@ -488,7 +488,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	for _, v := range visits {
 		for i, r := range v.rules {
 			from := label.New(c.RepoName, v.pkgRel, r.Name())
-			if rslv := mrslv.Resolver(r, v.pkgRel); rslv != nil {
+			if rslv := mrslv.Resolver(r.Kind(), v.pkgRel); rslv != nil {
 				rslv.Resolve(v.c, ruleIndex, rc, r, v.imports[i], from)
 			}
 		}
