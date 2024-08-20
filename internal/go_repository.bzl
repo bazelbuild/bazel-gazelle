@@ -361,6 +361,50 @@ def _go_repository_impl(ctx):
     # Apply patches if necessary.
     patch(ctx)
 
+    if generate:
+        # Do not override a REPO.bazel patched in by users. This also provides a
+        # way for users to opt out of Gazelle-generated package_info.
+        repo_file = ctx.path("REPO.bazel")
+        if not repo_file.exists:
+            ctx.file("REPO.bazel", """\
+repo(default_package_metadata = ["//:gazelle_generated_package_info"])
+""")
+
+            # Modify the top-level build file after patches have been applied as the
+            # patches may otherwise conflict with our generated content.
+            build_file = ctx.path(build_file_name)
+            if build_file.exists:
+                build_file_content = ctx.read(build_file)
+            else:
+                build_file_content = ""
+            build_file_content += _generate_package_info(
+                importpath = ctx.attr.importpath,
+                version = ctx.attr.version,
+            )
+            ctx.file(build_file_name, build_file_content)
+
+def _generate_package_info(*, importpath, version):
+    package_name = importpath
+
+    # TODO: Consider adding support for custom remotes.
+    package_url = "https://" + importpath if version else None
+    package_version = version.removeprefix("v") if version else None
+    return """
+load("@rules_license//rules:package_info.bzl", "package_info")
+
+package_info(
+    name = "gazelle_generated_package_info",
+    package_name = {package_name},
+    package_url = {package_url},
+    package_version = {package_version},
+    visibility = ["//:__subpackages__"],
+)
+""".format(
+        package_name = repr(package_name),
+        package_url = repr(package_url),
+        package_version = repr(package_version),
+    )
+
 go_repository = repository_rule(
     implementation = _go_repository_impl,
     doc = _DOC,
