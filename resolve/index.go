@@ -110,22 +110,22 @@ type RuleIndex struct {
 
 // ruleRecord contains information about a rule relevant to import indexing.
 type ruleRecord struct {
-	kind  string
-	label label.Label
+	Kind  string      `json:"kind"`
+	Label label.Label `json:"label"`
 
-	pkg string
+	Pkg string `json:"pkg"`
 
 	// A list of ImportSpecs by which this rule may be imported.
-	importedAs []ImportSpec
+	ImportedAs []ImportSpec `json:"importedAs"`
 
 	// The set of labels (of any language) that this rule directly embeds.
-	embeds []label.Label
+	Embeds []label.Label `json:"embeds"`
 
 	// The language that this rule is relevant for.
 	// Due to the presence of mapped kinds, it's otherwise
 	// impossible to know the underlying builtin rule type for an
 	// arbitrary import.
-	lang string
+	Lang string `json:"lang"`
 }
 
 // NewRuleIndex creates a new index.
@@ -178,12 +178,12 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	}
 
 	record := &ruleRecord{
-		kind:       r.Kind(),
-		pkg:        f.Pkg,
-		label:      l,
-		importedAs: imps,
-		embeds:     embeds,
-		lang:       lang,
+		Kind:       r.Kind(),
+		Pkg:        f.Pkg,
+		Label:      l,
+		ImportedAs: imps,
+		Embeds:     embeds,
+		Lang:       lang,
 	}
 	ix.rules = append(ix.rules, record)
 }
@@ -199,13 +199,13 @@ func (ix *RuleIndex) Finish() {
 	ix.imports = make(map[label.Label][]ImportSpec)
 
 	for _, r := range ix.rules {
-		if _, ok := ix.labelMap[r.label]; ok {
-			log.Printf("multiple rules found with label %s", r.label)
+		if _, ok := ix.labelMap[r.Label]; ok {
+			log.Printf("multiple rules found with label %s", r.Label)
 			continue
 		}
 
-		ix.labelMap[r.label] = r
-		ix.imports[r.label] = r.importedAs
+		ix.labelMap[r.Label] = r
+		ix.imports[r.Label] = r.ImportedAs
 	}
 
 	ix.collectEmbeds()
@@ -225,24 +225,24 @@ func (ix *RuleIndex) collectEmbeds() {
 	}
 }
 func (ix *RuleIndex) collectRecordEmbeds(r *ruleRecord, didCollectEmbeds map[label.Label]bool) {
-	if _, ok := didCollectEmbeds[r.label]; ok {
+	if _, ok := didCollectEmbeds[r.Label]; ok {
 		return
 	}
-	resolver := ix.mrslv(r.kind, r.pkg)
-	didCollectEmbeds[r.label] = true
-	ix.embeds[r.label] = r.embeds
-	for _, e := range r.embeds {
+	resolver := ix.mrslv(r.Kind, r.Pkg)
+	didCollectEmbeds[r.Label] = true
+	ix.embeds[r.Label] = r.Embeds
+	for _, e := range r.Embeds {
 		er, ok := ix.labelMap[e]
 		if !ok {
 			continue
 		}
 		ix.collectRecordEmbeds(er, didCollectEmbeds)
-		erResolver := ix.mrslv(er.kind, er.pkg)
+		erResolver := ix.mrslv(er.Kind, er.Pkg)
 		if resolver.Name() == erResolver.Name() {
-			ix.embedded[er.label] = struct{}{}
-			ix.embeds[r.label] = append(ix.embeds[r.label], ix.embeds[er.label]...)
+			ix.embedded[er.Label] = struct{}{}
+			ix.embeds[r.Label] = append(ix.embeds[r.Label], ix.embeds[er.Label]...)
 		}
-		ix.imports[r.label] = append(ix.imports[r.label], ix.imports[er.label]...)
+		ix.imports[r.Label] = append(ix.imports[r.Label], ix.imports[er.Label]...)
 	}
 }
 
@@ -250,11 +250,11 @@ func (ix *RuleIndex) collectRecordEmbeds(r *ruleRecord, didCollectEmbeds map[lab
 func (ix *RuleIndex) buildImportIndex() {
 	ix.importMap = make(map[ImportSpec][]*ruleRecord)
 	for _, r := range ix.rules {
-		if _, embedded := ix.embedded[r.label]; embedded {
+		if _, embedded := ix.embedded[r.Label]; embedded {
 			continue
 		}
 		indexed := make(map[ImportSpec]bool)
-		for _, imp := range ix.imports[r.label] {
+		for _, imp := range ix.imports[r.Label] {
 			if indexed[imp] {
 				continue
 			}
@@ -291,12 +291,12 @@ func (ix *RuleIndex) FindRulesByImport(imp ImportSpec, lang string) []FindResult
 	matches := ix.importMap[imp]
 	results := make([]FindResult, 0, len(matches))
 	for _, m := range matches {
-		if m.lang != lang {
+		if m.Lang != lang {
 			continue
 		}
 		results = append(results, FindResult{
-			Label:  m.label,
-			Embeds: ix.embeds[m.label],
+			Label:  m.Label,
+			Embeds: ix.embeds[m.Label],
 		})
 	}
 	return results
