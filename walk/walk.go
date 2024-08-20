@@ -115,7 +115,7 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		}
 	}
 
-	updateRels := buildUpdateRelMap(c.RepoRoot, dirs)
+	updateRels := NewUpdateFilter(c.RepoRoot, dirs, mode)
 
 	var visit func(*config.Config, string, string, bool)
 	visit = func(c *config.Config, dir, rel string, updateParent bool) {
@@ -162,15 +162,15 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 			}
 		}
 
-		shouldUpdate := shouldUpdate(rel, mode, updateParent, updateRels)
+		shouldUpdate := updateRels.shouldUpdate(rel, updateParent)
 		for _, sub := range subdirs {
-			if subRel := path.Join(rel, sub); shouldVisit(subRel, mode, shouldUpdate, updateRels) {
+			if subRel := path.Join(rel, sub); updateRels.shouldVisit(subRel, shouldUpdate) {
 				visit(c, filepath.Join(dir, sub), subRel, shouldUpdate)
 			}
 		}
 
 		update := !haveError && !wc.ignore && shouldUpdate
-		if shouldCall(rel, mode, updateParent, updateRels) {
+		if updateRels.shouldCall(rel, updateParent) {
 			genFiles := findGenFiles(wc, f)
 			wf(dir, rel, c, update, f, subdirs, regularFiles, genFiles)
 		}
@@ -178,16 +178,26 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 	visit(c, c.RepoRoot, "", false)
 }
 
-// buildUpdateRelMap builds a table of prefixes, used to determine which
+// An UpdateFilter tracks which directories need to be updated
+//
+// INTERNAL: this is a non-public util only for use within bazel-gazelle.
+type UpdateFilter struct {
+	mode Mode
+
+	// map from slash-separated paths relative to the
+	// root directory ("" for the root itself) to a boolean indicating whether
+	// the directory should be updated.
+	updateRels map[string]bool
+}
+
+// NewUpdateFilter builds a table of prefixes, used to determine which
 // directories to update and visit.
 //
 // root and dirs must be absolute, canonical file paths. Each entry in dirs
 // must be a subdirectory of root. The caller is responsible for checking this.
 //
-// buildUpdateRelMap returns a map from slash-separated paths relative to the
-// root directory ("" for the root itself) to a boolean indicating whether
-// the directory should be updated.
-func buildUpdateRelMap(root string, dirs []string) map[string]bool {
+// INTERNAL: this is a non-public util only for use within bazel-gazelle.
+func NewUpdateFilter(root string, dirs []string, mode Mode) *UpdateFilter {
 	relMap := make(map[string]bool)
 	for _, dir := range dirs {
 		rel, _ := filepath.Rel(root, dir)
@@ -210,42 +220,42 @@ func buildUpdateRelMap(root string, dirs []string) map[string]bool {
 			i = next + 1
 		}
 	}
-	return relMap
+	return &UpdateFilter{mode, relMap}
 }
 
 // shouldCall returns true if Walk should call the callback in the
 // directory rel.
-func shouldCall(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
-	switch mode {
+func (u *UpdateFilter) shouldCall(rel string, updateParent bool) bool {
+	switch u.mode {
 	case VisitAllUpdateSubdirsMode, VisitAllUpdateDirsMode:
 		return true
 	case UpdateSubdirsMode:
-		return updateParent || updateRels[rel]
+		return updateParent || u.updateRels[rel]
 	default: // UpdateDirsMode
-		return updateRels[rel]
+		return u.updateRels[rel]
 	}
 }
 
 // shouldUpdate returns true if Walk should pass true to the callback's update
 // parameter in the directory rel. This indicates the build file should be
 // updated.
-func shouldUpdate(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
-	if (mode == VisitAllUpdateSubdirsMode || mode == UpdateSubdirsMode) && updateParent {
+func (u *UpdateFilter) shouldUpdate(rel string, updateParent bool) bool {
+	if (u.mode == VisitAllUpdateSubdirsMode || u.mode == UpdateSubdirsMode) && updateParent {
 		return true
 	}
-	return updateRels[rel]
+	return u.updateRels[rel]
 }
 
 // shouldVisit returns true if Walk should visit the subdirectory rel.
-func shouldVisit(rel string, mode Mode, updateParent bool, updateRels map[string]bool) bool {
-	switch mode {
+func (u *UpdateFilter) shouldVisit(rel string, updateParent bool) bool {
+	switch u.mode {
 	case VisitAllUpdateSubdirsMode, VisitAllUpdateDirsMode:
 		return true
 	case UpdateSubdirsMode:
-		_, ok := updateRels[rel]
+		_, ok := u.updateRels[rel]
 		return ok || updateParent
 	default: // UpdateDirsMode
-		_, ok := updateRels[rel]
+		_, ok := u.updateRels[rel]
 		return ok
 	}
 }
