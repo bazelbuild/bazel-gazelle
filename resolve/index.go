@@ -79,6 +79,9 @@ type RuleIndex struct {
 	// The underlying state of rules. All indexing should be reproducible from this.
 	rules []*ruleRecord
 
+	// If indexing of rules has occurred already
+	indexed bool
+
 	// Rules indexed by label.
 	// Computed from `rules` when indexing.
 	labelMap map[label.Label]*ruleRecord
@@ -148,6 +151,10 @@ func NewRuleIndex(mrslv func(ruleKind, pkgRel string) Resolver, exts ...interfac
 //
 // AddRule may only be called before Finish.
 func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
+	if ix.indexed {
+		log.Fatal("AddRule called after Finish")
+	}
+
 	var lang string
 	var imps []ImportSpec
 	var embeds []label.Label
@@ -203,6 +210,8 @@ func (ix *RuleIndex) Finish() {
 
 	ix.collectEmbeds()
 	ix.buildImportIndex()
+
+	ix.indexed = true
 }
 
 func (ix *RuleIndex) collectEmbeds() {
