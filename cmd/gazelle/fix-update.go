@@ -316,10 +316,10 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 		// If this file is ignored or if Gazelle was not asked to update this
 		// directory, just index the build file and move on.
 		if !update {
+			for _, repl := range c.KindMap {
+				mrslv.MappedKind(rel, repl)
+			}
 			if c.IndexLibraries && f != nil {
-				for _, repl := range c.KindMap {
-					mrslv.MappedKind(rel, repl)
-				}
 				for _, r := range f.Rules {
 					ruleIndex.AddRule(c, r, f)
 				}
