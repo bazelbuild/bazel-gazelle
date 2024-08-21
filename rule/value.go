@@ -141,13 +141,13 @@ func (s SelectStringListValue) BzlExpr() bzl.Expr {
 // ExprFromValue converts a value into an expression that can be written into
 // a Bazel build file. The following types of values can be converted:
 //
-//   * bools, integers, floats, strings.
-//   * labels (converted to strings).
-//   * slices, arrays (converted to lists).
-//   * maps (converted to select expressions; keys must be rules in
+//   - bools, integers, floats, strings.
+//   - labels (converted to strings).
+//   - slices, arrays (converted to lists).
+//   - maps (converted to select expressions; keys must be rules in
 //     @io_bazel_rules_go//go/platform).
-//   * GlobValue (converted to glob expressions).
-//   * PlatformStrings (converted to a concatenation of a list and selects).
+//   - GlobValue (converted to glob expressions).
+//   - PlatformStrings (converted to a concatenation of a list and selects).
 //
 // Converting unsupported types will cause a panic.
 func ExprFromValue(val interface{}) bzl.Expr {
@@ -216,7 +216,7 @@ func mapKeyString(k reflect.Value) string {
 
 type byString []reflect.Value
 
-var _ sort.Interface = byString{}
+var _ sort.Interface = (*byString)(nil)
 
 func (s byString) Len() int {
 	return len(s)

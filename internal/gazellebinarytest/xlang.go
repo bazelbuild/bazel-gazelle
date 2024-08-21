@@ -29,6 +29,8 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
+var _ config.Configurer = (*xlang)(nil)
+
 type xlang struct{}
 
 func NewLanguage() language.Language {

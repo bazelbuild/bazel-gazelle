@@ -50,6 +50,8 @@ func getUpdateReposConfig(c *config.Config) *updateReposConfig {
 	return c.Exts[updateReposName].(*updateReposConfig)
 }
 
+var _ config.Configurer = (*updateReposConfigurer)(nil)
+
 type updateReposConfigurer struct{}
 
 type macroFlag struct {
