@@ -329,6 +329,8 @@ func testConfig(t *testing.T, dir string) (*config.Config, []config.Configurer) 
 	return c, cexts
 }
 
+var _ config.Configurer = (*testConfigurer)(nil)
+
 type testConfigurer struct {
 	configure func(c *config.Config, rel string, f *rule.File)
 }

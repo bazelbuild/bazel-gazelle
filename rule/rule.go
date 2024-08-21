@@ -514,7 +514,7 @@ type rulesByKindAndName struct {
 }
 
 // type checking
-var _ sort.Interface = rulesByKindAndName{}
+var _ sort.Interface = (*rulesByKindAndName)(nil)
 
 func (s rulesByKindAndName) Len() int {
 	return len(s.rules)
@@ -539,7 +539,7 @@ type loadsByName struct {
 }
 
 // type checking
-var _ sort.Interface = loadsByName{}
+var _ sort.Interface = (*loadsByName)(nil)
 
 func (s loadsByName) Len() int {
 	return len(s.loads)
@@ -1144,7 +1144,7 @@ func CheckInternalVisibility(rel, visibility string) string {
 
 type byAttrName []KeyValue
 
-var _ sort.Interface = byAttrName{}
+var _ sort.Interface = (*byAttrName)(nil)
 
 func (s byAttrName) Len() int {
 	return len(s)

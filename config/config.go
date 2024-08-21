@@ -195,6 +195,8 @@ type Configurer interface {
 	Configure(c *Config, rel string, f *rule.File)
 }
 
+var _ Configurer = (*CommonConfigurer)(nil)
+
 // CommonConfigurer handles language-agnostic command-line flags and directives,
 // i.e., those that apply to Config itself and not to Config.Exts.
 type CommonConfigurer struct {

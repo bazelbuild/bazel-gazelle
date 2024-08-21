@@ -71,6 +71,8 @@ func getUpdateConfig(c *config.Config) *updateConfig {
 	return c.Exts[updateName].(*updateConfig)
 }
 
+var _ config.Configurer = (*updateConfigurer)(nil)
+
 type updateConfigurer struct {
 	mode           string
 	recursive      bool

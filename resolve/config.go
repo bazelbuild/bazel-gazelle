@@ -114,6 +114,8 @@ func getResolveConfig(c *config.Config) *resolveConfig {
 	return c.Exts[resolveName].(*resolveConfig)
 }
 
+var _ config.Configurer = (*Configurer)(nil)
+
 type Configurer struct{}
 
 func (*Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {

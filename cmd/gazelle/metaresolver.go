@@ -77,7 +77,7 @@ type inverseMapKindResolver struct {
 	delegate resolve.Resolver
 }
 
-var _ resolve.Resolver = inverseMapKindResolver{}
+var _ resolve.Resolver = (*inverseMapKindResolver)(nil)
 
 func (imkr inverseMapKindResolver) Name() string {
 	return imkr.delegate.Name()
