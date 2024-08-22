@@ -25,7 +25,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"sync"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
 	"github.com/bazelbuild/bazel-gazelle/rule"
@@ -42,7 +41,6 @@ type walkConfig struct {
 	excludes []string
 	ignore   bool
 	follow   []string
-	loadOnce *sync.Once
 }
 
 const walkName = "_walk"
@@ -67,7 +65,7 @@ var _ config.Configurer = (*Configurer)(nil)
 type Configurer struct{}
 
 func (*Configurer) RegisterFlags(fs *flag.FlagSet, cmd string, c *config.Config) {
-	wc := &walkConfig{loadOnce: &sync.Once{}}
+	wc := &walkConfig{}
 	c.Exts[walkName] = wc
 	fs.Var(&gzflag.MultiFlag{Values: &wc.excludes}, "exclude", "pattern that should be ignored (may be repeated)")
 }
@@ -83,12 +81,6 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	wcCopy := &walkConfig{}
 	*wcCopy = *wc
 	wcCopy.ignore = false
-
-	wc.loadOnce.Do(func() {
-		if err := cr.loadBazelIgnore(c.RepoRoot, wcCopy); err != nil {
-			log.Printf("error loading .bazelignore: %v", err)
-		}
-	})
 
 	if f != nil {
 		for _, d := range f.Directives {
@@ -114,16 +106,22 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 	c.Exts[walkName] = wcCopy
 }
 
-func (c *Configurer) loadBazelIgnore(repoRoot string, wc *walkConfig) error {
+type isIgnoredFunc = func(string) bool
+
+var nothingIgnored isIgnoredFunc = func(string) bool { return false }
+
+func loadBazelIgnore(repoRoot string) (isIgnoredFunc, error) {
 	ignorePath := path.Join(repoRoot, ".bazelignore")
 	file, err := os.Open(ignorePath)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil
+		return nothingIgnored, nil
 	}
 	if err != nil {
-		return fmt.Errorf(".bazelignore exists but couldn't be read: %v", err)
+		return nothingIgnored, fmt.Errorf(".bazelignore exists but couldn't be read: %v", err)
 	}
 	defer file.Close()
+
+	excludes := make(map[string]struct{})
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -142,9 +140,15 @@ func (c *Configurer) loadBazelIgnore(repoRoot string, wc *walkConfig) error {
 		// the exclude matching won't work correctly.
 		ignore = path.Clean(ignore)
 
-		wc.excludes = append(wc.excludes, ignore)
+		excludes[ignore] = struct{}{}
 	}
-	return nil
+
+	isIgnored := func(p string) bool {
+		_, ok := excludes[p]
+		return ok
+	}
+
+	return isIgnored, nil
 }
 
 func checkPathMatchPattern(pattern string) error {

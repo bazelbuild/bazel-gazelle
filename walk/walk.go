@@ -117,6 +117,11 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 
 	updateRels := NewUpdateFilter(c.RepoRoot, dirs, mode)
 
+	isBazelIgnored, err := loadBazelIgnore(c.RepoRoot)
+	if err != nil {
+		log.Printf("error loading .bazelignore: %v", err)
+	}
+
 	var visit func(*config.Config, string, string, bool)
 	visit = func(c *config.Config, dir, rel string, updateParent bool) {
 		haveError := false
@@ -141,6 +146,10 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 			haveError = true
 		}
 
+		if isBazelIgnored(rel) {
+			return
+		}
+
 		c = configure(cexts, knownDirectives, c, rel, f)
 		wc := getWalkConfig(c)
 
@@ -151,6 +160,9 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		var subdirs, regularFiles []string
 		for _, ent := range ents {
 			base := ent.Name()
+			if isBazelIgnored(path.Join(rel, base)) || wc.isExcluded(rel, base) {
+				continue
+			}
 			ent := resolveFileInfo(wc, dir, rel, ent)
 			switch {
 			case ent == nil:
@@ -326,14 +338,14 @@ func findGenFiles(wc *walkConfig, f *rule.File) []string {
 
 func resolveFileInfo(wc *walkConfig, dir, rel string, ent fs.DirEntry) fs.DirEntry {
 	base := ent.Name()
-	if base == "" || wc.isExcluded(rel, base) {
+	if base == "" {
 		return nil
 	}
 	if ent.Type()&os.ModeSymlink == 0 {
 		// Not a symlink, use the original FileInfo.
 		return ent
 	}
-	if !wc.shouldFollow(rel, ent.Name()) {
+	if !wc.shouldFollow(rel, base) {
 		// A symlink, but not one we should follow.
 		return nil
 	}
