@@ -51,6 +51,12 @@ type Label struct {
 	// Relative indicates whether the label refers to a target in the current
 	// package. Relative is true if and only if Repo and Pkg are both omitted.
 	Relative bool
+
+	// Canonical indicates whether the repository name is canonical. If true,
+	// then the label will be stringified with an extra "@" prefix if it is
+	// absolute.
+	// Note: Label does not apply any kind of repo mapping.
+	Canonical bool
 }
 
 // New constructs a new label from components.
@@ -83,10 +89,11 @@ func Parse(s string) (Label, error) {
 	origStr := s
 
 	relative := true
+	canonical := false
 	var repo string
-	// if target name begins @@ drop the first @
 	if strings.HasPrefix(s, "@@") {
 		s = s[len("@"):]
+		canonical = true
 	}
 	if strings.HasPrefix(s, "@") {
 		relative = false
@@ -140,10 +147,11 @@ func Parse(s string) (Label, error) {
 	}
 
 	return Label{
-		Repo:     repo,
-		Pkg:      pkg,
-		Name:     name,
-		Relative: relative,
+		Repo:      repo,
+		Pkg:       pkg,
+		Name:      name,
+		Relative:  relative,
+		Canonical: canonical,
 	}, nil
 }
 
@@ -159,6 +167,9 @@ func (l Label) String() string {
 		// if l.Repo == "", the label string will begin with "//"
 		// if l.Repo == "@", the label string will begin with "@//"
 		repo = l.Repo
+	}
+	if l.Canonical && strings.HasPrefix(repo, "@") {
+		repo = "@" + repo
 	}
 
 	if path.Base(l.Pkg) == l.Name {
@@ -213,8 +224,8 @@ func (l Label) Contains(other Label) bool {
 }
 
 func (l Label) BzlExpr() bzl.Expr {
-	return &bzl.StringExpr {
-	    Value: l.String(),
+	return &bzl.StringExpr{
+		Value: l.String(),
 	}
 }
 
