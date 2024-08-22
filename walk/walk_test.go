@@ -36,7 +36,7 @@ func TestConfigureCallbackOrder(t *testing.T) {
 	cexts = append(cexts, &testConfigurer{func(_ *config.Config, rel string, _ *rule.File) {
 		configureRels = append(configureRels, rel)
 	}})
-	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{dir}, true, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, _, _ []string) {
 		callbackRels = append(callbackRels, rel)
 	})
 	configureWant := []string{"", "a", "a/b"}
@@ -71,15 +71,15 @@ func TestUpdateDirs(t *testing.T) {
 		Update bool
 	}
 	for _, tc := range []struct {
-		desc string
-		rels []string
-		mode Mode
-		want []visitSpec
+		desc    string
+		rels    []string
+		recurse bool
+		want    []visitSpec
 	}{
 		{
-			desc: "visit_all_update_subdirs",
-			rels: []string{"update"},
-			mode: VisitAllUpdateSubdirsMode,
+			desc:    "visit_all_update_subdirs",
+			rels:    []string{"update"},
+			recurse: true,
 			want: []visitSpec{
 				{"update/error/sub", true},
 				{"update/error", false},
@@ -91,9 +91,9 @@ func TestUpdateDirs(t *testing.T) {
 				{"", false},
 			},
 		}, {
-			desc: "visit_all_update_dirs",
-			rels: []string{"update", "update/ignore/sub"},
-			mode: VisitAllUpdateDirsMode,
+			desc:    "visit_all_update_dirs",
+			rels:    []string{"update", "update/ignore/sub"},
+			recurse: false,
 			want: []visitSpec{
 				{"update/error/sub", false},
 				{"update/error", false},
@@ -105,17 +105,17 @@ func TestUpdateDirs(t *testing.T) {
 				{"", false},
 			},
 		}, {
-			desc: "update_dirs",
-			rels: []string{"update", "update/ignore/sub"},
-			mode: UpdateDirsMode,
+			desc:    "update_dirs",
+			rels:    []string{"update", "update/ignore/sub"},
+			recurse: false,
 			want: []visitSpec{
 				{"update/ignore/sub", true},
 				{"update", true},
 			},
 		}, {
-			desc: "update_subdirs",
-			rels: []string{"update/ignore", "update/sub"},
-			mode: UpdateSubdirsMode,
+			desc:    "update_subdirs",
+			rels:    []string{"update/ignore", "update/sub"},
+			recurse: true,
 			want: []visitSpec{
 				{"update/ignore/sub", true},
 				{"update/ignore", false},
@@ -131,7 +131,7 @@ func TestUpdateDirs(t *testing.T) {
 				dirs[i] = filepath.Join(dir, filepath.FromSlash(rel))
 			}
 			var visits []visitSpec
-			Walk(c, cexts, dirs, tc.mode, func(_ string, rel string, _ *config.Config, update bool, _ *rule.File, _, _, _ []string) {
+			Walk(c, cexts, dirs, tc.recurse, func(_ string, rel string, _ *config.Config, update bool, _ *rule.File, _, _, _ []string) {
 				visits = append(visits, visitSpec{rel, update})
 			})
 			if diff := cmp.Diff(tc.want, visits); diff != "" {
@@ -158,7 +158,7 @@ func TestCustomBuildName(t *testing.T) {
 
 	c, cexts := testConfig(t, dir)
 	var rels []string
-	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, _ string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{dir}, true, func(_ string, _ string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
 		rel, err := filepath.Rel(c.RepoRoot, f.Path)
 		if err != nil {
 			t.Error(err)
@@ -239,7 +239,7 @@ a.file
 
 	c, cexts := testConfig(t, dir)
 	var files []string
-	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, regularFiles, genFiles []string) {
+	Walk(c, cexts, []string{dir}, true, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, regularFiles, genFiles []string) {
 		for _, f := range regularFiles {
 			files = append(files, path.Join(rel, f))
 		}
@@ -268,7 +268,7 @@ func TestExcludeSelf(t *testing.T) {
 
 	c, cexts := testConfig(t, dir)
 	var rels []string
-	Walk(c, cexts, []string{dir}, VisitAllUpdateDirsMode, func(_ string, rel string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
+	Walk(c, cexts, []string{dir}, true, func(_ string, rel string, _ *config.Config, _ bool, f *rule.File, _, _, _ []string) {
 		rels = append(rels, rel)
 	})
 
@@ -304,7 +304,7 @@ unknown_rule(
 
 	c, cexts := testConfig(t, dir)
 	var regularFiles, genFiles []string
-	Walk(c, cexts, []string{dir}, VisitAllUpdateSubdirsMode, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, reg, gen []string) {
+	Walk(c, cexts, []string{dir}, true, func(_ string, rel string, _ *config.Config, _ bool, _ *rule.File, _, reg, gen []string) {
 		for _, f := range reg {
 			regularFiles = append(regularFiles, path.Join(rel, f))
 		}

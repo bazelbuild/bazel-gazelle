@@ -29,32 +29,6 @@ import (
 	"github.com/bazelbuild/bazel-gazelle/rule"
 )
 
-// Mode determines which directories Walk visits and which directories
-// should be updated.
-type Mode int
-
-const (
-	// In VisitAllUpdateSubdirsMode, Walk visits every directory in the
-	// repository. The directories given to Walk and their subdirectories are
-	// updated.
-	VisitAllUpdateSubdirsMode Mode = iota
-
-	// In VisitAllUpdateDirsMode, Walk visits every directory in the repository.
-	// Only the directories given to Walk are updated (not their subdirectories).
-	VisitAllUpdateDirsMode
-
-	// In UpdateDirsMode, Walk only visits and updates directories given to Walk.
-	// Build files in parent directories are read in order to produce a complete
-	// configuration, but the callback is not called for parent directories.
-	UpdateDirsMode
-
-	// In UpdateSubdirsMode, Walk visits and updates the directories given to Walk
-	// and their subdirectories. Build files in parent directories are read in
-	// order to produce a complete configuration, but the callback is not called
-	// for parent directories.
-	UpdateSubdirsMode
-)
-
 // WalkFunc is a callback called by Walk in each visited directory.
 //
 // dir is the absolute file system path to the directory being visited.
@@ -102,12 +76,12 @@ type WalkFunc func(dir, rel string, c *config.Config, update bool, f *rule.File,
 // dirs is a list of absolute, canonical file system paths of directories
 // to visit.
 //
-// mode determines whether subdirectories of dirs should be visited recursively,
+// recurse determines whether subdirectories of dirs should be visited recursively,
 // when the wf callback should be called, and when the "update" argument
 // to the wf callback should be set.
 //
 // wf is a function that may be called in each directory.
-func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode, wf WalkFunc) {
+func Walk(c *config.Config, cexts []config.Configurer, dirs []string, recurse bool, wf WalkFunc) {
 	knownDirectives := make(map[string]bool)
 	for _, cext := range cexts {
 		for _, d := range cext.KnownDirectives() {
@@ -115,7 +89,7 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		}
 	}
 
-	updateRels := NewUpdateFilter(c.RepoRoot, dirs, mode)
+	updateRels := NewUpdateFilter(c, dirs, recurse)
 
 	isBazelIgnored, err := loadBazelIgnore(c.RepoRoot)
 	if err != nil {
@@ -194,7 +168,7 @@ func visit(c *config.Config, cexts []config.Configurer, isBazelIgnored isIgnored
 //
 // INTERNAL: this is a non-public util only for use within bazel-gazelle.
 type UpdateFilter struct {
-	mode Mode
+	index, recurse bool
 
 	// map from slash-separated paths relative to the
 	// root directory ("" for the root itself) to a boolean indicating whether
@@ -209,10 +183,10 @@ type UpdateFilter struct {
 // must be a subdirectory of root. The caller is responsible for checking this.
 //
 // INTERNAL: this is a non-public util only for use within bazel-gazelle.
-func NewUpdateFilter(root string, dirs []string, mode Mode) *UpdateFilter {
+func NewUpdateFilter(c *config.Config, dirs []string, recurse bool) *UpdateFilter {
 	relMap := make(map[string]bool)
 	for _, dir := range dirs {
-		rel, _ := filepath.Rel(root, dir)
+		rel, _ := filepath.Rel(c.RepoRoot, dir)
 		rel = filepath.ToSlash(rel)
 		if rel == "." {
 			rel = ""
@@ -232,27 +206,40 @@ func NewUpdateFilter(root string, dirs []string, mode Mode) *UpdateFilter {
 			i = next + 1
 		}
 	}
-	return &UpdateFilter{mode, relMap}
+	return &UpdateFilter{
+		index:      c.IndexLibraries,
+		recurse:    recurse,
+		updateRels: relMap,
+	}
+}
+
+func (u *UpdateFilter) VisitAllUpdateSubdirsMode() bool {
+	return u.recurse && u.index
+}
+func (u *UpdateFilter) VisitAllUpdateDirsMode() bool {
+	return !u.recurse && u.index
+}
+func (u *UpdateFilter) UpdateSubdirsMode() bool {
+	return u.recurse && !u.index
 }
 
 // shouldCall returns true if Walk should call the callback in the
 // directory rel.
 func (u *UpdateFilter) shouldCall(rel string, updateParent bool) bool {
-	switch u.mode {
-	case VisitAllUpdateSubdirsMode, VisitAllUpdateDirsMode:
+	if u.VisitAllUpdateSubdirsMode() || u.VisitAllUpdateDirsMode() {
 		return true
-	case UpdateSubdirsMode:
-		return updateParent || u.updateRels[rel]
-	default: // UpdateDirsMode
-		return u.updateRels[rel]
 	}
+	if u.UpdateSubdirsMode() {
+		return updateParent || u.updateRels[rel]
+	}
+	return u.updateRels[rel]
 }
 
 // shouldUpdate returns true if Walk should pass true to the callback's update
 // parameter in the directory rel. This indicates the build file should be
 // updated.
 func (u *UpdateFilter) shouldUpdate(rel string, updateParent bool) bool {
-	if (u.mode == VisitAllUpdateSubdirsMode || u.mode == UpdateSubdirsMode) && updateParent {
+	if (u.VisitAllUpdateSubdirsMode() || u.UpdateSubdirsMode()) && updateParent {
 		return true
 	}
 	return u.updateRels[rel]
@@ -260,16 +247,15 @@ func (u *UpdateFilter) shouldUpdate(rel string, updateParent bool) bool {
 
 // shouldVisit returns true if Walk should visit the subdirectory rel.
 func (u *UpdateFilter) shouldVisit(rel string, updateParent bool) bool {
-	switch u.mode {
-	case VisitAllUpdateSubdirsMode, VisitAllUpdateDirsMode:
+	if u.VisitAllUpdateSubdirsMode() || u.VisitAllUpdateDirsMode() {
 		return true
-	case UpdateSubdirsMode:
+	}
+	if u.UpdateSubdirsMode() {
 		_, ok := u.updateRels[rel]
 		return ok || updateParent
-	default: // UpdateDirsMode
-		_, ok := u.updateRels[rel]
-		return ok
 	}
+	_, ok := u.updateRels[rel]
+	return ok
 }
 
 func loadBuildFile(c *config.Config, pkg, dir string, ents []fs.DirEntry) (*rule.File, error) {

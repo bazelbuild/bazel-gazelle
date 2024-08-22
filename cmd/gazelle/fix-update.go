@@ -47,10 +47,10 @@ import (
 // includes some additional fields that aren't relevant to other packages.
 type updateConfig struct {
 	dirs           []string
+	recurse        bool
 	emit           emitFunc
 	repos          []repo.Repo
 	workspaceFiles []*rule.File
-	walkMode       walk.Mode
 	patchPath      string
 	patchBuffer    bytes.Buffer
 	print0         bool
@@ -138,15 +138,7 @@ func (ucr *updateConfigurer) CheckFlags(fs *flag.FlagSet, c *config.Config) erro
 		uc.dirs[i] = dir
 	}
 
-	if ucr.recursive && c.IndexLibraries {
-		uc.walkMode = walk.VisitAllUpdateSubdirsMode
-	} else if c.IndexLibraries {
-		uc.walkMode = walk.VisitAllUpdateDirsMode
-	} else if ucr.recursive {
-		uc.walkMode = walk.UpdateSubdirsMode
-	} else {
-		uc.walkMode = walk.UpdateDirsMode
-	}
+	uc.recurse = ucr.recursive
 
 	// Load the repo configuration file (WORKSPACE by default) to find out
 	// names and prefixes of other go_repositories. This affects external
@@ -314,7 +306,7 @@ func runFixUpdate(wd string, cmd command, args []string) (err error) {
 	}()
 
 	var errorsFromWalk []error
-	walk.Walk(c, cexts, uc.dirs, uc.walkMode, func(dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string) {
+	walk.Walk(c, cexts, uc.dirs, uc.recurse, func(dir, rel string, c *config.Config, update bool, f *rule.File, subdirs, regularFiles, genFiles []string) {
 		// If this file is ignored or if Gazelle was not asked to update this
 		// directory, just index the build file and move on.
 		if !update {

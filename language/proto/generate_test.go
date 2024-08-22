@@ -46,7 +46,7 @@ func TestGenerateRules(t *testing.T) {
 
 	c, lang, _ := testConfig(t, "testdata")
 
-	walk.Walk(c, []config.Configurer{lang}, []string{"testdata"}, walk.VisitAllUpdateSubdirsMode, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
+	walk.Walk(c, []config.Configurer{lang}, []string{"testdata"}, true, func(dir, rel string, c *config.Config, update bool, oldFile *rule.File, subdirs, regularFiles, genFiles []string) {
 		isTest := false
 		for _, name := range regularFiles {
 			if name == "BUILD.want" {
@@ -175,7 +175,7 @@ func TestGeneratePackage(t *testing.T) {
 					"protos/sub/sub.proto",
 				},
 				HasServices: true,
-				Services: []string{"Quux"},
+				Services:    []string{"Quux"},
 			},
 		},
 		Imports: map[string]bool{
@@ -236,7 +236,7 @@ func TestFileModeImports(t *testing.T) {
 				Path:        filepath.Join(dir, "foo.proto"),
 				Name:        "foo.proto",
 				PackageName: "file_mode",
-				Messages: []string{"Foo"},
+				Messages:    []string{"Foo"},
 			},
 		},
 		Imports: map[string]bool{},
