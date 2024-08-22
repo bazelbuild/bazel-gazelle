@@ -122,72 +122,72 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		log.Printf("error loading .bazelignore: %v", err)
 	}
 
-	var visit func(*config.Config, string, string, bool)
-	visit = func(c *config.Config, dir, rel string, updateParent bool) {
-		haveError := false
+	visit(c, cexts, isBazelIgnored, knownDirectives, updateRels, wf, c.RepoRoot, "", false)
+}
 
-		// TODO: OPT: ReadDir stats all the files, which is slow. We just care about
-		// names and modes, so we should use something like
-		// golang.org/x/tools/internal/fastwalk to speed this up.
-		ents, err := os.ReadDir(dir)
-		if err != nil {
-			log.Print(err)
-			return
+func visit(c *config.Config, cexts []config.Configurer, isBazelIgnored isIgnoredFunc, knownDirectives map[string]bool, updateRels *UpdateFilter, wf WalkFunc, dir, rel string, updateParent bool) {
+	haveError := false
+
+	// TODO: OPT: ReadDir stats all the files, which is slow. We just care about
+	// names and modes, so we should use something like
+	// golang.org/x/tools/internal/fastwalk to speed this up.
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		log.Print(err)
+		return
+	}
+
+	f, err := loadBuildFile(c, rel, dir, ents)
+	if err != nil {
+		log.Print(err)
+		if c.Strict {
+			// TODO(https://github.com/bazelbuild/bazel-gazelle/issues/1029):
+			// Refactor to accumulate and propagate errors to main.
+			log.Fatal("Exit as strict mode is on")
 		}
+		haveError = true
+	}
 
-		f, err := loadBuildFile(c, rel, dir, ents)
-		if err != nil {
-			log.Print(err)
-			if c.Strict {
-				// TODO(https://github.com/bazelbuild/bazel-gazelle/issues/1029):
-				// Refactor to accumulate and propagate errors to main.
-				log.Fatal("Exit as strict mode is on")
-			}
-			haveError = true
+	if isBazelIgnored(rel) {
+		return
+	}
+
+	c = configure(cexts, knownDirectives, c, rel, f)
+	wc := getWalkConfig(c)
+
+	if wc.isExcluded(rel, ".") {
+		return
+	}
+
+	var subdirs, regularFiles []string
+	for _, ent := range ents {
+		base := ent.Name()
+		if isBazelIgnored(path.Join(rel, base)) || wc.isExcluded(rel, base) {
+			continue
 		}
-
-		if isBazelIgnored(rel) {
-			return
-		}
-
-		c = configure(cexts, knownDirectives, c, rel, f)
-		wc := getWalkConfig(c)
-
-		if wc.isExcluded(rel, ".") {
-			return
-		}
-
-		var subdirs, regularFiles []string
-		for _, ent := range ents {
-			base := ent.Name()
-			if isBazelIgnored(path.Join(rel, base)) || wc.isExcluded(rel, base) {
-				continue
-			}
-			ent := resolveFileInfo(wc, dir, rel, ent)
-			switch {
-			case ent == nil:
-				continue
-			case ent.IsDir():
-				subdirs = append(subdirs, base)
-			default:
-				regularFiles = append(regularFiles, base)
-			}
-		}
-
-		shouldUpdate := updateRels.shouldUpdate(rel, updateParent)
-		for _, sub := range subdirs {
-			if subRel := path.Join(rel, sub); updateRels.shouldVisit(subRel, shouldUpdate) {
-				visit(c, filepath.Join(dir, sub), subRel, shouldUpdate)
-			}
-		}
-
-		update := !haveError && !wc.ignore && shouldUpdate
-		if updateRels.shouldCall(rel, updateParent) {
-			genFiles := findGenFiles(wc, f)
-			wf(dir, rel, c, update, f, subdirs, regularFiles, genFiles)
+		ent := resolveFileInfo(wc, dir, rel, ent)
+		switch {
+		case ent == nil:
+			continue
+		case ent.IsDir():
+			subdirs = append(subdirs, base)
+		default:
+			regularFiles = append(regularFiles, base)
 		}
 	}
-	visit(c, c.RepoRoot, "", false)
+
+	shouldUpdate := updateRels.shouldUpdate(rel, updateParent)
+	for _, sub := range subdirs {
+		if subRel := path.Join(rel, sub); updateRels.shouldVisit(subRel, shouldUpdate) {
+			visit(c, cexts, isBazelIgnored, knownDirectives, updateRels, wf, filepath.Join(dir, sub), subRel, shouldUpdate)
+		}
+	}
+
+	update := !haveError && !wc.ignore && shouldUpdate
+	if updateRels.shouldCall(rel, updateParent) {
+		genFiles := findGenFiles(wc, f)
+		wf(dir, rel, c, update, f, subdirs, regularFiles, genFiles)
+	}
 }
 
 // An UpdateFilter tracks which directories need to be updated
