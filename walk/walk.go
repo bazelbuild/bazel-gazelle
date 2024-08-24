@@ -126,6 +126,10 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 }
 
 func visit(c *config.Config, cexts []config.Configurer, isBazelIgnored isIgnoredFunc, knownDirectives map[string]bool, updateRels *UpdateFilter, wf WalkFunc, dir, rel string, updateParent bool) {
+	if isBazelIgnored(rel) {
+		return
+	}
+
 	haveError := false
 
 	// TODO: OPT: ReadDir stats all the files, which is slow. We just care about
@@ -146,10 +150,6 @@ func visit(c *config.Config, cexts []config.Configurer, isBazelIgnored isIgnored
 			log.Fatal("Exit as strict mode is on")
 		}
 		haveError = true
-	}
-
-	if isBazelIgnored(rel) {
-		return
 	}
 
 	c = configure(cexts, knownDirectives, c, rel, f)
