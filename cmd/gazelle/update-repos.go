@@ -181,8 +181,10 @@ func updateRepos(wd string, args []string) (err error) {
 	}()
 
 	// Fix the workspace file with each language.
-	for _, lang := range filterLanguages(c, languages) {
-		lang.Fix(c, uc.workspace)
+	if !c.Bzlmod {
+		for _, lang := range filterLanguages(c, languages) {
+			lang.Fix(c, uc.workspace)
+		}
 	}
 
 	// Generate rules from command language arguments or by importing a file.
