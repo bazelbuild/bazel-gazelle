@@ -6,8 +6,8 @@ go_library(
         "clean.go",
         "copy_tree.go",
         "errorscompat.go",
-        "fetch_repo.go",
         "go_mod_download.go",
+        "main.go",
         "module.go",
         "path.go",
         "vcs.go",
@@ -34,8 +34,8 @@ go_cross_binary(
 )
 
 go_test(
-    name = "fetch_repo_test",
-    srcs = ["fetch_repo_test.go"],
+    name = "main_test",
+    srcs = ["main_test.go"],
     embed = [":fetch_repo_lib"],
     deps = ["@org_golang_x_tools_go_vcs//:vcs"],
 )
@@ -48,12 +48,19 @@ filegroup(
         "clean.go",
         "copy_tree.go",
         "errorscompat.go",
-        "fetch_repo.go",
-        "fetch_repo_test.go",
         "go_mod_download.go",
+        "main.go",
+        "main_test.go",
         "module.go",
         "path.go",
         "vcs.go",
     ],
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "fetch_repo_test",
+    srcs = ["main_test.go"],
+    embed = [":fetch_repo_lib"],
+    deps = ["@org_golang_x_tools_go_vcs//:vcs"],
 )
