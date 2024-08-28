@@ -1,12 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBzlmodOverride(t *testing.T) {
@@ -165,41 +167,31 @@ func TestBzlmodOverride(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			w := t.TempDir()
 			testWorkspace := filepath.Join(w, "WORKSPACE")
-			if err := os.WriteFile(testWorkspace, []byte(removeTabsAndTrimLines(tt.give)), 0644); err != nil {
-				t.Errorf("error writing test workspace file: %v", err)
-			}
+			require.NoError(t, os.WriteFile(testWorkspace, []byte(removeTabsAndTrimLines(tt.give)), 0644))
 
 			args := &mainArgs{
 				workspace:  testWorkspace,
 				outputFile: filepath.Join(w, "output.bzl"),
 			}
 
-			if err := run(*args, io.Discard); err != nil {
-				t.Errorf("run() error = %v, want no error", err)
-			}
+			require.NoError(t, run(*args, io.Discard))
 
 			if tt.want == "" {
 				return
 			}
 
 			content, err := os.ReadFile(args.outputFile)
-			if err != nil {
-				t.Errorf("error reading output file: %v", err)
-			}
-
-			if !isEqualContent(string(content), tt.want) {
-				fmt.Fprintf(os.Stderr, "output = %v, want %v", string(content), tt.want)
-				t.Errorf("output = %v, want %v", string(content), tt.want)
-			}
+			require.NoError(t, err)
+			assertIsEqualContent(t, string(content), tt.want)
 		})
 	}
 }
 
-func isEqualContent(str1, str2 string) bool {
+func assertIsEqualContent(t *testing.T, str1, str2 string) {
 	cleanStr1 := removeTabsAndTrimLines(str1)
 	cleanStr2 := removeTabsAndTrimLines(str2)
 
-	return cleanStr1 == cleanStr2
+	assert.Equal(t, cleanStr1, cleanStr2)
 }
 
 // removeTabsAndTrimLines removes tabs, trims leading and trailing spaces on each line,

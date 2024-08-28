@@ -10,6 +10,10 @@ go_test(
     name = "override-generator_test",
     srcs = ["main_test.go"],
     embed = [":override-generator_lib"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+    ],
 )
 
 go_library(
