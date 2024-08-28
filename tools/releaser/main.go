@@ -23,8 +23,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/bazelbuild/bazel-gazelle/rule"
-	bzl "github.com/bazelbuild/buildtools/build"
 	"io"
 	"os"
 	"os/exec"
@@ -32,6 +30,9 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/bazelbuild/bazel-gazelle/rule"
+	bzl "github.com/bazelbuild/buildtools/build"
 )
 
 func main() {
