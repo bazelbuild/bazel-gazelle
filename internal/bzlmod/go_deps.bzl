@@ -644,7 +644,9 @@ def _go_deps_impl(module_ctx):
 
             go_repository_args.update(repo_args)
 
-        resolved_go_modules[go_repository_args["importpath"]] = go_repository_args["version"]
+        if "version" in go_repository_args:
+            resolved_go_modules[go_repository_args["importpath"]] = go_repository_args["version"]
+
         go_repository(**go_repository_args)
 
     module_ctx.file("./resolved_go_modules.json", content=json.encode_indent(resolved_go_modules))
