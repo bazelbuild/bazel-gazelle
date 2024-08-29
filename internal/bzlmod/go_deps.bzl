@@ -592,6 +592,7 @@ def _go_deps_impl(module_ctx):
                 ),
             )
 
+    resolved_go_modules = {}
     for path, module in module_resolutions.items():
         if hasattr(module, "module_name"):
             # Do not create a go_repository for a Go module provided by a bazel_dep.
@@ -643,8 +644,10 @@ def _go_deps_impl(module_ctx):
 
             go_repository_args.update(repo_args)
 
+        resolved_go_modules[go_repository_args["importpath"]] = go_repository_args["version"]
         go_repository(**go_repository_args)
 
+    module_ctx.file("./resolved_go_modules.json", content=json.encode_indent(resolved_go_modules))
     # Create a synthetic WORKSPACE file that lists all Go repositories created
     # above and contains all the information required by Gazelle's -repo_config
     # to generate BUILD files for external Go modules. This skips the need to
