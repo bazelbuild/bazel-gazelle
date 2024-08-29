@@ -53,9 +53,9 @@ func (mr *metaResolver) MappedKind(pkgRel string, kind config.MappedKind) {
 // Resolver returns a resolver for the given rule and package, and a bool
 // indicating whether one was found. Empty string may be passed for pkgRel,
 // which results in consulting the builtin kinds only.
-func (mr *metaResolver) Resolver(ruleKind string, pkgRel string) resolve.Resolver {
+func (mr *metaResolver) Resolver(r *rule.Rule, pkgRel string) resolve.Resolver {
 	for _, mappedKind := range mr.mappedKinds[pkgRel] {
-		if mappedKind.KindName == ruleKind {
+		if mappedKind.KindName == r.Kind() {
 			fromKindResolver := mr.builtins[mappedKind.FromKind]
 			if fromKindResolver == nil {
 				return nil
@@ -66,7 +66,7 @@ func (mr *metaResolver) Resolver(ruleKind string, pkgRel string) resolve.Resolve
 			}
 		}
 	}
-	return mr.builtins[ruleKind]
+	return mr.builtins[r.Kind()]
 }
 
 // inverseMapKindResolver applies an inverse of the map_kind

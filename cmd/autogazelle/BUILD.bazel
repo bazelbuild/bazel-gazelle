@@ -3,8 +3,8 @@ load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
 go_library(
     name = "autogazelle_lib",
     srcs = [
-        "autogazelle.go",
         "client_unix.go",
+        "main.go",
         "server_unix.go",
     ],
     importpath = "github.com/bazelbuild/bazel-gazelle/cmd/autogazelle",
@@ -57,8 +57,8 @@ filegroup(
         "BUILD.bazel",
         "README.rst",
         "autogazelle.bash",
-        "autogazelle.go",
         "client_unix.go",
+        "main.go",
         "server_unix.go",
     ],
     visibility = ["//visibility:public"],

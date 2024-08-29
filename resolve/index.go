@@ -73,7 +73,7 @@ type CrossResolver interface {
 // RuleIndex is a table of rules in a workspace, indexed by label and by
 // import path. Used by Resolver to map import paths to labels.
 type RuleIndex struct {
-	mrslv          func(ruleKind, pkgRel string) Resolver
+	mrslv          func(r *rule.Rule, pkgRel string) Resolver
 	crossResolvers []CrossResolver
 
 	// The underlying state of rules. All indexing should be reproducible from this.
@@ -110,6 +110,8 @@ type RuleIndex struct {
 
 // ruleRecord contains information about a rule relevant to import indexing.
 type ruleRecord struct {
+	rule  *rule.Rule
+
 	Kind  string      `json:"kind"`
 	Label label.Label `json:"label"`
 
@@ -132,7 +134,7 @@ type ruleRecord struct {
 //
 // kindToResolver is a map from rule kinds (for example, "go_library") to
 // Resolvers that support those kinds.
-func NewRuleIndex(mrslv func(ruleKind, pkgRel string) Resolver, exts ...interface{}) *RuleIndex {
+func NewRuleIndex(mrslv func(r *rule.Rule, pkgRel string) Resolver, exts ...interface{}) *RuleIndex {
 	var crossResolvers []CrossResolver
 	for _, e := range exts {
 		if cr, ok := e.(CrossResolver); ok {
@@ -161,7 +163,7 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 
 	l := label.New(c.RepoName, f.Pkg, r.Name())
 
-	if rslv := ix.mrslv(r.Kind(), f.Pkg); rslv != nil {
+	if rslv := ix.mrslv(r, f.Pkg); rslv != nil {
 		lang = rslv.Name()
 		if passesLanguageFilter(c.Langs, lang) {
 			imps = rslv.Imports(c, r, f)
@@ -178,6 +180,7 @@ func (ix *RuleIndex) AddRule(c *config.Config, r *rule.Rule, f *rule.File) {
 	}
 
 	record := &ruleRecord{
+		rule:       r,
 		Kind:       r.Kind(),
 		Pkg:        f.Pkg,
 		Label:      l,
@@ -228,7 +231,7 @@ func (ix *RuleIndex) collectRecordEmbeds(r *ruleRecord, didCollectEmbeds map[lab
 	if _, ok := didCollectEmbeds[r.Label]; ok {
 		return
 	}
-	resolver := ix.mrslv(r.Kind, r.Pkg)
+	resolver := ix.mrslv(r.rule, r.Pkg)
 	didCollectEmbeds[r.Label] = true
 	ix.embeds[r.Label] = r.Embeds
 	for _, e := range r.Embeds {
@@ -237,7 +240,7 @@ func (ix *RuleIndex) collectRecordEmbeds(r *ruleRecord, didCollectEmbeds map[lab
 			continue
 		}
 		ix.collectRecordEmbeds(er, didCollectEmbeds)
-		erResolver := ix.mrslv(er.Kind, er.Pkg)
+		erResolver := ix.mrslv(er.rule, er.Pkg)
 		if resolver.Name() == erResolver.Name() {
 			ix.embedded[er.Label] = struct{}{}
 			ix.embeds[r.Label] = append(ix.embeds[r.Label], ix.embeds[er.Label]...)
