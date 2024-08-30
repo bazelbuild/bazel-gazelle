@@ -268,6 +268,9 @@ def _go_repository_config_impl(ctx):
         "dep_files": ctx.attr.dep_files,
     }))
 
+    # For bookkeeping by upstream systems that may want this info
+    ctx.file("resolved_deps.json", content = json.encode_indent(ctx.attr.resolved_deps))
+
 _go_repository_config = repository_rule(
     implementation = _go_repository_config_impl,
     attrs = {
@@ -275,6 +278,7 @@ _go_repository_config = repository_rule(
         "module_names": attr.string_dict(mandatory = True),
         "build_naming_conventions": attr.string_dict(mandatory = True),
         "go_env": attr.string_dict(mandatory = True),
+        "resolved_deps": attr.string_dict(mandatory = True),
         "dep_files": attr.string_list(),
     },
 )
@@ -649,7 +653,6 @@ def _go_deps_impl(module_ctx):
 
         go_repository(**go_repository_args)
 
-    module_ctx.file("./resolved_go_modules.json", content=json.encode_indent(resolved_go_modules))
     # Create a synthetic WORKSPACE file that lists all Go repositories created
     # above and contains all the information required by Gazelle's -repo_config
     # to generate BUILD files for external Go modules. This skips the need to
@@ -674,6 +677,7 @@ def _go_deps_impl(module_ctx):
         }),
         go_env = go_env,
         dep_files = dep_files,
+        resolved_deps = resolved_go_modules,
     )
 
     return extension_metadata(
