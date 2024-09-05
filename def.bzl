@@ -227,7 +227,7 @@ def gazelle(name, **kwargs):
         data = kwargs["data"] if "data" in kwargs else [],
     )
 
-def gazelle_test(name, **kwargs):
+def gazelle_test(name, size = None, timeout = None, **kwargs):
     runner_name, visibility = _gazelle_kwargs_prepare(name, kwargs)
 
     _gazelle_test_runner(
@@ -247,6 +247,8 @@ def gazelle_test(name, **kwargs):
         srcs = [runner_name],
         visibility = visibility,
         tags = tags,
+        size = size,
+        timeout = timeout,
         deps = ["@bazel_tools//tools/bash/runfiles"],
         data = kwargs["data"] if "data" in kwargs else [],
     )
