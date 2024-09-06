@@ -1,0 +1,10 @@
+filegroup(
+    name = "all_files",
+    testonly = True,
+    srcs = [
+        ".bazelignore",
+        "WORKSPACE",
+        "//sub2:all_files",
+    ],
+    visibility = ["//visibility:public"],
+)
