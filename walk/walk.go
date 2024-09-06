@@ -129,10 +129,10 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 		log.Fatalf("error walking the file system: %v\n", err)
 	}
 
-	visit(c, cexts, knownDirectives, updateRels, trie, wf, c.RepoRoot, "", false)
+	visit(c, cexts, knownDirectives, updateRels, trie, wf, "", false)
 }
 
-func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[string]bool, updateRels *UpdateFilter, trie *pathTrie, wf WalkFunc, dir, rel string, updateParent bool) {
+func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[string]bool, updateRels *UpdateFilter, trie *pathTrie, wf WalkFunc, rel string, updateParent bool) {
 	haveError := false
 
 	ents := make([]fs.DirEntry, 0, len(trie.children))
@@ -143,6 +143,9 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 	sort.Slice(ents, func(i, j int) bool {
 		return ents[i].Name() < ents[j].Name()
 	})
+
+	// Absolute path to the directory being visited
+	dir := filepath.Join(c.RepoRoot, rel)
 
 	f, err := loadBuildFile(c, rel, dir, ents)
 	if err != nil {
@@ -158,17 +161,18 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 	c = configure(cexts, knownDirectives, c, rel, f)
 	wc := getWalkConfig(c)
 
-	if wc.isExcluded(rel, ".") {
+	if wc.isExcluded(rel) {
 		return
 	}
 
 	var subdirs, regularFiles []string
 	for _, ent := range ents {
 		base := ent.Name()
-		if wc.isExcluded(rel, base) {
+		entRel := path.Join(rel, base)
+		if wc.isExcluded(entRel) {
 			continue
 		}
-		ent := resolveFileInfo(wc, dir, rel, ent)
+		ent := resolveFileInfo(wc, dir, entRel, ent)
 		switch {
 		case ent == nil:
 			continue
@@ -182,7 +186,7 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 	shouldUpdate := updateRels.shouldUpdate(rel, updateParent)
 	for _, sub := range subdirs {
 		if subRel := path.Join(rel, sub); updateRels.shouldVisit(subRel, shouldUpdate) {
-			visit(c, cexts, knownDirectives, updateRels, trie.children[sub], wf, path.Join(dir, sub), subRel, shouldUpdate)
+			visit(c, cexts, knownDirectives, updateRels, trie.children[sub], wf, subRel, shouldUpdate)
 		}
 	}
 
@@ -332,7 +336,7 @@ func findGenFiles(wc *walkConfig, f *rule.File) []string {
 
 	var genFiles []string
 	for _, s := range strs {
-		if !wc.isExcluded(f.Pkg, s) {
+		if !wc.isExcluded(path.Join(f.Pkg, s)) {
 			genFiles = append(genFiles, s)
 		}
 	}
@@ -340,19 +344,15 @@ func findGenFiles(wc *walkConfig, f *rule.File) []string {
 }
 
 func resolveFileInfo(wc *walkConfig, dir, rel string, ent fs.DirEntry) fs.DirEntry {
-	base := ent.Name()
-	if base == "" {
-		return nil
-	}
 	if ent.Type()&os.ModeSymlink == 0 {
 		// Not a symlink, use the original FileInfo.
 		return ent
 	}
-	if !wc.shouldFollow(rel, base) {
+	if !wc.shouldFollow(rel) {
 		// A symlink, but not one we should follow.
 		return nil
 	}
-	fi, err := os.Stat(path.Join(dir, base))
+	fi, err := os.Stat(path.Join(dir, ent.Name()))
 	if err != nil {
 		// A symlink, but not one we could resolve.
 		return nil

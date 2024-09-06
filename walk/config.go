@@ -49,12 +49,12 @@ func getWalkConfig(c *config.Config) *walkConfig {
 	return c.Exts[walkName].(*walkConfig)
 }
 
-func (wc *walkConfig) isExcluded(rel, base string) bool {
-	return matchAnyGlob(wc.excludes, path.Join(rel, base))
+func (wc *walkConfig) isExcluded(p string) bool {
+	return matchAnyGlob(wc.excludes, p)
 }
 
-func (wc *walkConfig) shouldFollow(rel, base string) bool {
-	return matchAnyGlob(wc.follow, path.Join(rel, base))
+func (wc *walkConfig) shouldFollow(p string) bool {
+	return matchAnyGlob(wc.follow, p)
 }
 
 var _ config.Configurer = (*Configurer)(nil)
