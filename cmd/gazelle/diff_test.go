@@ -60,7 +60,8 @@ func TestDiffExisting(t *testing.T) {
 +    srcs = ["hello.go"],
 +    importpath = "example.com/hello",
 +    visibility = ["//visibility:public"],
-+)`,
++)
+`,
 	})
 	testtools.CheckFiles(t, dir, want)
 }
