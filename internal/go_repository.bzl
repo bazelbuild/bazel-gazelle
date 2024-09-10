@@ -365,6 +365,7 @@ def _go_repository_impl(ctx):
         # Do not override a REPO.bazel patched in by users. This also provides a
         # way for users to opt out of Gazelle-generated package_info.
         repo_file = ctx.path("REPO.bazel")
+        print("REPO.bazel exists?", repo_file.exists)
         if not repo_file.exists:
             ctx.file("REPO.bazel", """\
 repo(default_package_metadata = ["//:gazelle_generated_package_info"])
@@ -387,8 +388,16 @@ def _generate_package_info(*, importpath, version):
     package_name = importpath
 
     # TODO: Consider adding support for custom remotes.
-    package_url = "https://" + importpath if version else None
+    package_url = "https://{}".format(importpath) if version else None
     package_version = version.removeprefix("v") if version else None
+    # See specification:
+    # https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
+    # scheme:type/namespace/name@version?qualifiers#subpath
+    purl = "pkg:golang/{namespace_and_name}{version}".format(
+        namespace_and_name = importpath,
+        version = "@{}".format(version) if version else "",
+    )
+
     return """
 load("@rules_license//rules:package_info.bzl", "package_info")
 
@@ -397,12 +406,14 @@ package_info(
     package_name = {package_name},
     package_url = {package_url},
     package_version = {package_version},
+    purl = {purl},
     visibility = ["//:__subpackages__"],
 )
 """.format(
         package_name = repr(package_name),
         package_url = repr(package_url),
         package_version = repr(package_version),
+        purl = repr(purl),
     )
 
 go_repository = repository_rule(
