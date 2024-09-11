@@ -392,10 +392,10 @@ def _generate_package_info(*, importpath, version):
     # See specification:
     # https://github.com/package-url/purl-spec/blob/master/PURL-TYPES.rst#golang
     # scheme:type/namespace/name@version?qualifiers#subpath
-    purl = "pkg:golang/{namespace_and_name}{version}".format(
+    purl = "pkg:golang/{namespace_and_name}@{version}".format(
         namespace_and_name = importpath,
-        version = "@{}".format(version) if version else "",
-    )
+        version = version,
+    ) if version else None
 
     return """
 load("@rules_license//rules:package_info.bzl", "package_info")
