@@ -365,7 +365,6 @@ def _go_repository_impl(ctx):
         # Do not override a REPO.bazel patched in by users. This also provides a
         # way for users to opt out of Gazelle-generated package_info.
         repo_file = ctx.path("REPO.bazel")
-        print("REPO.bazel exists?", repo_file.exists)
         if not repo_file.exists:
             ctx.file("REPO.bazel", """\
 repo(default_package_metadata = ["//:gazelle_generated_package_info"])
