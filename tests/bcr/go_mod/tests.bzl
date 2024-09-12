@@ -26,6 +26,7 @@ def _test_package_info_impl(env, target):
     subject.package_name().equals("github.com/fmeum/dep_on_gazelle")
     subject.package_version().equals("1.0.0")
     subject.package_url().equals("https://github.com/fmeum/dep_on_gazelle")
+    subject.purl().equals("pkg:golang/github.com/fmeum/dep_on_gazelle@v1.0.0")
 
 def _package_info_aspect_impl(_, ctx):
     if hasattr(ctx.rule.attr, "applicable_licenses"):
@@ -51,6 +52,7 @@ _PackageInfoSubjectFactory = struct(
             "package_name": subjects.str,
             "package_version": subjects.str,
             "package_url": subjects.str,
+            "purl": subjects.str,
         },
     ),
 )
