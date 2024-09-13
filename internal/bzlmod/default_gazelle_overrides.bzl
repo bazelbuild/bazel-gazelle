@@ -102,6 +102,10 @@ DEFAULT_DIRECTIVES_BY_PATH = {
         "gazelle:go_generate_proto false",
         "gazelle:proto_import_prefix k8s.io/apimachinery",
     ],
+    "google.golang.org/genproto/googleapis/api/annotations": [
+         "gazelle:resolve go google.golang.org/genproto/googleapis/api/annotations @org_golang_google_genproto//googleapis/api/annotations",
+         "gazelle:resolve go google.golang.org/genproto/googleapis/api @org_golang_google_genproto//googleapis/api",
+    ],
 }
 
 DEFAULT_BUILD_EXTRA_ARGS_BY_PATH = {
