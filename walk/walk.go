@@ -375,16 +375,23 @@ func buildTrie(c *config.Config, isIgnored isIgnoredFunc) (*pathTrie, error) {
 		children: map[string]*pathTrie{},
 	}
 
+	// A channel to limit the number of concurrent goroutines
+	limitCh := make(chan struct{}, 100)
+
+	// An error group to handle error propagation
 	eg := errgroup.Group{}
 	eg.Go(func() error {
-		return walkDir(c.RepoRoot, "", &eg, isIgnored, trie)
+		return walkDir(c.RepoRoot, "", &eg, limitCh, isIgnored, trie)
 	})
 
 	return trie, eg.Wait()
 }
 
-// walkDir recursively descends path, calling walkDirFn.
-func walkDir(root, rel string, eg *errgroup.Group, isIgnored isIgnoredFunc, trie *pathTrie) error {
+// walkDir recursively and concurrently descends into the 'rel' directory and builds a trie
+func walkDir(root, rel string, eg *errgroup.Group, limitCh chan struct{}, isIgnored isIgnoredFunc, trie *pathTrie) error {
+	limitCh <- struct{}{}
+	defer (func() { <-limitCh })()
+
 	entries, err := os.ReadDir(path.Join(root, rel))
 	if err != nil {
 		return err
@@ -405,7 +412,7 @@ func walkDir(root, rel string, eg *errgroup.Group, isIgnored isIgnoredFunc, trie
 		if entry.IsDir() {
 			entryTrie.children = map[string]*pathTrie{}
 			eg.Go(func() error {
-				return walkDir(root, entryPath, eg, isIgnored, entryTrie)
+				return walkDir(root, entryPath, eg, limitCh, isIgnored, entryTrie)
 			})
 		}
 	}
