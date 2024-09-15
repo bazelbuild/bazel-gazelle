@@ -392,7 +392,7 @@ func walkDir(root, rel string, eg *errgroup.Group, limitCh chan struct{}, isIgno
 	limitCh <- struct{}{}
 	defer (func() { <-limitCh })()
 
-	entries, err := os.ReadDir(path.Join(root, rel))
+	entries, err := os.ReadDir(filepath.Join(root, rel))
 	if err != nil {
 		return err
 	}
