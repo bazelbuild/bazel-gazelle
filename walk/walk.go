@@ -23,7 +23,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/bazelbuild/bazel-gazelle/config"
@@ -135,16 +134,7 @@ func Walk(c *config.Config, cexts []config.Configurer, dirs []string, mode Mode,
 func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[string]bool, updateRels *UpdateFilter, trie *pathTrie, wf WalkFunc, rel string, updateParent bool) {
 	haveError := false
 
-	ents := make([]fs.DirEntry, 0, len(trie.children))
-	for _, node := range trie.children {
-		ents = append(ents, *node.entry)
-	}
-
-	sort.Slice(ents, func(i, j int) bool {
-		return ents[i].Name() < ents[j].Name()
-	})
-
-	f, err := loadBuildFile(c, rel, ents)
+	f, err := loadBuildFile(c, rel, trie.files)
 	if err != nil {
 		log.Print(err)
 		if c.Strict {
@@ -162,8 +152,8 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 		return
 	}
 
-	var subdirs, regularFiles []string
-	for _, ent := range ents {
+	var regularFiles []string
+	for _, ent := range trie.files {
 		base := ent.Name()
 		entRel := path.Join(rel, base)
 		if wc.isExcluded(entRel) {
@@ -173,17 +163,34 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 		switch {
 		case ent == nil:
 			continue
-		case ent.IsDir():
-			subdirs = append(subdirs, base)
 		default:
 			regularFiles = append(regularFiles, base)
 		}
 	}
 
+	var subdirs []*pathTrie
+	var subdirNames []string
+	for _, sub := range trie.subdirs {
+		base := sub.entry.Name()
+		entRel := path.Join(rel, base)
+		if wc.isExcluded(entRel) {
+			continue
+		}
+		ent := resolveFileInfo(c, wc, rel, sub.entry)
+		switch {
+		case ent == nil:
+			continue
+		default:
+			subdirs = append(subdirs, sub)
+			subdirNames = append(subdirNames, base)
+		}
+	}
+
 	shouldUpdate := updateRels.shouldUpdate(rel, updateParent)
 	for _, sub := range subdirs {
-		if subRel := path.Join(rel, sub); updateRels.shouldVisit(subRel, shouldUpdate) {
-			visit(c.Clone(), cexts, knownDirectives, updateRels, trie.children[sub], wf, subRel, shouldUpdate)
+		entry := sub.entry
+		if subRel := path.Join(rel, entry.Name()); updateRels.shouldVisit(subRel, shouldUpdate) {
+			visit(c.Clone(), cexts, knownDirectives, updateRels, sub, wf, subRel, shouldUpdate)
 		}
 	}
 
@@ -191,7 +198,7 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 	if updateRels.shouldCall(rel, updateParent) {
 		dir := filepath.Join(c.RepoRoot, rel)
 		genFiles := findGenFiles(wc, f)
-		wf(dir, rel, c, update, f, subdirs, regularFiles, genFiles)
+		wf(dir, rel, c, update, f, subdirNames, regularFiles, genFiles)
 	}
 }
 
@@ -355,19 +362,18 @@ func resolveFileInfo(c *config.Config, wc *walkConfig, rel string, ent fs.DirEnt
 }
 
 type pathTrie struct {
-	children map[string]*pathTrie
-	entry    *fs.DirEntry
+	entry   fs.DirEntry
+	subdirs []*pathTrie
+	files   []fs.DirEntry
 }
 
 // Basic factory method to ensure the entry is properly copied
 func newTrie(entry fs.DirEntry) *pathTrie {
-	return &pathTrie{entry: &entry}
+	return &pathTrie{entry: entry}
 }
 
 func buildTrie(c *config.Config, isIgnored isIgnoredFunc) (*pathTrie, error) {
-	trie := &pathTrie{
-		children: map[string]*pathTrie{},
-	}
+	trie := &pathTrie{}
 
 	// A channel to limit the number of concurrent goroutines
 	limitCh := make(chan struct{}, 100)
@@ -400,14 +406,16 @@ func walkDir(root, rel string, eg *errgroup.Group, limitCh chan struct{}, isIgno
 			continue
 		}
 
-		entryTrie := newTrie(entry)
-		trie.children[entry.Name()] = entryTrie
-
 		if entry.IsDir() {
-			entryTrie.children = map[string]*pathTrie{}
+			entryTrie := newTrie(entry)
+
 			eg.Go(func() error {
 				return walkDir(root, entryPath, eg, limitCh, isIgnored, entryTrie)
 			})
+
+			trie.subdirs = append(trie.subdirs, entryTrie)
+		} else {
+			trie.files = append(trie.files, entry)
 		}
 	}
 	return nil
