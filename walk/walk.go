@@ -144,10 +144,7 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 		return ents[i].Name() < ents[j].Name()
 	})
 
-	// Absolute path to the directory being visited
-	dir := filepath.Join(c.RepoRoot, rel)
-
-	f, err := loadBuildFile(c, rel, dir, ents)
+	f, err := loadBuildFile(c, rel, ents)
 	if err != nil {
 		log.Print(err)
 		if c.Strict {
@@ -172,7 +169,7 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 		if wc.isExcluded(entRel) {
 			continue
 		}
-		ent := resolveFileInfo(wc, dir, entRel, ent)
+		ent := resolveFileInfo(c, wc, rel, ent)
 		switch {
 		case ent == nil:
 			continue
@@ -192,6 +189,7 @@ func visit(c *config.Config, cexts []config.Configurer, knownDirectives map[stri
 
 	update := !haveError && !wc.ignore && shouldUpdate
 	if updateRels.shouldCall(rel, updateParent) {
+		dir := filepath.Join(c.RepoRoot, rel)
 		genFiles := findGenFiles(wc, f)
 		wf(dir, rel, c, update, f, subdirs, regularFiles, genFiles)
 	}
@@ -279,12 +277,12 @@ func (u *UpdateFilter) shouldVisit(rel string, updateParent bool) bool {
 	}
 }
 
-func loadBuildFile(c *config.Config, pkg, dir string, ents []fs.DirEntry) (*rule.File, error) {
+func loadBuildFile(c *config.Config, pkg string, ents []fs.DirEntry) (*rule.File, error) {
 	var err error
-	readDir := dir
+	readDir := filepath.Join(c.RepoRoot, pkg)
 	readEnts := ents
 	if c.ReadBuildFilesDir != "" {
-		readDir = filepath.Join(c.ReadBuildFilesDir, filepath.FromSlash(pkg))
+		readDir = filepath.Join(c.ReadBuildFilesDir, pkg)
 		readEnts, err = os.ReadDir(readDir)
 		if err != nil {
 			return nil, err
@@ -339,7 +337,7 @@ func findGenFiles(wc *walkConfig, f *rule.File) []string {
 	return genFiles
 }
 
-func resolveFileInfo(wc *walkConfig, dir, rel string, ent fs.DirEntry) fs.DirEntry {
+func resolveFileInfo(c *config.Config, wc *walkConfig, rel string, ent fs.DirEntry) fs.DirEntry {
 	if ent.Type()&os.ModeSymlink == 0 {
 		// Not a symlink, use the original FileInfo.
 		return ent
@@ -348,7 +346,7 @@ func resolveFileInfo(wc *walkConfig, dir, rel string, ent fs.DirEntry) fs.DirEnt
 		// A symlink, but not one we should follow.
 		return nil
 	}
-	fi, err := os.Stat(path.Join(dir, ent.Name()))
+	fi, err := os.Stat(filepath.Join(c.RepoRoot, rel, ent.Name()))
 	if err != nil {
 		// A symlink, but not one we could resolve.
 		return nil
