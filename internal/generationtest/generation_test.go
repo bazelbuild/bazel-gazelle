@@ -48,7 +48,7 @@ func TestFullGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not convert gazelle binary path %s to absolute path. Error: %v", *gazelleBinaryPath, err)
 	}
-	testNames := map[string]bool{}
+	testNames := map[string]struct{}{}
 	for _, f := range runfiles {
 		// Look through runfiles for WORKSPACE or MODULE.bazel files. Each such file specifies a test case.
 		if filepath.Base(f.Path) == "WORKSPACE" || filepath.Base(f.Path) == "MODULE.bazel" {
@@ -64,10 +64,10 @@ func TestFullGeneration(t *testing.T) {
 
 			// Don't add a test if it was already added. That could be the case if a directory has
 			// both a WORKSPACE and a MODULE.bazel file in it.
-			if testNames[name] {
+			if _, exists := testNames[name]; exists {
 				continue
 			}
-			testNames[name] = true
+			testNames[name] = struct{}{}
 
 			tests = append(tests, &testtools.TestGazelleGenerationArgs{
 				Name:                 name,
