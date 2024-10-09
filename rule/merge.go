@@ -46,8 +46,9 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 		return
 	}
 
-	// Process attributes that are in dst but not in src.
+	// Process mergeable attributes that are in dst but not in src.
 	for key, dstAttr := range dst.attrs {
+		// Skip if a new mergeable value is in src, it is not mergeable, or should keep the existing value
 		if _, ok := src.attrs[key]; ok || !mergeable[key] || ShouldKeep(dstAttr.expr) {
 			continue
 		}
@@ -64,8 +65,10 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 	// Merge attributes from src into dst.
 	for key, srcAttr := range src.attrs {
 		if dstAttr, ok := dst.attrs[key]; !ok {
+			// Not in dst, set the new attribute value
 			dst.SetAttr(key, srcAttr.expr.RHS)
 		} else if mergeable[key] && !ShouldKeep(dstAttr.expr) {
+			// Mergeable attribute not tagged to keep, merge the attribute values.
 			if mergedValue, err := mergeAttrValues(&srcAttr, &dstAttr); err != nil {
 				start, end := dstAttr.expr.RHS.Span()
 				log.Printf("%s:%d.%d-%d.%d: could not merge expression", filename, start.Line, start.LineRune, end.Line, end.LineRune)
@@ -74,6 +77,11 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 			} else {
 				dst.SetAttr(key, mergedValue)
 			}
+		} else if key != "name" && key != "visibility" {
+			// Not mergeable or tagged to keep. Copy the attribute and overwrite.
+			// TODO: why is "name" special?
+			// TODO: why is "visibility" special?
+			dst.SetAttr(key, srcAttr.expr.RHS)
 		}
 	}
 
@@ -86,14 +94,14 @@ func MergeRules(src, dst *Rule, mergeable map[string]bool, filename string) {
 //
 // The following kinds of expressions are recognized.
 //
-//   * nil
-//   * strings (can only be merged with strings)
-//   * lists of strings
-//   * a call to select with a dict argument. The dict keys must be strings,
+//   - nil
+//   - strings (can only be merged with strings)
+//   - lists of strings
+//   - a call to select with a dict argument. The dict keys must be strings,
 //     and the values must be lists of strings.
-//   * a list of strings combined with a select call using +. The list must
+//   - a list of strings combined with a select call using +. The list must
 //     be the left operand.
-//   * an attr value that implements the Merger interface.
+//   - an attr value that implements the Merger interface.
 //
 // An error is returned if the expressions can't be merged, for example
 // because they are not in one of the above formats.
