@@ -170,7 +170,7 @@ def _repo_name(importpath):
 
     def _encode_case(c):
         """Repo names end up as directory names, therefore we can't rely on case to distinguish importpaths that only differ in case"""
-        return "1" + c.lower() if c.isupper() else c
+        return "_" + c.lower() if c.isupper() else c
 
     return "".join([_encode_case(c) if c.isalnum() else "_" for c in candidate_name.elems()])
 
