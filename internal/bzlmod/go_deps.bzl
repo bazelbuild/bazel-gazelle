@@ -167,7 +167,12 @@ def _repo_name(importpath):
     path_segments = importpath.split("/")
     segments = reversed(path_segments[0].split(".")) + path_segments[1:]
     candidate_name = "_".join(segments).replace("-", "_")
-    return "".join([c.lower() if c.isalnum() else "_" for c in candidate_name.elems()])
+
+    def _encode_case(c):
+        """Repo names end up as directory names, therefore we can't rely on case to distinguish importpaths that only differ in case"""
+        return "1" + c.lower() if c.isupper() else c
+
+    return "".join([_encode_case(c) if c.isalnum() else "_" for c in candidate_name.elems()])
 
 def _is_dev_dependency(module_ctx, tag):
     if hasattr(tag, "_is_dev_dependency"):
@@ -592,7 +597,6 @@ def _go_deps_impl(module_ctx):
                 ),
             )
 
-    repos_processed = {}
     for path, module in module_resolutions.items():
         if hasattr(module, "module_name"):
             # Do not create a go_repository for a Go module provided by a bazel_dep.
@@ -603,10 +607,7 @@ def _go_deps_impl(module_ctx):
             # Do not create a go_repository for a dep shared with the non-isolated instance of
             # go_deps.
             continue
-        if module.repo_name in repos_processed:
-            continue
 
-        repos_processed[module.repo_name] = True
         go_repository_args = {
             "name": module.repo_name,
             # Compared to the name attribute, the content of this attribute does not go through repo
