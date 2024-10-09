@@ -259,7 +259,7 @@ def _go_repository_config_impl(ctx):
         ))
 
     ctx.file("WORKSPACE", "\n".join(repos))
-    ctx.file("BUILD.bazel", "exports_files(['WORKSPACE', 'config.json'])")
+    ctx.file("BUILD.bazel", "exports_files(['WORKSPACE', 'config.json', 'resolved_deps.json'])")
     ctx.file("go_env.bzl", content = "GO_ENV = " + repr(ctx.attr.go_env))
 
     # For use by @rules_go//go.
@@ -268,6 +268,9 @@ def _go_repository_config_impl(ctx):
         "dep_files": ctx.attr.dep_files,
     }))
 
+    # For bookkeeping by upstream systems that may want this info
+    ctx.file("resolved_deps.json", content = json.encode_indent(ctx.attr.resolved_deps))
+
 _go_repository_config = repository_rule(
     implementation = _go_repository_config_impl,
     attrs = {
@@ -275,6 +278,7 @@ _go_repository_config = repository_rule(
         "module_names": attr.string_dict(mandatory = True),
         "build_naming_conventions": attr.string_dict(mandatory = True),
         "go_env": attr.string_dict(mandatory = True),
+        "resolved_deps": attr.string_dict(mandatory = True),
         "dep_files": attr.string_list(),
     },
 )
@@ -592,6 +596,7 @@ def _go_deps_impl(module_ctx):
                 ),
             )
 
+    resolved_go_modules = {}
     for path, module in module_resolutions.items():
         if hasattr(module, "module_name"):
             # Do not create a go_repository for a Go module provided by a bazel_dep.
@@ -643,6 +648,9 @@ def _go_deps_impl(module_ctx):
 
             go_repository_args.update(repo_args)
 
+        if "version" in go_repository_args and go_repository_args["version"]:
+            resolved_go_modules[go_repository_args["importpath"]] = go_repository_args["version"]
+
         go_repository(**go_repository_args)
 
     # Create a synthetic WORKSPACE file that lists all Go repositories created
@@ -669,6 +677,7 @@ def _go_deps_impl(module_ctx):
         }),
         go_env = go_env,
         dep_files = dep_files,
+        resolved_deps = resolved_go_modules,
     )
 
     return extension_metadata(
