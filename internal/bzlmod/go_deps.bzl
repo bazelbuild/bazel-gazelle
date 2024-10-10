@@ -590,8 +590,8 @@ def _go_deps_impl(module_ctx):
     for path, module in module_resolutions.items():
         if hasattr(module, "module_name"):
             # Do not create a go_repository for a Go module provided by a bazel_dep.
-            root_module_direct_deps.pop(repo_name(path), default = None)
-            root_module_direct_dev_deps.pop(repo_name(path), default = None)
+            root_module_direct_deps.pop(_repo_name(path), None)
+            root_module_direct_dev_deps.pop(_repo_name(path), None)
             continue
         if getattr(module_ctx, "is_isolated", False) and path in _SHARED_REPOS:
             # Do not create a go_repository for a dep shared with the non-isolated instance of
