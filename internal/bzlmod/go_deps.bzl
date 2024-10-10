@@ -28,6 +28,7 @@ load(
     "format_rule_call",
     "get_directive_value",
     "with_replaced_or_new_fields",
+    "repo_name",
 )
 
 visibility("//")
@@ -162,12 +163,6 @@ def _get_patches(path, module_overrides):
 def _get_patch_args(path, module_overrides):
     override = _get_override_or_default(module_overrides, struct(), {}, path, None, "patch_strip")
     return ["-p{}".format(override)] if override else []
-
-def _repo_name(importpath):
-    path_segments = importpath.split("/")
-    segments = reversed(path_segments[0].split(".")) + path_segments[1:]
-    candidate_name = "_".join(segments).replace("-", "_")
-    return "".join([c.lower() if c.isalnum() else "_" for c in candidate_name.elems()])
 
 def _is_dev_dependency(module_ctx, tag):
     if hasattr(tag, "_is_dev_dependency"):
@@ -499,9 +494,9 @@ def _go_deps_impl(module_ctx):
             if module.is_root and not module_tag.indirect:
                 root_versions[module_tag.path] = raw_version
                 if _is_dev_dependency(module_ctx, module_tag):
-                    root_module_direct_dev_deps[_repo_name(module_tag.path)] = None
+                    root_module_direct_dev_deps[repo_name(module_tag.path)] = None
                 else:
-                    root_module_direct_deps[_repo_name(module_tag.path)] = None
+                    root_module_direct_deps[repo_name(module_tag.path)] = None
 
             version = semver.to_comparable(raw_version)
             previous = paths.get(module_tag.path)
@@ -523,7 +518,7 @@ def _go_deps_impl(module_ctx):
                     local_path = replacement.local_path
 
                 module_resolutions[module_tag.path] = struct(
-                    repo_name = _repo_name(module_tag.path),
+                    repo_name = repo_name(module_tag.path),
                     version = version,
                     raw_version = raw_version,
                     to_path = to_path,
@@ -595,13 +590,14 @@ def _go_deps_impl(module_ctx):
     for path, module in module_resolutions.items():
         if hasattr(module, "module_name"):
             # Do not create a go_repository for a Go module provided by a bazel_dep.
-            root_module_direct_deps.pop(_repo_name(path), None)
-            root_module_direct_dev_deps.pop(_repo_name(path), None)
+            root_module_direct_deps.pop(repo_name(path), None)
+            root_module_direct_dev_deps.pop(repo_name(path), None)
             continue
         if getattr(module_ctx, "is_isolated", False) and path in _SHARED_REPOS:
             # Do not create a go_repository for a dep shared with the non-isolated instance of
             # go_deps.
             continue
+
         go_repository_args = {
             "name": module.repo_name,
             # Compared to the name attribute, the content of this attribute does not go through repo

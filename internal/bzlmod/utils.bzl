@@ -119,6 +119,17 @@ def with_replaced_or_new_fields(_struct, **replacements):
 
     return struct(**new_struct_assignments)
 
+def repo_name(importpath):
+    path_segments = importpath.split("/")
+    segments = reversed(path_segments[0].split(".")) + path_segments[1:]
+    candidate_name = "_".join(segments).replace("-", "_")
+
+    def _encode_case(c):
+        """Repo names end up as directory names, therefore we can't rely on case to distinguish importpaths that only differ in case"""
+        return "_" + c.lower() if c.isupper() else c
+
+    return "".join([_encode_case(c) if c.isalnum() else "_" for c in candidate_name.elems()])
+
 def extension_metadata(
         module_ctx,
         *,

@@ -128,7 +128,7 @@ use_repo(
     "com_github_99designs_gqlgen",
     "com_github_bazelbuild_buildtools",
     "com_github_bmatcuk_doublestar_v4",
-    "com_github_datadog_sketches_go",
+    "com_github__data_dog_sketches_go",
     "com_github_envoyproxy_protoc_gen_validate",
     "com_github_fmeum_dep_on_gazelle",
     "com_github_google_safetext",
