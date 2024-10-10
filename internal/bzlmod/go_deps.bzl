@@ -604,7 +604,11 @@ def _go_deps_impl(module_ctx):
             # go_deps.
             continue
         if module.repo_name in repos_processed:
-            fail("Go module {prev_path} and {path} will resolve to the same Bazel repo name: {name}. While Go allows modules to only differ in case, this isn't supported in Gazelle (yet). Please ensure you only use one of these modules in your go.mod(s)")
+            fail("Go module {prev_path} and {path} will resolve to the same Bazel repo name: {name}. While Go allows modules to only differ in case, this isn't supported in Gazelle (yet). Please ensure you only use one of these modules in your go.mod(s)".format(
+                prev_path=repos_processed[module.repo_name],
+                path=path,
+                name=module.repo_name
+            ))
 
         repos_processed[module.repo_name] = path
         go_repository_args = {
