@@ -592,6 +592,7 @@ def _go_deps_impl(module_ctx):
                 ),
             )
 
+    repos_processed = {}
     for path, module in module_resolutions.items():
         if hasattr(module, "module_name"):
             # Do not create a go_repository for a Go module provided by a bazel_dep.
@@ -602,6 +603,14 @@ def _go_deps_impl(module_ctx):
             # Do not create a go_repository for a dep shared with the non-isolated instance of
             # go_deps.
             continue
+        if module.repo_name in repos_processed:
+            fail("Go module {prev_path} and {path} will resolve to the same Bazel repo name: {name}. While Go allows modules to only differ in case, this isn't supported in Gazelle (yet). Please ensure you only use one of these modules in your go.mod(s)".format(
+                prev_path = repos_processed[module.repo_name],
+                path = path,
+                name = module.repo_name,
+            ))
+
+        repos_processed[module.repo_name] = path
         go_repository_args = {
             "name": module.repo_name,
             # Compared to the name attribute, the content of this attribute does not go through repo
