@@ -1,0 +1,1 @@
+gazelle: the ignore directive does not take any arguments. Did you mean to use gazelle:exclude instead? %WORKSPACEPATH%/ignore_directive/BUILD.bazel arg: '# gazelle:ignore *.go'

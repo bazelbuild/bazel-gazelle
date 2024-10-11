@@ -95,6 +95,9 @@ func (cr *Configurer) Configure(c *config.Config, rel string, f *rule.File) {
 				}
 				wcCopy.follow = append(wcCopy.follow, path.Join(rel, d.Value))
 			case "ignore":
+				if d.Value != "" {
+					log.Printf("the ignore directive does not take any arguments. Did you mean to use gazelle:exclude instead? %s arg: '# gazelle:ignore %s'", f.Path, d.Value)
+				}
 				wcCopy.ignore = true
 			}
 		}
