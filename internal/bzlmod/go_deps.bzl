@@ -567,16 +567,12 @@ def _go_deps_impl(module_ctx):
             continue
 
         # Only use the Bazel module if it is at least as high as the required Go module version.
-        if path in module_resolutions and bazel_dep.version < module_resolutions[path].version:
-            outdated_direct_dep_printer(
-                "Go module \"{path}\" is provided by Bazel module \"{bazel_module}\" in version {bazel_dep_version}, but requested at higher version {go_version} via Go requirements. Consider adding or updating an appropriate \"bazel_dep\" to ensure that the Bazel module is used to provide the Go module.".format(
-                    path = path,
-                    bazel_module = bazel_dep.module_name,
-                    bazel_dep_version = bazel_dep.raw_version,
-                    go_version = module_resolutions[path].raw_version,
-                ),
-            )
-            continue
+        if path in module_resolutions and bazel_dep.version != module_resolutions[path].version:
+            fail("\n\nMismatch between versions requested for module {module}\nBazel dependency version requested in MODULE.bazel: {bazel_dep_version}\nGo module version requested in go.mod: {go_module_version}\nPlease resolve this mismatch to prevent discrepancies between native Go and Bazel builds\n\n".format(
+                module = path,
+                bazel_dep_version = bazel_dep.raw_version,
+                go_module_version = module_resolutions[path].raw_version,
+            ))
 
         # TODO: We should update root_versions if the bazel_dep is a direct dependency of the root
         #   module. However, we currently don't have a way to determine that.
